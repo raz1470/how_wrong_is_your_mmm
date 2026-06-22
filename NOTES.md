@@ -78,6 +78,21 @@ weights = weighter.fit()      # returns array of per-observation weights
 | Tests | `pytest` + `pytest-cov` | Same as `bayesian_vecm`. |
 | Min Python | 3.12 | Consistency with `bayesian_vecm`. |
 | License | MIT | Permissive, standard for OSS Python. |
+| MMM for simulation loop | OLS (log-log) | Fast, interpretable, enough to demonstrate bias. PyMC-Marketing added later as an option. |
+| DGP collinearity mechanism | Demand-driven | Channels correlated because they follow a latent demand signal + noise. More realistic than a fixed correlation matrix; maps to how practitioners actually experience collinearity. Expose `correlation_matrix` as an alternative parameterisation for users who want to specify correlations directly. |
+| Notebook outputs | Committed (no nbstripout) | Outputs are the value — practitioners browsing GitHub should see the bias tables and charts without running the notebook. |
+| Notebook CI | `FAST_MODE` flag | Drop sim count from 500 → 50 for CI. Add from day one, not retrofitted later. |
+| Variable naming | lowercase throughout | `n_channels`, `n_obs`, `beta` etc. Ruff N806 rejects uppercase in function scope (`K`, `T`, `B`). |
+
+## Documentation strategy
+
+Two complementary artifacts, maintained in parallel from sprint 1:
+
+**Notebooks** (`notebooks/NN_<topic>.ipynb`) — code-first, hands-on. Audience is a practitioner who wants to run it. Outputs committed to GitHub so the bias tables and charts are visible without running. Written in internal voice first (building intuition), then rewritten in practitioner voice at the end of each sprint.
+
+**HTML guide** (`docs/guide.html`) — visual, theory-led, more like a white paper. Audience is someone reading a LinkedIn link or a client deck. Makes the case for *why* collinearity matters before showing *how* to diagnose it. SVG diagrams, polished charts, no code cells. Title: *"How Wrong Is Your MMM? A Practitioner's Guide to Collinearity Bias"*. Built section by section alongside the notebooks — not a post-launch chore.
+
+The notebook is the "how." The HTML guide is the "why." Both grow with each sprint.
 
 ## Planned module structure
 
@@ -100,33 +115,121 @@ One notebook per public-API slice, `notebooks/NN_<topic>.ipynb`:
 - `03_perturber_walkthrough.ipynb` — `BudgetPerturber` recommendation
 - `04_weights_walkthrough.ipynb` — `CollinearityWeighter`, before/after MMM comparison
 
+## Session learnings (to carry forward from bayesian_vecm)
+
+- **DGP signal must dominate by design.** Make the latent demand signal strong relative to noise so collinearity is clearly visible in every sim, not just some seeds. Don't rely on lucky seeds.
+- **FAST_MODE from day one.** Add a `FAST_MODE = True` flag at the top of every notebook that runs a simulation loop. Default True (50 sims) for CI; False (500 sims) for publication runs. Do not retrofit later.
+- **Notebook JSON editing.** Edit `.ipynb` files via Python `json` manipulation, not the Edit tool (which rejects `.ipynb` files). Use `ruff format` + `ruff check --fix` on notebooks before committing.
+- **No nbstripout.** Outputs committed — they are the value. Practitioners browsing GitHub should see results without running.
+- **nbstripout as pre-commit hook if ever needed** — not as a git clean filter. The parallel filter crashes when multiple notebooks are staged.
+- **Git operations from local terminal.** The Cowork sandbox cannot unlink files (including `.git/index.lock`). All `git commit`, `git switch`, `git branch -d` etc. must be run from the local terminal. Workaround for stale lock: `mv .git/index.lock .git/index.lock.OLD`.
+- **Pre-push checklist.** `uv run ruff format . && uv run ruff check . && uv run pytest` before every push.
+- **Pin dep floors immediately** after confirming they work. Open lower bounds + `uv sync` = silent major-version drift.
+- **Notebook CI catches API drift that unit tests miss.** Add notebook execution to CI early.
+- **ruff N806.** Uppercase variable names in function scope fail (`K`, `T`, `B`). Use lowercase from the start.
+
 ## Key open questions (to resolve during build)
 
-- **What MMM to use inside the simulation loop?** OLS (fast, 500 sims manageable) or PyMC (slower but Bayesian throughout). Start with OLS for the diagnostic loop; add Bayesian as an option.
 - **What collinearity metric drives the budget recommendation?** VIF is intuitive but has known pathologies at high K. Condition number of the design matrix is more stable. Could offer both.
 - **How to define "budget perturbation" formally?** Constrained optimisation: minimise condition number (or max VIF) subject to total budget = constant and per-channel bounds. `scipy.optimize` is the natural tool; a Bayesian version would put uncertainty on the channel response curves first.
 - **Sampling weights scheme?** Inverse-VIF weighting per observation period? Or model-based: fit a time-varying collinearity measure (rolling condition number) and use it as the weight?
-- **Paper angle?** Simulation study showing bias as a function of correlation strength, sample size, and number of channels. Propose the perturbation + weighting scheme. Validate on synthetic and (anonymised) real data.
+- **Paper angle?** Simulation study showing coefficient instability as a function of correlation strength, sample size, and number of channels. Propose the perturbation + weighting scheme. Validate on synthetic and (anonymised) real data.
 
-## Status as of session 1 (2026-06-21, project setup)
+## Core pipeline design (locked in session 2)
+
+One pipeline, two entry points — everything from synthetic sales onwards is identical:
+
+**Entry point A — fully synthetic:**
+Generate synthetic spend (demand-driven DGP) → create synthetic sales using known elasticities → fit OLS → compare estimated to true
+
+**Entry point B — real spend:**
+User supplies actual spend DataFrame → create synthetic sales using known elasticities applied to real spend → fit OLS → compare estimated to true
+
+The key insight: we never simulate spend when real data is available. We simulate only the sales column (using known elasticities × real spend + noise). The collinearity in the real spend is already baked into the data — no need to model it.
+
+**Why this is powerful:** the diagnostic is personalised. You're not showing a generic collinearity problem, you're showing *their* problem with *their* spend data. "Given how your channels actually moved over the last 2 years, here's how unreliable your MMM elasticities are."
+
+**The "how wrong" number:** coefficient of variation of the elasticity estimate across many noise seeds. Not wrong vs unknowable truth, but "how much would your answer change if you'd measured in a slightly different period?"
+
+## Notebook structure (locked in session 2)
+
+`notebooks/01_dgp_diagnostic_walkthrough.ipynb`
+
+**Section 1 — sweep correlation (synthetic spend)**
+Loop over correlation levels 0.1 → 0.9. At each level run N seeds, collect estimated elasticities. Plot distribution of estimates vs true value across correlation levels. Shows: higher correlation → wider distribution → less reliable. Educational, builds intuition.
+
+**Section 2 — fixed correlation, many seeds (synthetic spend)**
+Fix correlation at 0.7 (realistic). Run 50 seeds. Show distribution of estimated elasticities. This is the "your MMM could have said anything" moment — same market, same truth, different answers depending on which period of data you happened to use.
+
+**Section 3 — real spend (later sprint)**
+User supplies spend DataFrame. Same pipeline as above. Personalised diagnostic.
+
+Sections 1 and 2 are the teaching sections. Section 3 is the product.
+
+## `CollinearityDiagnostic` API (locked in session 2)
+
+```python
+# Entry point A — synthetic spend
+diag = CollinearityDiagnostic(correlation=0.7, seed=0)
+diag.fit()
+diag.summary()
+
+# Entry point B — real spend
+diag = CollinearityDiagnostic(spend_df=my_spend_data)
+diag.fit()
+diag.summary()
+```
+
+The correlation sweep in Section 1 of the notebook is done via a for loop in the notebook, not baked into the class. The class does one clean run. The notebook does the looping and visualisation.
+
+## What "wrong" means in this package (locked in session 2)
+
+Standard OLS collinearity does not cause **bias** — it causes **variance**. OLS estimates are still centred on the truth even with correlated predictors (as long as the model is correctly specified). The problem is **unreliability**: the estimates swing wildly across different realisations of the data.
+
+This maps directly to what practitioners experience: "we refit with 3 more months of data and TV elasticity halved." The model isn't broken — the data is uninformative. Collinearity means you can't trust the number you got, because a slightly different dataset would give a very different number.
+
+The diagnostic quantifies this unreliability. The budget perturbation reduces it.
+
+## Status as of session 1 (2026-06-21, project setup + sprint 1 planning)
 
 - Repo created. Scaffold in place: `pyproject.toml`, `src/how_wrong_is_your_mmm/__init__.py`, `.gitignore`, `NOTES.md`.
 - Direction confirmed: start with Part 1 (DGP simulation + diagnostic) as the first slice.
 - Running in parallel with `bayesian_vecm` Monzo validation.
+- Documentation strategy agreed: notebooks (committed outputs, no nbstripout) + HTML guide in parallel.
+- DGP design agreed: demand-driven collinearity (latent demand → correlated spend), not fixed correlation matrix.
+- MMM agreed: OLS (linear, no log transform — saturation transforms come later with PyMC-Marketing).
+- Build approach: notebook and package code built in lockstep. Internal voice first, practitioner voice rewrite at end of each sprint.
+- Long-term: real Monzo spend data as validation story.
+
+## Status as of session 2 (2026-06-21, sprint 1 complete)
+
+- Core pipeline design locked: one pipeline, two entry points (synthetic spend vs real spend).
+- "How wrong" framing settled: unreliability (variance) not bias. Coefficient instability across seeds is the story.
+- `_dgp.py`, `_mmm.py`, `_diagnostic.py` built and ruff-clean.
+- Notebook 01 built and all cells execute cleanly.
+- Key result: at correlation 0.7, TV elasticity 80% range is [0.22, 0.54] against true value of 0.3.
+- Attribution shift visible in the data: as correlation rises, TV mean drifts up and Meta drifts down — channels steal credit from each other in the noise. Worth calling out in the practitioner rewrite.
+- `pyproject.toml` ruff config updated to `[tool.ruff.lint]` (fixes deprecation warning).
+- Branch: `feat/dgp-diagnostic`. **Ryan to review code, run notebook, then commit and open PR.**
+
+## Session learnings (session 2)
+
+- **Revenue noise must be substantial relative to channel signal.** With noise=50 and channel contributions ~£70k, OLS recovers coefficients near-perfectly regardless of collinearity. Set noise to £20k (same order of magnitude as channel contributions) to make unreliability visible. In general: if the story isn't showing up, check the SNR first.
+- **The `_noise_std_from_correlation` derivation.** If TV = demand + noise, Meta = demand + noise (all N(0,1)), then Corr(TV, Meta) = 1/(1 + sigma²). Solve: sigma = sqrt((1-corr)/corr). This gives target correlation ≈ actual correlation for large n_obs but diverges at small samples — the actual correlation reported by `actual_correlation` is what matters for the notebook.
+- **Actual correlation ≠ target correlation at n_obs=104.** The target is a population parameter; the actual is a sample statistic. Always report actual in the notebook, not target.
 
 ## Next slice
 
-**Part 1 — DGP simulation + `CollinearityDiagnostic`**
+**Ryan to complete:**
+1. Review `_dgp.py`, `_mmm.py`, `_diagnostic.py` in the `feat/dgp-diagnostic` branch.
+2. Run `notebooks/01_dgp_diagnostic_walkthrough.ipynb` end to end (set `FAST_MODE = False` for publication run).
+3. Commit and open PR → merge to main.
 
-Branch: `feat/dgp-diagnostic`
-
-Goal: given a spend DataFrame (or just K and T as config), simulate correlated spend data with known elasticities, fit a simple OLS MMM on each sim, and return a bias summary table.
-
-Steps:
-1. `_dgp.py` — `generate_spend(n_obs, n_channels, correlation_matrix, seed)` → DataFrame of correlated log-spend. True elasticities are a parameter (default: all 1.0 so bias is interpretable as %).
-2. `_mmm.py` — `fit_ols_mmm(y, spend_df)` → estimated elasticities. Dead simple: OLS on log-log. Just enough to demonstrate the bias.
-3. `_diagnostic.py` — `CollinearityDiagnostic` class. Wraps the simulation loop. `fit(n_sims)` runs N simulations and stores results. `summary()` returns a DataFrame. `plot_bias()` makes a chart.
-4. Notebook 01 — walkthrough with a Monzo-style 3-channel example (TV, digital, OOH) showing that high TV/digital correlation biases both elasticities toward each other.
+**Then — sprint 2 (to discuss before building):**
+- Practitioner voice rewrite of notebook 01.
+- Section 1 of HTML guide (`docs/guide.html`) — the problem statement.
+- Real spend entry point (Section 3 of notebook) — user supplies spend DataFrame, same pipeline.
+- Budget perturbation (`feat/budget-perturber`) — recommend spend allocations that reduce inter-channel correlation.
 
 ## Workflow reminder
 
