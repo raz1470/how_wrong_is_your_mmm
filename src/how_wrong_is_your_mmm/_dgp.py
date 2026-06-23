@@ -2,24 +2,36 @@
 
 Two functions with a clean separation of concerns:
 
-- simulate_spend: generates synthetic correlated TV and Meta spend via a
-  latent demand signal. Used when no real spend data is available.
+- simulate_spend: generates synthetic correlated spend for N channels via a
+  latent demand signal. All pairwise correlations are equal (single rho param).
 
 - simulate_sales: creates a synthetic sales column from a spend DataFrame
-  (real or synthetic) using known elasticities. This is the step that is
-  always run, regardless of whether spend is real or synthetic.
+  (real or synthetic) using known elasticities. This step is identical
+  regardless of whether spend is real or synthetic.
 """
 
 import numpy as np
 import pandas as pd
 
+# Default spend scale per channel: (mean, std) in £/week.
+_CHANNEL_SCALE: dict[str, tuple[float, float]] = {
+    "tv": (100_000, 20_000),
+    "meta": (80_000, 15_000),
+    "search": (60_000, 12_000),
+}
+_DEFAULT_SCALE = (80_000, 15_000)
+_DEFAULT_CHANNELS = ["tv", "meta", "search"]
+_DEFAULT_ELASTICITIES: dict[str, float] = {"tv": 0.3, "meta": 0.5, "search": 0.4}
+
 
 def _noise_std_from_correlation(correlation: float) -> float:
-    """Return per-channel noise std that produces the target correlation.
+    """Return per-channel noise std that produces the target pairwise correlation.
 
-    If TV = demand + noise_tv and Meta = demand + noise_meta, with demand
-    and noise all N(0, 1), then Corr(TV, Meta) = 1 / (1 + sigma^2).
+    If channel_i = demand + noise_i, channel_j = demand + noise_j, with demand
+    and all noise terms N(0, 1), then Corr(i, j) = 1 / (1 + sigma^2).
     Solving: sigma = sqrt((1 - corr) / corr).
+
+    This gives equal pairwise correlation for all channel pairs.
     """
     if not 0 < correlation < 1:
         raise ValueError("correlation must be strictly between 0 and 1")
@@ -29,44 +41,48 @@ def _noise_std_from_correlation(correlation: float) -> float:
 def simulate_spend(
     n_obs: int = 104,
     correlation: float = 0.7,
+    channels: list[str] | None = None,
     seed: int = 0,
 ) -> pd.DataFrame:
-    """Generate synthetic correlated TV and Meta spend via a latent demand signal.
+    """Generate synthetic correlated spend for N channels via a latent demand signal.
 
-    Both channels track the same underlying demand index with added noise.
-    The noise level is set to achieve the target correlation between channels.
+    All channels track the same underlying demand index with independent noise.
+    The noise level is set so that all pairwise correlations equal `correlation`.
 
     Parameters
     ----------
     n_obs:
         Number of observations (weeks).
     correlation:
-        Target Pearson correlation between TV and Meta spend.
+        Target Pearson correlation between any pair of channels.
+    channels:
+        List of channel names. Defaults to ["tv", "meta", "search"].
     seed:
         Random seed for reproducibility.
 
     Returns
     -------
-    pd.DataFrame with columns: tv, meta.
+    pd.DataFrame with one column per channel.
     """
+    if channels is None:
+        channels = _DEFAULT_CHANNELS
+
     rng = np.random.default_rng(seed)
     noise_std = _noise_std_from_correlation(correlation)
-
     demand = rng.standard_normal(n_obs)
-    tv = demand + noise_std * rng.standard_normal(n_obs)
-    meta = demand + noise_std * rng.standard_normal(n_obs)
 
-    # scale to realistic weekly spend ranges
-    tv = 100_000 + 20_000 * tv
-    meta = 80_000 + 15_000 * meta
+    data = {}
+    for ch in channels:
+        mean, std = _CHANNEL_SCALE.get(ch, _DEFAULT_SCALE)
+        signal = demand + noise_std * rng.standard_normal(n_obs)
+        data[ch] = mean + std * signal
 
-    return pd.DataFrame({"tv": tv, "meta": meta})
+    return pd.DataFrame(data)
 
 
 def simulate_sales(
     spend_df: pd.DataFrame,
-    true_elast_tv: float = 0.3,
-    true_elast_meta: float = 0.5,
+    true_elasticities: dict[str, float] | None = None,
     base_sales: float = 1_000.0,
     revenue_noise_std: float = 20_000.0,
     seed: int = 0,
@@ -74,22 +90,20 @@ def simulate_sales(
     """Create a synthetic sales column from a spend DataFrame.
 
     Applies known elasticities to the spend columns and adds noise.
-    Works identically whether spend_df is synthetic or real — this is
-    the shared step in both entry points of the pipeline.
+    Works identically whether spend_df is synthetic or real.
 
-    Model: sales = base + true_elast_tv * tv + true_elast_meta * meta + noise
+    Model: sales = base + sum(elast[c] * spend[c] for c in channels) + noise
 
     Parameters
     ----------
     spend_df:
-        DataFrame with columns 'tv' and 'meta'. Can be synthetic (from
-        simulate_spend) or real spend data supplied by the user.
-    true_elast_tv:
-        True TV elasticity (coefficient) in the sales equation.
-    true_elast_meta:
-        True Meta elasticity (coefficient) in the sales equation.
+        DataFrame with one column per channel. Can be synthetic or real.
+    true_elasticities:
+        Dict mapping channel name to true elasticity. Defaults to
+        {"tv": 0.3, "meta": 0.5, "search": 0.4}.
+        All columns in spend_df must have an entry.
     base_sales:
-        Base sales intercept (sales with zero spend).
+        Base sales intercept.
     revenue_noise_std:
         Standard deviation of sales noise.
     seed:
@@ -99,11 +113,17 @@ def simulate_sales(
     -------
     pd.Series of simulated sales values.
     """
+    if true_elasticities is None:
+        true_elasticities = _DEFAULT_ELASTICITIES
+
     rng = np.random.default_rng(seed)
-    sales = (
-        base_sales
-        + true_elast_tv * spend_df["tv"].to_numpy()
-        + true_elast_meta * spend_df["meta"].to_numpy()
-        + revenue_noise_std * rng.standard_normal(len(spend_df))
-    )
+    sales = base_sales + revenue_noise_std * rng.standard_normal(len(spend_df))
+    for ch in spend_df.columns:
+        if ch not in true_elasticities:
+            raise ValueError(
+                f"Channel '{ch}' in spend_df has no entry in true_elasticities. "
+                f"Provide true_elasticities for all channels: {list(spend_df.columns)}"
+            )
+        sales = sales + true_elasticities[ch] * spend_df[ch].to_numpy()
+
     return pd.Series(sales, name="sales")

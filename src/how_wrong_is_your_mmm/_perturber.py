@@ -34,35 +34,35 @@ def _perturb_spend(
     perturbation_std: float,
     seed: int = 0,
 ) -> pd.DataFrame:
-    """Add independent variation to the TV/Meta split.
+    """Add independent variation to each channel's spend.
 
-    Shifts budget between channels by a random amount each week,
-    independently of the underlying demand signal. Total spend per
-    week is preserved — only the split changes.
+    For each channel, draws independent noise and shifts spend by that amount.
+    Shifts are mean-centred across channels each week so total spend is preserved.
 
     Parameters
     ----------
     spend_df:
-        DataFrame with columns 'tv' and 'meta'.
+        DataFrame with one column per channel.
     perturbation_std:
-        Standard deviation of the weekly budget shift in £. At 0,
-        spend is unchanged. Higher values introduce more independent
-        variation in the channel split.
+        Standard deviation of the weekly per-channel shift in £.
     seed:
         Random seed for the perturbation draws.
 
     Returns
     -------
-    pd.DataFrame with columns 'tv' and 'meta' after perturbation.
+    pd.DataFrame with the same columns as spend_df after perturbation.
     """
+    channels = list(spend_df.columns)
     rng = np.random.default_rng(seed)
-    shift = rng.standard_normal(len(spend_df)) * perturbation_std
-    return pd.DataFrame(
-        {
-            "tv": spend_df["tv"].to_numpy() + shift,
-            "meta": spend_df["meta"].to_numpy() - shift,
-        }
-    )
+    n = len(spend_df)
+    # independent noise per channel, shape (n_obs, n_channels)
+    shifts = rng.standard_normal((n, len(channels))) * perturbation_std
+    # centre across channels so total weekly spend is preserved
+    shifts = shifts - shifts.mean(axis=1, keepdims=True)
+    result = {}
+    for i, ch in enumerate(channels):
+        result[ch] = spend_df[ch].to_numpy() + shifts[:, i]
+    return pd.DataFrame(result)
 
 
 class BudgetPerturber:
@@ -93,16 +93,18 @@ class BudgetPerturber:
     def __init__(
         self,
         spend_df: pd.DataFrame,
-        true_elast_tv: float = 0.3,
-        true_elast_meta: float = 0.5,
+        true_elasticities: dict[str, float] | None = None,
         base_sales: float = 1_000.0,
         revenue_noise_std: float = 20_000.0,
         max_perturbation_pct: float = 0.5,
         seed: int = 0,
     ) -> None:
+        from how_wrong_is_your_mmm._dgp import _DEFAULT_ELASTICITIES
+
         self.spend_df = spend_df
-        self.true_elast_tv = true_elast_tv
-        self.true_elast_meta = true_elast_meta
+        self.true_elasticities = (
+            true_elasticities if true_elasticities is not None else _DEFAULT_ELASTICITIES
+        )
         self.base_sales = base_sales
         self.revenue_noise_std = revenue_noise_std
         self.max_perturbation_pct = max_perturbation_pct
@@ -150,8 +152,7 @@ class BudgetPerturber:
             perturbed = _perturb_spend(self.spend_df, pert_std, seed=self.seed + i)
             diag = CollinearityDiagnostic(
                 spend_df=perturbed,
-                true_elast_tv=self.true_elast_tv,
-                true_elast_meta=self.true_elast_meta,
+                true_elasticities=self.true_elasticities,
                 base_sales=self.base_sales,
                 revenue_noise_std=self.revenue_noise_std,
             )
