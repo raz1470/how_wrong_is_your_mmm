@@ -212,24 +212,39 @@ The diagnostic quantifies this unreliability. The budget perturbation reduces it
 - `pyproject.toml` ruff config updated to `[tool.ruff.lint]` (fixes deprecation warning).
 - Branch: `feat/dgp-diagnostic`. **Ryan to review code, run notebook, then commit and open PR.**
 
+## Status as of session 3 (2026-06-22, sprints 2 + 3 complete)
+
+- GitHub repo created: https://github.com/raz1470/how_wrong_is_your_mmm
+- Branch protection ruleset on `main` (require PR before merging).
+- `pyproject.toml` updated: runtime deps pinned (`numpy>=1.26`, `pandas>=2.0`); notebook/dev tools moved to `[dependency-groups] dev` (uv native, consistent with `bayesian_vecm`). Setup: `uv venv --python 3.12 && uv sync`.
+- **Sprint 2 complete:**
+  - 28 tests added covering `simulate_spend`, `simulate_sales`, `fit_ols`, `CollinearityDiagnostic` (both entry points).
+  - Notebook 01 rewritten in practitioner voice throughout.
+  - Section 3 added to notebook 01: `CollinearityDiagnostic(spend_df=...)` personalised diagnostic.
+- **Sprint 3 complete:**
+  - `_perturber.py` built: `BudgetPerturber` with grid search over independent TV/Meta split variation.
+  - 16 tests passing (44 total).
+  - Exported from `__init__.py`.
+  - Merged to main.
+
+## BudgetPerturber design (locked session 3)
+
+The perturbation mechanism: add independent random variation to the TV/Meta split each week, with total spend preserved. As perturbation amplitude increases, inter-channel correlation drops and elasticity CV narrows. Grid search over perturbation amplitude (0 → 50% of mean weekly total spend). Recommend the amplitude that minimises max CV across channels.
+
+Output to practitioner: "vary your TV/Meta split by an additional ±£X per week, independent of your campaign calendar."
+
+Two-channel only for now. K-channel generalisation requires scipy.optimize or sampling (later sprint).
+
+## Next slice
+
+- Notebook 02 (`notebooks/02_perturber_walkthrough.ipynb`) — BudgetPerturber end to end. Show the CV curve across perturbation levels, current vs recommended split, and the practical recommendation in £ terms.
+- HTML guide section 1 (`docs/guide.html`) — the problem statement. Theory-led, no code, SVG diagrams.
+
 ## Session learnings (session 2)
 
 - **Revenue noise must be substantial relative to channel signal.** With noise=50 and channel contributions ~£70k, OLS recovers coefficients near-perfectly regardless of collinearity. Set noise to £20k (same order of magnitude as channel contributions) to make unreliability visible. In general: if the story isn't showing up, check the SNR first.
 - **The `_noise_std_from_correlation` derivation.** If TV = demand + noise, Meta = demand + noise (all N(0,1)), then Corr(TV, Meta) = 1/(1 + sigma²). Solve: sigma = sqrt((1-corr)/corr). This gives target correlation ≈ actual correlation for large n_obs but diverges at small samples — the actual correlation reported by `actual_correlation` is what matters for the notebook.
 - **Actual correlation ≠ target correlation at n_obs=104.** The target is a population parameter; the actual is a sample statistic. Always report actual in the notebook, not target.
-
-## Next slice
-
-**Ryan to complete:**
-1. Review `_dgp.py`, `_mmm.py`, `_diagnostic.py` in the `feat/dgp-diagnostic` branch.
-2. Run `notebooks/01_dgp_diagnostic_walkthrough.ipynb` end to end (set `FAST_MODE = False` for publication run).
-3. Commit and open PR → merge to main.
-
-**Then — sprint 2 (to discuss before building):**
-- Practitioner voice rewrite of notebook 01.
-- Section 1 of HTML guide (`docs/guide.html`) — the problem statement.
-- Real spend entry point (Section 3 of notebook) — user supplies spend DataFrame, same pipeline.
-- Budget perturbation (`feat/budget-perturber`) — recommend spend allocations that reduce inter-channel correlation.
 
 ## Workflow reminder
 

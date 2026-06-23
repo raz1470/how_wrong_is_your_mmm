@@ -6,36 +6,40 @@ import pytest
 
 from how_wrong_is_your_mmm._dgp import simulate_sales, simulate_spend
 
+CHANNELS = ["tv", "meta", "search"]
+ELASTICITIES = {"tv": 0.3, "meta": 0.5, "search": 0.4}
+
 
 class TestSimulateSpend:
-    def test_output_shape(self):
-        df = simulate_spend(n_obs=52, correlation=0.5)
+    def test_default_shape(self):
+        df = simulate_spend()
+        assert df.shape == (104, 3)
+        assert list(df.columns) == CHANNELS
+
+    def test_custom_channels(self):
+        df = simulate_spend(channels=["tv", "meta"], n_obs=52)
         assert df.shape == (52, 2)
         assert list(df.columns) == ["tv", "meta"]
 
-    def test_default_shape(self):
-        df = simulate_spend()
-        assert df.shape == (104, 2)
+    def test_custom_n_obs(self):
+        df = simulate_spend(n_obs=52)
+        assert df.shape == (52, 3)
 
     def test_correlation_direction(self):
-        """Higher target correlation should produce higher actual correlation."""
-        low = simulate_spend(correlation=0.2, seed=0)["tv"].corr(
-            simulate_spend(correlation=0.2, seed=0)["meta"]
-        )
-        high = simulate_spend(correlation=0.9, seed=0)["tv"].corr(
-            simulate_spend(correlation=0.9, seed=0)["meta"]
-        )
-        assert high > low
+        """Higher target correlation should produce higher mean pairwise correlation."""
+        def mean_corr(corr_val):
+            df = simulate_spend(correlation=corr_val, seed=0)
+            c = df.corr().to_numpy()
+            n = len(df.columns)
+            return np.mean([c[i, j] for i in range(n) for j in range(i + 1, n)])
+
+        assert mean_corr(0.8) > mean_corr(0.2)
 
     def test_reproducibility(self):
-        df1 = simulate_spend(seed=42)
-        df2 = simulate_spend(seed=42)
-        pd.testing.assert_frame_equal(df1, df2)
+        pd.testing.assert_frame_equal(simulate_spend(seed=42), simulate_spend(seed=42))
 
     def test_different_seeds_differ(self):
-        df1 = simulate_spend(seed=0)
-        df2 = simulate_spend(seed=1)
-        assert not df1.equals(df2)
+        assert not simulate_spend(seed=0).equals(simulate_spend(seed=1))
 
     def test_invalid_correlation(self):
         with pytest.raises(ValueError):
@@ -49,25 +53,36 @@ class TestSimulateSales:
         self.spend_df = simulate_spend(n_obs=104, correlation=0.5, seed=0)
 
     def test_output_length(self):
-        sales = simulate_sales(self.spend_df)
-        assert len(sales) == len(self.spend_df)
+        assert len(simulate_sales(self.spend_df, ELASTICITIES)) == len(self.spend_df)
 
     def test_output_name(self):
-        sales = simulate_sales(self.spend_df)
-        assert sales.name == "sales"
+        assert simulate_sales(self.spend_df, ELASTICITIES).name == "sales"
 
     def test_reproducibility(self):
-        s1 = simulate_sales(self.spend_df, seed=7)
-        s2 = simulate_sales(self.spend_df, seed=7)
+        s1 = simulate_sales(self.spend_df, ELASTICITIES, seed=7)
+        s2 = simulate_sales(self.spend_df, ELASTICITIES, seed=7)
         pd.testing.assert_series_equal(s1, s2)
 
     def test_different_seeds_differ(self):
-        s1 = simulate_sales(self.spend_df, seed=0)
-        s2 = simulate_sales(self.spend_df, seed=1)
+        s1 = simulate_sales(self.spend_df, ELASTICITIES, seed=0)
+        s2 = simulate_sales(self.spend_df, ELASTICITIES, seed=1)
         assert not s1.equals(s2)
 
     def test_elasticity_direction(self):
         """Higher elasticity should produce higher mean sales."""
-        low = simulate_sales(self.spend_df, true_elast_tv=0.1, revenue_noise_std=0).mean()
-        high = simulate_sales(self.spend_df, true_elast_tv=0.9, revenue_noise_std=0).mean()
+        low = simulate_sales(
+            self.spend_df, {"tv": 0.1, "meta": 0.1, "search": 0.1}, revenue_noise_std=0
+        ).mean()
+        high = simulate_sales(
+            self.spend_df, {"tv": 0.9, "meta": 0.9, "search": 0.9}, revenue_noise_std=0
+        ).mean()
         assert high > low
+
+    def test_missing_channel_raises(self):
+        with pytest.raises(ValueError, match="has no entry"):
+            simulate_sales(self.spend_df, {"tv": 0.3})
+
+    def test_default_elasticities(self):
+        # should not raise when using default elasticities on default channels
+        sales = simulate_sales(self.spend_df)
+        assert len(sales) == len(self.spend_df)
