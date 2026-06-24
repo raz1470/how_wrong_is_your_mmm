@@ -20,8 +20,8 @@ Most practitioners either ignore collinearity or run a VIF check and shrug. Neit
 **Part 1 — DGP simulation (prove the problem)**
 Generate synthetic correlated spend data with *known* true elasticities. Fit an MMM. Show the estimated elasticities are wrong. Quantify the bias as a function of the correlation structure. This is the diagnostic: "here is how wrong your MMM probably is, given the collinearity in your data."
 
-**Part 2 — Budget perturbation recommendation (design the fix)**
-Given the current correlation structure of spend, recommend future budget allocations that deliberately de-correlate channels. The goal is to introduce variation that lets the MMM distinguish individual channel effects. This is the experiment-design step — the equivalent of Vaver & Koehler's geo-experiments but applied to channel mix rather than geography.
+**Part 2 — Budget phasing recommendation (design the fix)**
+Given the current correlation structure of spend, recommend future budget phasing that deliberately de-correlates channels week-to-week. The goal is to introduce independent variation that lets the MMM distinguish individual channel effects. This is the experiment-design step — the equivalent of Vaver & Koehler's geo-experiments but applied to channel mix rather than geography.
 
 **Part 3 — Sampling weights (speed up the benefit)**
 Upweight recent de-correlated observations in the MMM so the model benefits quickly without waiting years for the new data to dominate the history. Equivalent to a form of importance sampling — we give more weight to informative (low-collinearity) periods.
@@ -48,7 +48,7 @@ Packages 2–4 can be developed in parallel with `bayesian_vecm` reaching PyPI. 
 ## API we're aiming for
 
 ```python
-from how_wrong_is_your_mmm import CollinearityDiagnostic, BudgetPerturber
+from how_wrong_is_your_mmm import CollinearityDiagnostic, BudgetPhaser
 
 # Part 1: diagnose
 diag = CollinearityDiagnostic(spend_df, true_elasticities=None)
@@ -56,10 +56,10 @@ diag.fit(n_sims=500)          # simulate DGP + fit MMMs
 diag.summary()                # bias table: channel, true_elast, estimated_elast, bias_%
 diag.plot_bias()              # fan chart of estimated vs true elasticities
 
-# Part 2: recommend budget perturbation
-perturber = BudgetPerturber(spend_df, budget_total=1_000_000)
-perturber.recommend()         # budget allocation that minimises collinearity
-perturber.plot()              # before/after correlation matrix + recommended spend split
+# Part 2: recommend budget phasing
+phaser = BudgetPhaser(spend_df, budget_total=1_000_000)
+phaser.recommend()            # budget phasing that minimises collinearity
+phaser.plot()                 # before/after correlation matrix + recommended spend split
 
 # Part 3: sampling weights (used internally by the MMM, or standalone)
 from how_wrong_is_your_mmm import CollinearityWeighter
@@ -102,7 +102,7 @@ src/how_wrong_is_your_mmm/
     _dgp.py               # DGP simulation: generate correlated spend + known elasticities
     _mmm.py               # lightweight MMM fitting (OLS or Bayesian) for the simulation loop
     _diagnostic.py        # CollinearityDiagnostic class
-    _perturber.py         # BudgetPerturber class
+    _phaser.py            # BudgetPhaser class
     _weights.py           # CollinearityWeighter class
     _plot.py              # shared plotting helpers
 ```
@@ -235,9 +235,46 @@ Output to practitioner: "vary your TV/Meta split by an additional ±£X per week
 
 Two-channel only for now. K-channel generalisation requires scipy.optimize or sampling (later sprint).
 
+## Status as of session 4 (2026-06-23, BudgetPhaser v2 + rename)
+
+- **Terminology change:** "perturbation" → "phasing" throughout. `_perturber.py` → `_phaser.py`, `BudgetPerturber` → `BudgetPhaser`, `_generate_perturbed_schedule` → `_generate_phased_schedule`, `max_channel_weekly_deviation_pct` → `max_weekly_deviation_pct`. More natural; "budget phasing" is existing media agency vocabulary.
+- **BudgetPhaser v2 complete** (replaces v1 two-channel approach):
+  - N-channel, takes a 52-week spend plan with DatetimeIndex.
+  - Grid search over phasing amplitude α ∈ [0, 1]. For each α: generate phased schedule (monthly totals preserved per channel via rescaling), run CollinearityDiagnostic, record max CV.
+  - Recommended α minimises max CV (conservative: worst-case channel, not average).
+  - Monthly total preservation guaranteed by rescaling: `new_weeks * (monthly_total / new_weeks.sum())`.
+  - 59 tests passing.
+- **Notebook 02 complete** (`notebooks/02_phaser_walkthrough.ipynb`):
+  - CV curve + inter-channel correlation vs phasing amplitude.
+  - **New: elasticity fan chart** — runs CollinearityDiagnostic at α=0, recommended α, α=1. Plots 10th–90th pct band + median estimate vs true value per channel. Makes CV improvement tangible: band visibly narrows as phasing increases.
+  - Monthly comparison table confirms exact preservation.
+  - Weekly spend chart: original vs recommended for each channel.
+
+## BudgetPhaser design (locked session 4)
+
+The phasing mechanism: for each month, redistribute each channel's weekly spend randomly within the month, then rescale to preserve the monthly total exactly. This introduces independent weekly variation across channels without touching monthly or annual commitments.
+
+Grid search over amplitude α ∈ [0, 1]. α=0 = no change. α=1 = maximum allowed weekly deviation (default 40% per channel). Recommended α = argmin(max CV across channels).
+
+Output to practitioner: a concrete 52×N weekly spend schedule to hand to the media agency, with monthly totals unchanged.
+
+## Architecture change needed for Part 3 (agreed session 4)
+
+**The data reality:** MMMs are fit on 3-5 years of weekly data, not just the plan year. The practitioner only controls next year's spend. The rest is history — correlated, fixed, out of their hands.
+
+**Implication for CollinearityWeighter:** it should operate on the full historical dataset (3-5 years) with sampling weights that upweight the latest year. The phased plan is only applied to the latest year. Collinearity in the history is accepted; the weighter and phasing together make the latest year do more work in the model fit.
+
+**Revised architecture:**
+- `CollinearityDiagnostic` and `BudgetPhaser` accept a full multi-year spend DataFrame with a DatetimeIndex.
+- A `plan_year` parameter (or the last 52 weeks by default) identifies which period is adjustable.
+- `CollinearityWeighter` takes the full spend + weights and upweights recent de-correlated observations.
+- The diagnostic is evaluated against the weighted full dataset, not just the plan year.
+
+This is the design to implement in Part 3. Don't build `CollinearityWeighter` without this framing — the 52-week-only design would understate the benefit of phasing (history dilutes it) and overstate how much control the practitioner has.
+
 ## Next slice
 
-- Notebook 02 (`notebooks/02_perturber_walkthrough.ipynb`) — BudgetPerturber end to end. Show the CV curve across perturbation levels, current vs recommended split, and the practical recommendation in £ terms.
+- Part 3: `CollinearityWeighter` (`_weights.py`) — weighted OLS that upweights recent/de-correlated observations. Needs the multi-year architecture above.
 - HTML guide section 1 (`docs/guide.html`) — the problem statement. Theory-led, no code, SVG diagrams.
 
 ## Session learnings (session 2)

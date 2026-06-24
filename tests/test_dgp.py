@@ -47,6 +47,15 @@ class TestSimulateSpend:
         with pytest.raises(ValueError):
             simulate_spend(correlation=1.0)
 
+    def test_start_date_gives_datetime_index(self):
+        df = simulate_spend(n_obs=52, start_date="2023-01-02")
+        assert isinstance(df.index, pd.DatetimeIndex)
+        assert len(df) == 52
+
+    def test_no_start_date_gives_integer_index(self):
+        df = simulate_spend(n_obs=52)
+        assert not isinstance(df.index, pd.DatetimeIndex)
+
 
 class TestSimulateSales:
     def setup_method(self):

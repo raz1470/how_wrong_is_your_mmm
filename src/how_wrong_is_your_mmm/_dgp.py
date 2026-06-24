@@ -43,6 +43,7 @@ def simulate_spend(
     correlation: float = 0.7,
     channels: list[str] | None = None,
     seed: int = 0,
+    start_date: str | None = None,
 ) -> pd.DataFrame:
     """Generate synthetic correlated spend for N channels via a latent demand signal.
 
@@ -59,10 +60,15 @@ def simulate_spend(
         List of channel names. Defaults to ["tv", "meta", "search"].
     seed:
         Random seed for reproducibility.
+    start_date:
+        If provided (e.g. "2023-01-02"), the DataFrame will have a weekly
+        DatetimeIndex anchored on Mondays starting from this date. Required
+        when using the output with BudgetPerturber.
 
     Returns
     -------
-    pd.DataFrame with one column per channel.
+    pd.DataFrame with one column per channel. If start_date is provided,
+    the index is a weekly DatetimeIndex; otherwise it is the default integer index.
     """
     if channels is None:
         channels = _DEFAULT_CHANNELS
@@ -77,7 +83,10 @@ def simulate_spend(
         signal = demand + noise_std * rng.standard_normal(n_obs)
         data[ch] = mean + std * signal
 
-    return pd.DataFrame(data)
+    df = pd.DataFrame(data)
+    if start_date is not None:
+        df.index = pd.date_range(start=start_date, periods=n_obs, freq="W-MON")
+    return df
 
 
 def simulate_sales(
