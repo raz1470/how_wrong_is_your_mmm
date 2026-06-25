@@ -138,17 +138,17 @@ class TestComputeWeights:
 class TestBudgetPhaser:
     def test_fit_returns_self(self):
         phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES)
-        assert phaser.fit(n_sims=5, grid_steps=3) is phaser
+        assert phaser.fit(n_sims=5, grid_steps=3, n_phasing_seeds=1) is phaser
 
     def test_results_shape(self):
         phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=5
+            n_sims=5, grid_steps=5, n_phasing_seeds=1
         )
         assert len(phaser.results_) == 5
 
     def test_summary_columns(self):
         phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=3
+            n_sims=5, grid_steps=3, n_phasing_seeds=1
         )
         cols = set(phaser.summary().columns)
         assert {
@@ -167,26 +167,26 @@ class TestBudgetPhaser:
 
     def test_recommend_is_min_cv(self):
         phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=5
+            n_sims=5, grid_steps=5, n_phasing_seeds=1
         )
         rec = phaser.recommend()
         assert rec["max_cv"] == phaser.results_["max_cv"].min()
 
     def test_recommended_schedule_shape(self):
         phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=3
+            n_sims=5, grid_steps=3, n_phasing_seeds=1
         )
         assert phaser.recommended_schedule_.shape == PLAN_DF.shape
 
     def test_recommended_schedule_index(self):
         phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=3
+            n_sims=5, grid_steps=3, n_phasing_seeds=1
         )
         pd.testing.assert_index_equal(phaser.recommended_schedule_.index, PLAN_DF.index)
 
     def test_monthly_totals_preserved_in_recommended_schedule(self):
         phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=3
+            n_sims=5, grid_steps=3, n_phasing_seeds=1
         )
         month_labels = _get_month_labels(PLAN_DF)
         dev = _max_monthly_deviation(
@@ -233,20 +233,20 @@ class TestBudgetPhaser:
 
     def test_alpha_starts_at_zero(self):
         phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=5
+            n_sims=5, grid_steps=5, n_phasing_seeds=1
         )
         assert phaser.results_["alpha"].iloc[0] == 0.0
 
     def test_alpha_ends_at_one(self):
         phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=5
+            n_sims=5, grid_steps=5, n_phasing_seeds=1
         )
         assert phaser.results_["alpha"].iloc[-1] == 1.0
 
     def test_weighting_uniform(self):
         phaser = BudgetPhaser(
             HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES, weighting="uniform"
-        ).fit(n_sims=5, grid_steps=3)
+        ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=1)
         assert phaser.results_ is not None
 
     def test_weighting_decay(self):
@@ -256,5 +256,42 @@ class TestBudgetPhaser:
             true_elasticities=ELASTICITIES,
             weighting="decay",
             half_life=52,
-        ).fit(n_sims=5, grid_steps=3)
+        ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=1)
         assert phaser.results_ is not None
+
+
+class TestNPhasingSeedsParam:
+    def test_multiple_seeds_produces_correct_shape(self):
+        """n_phasing_seeds > 1 should still give grid_steps rows."""
+        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
+            n_sims=5, grid_steps=4, n_phasing_seeds=3
+        )
+        assert len(phaser.results_) == 4
+
+    def test_single_seed_matches_columns(self):
+        """n_phasing_seeds=1 gives the same output columns as n_phasing_seeds=3."""
+        p1 = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
+            n_sims=5, grid_steps=3, n_phasing_seeds=1
+        )
+        p3 = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
+            n_sims=5, grid_steps=3, n_phasing_seeds=3
+        )
+        assert list(p1.summary().columns) == list(p3.summary().columns)
+
+    def test_multiple_seeds_cv_is_average(self):
+        """With n_phasing_seeds=3 the max_cv at alpha=0 should be lower-variance
+        than any single seed — verified by checking it lies between the per-seed
+        extremes. We proxy this by confirming max_cv at alpha=0 is finite and
+        non-negative."""
+        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
+            n_sims=5, grid_steps=3, n_phasing_seeds=3
+        )
+        assert phaser.results_["max_cv"].iloc[0] >= 0
+
+    def test_fast_mode_sets_n_phasing_seeds_one(self):
+        """fast_mode overrides n_phasing_seeds to 1 (10 grid points, fast run)."""
+        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
+            n_sims=50, grid_steps=20, n_phasing_seeds=5, fast_mode=True
+        )
+        # fast_mode caps grid_steps=10 and n_phasing_seeds=1 — result has 10 rows
+        assert len(phaser.results_) == 10

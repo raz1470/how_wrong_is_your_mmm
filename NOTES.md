@@ -293,17 +293,79 @@ This is the design to implement in Part 3. Don't build `CollinearityWeighter` wi
 
 Only `plan_df` is phased. `history_df` is fixed and only used as context for the diagnostic evaluation. The phaser concatenates history + each candidate phased plan, computes weights, and evaluates under weighted OLS. `recommended_schedule_` is only the plan year — what gets handed to the media agency.
 
-## CV curve noise (observed session 5, fix pending)
+## CV curve noise (resolved session 6)
 
-The CV curve across alpha levels is jagged because each alpha generates ONE random phased schedule (single seed). A lucky or unlucky draw creates large CV variance across the grid. Fix: average `n_phasing_seeds` (default 3) phased schedules per alpha point before recording max CV. This smooths the curve without touching `n_sims`. `fast_mode` drops to `n_phasing_seeds=1`. **Not yet implemented — next sprint.**
+Fixed by adding `n_phasing_seeds: int = 3` to `BudgetPhaser.fit()`. For each alpha, `n_phasing_seeds` independent phased schedules are generated and their CVs are averaged before recording `max_cv`. Smooths the grid search curve without touching `n_sims`. `fast_mode` sets `n_phasing_seeds=1`. Seeding: `self.seed + i * n_phasing_seeds + j` for alpha `i`, phasing seed `j`. `recommended_schedule_` uses `self.seed + grid_steps * n_phasing_seeds` (distinct from all grid search seeds).
 
 ## Fan chart observation (session 5)
 
 With 4 years of correlated history and only 1 year of phasing, the elasticity bands barely narrow. This is correct and honest — the history dilutes the plan year even with 5× binary upweighting. The practitioner message: phasing helps, but it takes time to accumulate de-correlated data. Worth calling out explicitly in the notebook and HTML guide.
 
+## Status as of session 6 (2026-06-25, CV curve smoothing)
+
+- **CV curve smoothing complete:** `n_phasing_seeds: int = 3` added to `BudgetPhaser.fit()`. CVs averaged across seeds per alpha. `fast_mode` sets `n_phasing_seeds=1`.
+- **Notebook ruff ignores extended:** added `I001`, `F401`, `F811`, `F541`, `E741` to `per-file-ignores` for notebooks in `pyproject.toml` (preexisting issues surfaced by ruff check).
+- All tests passing (87 total).
+- Branch: `feat/smooth-cv-curve`. Ryan to verify notebook CV curve is smoother, then commit and open PR.
+
+## Status as of session 7 (2026-06-25, research study notebook + CV smoothing improvements)
+
+- **Notebook 02 update:** `n_phasing_seeds` raised to 10 (FAST_MODE=1), `grid_steps` raised to 25 (FAST_MODE=10). CV curve visibly smoother.
+- **Notebook 03 built:** `notebooks/03_time_to_benefit.ipynb` — research study answering "how long does budget phasing need to run before elasticity uncertainty meaningfully reduces?" Four sections, all using uniform weighting.
+- Branch: `feat/smooth-cv-curve` (notebook 03 is untracked — add it before committing). Ryan to commit and open PR.
+
+## Notebook 03 structure and findings (session 7)
+
+**Section 1 — Plan period sweep (main result)**
+Sweep plan length 4 → 260 weeks at max phasing (α=1), uniform weighting. Key results:
+- Phased curve monotonically improves — ~30% reduction at 52 weeks, ~63% at 260 weeks.
+- Unphased new data does not reliably help — sometimes makes things worse. The benefit is specifically from de-correlated spend, not just more data. Strong publishable result.
+- Elbow around 78–104 weeks (~1.5–2 years) where improvement starts to flatten.
+
+**Section 2 — Correlation sensitivity**
+Fix 52-week plan, sweep correlation 0.3 → 0.9, uniform weighting.
+- Phasing is **always beneficial** — no negative results. Previous negative bars at low correlation (from session 6 binary-weighting run) were a weighting artefact, not a real property of phasing.
+- Benefit scales with correlation: 1.9% at 0.3, 15.9% at 0.5, 29.8% at 0.7, 51.3% at 0.9.
+- Fine-grained sweep (0.4 → 0.75) confirms no crossover — all bars green.
+- **Implication: no correlation gate needed.** Phasing is always neutral-to-helpful; just more valuable at higher correlation.
+
+**Section 3 — Weighting sensitivity**
+Compare uniform, binary (plan_weight=5), decay weighting at fixed 52-week plan.
+- **Uniform wins** (0.323 max band width vs 0.357 binary, 0.349 decay).
+- Binary upweighting makes things worse — amplifies variance from a small amount of phased data against a large correlated history.
+- **Implication: BudgetPhaser default should change from `weighting="binary"` to `weighting="uniform"`.** The plan_weight sweep (1 → 20) was removed from the notebook as it just showed "lower binary weight is always better", i.e. converging back to uniform.
+
+**Section 4 — Spend amplitude sensitivity**
+- **Part A** (fixed 52w, sweep dev 10% → 100%): roughly linear relationship — every 10pp more deviation gives roughly equal additional reduction. 30% at 40% dev, 61% at 100% dev. No plateau in this range.
+- **Part B** (plan period sweep at dev=20%, 40%, 80%): higher deviation shifts the elbow left dramatically. dev=80% hits 50% reduction in ~26–39 weeks (under 1 year). dev=40% needs ~130 weeks (2.5 years). Time and aggressiveness are substitutes.
+- **Part C** (per-channel at optimal dev=80%, 52w, uniform): TV −47%, META −54%, SEARCH −53%. Bar chart + stacked weekly spend time series (original vs phased, GBP k, same style as notebook 02).
+
+## Key decisions from session 7 research study
+
+| Decision | Locked |
+|---|---|
+| Default weighting | Change `BudgetPhaser` default from `"binary"` to `"uniform"` |
+| No correlation gate | Phasing helps at all correlation levels; no need to warn users off it at low correlation |
+| `max_weekly_deviation_pct=40` is conservative | Practitioners who can tolerate more weekly volatility should increase it; payoff is roughly linear |
+| Optimal config for 1-year plan | dev=80%, uniform weighting — ~50% reduction in band width |
+
+## HTML guide plan (session 7)
+
+`docs/guide.html` — self-contained, SVG charts with real numbers from research study. Four sections:
+
+1. **The problem** — why channels move together, why MMM can't distinguish them, unreliability framing (variance not bias)
+2. **How wrong is your model?** — diagnostic concept, fan chart result, "same market, different answers" story
+3. **The fix** — budget phasing, how it works, monthly totals preserved
+4. **How long does it take?** — time-to-benefit curve, deviation amplitude lever, key numbers from research
+
+Target audience: LinkedIn / practitioners. Theory-led, no code cells, polished SVG diagrams. Title: *"How Wrong Is Your MMM? A Practitioner's Guide to Collinearity Bias"*.
+
+## App idea (session 7)
+
+Streamlit app: practitioners upload their own spend CSV → personalised diagnostic → time-to-benefit and deviation sensitivity curves calibrated to their data → slider to pick `max_weekly_deviation_pct` → download recommended weekly schedule. Host on Streamlit Community Cloud. Post-HTML-guide work.
+
 ## Next slice
 
-- **Smooth CV curve:** add `n_phasing_seeds` param to `BudgetPhaser.fit()`, average CVs across seeds per alpha.
 - **HTML guide section 1** (`docs/guide.html`) — the problem statement. Theory-led, no code, SVG diagrams.
 
 ## Session learnings (session 2)

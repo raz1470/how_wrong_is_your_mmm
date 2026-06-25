@@ -261,16 +261,18 @@ class BudgetPhaser:
         self,
         n_sims: int = 50,
         grid_steps: int = 20,
+        n_phasing_seeds: int = 3,
         fast_mode: bool = False,
     ) -> BudgetPhaser:
         """Grid-search over phasing amplitude and store results.
 
         For each alpha:
-          1. Generate a phased plan schedule (monthly totals preserved).
-          2. Concatenate history + phased plan into a single dataset.
-          3. Compute observation weights (upweighting the plan year).
-          4. Run CollinearityDiagnostic with weighted OLS.
-          5. Record max CV across channels.
+          1. Generate n_phasing_seeds independent phased plan schedules.
+          2. For each: concatenate history + phased plan, run weighted
+             CollinearityDiagnostic, record per-channel CVs.
+          3. Average CVs across phasing seeds — this smooths the CV curve
+             so the grid search isn't driven by a single lucky/unlucky draw.
+          4. Record the alpha with the lowest averaged max CV as the recommendation.
 
         Parameters
         ----------
@@ -278,8 +280,12 @@ class BudgetPhaser:
             Number of noise seeds per grid point for CollinearityDiagnostic.
         grid_steps:
             Number of alpha levels to evaluate.
+        n_phasing_seeds:
+            Number of independent phased schedules to generate per alpha level.
+            CVs are averaged across seeds before selecting the best alpha.
+            Default 3. Set to 1 to match the single-seed behaviour of v2.
         fast_mode:
-            If True, uses n_sims=10 and grid_steps=10.
+            If True, uses n_sims=10, grid_steps=10, n_phasing_seeds=1.
 
         Returns
         -------
@@ -288,6 +294,7 @@ class BudgetPhaser:
         if fast_mode:
             n_sims = 10
             grid_steps = 10
+            n_phasing_seeds = 1
 
         weights = _compute_weights(
             n_history=len(self.history_df),
@@ -302,38 +309,58 @@ class BudgetPhaser:
         rows = []
 
         for i, alpha in enumerate(alphas):
-            phased_plan = _generate_phased_schedule(
-                self.plan_df,
-                self._plan_month_labels,
-                alpha=float(alpha),
-                max_weekly_deviation_pct=self.max_weekly_deviation_pct,
-                seed=self.seed + i,
-            )
+            seed_results = []
 
-            monthly_dev = _max_monthly_deviation(
-                self.plan_df, phased_plan, self._plan_month_labels
-            )
+            for j in range(n_phasing_seeds):
+                phased_plan = _generate_phased_schedule(
+                    self.plan_df,
+                    self._plan_month_labels,
+                    alpha=float(alpha),
+                    max_weekly_deviation_pct=self.max_weekly_deviation_pct,
+                    seed=self.seed + i * n_phasing_seeds + j,
+                )
 
-            combined = pd.concat([self.history_df, phased_plan])
+                monthly_dev = _max_monthly_deviation(
+                    self.plan_df, phased_plan, self._plan_month_labels
+                )
 
-            diag = CollinearityDiagnostic(
-                spend_df=combined,
-                true_elasticities=self.true_elasticities,
-                weights=weights,
-            )
-            diag.fit(n_sims=n_sims)
-            summ = diag.summary().set_index("channel")
+                combined = pd.concat([self.history_df, phased_plan])
 
-            max_cv = float(summ["coef_of_variation"].max())
+                diag = CollinearityDiagnostic(
+                    spend_df=combined,
+                    true_elasticities=self.true_elasticities,
+                    weights=weights,
+                )
+                diag.fit(n_sims=n_sims)
+                summ = diag.summary().set_index("channel")
+
+                seed_results.append(
+                    {
+                        "actual_correlation": diag.actual_correlation,
+                        "monthly_dev": monthly_dev,
+                        **{
+                            ch: float(summ.loc[ch, "coef_of_variation"])
+                            for ch in channels
+                        },
+                    }
+                )
+
+            # Average across phasing seeds to smooth the CV curve
+            avg_corr = float(np.mean([r["actual_correlation"] for r in seed_results]))
+            avg_monthly_dev = float(np.mean([r["monthly_dev"] for r in seed_results]))
+            avg_cv = {
+                ch: float(np.mean([r[ch] for r in seed_results])) for ch in channels
+            }
+            max_cv = max(avg_cv.values())
 
             row: dict = {
                 "alpha": round(float(alpha), 4),
-                "actual_correlation": round(diag.actual_correlation, 4),
+                "actual_correlation": round(avg_corr, 4),
                 "max_cv": round(max_cv, 4),
-                "max_monthly_deviation_pct": round(monthly_dev * 100, 6),
+                "max_monthly_deviation_pct": round(avg_monthly_dev * 100, 6),
             }
             for ch in channels:
-                row[f"cv_{ch}"] = round(float(summ.loc[ch, "coef_of_variation"]), 4)
+                row[f"cv_{ch}"] = round(avg_cv[ch], 4)
 
             rows.append(row)
 
@@ -346,7 +373,7 @@ class BudgetPhaser:
             self._plan_month_labels,
             alpha=best_alpha,
             max_weekly_deviation_pct=self.max_weekly_deviation_pct,
-            seed=self.seed + grid_steps,  # distinct seed from the grid search
+            seed=self.seed + grid_steps * n_phasing_seeds,  # distinct from grid search
         )
 
         return self
