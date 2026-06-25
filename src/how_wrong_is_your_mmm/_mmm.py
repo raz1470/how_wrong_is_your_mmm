@@ -9,10 +9,18 @@ import numpy as np
 import pandas as pd
 
 
-def fit_ols(spend_df: pd.DataFrame, sales: pd.Series) -> dict[str, float]:
-    """Fit a simple OLS MMM and return estimated channel elasticities.
+def fit_ols(
+    spend_df: pd.DataFrame,
+    sales: pd.Series,
+    weights: np.ndarray | None = None,
+) -> dict[str, float]:
+    """Fit a simple OLS (or WLS) MMM and return estimated channel elasticities.
 
     Model: sales = intercept + sum(beta[c] * spend[c] for c in channels)
+
+    When weights are supplied the model becomes WLS: each observation is
+    pre-multiplied by sqrt(weight) before least-squares, giving higher-weighted
+    observations more influence on the fit.
 
     Parameters
     ----------
@@ -20,6 +28,9 @@ def fit_ols(spend_df: pd.DataFrame, sales: pd.Series) -> dict[str, float]:
         DataFrame with one column per channel.
     sales:
         Series of sales values to fit against.
+    weights:
+        Optional 1-D array of non-negative observation weights, length
+        len(spend_df). None (default) gives uniform weighting (plain OLS).
 
     Returns
     -------
@@ -30,5 +41,9 @@ def fit_ols(spend_df: pd.DataFrame, sales: pd.Series) -> dict[str, float]:
         [np.ones(len(spend_df))] + [spend_df[c].to_numpy() for c in channels]
     )
     y = sales.to_numpy()
+    if weights is not None:
+        sqrt_w = np.sqrt(np.asarray(weights, dtype=float))
+        x = x * sqrt_w[:, None]
+        y = y * sqrt_w
     coeffs, *_ = np.linalg.lstsq(x, y, rcond=None)
     return {c: float(coeffs[i + 1]) for i, c in enumerate(channels)}
