@@ -27,6 +27,7 @@ class TestSimulateSpend:
 
     def test_correlation_direction(self):
         """Higher target correlation should produce higher mean pairwise correlation."""
+
         def mean_corr(corr_val):
             df = simulate_spend(correlation=corr_val, seed=0)
             c = df.corr().to_numpy()

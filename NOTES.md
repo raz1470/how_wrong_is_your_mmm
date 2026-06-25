@@ -272,10 +272,39 @@ Output to practitioner: a concrete 52×N weekly spend schedule to hand to the me
 
 This is the design to implement in Part 3. Don't build `CollinearityWeighter` without this framing — the 52-week-only design would understate the benefit of phasing (history dilutes it) and overstate how much control the practitioner has.
 
+## Status as of session 5 (2026-06-24, BudgetPhaser v3 + weighted OLS)
+
+- **`CollinearityWeighter` cancelled as a separate class.** Weighting is now internal to `BudgetPhaser`. The three-part structure is preserved but Part 3 is implemented as the evaluation mechanism inside Part 2, not a standalone public API.
+- **`_mmm.py`:** `fit_ols` now accepts optional `weights` array. WLS via `sqrt(w)` pre-multiplication. Backward compatible — `None` gives plain OLS.
+- **`_diagnostic.py`:** `CollinearityDiagnostic` accepts optional `weights`, threads into every `fit_ols` call in the sim loop.
+- **`_phaser.py`:** Full rearchitecture. `spend_df` replaced by `history_df` + `plan_df`. New `_compute_weights` helper with three schemes:
+  - `"uniform"` — all observations equal (baseline)
+  - `"binary"` — plan year gets `plan_weight` (default 5.0), history gets 1 (default)
+  - `"decay"` — exponential decay from most recent week, parameterised by `half_life` (default 52 weeks)
+  Grid search concatenates history + phased plan, evaluates with weighted diagnostic. `recommended_schedule_` is still only the 52-week plan year.
+- **83 tests passing** (up from 59). New: `TestComputeWeights`, `TestFitWls`, `TestWeightedPath`.
+- **Notebook 02** updated for new API: `history` (208 weeks) + `plan` (52 weeks), weighted OLS fan chart.
+- **`pyproject.toml`:** added `per-file-ignores` for notebooks (`E501`, `RUF001`).
+- **Branch:** `feat/weighted-phaser`. Ryan to commit notebook and open PR.
+
+## BudgetPhaser v3 design (locked session 5)
+
+`BudgetPhaser(history_df, plan_df, weighting="binary", plan_weight=5.0, half_life=52)`
+
+Only `plan_df` is phased. `history_df` is fixed and only used as context for the diagnostic evaluation. The phaser concatenates history + each candidate phased plan, computes weights, and evaluates under weighted OLS. `recommended_schedule_` is only the plan year — what gets handed to the media agency.
+
+## CV curve noise (observed session 5, fix pending)
+
+The CV curve across alpha levels is jagged because each alpha generates ONE random phased schedule (single seed). A lucky or unlucky draw creates large CV variance across the grid. Fix: average `n_phasing_seeds` (default 3) phased schedules per alpha point before recording max CV. This smooths the curve without touching `n_sims`. `fast_mode` drops to `n_phasing_seeds=1`. **Not yet implemented — next sprint.**
+
+## Fan chart observation (session 5)
+
+With 4 years of correlated history and only 1 year of phasing, the elasticity bands barely narrow. This is correct and honest — the history dilutes the plan year even with 5× binary upweighting. The practitioner message: phasing helps, but it takes time to accumulate de-correlated data. Worth calling out explicitly in the notebook and HTML guide.
+
 ## Next slice
 
-- Part 3: `CollinearityWeighter` (`_weights.py`) — weighted OLS that upweights recent/de-correlated observations. Needs the multi-year architecture above.
-- HTML guide section 1 (`docs/guide.html`) — the problem statement. Theory-led, no code, SVG diagrams.
+- **Smooth CV curve:** add `n_phasing_seeds` param to `BudgetPhaser.fit()`, average CVs across seeds per alpha.
+- **HTML guide section 1** (`docs/guide.html`) — the problem statement. Theory-led, no code, SVG diagrams.
 
 ## Session learnings (session 2)
 
