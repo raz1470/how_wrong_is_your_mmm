@@ -219,7 +219,7 @@ class BudgetPhaser:
         history_df: pd.DataFrame,
         plan_df: pd.DataFrame,
         true_elasticities: dict[str, float] | None = None,
-        weighting: str = "binary",
+        weighting: str = "uniform",
         plan_weight: float = 5.0,
         half_life: int = 52,
         max_monthly_deviation_pct: float = 1.0,
