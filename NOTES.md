@@ -368,6 +368,26 @@ Streamlit app: practitioners upload their own spend CSV → personalised diagnos
 
 - **HTML guide section 1** (`docs/guide.html`) — the problem statement. Theory-led, no code, SVG diagrams.
 
+## Status as of session 8 (2026-06-29, HTML guide section 1 + housekeeping)
+
+- **`BudgetPhaser` default weighting changed** from `"binary"` to `"uniform"` (locked decision from session 7, implemented in `feat/uniform-weighting-default`, merged).
+- **`pyproject.toml`:** added `E402`, `RUF002` to notebook `per-file-ignores`.
+- **HTML guide section 1 complete** (`docs/guide.html`): "The problem" — why channels correlate, variance-not-bias framing, correlated spend time series chart, elasticity estimates strip chart (50 seeds, corr=0.7), CV key-number boxes (18% / 36% / 60% at corr 0.3 / 0.7 / 0.9). Stubs in place for sections 2–4.
+- Branch: `feat/html-guide-section-1`. Sections 2–4 to be built in the same branch.
+
+## Status as of session 9 (2026-06-29, HTML guide sections 2 + 3)
+
+- **HTML guide section 2 complete** (`docs/guide.html`): "The Diagnostic" — CV as the unreliability metric, CV vs correlation bar chart (colour-coded green/amber/red), personalised interval forest plot (per-channel 80% ranges with mean diamonds, using real-spend entry-point data from notebook 01 cell 18-19).
+- **HTML guide section 3 complete** (`docs/guide.html`): "The Fix" — budget phasing mechanism, before/after weekly spend two-panel chart, CV reduction vs deviation amplitude line chart (exact data from notebook 03 cell 16).
+- **HTML guide section 4 complete** (`docs/guide.html`): "Time to Benefit" — multi-line time-to-benefit chart (dev=20/40/80% + unphased, exact data from notebook 03 cells 4+19), key-number boxes (53% / 30% / 55%), closing narrative.
+- **HTML guide complete.** All four sections, seven charts, all numbers from notebooks. Nav links active. Uncommitted on `feat/html-guide-section-1` — Ryan to push tomorrow.
+- **README.md written.** Hook paragraph, three-part solution, quick start, key result table, notebook links, guide link, dev instructions. Test count (87) and PyPI link to update when live.
+
+## Next slice
+
+- Push `feat/html-guide-section-1` (docs/guide.html + README.md + NOTES.md), open PR, merge.
+- Consider LinkedIn post based on guide, or next package feature.
+
 ## Session learnings (session 2)
 
 - **Revenue noise must be substantial relative to channel signal.** With noise=50 and channel contributions ~£70k, OLS recovers coefficients near-perfectly regardless of collinearity. Set noise to £20k (same order of magnitude as channel contributions) to make unreliability visible. In general: if the story isn't showing up, check the SNR first.
