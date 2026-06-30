@@ -388,6 +388,31 @@ Streamlit app: practitioners upload their own spend CSV → personalised diagnos
 - Push `feat/html-guide-section-1` (docs/guide.html + README.md + NOTES.md), open PR, merge.
 - Consider LinkedIn post based on guide, or next package feature.
 
+## Status as of session 10 (2026-06-30, GitHub Pages + guide copy pass + CV-to-£ design discussion)
+
+- **GitHub Pages enabled:** Settings → Pages → Deploy from branch → `main` / `docs`. Live at `https://raz1470.github.io/how_wrong_is_your_mmm/guide.html`.
+- **README.md:** guide link updated to the live Pages URL, with the guide's actual title as link text (was a relative `docs/guide.html` path that only worked on GitHub itself).
+- **`docs/guide.html` copy pass** (feedback from Ryan's read-through, branch `feat/readme-pages-link`):
+  - New TL;DR box at the top of `<main>` — what the page is, what we're showing, how the analysis is built, why it's worth reading. Defines MMM, elasticity (explicitly tied to ROI/budget-allocation decisions), and collinearity inline.
+  - First-use bracket definitions added for OLS, mean pairwise correlation, standard error.
+  - Terminology fix: "coefficient estimates" → "elasticity estimates" throughout (CV keeps its own distinct name — not interchangeable with elasticity).
+  - "2–4 years" → "2–5 years" of weekly observations (some practitioners run 5-year windows).
+  - CV-at-0.70, correlation-scaling, amplitude-linearity, and time-to-benefit claims now explicitly attributed ("our simulation"/"our research") so it's clear these are results from this package's own study, not generic claims.
+  - Section 3 methodology clarified: phasing amplitude is chosen by grid search to minimise the *worst-case* (max) CV across channels, not the average — matches `BudgetPhaser`'s locked design (session 4).
+  - Section 4 honesty fix: unphased (more correlated) data does eventually reduce CV, just far more slowly and unreliably than phasing — takes ~5 years to reach what the lightest phasing level achieves in 1.
+  - "Python package" → "python package".
+- **CV-to-CMO discussion (design only, not yet implemented):**
+  - Confirmed via `_dgp.py` (`simulate_sales`) that the package's "elasticity" is actually a *linear* marginal-response coefficient — `sales = base + Σ elasticity_c × spend_c + noise` — not a true log-log %/% elasticity. This matters for any £-translation feature: a value-per-unit multiplier is exact here (no baseline spend/sales level needed to anchor it, unlike a log-log elasticity would require).
+  - Discussed an LTV-per-new-customer parameter to convert elasticity (and its uncertainty interval) into £ terms for non-revenue targets — e.g., Monzo's real MMM target is plausibly new accounts opened, not revenue, since revenue is realised later via interest/fees/subscriptions.
+  - **Scoping decision: ship the simple case first, no LTV param in v1.** Default assumption is that "sales" is already £ value (revenue) — the common case for most practitioner MMMs, and consistent with how the guide already frames things ("what does an extra pound of spend do to sales?"). This needs zero new parameters: multiply elasticity (and its 80% interval) by planned spend to get a £ incremental-revenue range directly. CV itself is scale-invariant (unchanged by the multiplication) but becomes far more legible to a CMO as "£X–£Y incremental revenue for your planned spend" than "36% CV".
+  - LTV-per-unit (`value_per_unit` param) deferred as an optional extension for volume-target use cases (signups/conversions instead of revenue) — relevant specifically for the Monzo validation story later. A proper Bayesian treatment would model LTV itself as uncertain rather than a fixed point multiplier, compounding with elasticity uncertainty — flagged as stretch scope, not v1.
+
+## Next slice
+
+- Push `feat/readme-pages-link` (README.md guide link + docs/guide.html copy pass + NOTES.md), open PR, merge.
+- £-translation feature (v1, no LTV): add a `planned_spend` argument to `CollinearityDiagnostic.summary()` (or similar) that outputs an incremental-revenue range alongside elasticity, assuming sales is already £ value.
+- Consider LinkedIn post based on guide, or next package feature.
+
 ## Session learnings (session 2)
 
 - **Revenue noise must be substantial relative to channel signal.** With noise=50 and channel contributions ~£70k, OLS recovers coefficients near-perfectly regardless of collinearity. Set noise to £20k (same order of magnitude as channel contributions) to make unreliability visible. In general: if the story isn't showing up, check the SNR first.

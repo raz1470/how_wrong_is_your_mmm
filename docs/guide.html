@@ -184,6 +184,18 @@ svg.chart { display: block; width: 100%; }
 }
 .up-next strong { color: var(--text); }
 
+/* ── TL;DR ── */
+.tldr {
+  margin: 0 0 2.75rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.tldr p { margin-bottom: .85rem; font-size: .95rem; max-width: none; }
+.tldr p:last-child { margin-bottom: 0; }
+.tldr strong { color: var(--text); }
+
 /* ── Stub sections ── */
 .stub {
   margin-top: 3rem;
@@ -217,6 +229,14 @@ svg.chart { display: block; width: 100%; }
 </nav>
 
 <main>
+
+<div class="tldr">
+  <p class="s-label">TL;DR</p>
+  <p><strong>What this is.</strong> A guide to a hidden risk in Marketing Mix Models, or MMMs (statistical models that estimate how much each marketing channel contributes to sales). The output you actually use — elasticity, the modelled link between a £ of spend and the resulting change in sales — is the number ROI and budget-allocation decisions are built on.</p>
+  <p><strong>What we're showing.</strong> Marketing channels are usually collinear — their spend rises and falls together because the same planning decisions drive them all. That doesn't make your MMM biased, but it makes its elasticity estimates unstable: refit the same model on a slightly different data window and the number can swing by a third or more.</p>
+  <p><strong>How the analysis is built.</strong> Everything here is simulation-based: we generate many plausible versions of the same market — same true elasticities, different noise — fit the model to each, and measure how much the answers vary. The same method runs on your own spend data for a personalised result.</p>
+  <p><strong>Why it's worth your time.</strong> If your elasticities swing by 30%+ between refits, the ROI and budget decisions built on them are sitting on mostly noise. This guide shows how to measure that risk, and a concrete fix — budget phasing — that reduces it without touching your annual budget.</p>
+</div>
 
 <!-- ═══════════════════════════════════════════════════
      SECTION 1 — THE PROBLEM
@@ -273,7 +293,7 @@ svg.chart { display: block; width: 100%; }
 
   <p>An MMM estimates each channel's contribution by asking: "holding everything else constant, what does an extra pound of TV spend do to sales?" But if TV is always high when Meta is also high, the model never observes TV-high with Meta-low. It can't hold everything else constant, because nothing ever varies independently.</p>
 
-  <p>The result is that the model has to split the credit between channels that always moved together — and it does so in ways that vary enormously depending on the specific noise draw in the data. The coefficient estimates are unstable: small changes to the training window, the noise realisation, or the data vintage can shift the answer substantially.</p>
+  <p>The result is that the model has to split the credit between channels that always moved together — and it does so inconsistently: which channel gets the credit can change a lot depending on small, essentially random differences in the data you happened to use. The elasticity estimates are unstable: small changes to the training window or the data vintage can shift the answer substantially.</p>
 
   <div class="callout">
     <p>Collinearity doesn't make the average estimate wrong. It makes any given estimate <em>unreliable</em> — sensitive to which period of data you used, which quarter you refitted, and what noise happened to turn up in your training window.</p>
@@ -281,11 +301,11 @@ svg.chart { display: block; width: 100%; }
 
   <h3>Variance, not bias</h3>
 
-  <p>This is the key technical point — and it matters for how you think about the problem. OLS, the standard estimator in most MMMs, is still <em>unbiased</em> with correlated predictors. Given enough independent data, the average estimate would converge on the truth. The problem is that you don't have enough independent data, and you never will: 2–4 years of weekly observations, trying to identify 10–20 parameters in a world where channels have barely moved independently.</p>
+  <p>This is the key technical point — and it matters for how you think about the problem. OLS (ordinary least squares, the standard regression method behind most MMMs) is still <em>unbiased</em> with correlated predictors. Given enough independent data, the average estimate would converge on the truth. The problem is that you don't have enough independent data, and you never will: 2–5 years of weekly observations, trying to identify 10–20 parameters in a world where channels have barely moved independently.</p>
 
   <p>What you get instead is high variance: estimates that are centred near the truth on average, but swing widely in practice. Your specific TV elasticity — the number in your budget model — is one draw from a wide distribution. A company in the same market, with the same true elasticities, but a slightly different observation window, would get a different number.</p>
 
-  <p>Below: three channels, known true elasticities (TV 0.30, Meta 0.50, Search 0.40), mean pairwise correlation 0.70. We simulate 50 plausible histories of the same market — same truth, different noise draws — and fit OLS to each one.</p>
+  <p>Below: three channels, known true elasticities (TV 0.30, Meta 0.50, Search 0.40), mean pairwise correlation (the average correlation across every pair of channels) of 0.70. We simulate 50 plausible histories of the same market — same truth, different noise draws — and fit OLS to each one.</p>
 
   <!-- Figure 2: Elasticity estimate distribution -->
   <div class="fig">
@@ -299,7 +319,7 @@ svg.chart { display: block; width: 100%; }
     <p class="fig-cap">Each dot is one OLS estimate from a plausible realisation of the same market. Vertical lines mark the true elasticity for each channel. The shaded band is the 80% interval across seeds. TV: true 0.30, 80% range [0.20, 0.46]. Meta: true 0.50, 80% range [0.34, 0.66]. Search: true 0.40, 80% range [0.11, 0.62] — note the span is wider than the true value itself.</p>
   </div>
 
-  <p>The coefficient of variation — standard deviation divided by mean estimate — measures how unstable the estimates are relative to their magnitude. At correlation 0.70, TV elasticity has a CV of 36%. That means if you refitted the same model on a slightly different data window, your number could shift by a third in either direction, not because the market changed, but because the data was never informative enough to pin it down.</p>
+  <p>The coefficient of variation — standard deviation divided by mean estimate — measures how unstable the estimates are relative to their magnitude. In the simulation above (mean pairwise correlation 0.70), TV elasticity has a CV of 36%. That means if you refitted the same model on a slightly different data window, your number could shift by a third in either direction, not because the market changed, but because the data was never informative enough to pin it down.</p>
 
   <div class="knums">
     <div class="kbox">
@@ -348,11 +368,11 @@ svg.chart { display: block; width: 100%; }
 
   <p>The coefficient of variation (CV) is a simple ratio: standard deviation of the estimated elasticity divided by its mean. A CV of 10% means estimates cluster tightly around their average — the model gives consistent answers across different data realisations. A CV of 40% means estimates swing wildly; the answer your specific dataset produced could easily be half or double the truth.</p>
 
-  <p>CV is more informative than a raw standard error because it's relative to the magnitude of the estimate. A standard error of 0.05 means something very different if the elasticity is 0.10 versus 0.50. CV normalises this, making channels and models directly comparable.</p>
+  <p>CV is more informative than a raw standard error (a measure of an estimate's precision, in the same units as the estimate itself) because it's relative to the magnitude of the estimate. A standard error of 0.05 means something very different if the elasticity is 0.10 versus 0.50. CV normalises this, making channels and models directly comparable.</p>
 
   <h3>How unreliability scales with correlation</h3>
 
-  <p>The relationship between channel correlation and CV is not linear — it accelerates. Moving from correlation 0.3 to 0.5 roughly doubles TV elasticity CV. Moving from 0.5 to 0.9 more than doubles it again. At 0.9, the CV exceeds 50% for every channel — the model is producing more noise than signal.</p>
+  <p>Our simulations show this relationship between channel correlation and CV is not linear — it accelerates. Moving from correlation 0.3 to 0.5 roughly doubles TV elasticity CV. Moving from 0.5 to 0.9 more than doubles it again. At 0.9, the CV exceeds 50% for every channel — the model is producing more noise than signal.</p>
 
   <!-- Chart 3: CV vs correlation -->
   <div class="fig">
@@ -445,11 +465,11 @@ svg.chart { display: block; width: 100%; }
     <p class="fig-cap">Left: original plan — TV and Meta follow the same weekly rhythm (channel correlation 0.68). Right: phased plan — weekly split varies independently per channel, monthly totals unchanged (correlation drops to ~0.2). The MMM can now observe TV-high / Meta-low weeks alongside TV-low / Meta-high weeks.</p>
   </div>
 
-  <h3>How much variation to introduce</h3>
+  <h3>How much variation to introduce, and how we pick it</h3>
 
-  <p>The amplitude of the phasing — how aggressively the weekly split is reshuffled — is the main dial. More variation de-correlates channels faster and produces greater CV reduction; less variation is operationally easier but takes longer to show up in the model.</p>
+  <p>The amplitude of the phasing — how aggressively the weekly split is reshuffled — is the main dial. We choose it by grid search: testing a range of amplitudes, measuring the resulting CV at each, and recommending the amplitude that minimises the <em>worst-case</em> CV across channels — not the average, the worst case, so no single channel is left unreliable. More variation de-correlates channels faster and produces greater CV reduction; less variation is operationally easier but takes longer to show up in the model.</p>
 
-  <p>The relationship is roughly linear: each additional 10 percentage points of weekly deviation produces approximately the same incremental improvement. There's no cliff edge or discontinuity — just a smooth trade-off between aggressiveness and benefit.</p>
+  <p>Our research shows this relationship is roughly linear: each additional 10 percentage points of weekly deviation produces approximately the same incremental improvement. There's no cliff edge or discontinuity — just a smooth trade-off between aggressiveness and benefit.</p>
 
   <!-- Chart 6: CV reduction vs deviation amplitude -->
   <div class="fig">
@@ -488,7 +508,7 @@ svg.chart { display: block; width: 100%; }
 
   <h3>The time-to-benefit curve</h3>
 
-  <p>The chart below plots CV reduction against the length of the phased period, for three levels of weekly deviation. Also shown is the unphased baseline: what happens if you simply add more (correlated) data without any deliberate mix variation.</p>
+  <p>The chart below plots our simulation results: CV reduction against the length of the phased period, for three levels of weekly deviation. Also shown is the unphased baseline: what happens if you simply add more (correlated) data without any deliberate mix variation.</p>
 
   <!-- Chart 7: Time-to-benefit multi-line -->
   <div class="fig">
@@ -525,7 +545,7 @@ svg.chart { display: block; width: 100%; }
       </div>
       <svg class="chart" id="chart7" viewBox="0 0 700 270" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Each line shows average CV reduction across channels as the phased period grows, holding 4 years of correlated history fixed. The phased curves are monotonically increasing (more phasing always helps). The unphased curve oscillates near zero — adding correlated data doesn't reliably reduce uncertainty and sometimes makes it worse. Data: 50 seeds per point, uniform weighting.</p>
+    <p class="fig-cap">Each line shows average CV reduction across channels as the phased period grows, holding 4 years of correlated history fixed. The phased curves are monotonically increasing (more phasing always helps). The unphased curve oscillates and climbs only slowly — more correlated data does eventually reduce uncertainty, but unreliably, far more slowly than deliberate phasing, and in some periods it temporarily makes things worse. Data: 50 seeds per point, uniform weighting.</p>
   </div>
 
   <h3>Reading the chart</h3>
@@ -534,7 +554,7 @@ svg.chart { display: block; width: 100%; }
 
   <p><strong>Time and aggressiveness are substitutes.</strong> ±80% deviation reaches ~53% CV reduction in one year. ±40% deviation needs roughly 2.5 years to reach the same level. If your planning horizon is short, use a higher deviation amplitude. If you have three or more years, moderate deviation is sufficient and operationally easier to maintain.</p>
 
-  <p><strong>Unphased data doesn't reliably help.</strong> The grey dashed line oscillates unpredictably — positive in some periods, negative in others. This is the key finding: collinearity-driven unreliability doesn't fix itself just by adding more observations. The benefit requires deliberate mix variation. More data without de-correlation is not the answer.</p>
+  <p><strong>Unphased data helps eventually, but slowly and unreliably.</strong> The grey dashed line oscillates — positive in some periods, negative in others — and only catches up to even the lightest phasing (±20% deviation) after five years. This is the key finding from our research: collinearity-driven unreliability doesn't fix itself quickly just by adding more observations. More data does help over the long run, but deliberate mix variation gets you a comparable benefit years sooner, and more predictably.</p>
 
   <p><strong>The improvement is monotonic but slowing.</strong> The biggest gains come in the first year. By year 2–3 the curve flattens, because the phased period is large enough to dominate the history and further accumulation produces diminishing returns. For most teams, year 1 delivers the most meaningful uplift relative to effort.</p>
 
@@ -571,7 +591,7 @@ svg.chart { display: block; width: 100%; }
   </div>
 
   <p style="margin-top:1.5rem;font-size:.9rem;color:var(--muted)">
-    The <code>how_wrong_is_your_mmm</code> Python package implements the diagnostic and phasing recommendation described here.
+    The <code>how_wrong_is_your_mmm</code> python package implements the diagnostic and phasing recommendation described here.
     Source and notebooks: <a href="https://github.com/raz1470/how_wrong_is_your_mmm" style="color:var(--muted)">github.com/raz1470/how_wrong_is_your_mmm</a>
   </p>
 </section>

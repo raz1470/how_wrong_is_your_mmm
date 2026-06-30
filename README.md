@@ -1,4 +1,4 @@
-# how_wrong_is_your_mmm
+# How Wrong Is Your MMM?
 
 **Collinearity diagnostics and budget phasing for Marketing Mix Models.**
 
@@ -85,7 +85,7 @@ Outputs committed — view without running.
 
 ## Practitioner guide
 
-[`docs/guide.html`](docs/guide.html) — theory-led, no code, SVG charts. Four sections: the problem, the diagnostic, the fix, time to benefit.
+[**How Wrong Is Your MMM? A Practitioner's Guide to Collinearity Bias**](https://raz1470.github.io/how_wrong_is_your_mmm/guide.html) — theory-led, no code, SVG charts. Four sections: the problem, the diagnostic, the fix, time to benefit.
 
 ---
 
@@ -96,7 +96,3 @@ uv run ruff format . && uv run ruff check . && uv run pytest
 ```
 
 87 tests. Python 3.12+. MIT licence.
-
----
-
-*Part of a Bayesian marketing science stack alongside [`bayesian_vecm`](https://github.com/raz1470/bayesian_vecm).*
