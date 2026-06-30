@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Wrong Is Your MMM? — A Practitioner's Guide to Collinearity Bias</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --tv:     #2563eb;
+  --meta:   #d97706;
+  --search: #059669;
+  --text:   #111827;
+  --muted:  #6b7280;
+  --light:  #d1d5db;
+  --border: #e5e7eb;
+  --bg:     #f9fafb;
+  --w:      780px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  color: var(--text);
+  background: #fff;
+  line-height: 1.7;
+  font-size: 16px;
+}
+
+/* ── Header ── */
+.hdr {
+  padding: 3rem 1.5rem 2rem;
+  max-width: var(--w);
+  margin: 0 auto;
+  border-bottom: 2px solid var(--text);
+}
+.eyebrow {
+  font-size: .7rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: .6rem;
+}
+h1 {
+  font-size: clamp(1.75rem, 5vw, 2.6rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -.025em;
+  margin-bottom: .65rem;
+}
+.tagline { color: var(--muted); font-size: 1rem; }
+
+/* ── Section nav ── */
+.snav {
+  max-width: var(--w);
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  overflow-x: auto;
+  gap: 0;
+}
+.snav a {
+  flex-shrink: 0;
+  padding: .75rem 0;
+  margin-right: 2rem;
+  text-decoration: none;
+  font-size: .82rem;
+  font-weight: 500;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.snav a.active { color: var(--text); border-bottom-color: var(--text); }
+.snav a.dim    { color: var(--light); pointer-events: none; }
+
+/* ── Main ── */
+main {
+  max-width: var(--w);
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 5rem;
+}
+
+.s-label {
+  font-size: .7rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: .4rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.25;
+  margin-bottom: 1.25rem;
+}
+
+h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 2rem 0 .5rem;
+}
+
+p {
+  margin-bottom: 1rem;
+  max-width: 65ch;
+}
+
+/* ── Callout ── */
+.callout {
+  border-left: 3px solid var(--text);
+  padding: .8rem 1.25rem;
+  margin: 1.75rem 0;
+  background: var(--bg);
+  border-radius: 0 6px 6px 0;
+}
+.callout p {
+  margin: 0;
+  font-size: 1.025rem;
+  font-style: italic;
+  color: #374151;
+  max-width: none;
+}
+
+/* ── Figure ── */
+.fig {
+  margin: 2rem 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.fig-hdr {
+  padding: .6rem 1rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.fig-title { font-size: .85rem; font-weight: 600; }
+.fig-sub   { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
+.fig-body  { padding: 1rem 1rem .25rem; }
+.fig-cap   { padding: .5rem 1rem .8rem; font-size: .775rem; color: var(--muted); line-height: 1.55; }
+
+svg.chart { display: block; width: 100%; }
+
+/* ── Legend ── */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .85rem;
+  padding: .3rem 0 .35rem;
+  font-size: .775rem;
+  color: var(--text);
+}
+.li { display: flex; align-items: center; gap: .35rem; }
+
+/* ── Key numbers ── */
+.knums {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .75rem;
+  margin: 1.75rem 0;
+}
+@media (max-width: 500px) { .knums { grid-template-columns: 1fr; } }
+.kbox {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .9rem 1rem;
+  background: var(--bg);
+}
+.kbox .corr { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .25rem; }
+.kbox .num  { font-size: 1.9rem; font-weight: 700; line-height: 1; margin-bottom: .2rem; }
+.kbox .lab  { font-size: .75rem; color: var(--muted); line-height: 1.4; }
+
+/* ── Up next ── */
+.up-next {
+  margin-top: 2rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: .875rem;
+  color: var(--muted);
+}
+.up-next strong { color: var(--text); }
+
+/* ── Stub sections ── */
+.stub {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+.stub h2 { color: var(--light); margin-bottom: .6rem; }
+.stub-inner {
+  padding: 1.1rem 1.25rem;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  font-size: .85rem;
+  color: var(--light);
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <p class="eyebrow">Bayesian Marketing Science · Ryan O'Sullivan</p>
+  <h1>How Wrong Is Your MMM?</h1>
+  <p class="tagline">A practitioner's guide to collinearity bias in Marketing Mix Models</p>
+</header>
+
+<nav class="snav">
+  <a href="#problem"    class="active">1 · The Problem</a>
+  <a href="#diagnostic">2 · The Diagnostic</a>
+  <a href="#fix">3 · The Fix</a>
+  <a href="#timeline">4 · Time to Benefit</a>
+</nav>
+
+<main>
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 1 — THE PROBLEM
+═══════════════════════════════════════════════════ -->
+<section id="problem">
+  <p class="s-label">Section 1</p>
+  <h2>The problem with correlated spend</h2>
+
+  <p>Every MMM produces numbers: TV elasticity 0.42, Meta elasticity 0.28, Search elasticity 0.51. These numbers feed into budget recommendations, agency briefs, and board decks. The question most practitioners don't ask often enough is: <em>how much should we trust them?</em></p>
+
+  <p>For most marketing datasets, the honest answer is less than you think — not because the model is broken, but because the data was never designed to answer the question.</p>
+
+  <h3>Why channels move together</h3>
+
+  <p>Marketing budgets are set by people, not algorithms. The same annual planning cycle controls spending across every channel simultaneously: when the demand forecast rises, TV, Meta and Search budgets all go up together. When a campaign launches, all channels activate at once. When there's a trading push, everyone gets funded.</p>
+
+  <p>The result is that week-to-week, channel spend patterns are highly correlated. TV is high when Meta is high. Meta is high when Search is high. They move together because the same business decisions drive them all.</p>
+
+  <!-- Figure 1: Correlated spend time series -->
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Three channels, one planning cycle</div>
+      <div class="fig-sub">Illustrative weekly spend · TV, Meta, Search · 52 weeks</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li">
+          <svg width="20" height="3" style="display:inline;vertical-align:middle">
+            <line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#2563eb" stroke-width="2.5"/>
+          </svg>
+          TV
+        </span>
+        <span class="li">
+          <svg width="20" height="3" style="display:inline;vertical-align:middle">
+            <line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#d97706" stroke-width="2.5"/>
+          </svg>
+          Meta
+        </span>
+        <span class="li">
+          <svg width="20" height="3" style="display:inline;vertical-align:middle">
+            <line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#059669" stroke-width="2.5"/>
+          </svg>
+          Search
+        </span>
+      </div>
+      <svg class="chart" id="chart1" viewBox="0 0 700 250" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">All three channels follow the same underlying demand rhythm. When business conditions drive one channel up, they all go up — because the same planning cycle and demand signals control all of them.</p>
+  </div>
+
+  <p>This is not a modelling problem — it's a data design problem. Real marketing data is generated by business decisions, not experiments. And business decisions, by nature, are coordinated.</p>
+
+  <h3>What this does to your MMM</h3>
+
+  <p>An MMM estimates each channel's contribution by asking: "holding everything else constant, what does an extra pound of TV spend do to sales?" But if TV is always high when Meta is also high, the model never observes TV-high with Meta-low. It can't hold everything else constant, because nothing ever varies independently.</p>
+
+  <p>The result is that the model has to split the credit between channels that always moved together — and it does so in ways that vary enormously depending on the specific noise draw in the data. The coefficient estimates are unstable: small changes to the training window, the noise realisation, or the data vintage can shift the answer substantially.</p>
+
+  <div class="callout">
+    <p>Collinearity doesn't make the average estimate wrong. It makes any given estimate <em>unreliable</em> — sensitive to which period of data you used, which quarter you refitted, and what noise happened to turn up in your training window.</p>
+  </div>
+
+  <h3>Variance, not bias</h3>
+
+  <p>This is the key technical point — and it matters for how you think about the problem. OLS, the standard estimator in most MMMs, is still <em>unbiased</em> with correlated predictors. Given enough independent data, the average estimate would converge on the truth. The problem is that you don't have enough independent data, and you never will: 2–4 years of weekly observations, trying to identify 10–20 parameters in a world where channels have barely moved independently.</p>
+
+  <p>What you get instead is high variance: estimates that are centred near the truth on average, but swing widely in practice. Your specific TV elasticity — the number in your budget model — is one draw from a wide distribution. A company in the same market, with the same true elasticities, but a slightly different observation window, would get a different number.</p>
+
+  <p>Below: three channels, known true elasticities (TV 0.30, Meta 0.50, Search 0.40), mean pairwise correlation 0.70. We simulate 50 plausible histories of the same market — same truth, different noise draws — and fit OLS to each one.</p>
+
+  <!-- Figure 2: Elasticity estimate distribution -->
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">50 plausible histories, 50 different answers</div>
+      <div class="fig-sub">OLS elasticity estimates across 50 noise seeds · mean pairwise correlation = 0.70 · vertical line = true value · shaded = 80% range</div>
+    </div>
+    <div class="fig-body">
+      <svg class="chart" id="chart2" viewBox="0 0 700 210" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Each dot is one OLS estimate from a plausible realisation of the same market. Vertical lines mark the true elasticity for each channel. The shaded band is the 80% interval across seeds. TV: true 0.30, 80% range [0.20, 0.46]. Meta: true 0.50, 80% range [0.34, 0.66]. Search: true 0.40, 80% range [0.11, 0.62] — note the span is wider than the true value itself.</p>
+  </div>
+
+  <p>The coefficient of variation — standard deviation divided by mean estimate — measures how unstable the estimates are relative to their magnitude. At correlation 0.70, TV elasticity has a CV of 36%. That means if you refitted the same model on a slightly different data window, your number could shift by a third in either direction, not because the market changed, but because the data was never informative enough to pin it down.</p>
+
+  <div class="knums">
+    <div class="kbox">
+      <div class="corr">Channel correlation 0.3</div>
+      <div class="num" style="color:#059669">18%</div>
+      <div class="lab">TV elasticity CV — estimates are stable and broadly trustworthy</div>
+    </div>
+    <div class="kbox">
+      <div class="corr">Channel correlation 0.7</div>
+      <div class="num" style="color:#d97706">36%</div>
+      <div class="lab">TV elasticity CV — meaningful uncertainty; treat estimates with caution</div>
+    </div>
+    <div class="kbox">
+      <div class="corr">Channel correlation 0.9</div>
+      <div class="num" style="color:#dc2626">60%</div>
+      <div class="lab">TV elasticity CV — estimates are largely noise; the model can say almost anything</div>
+    </div>
+  </div>
+
+  <h3>Why this matters more than you might think</h3>
+
+  <p>Practitioners see this every time they refit. TV elasticity was 0.42 last quarter; now it's 0.31. The market hasn't changed. The model hasn't changed. Three more months of correlated data shifted the answer by 26%. That's high-variance estimation in practice — not a sign of a broken model, but a sign that the data never gave the model enough to work with.</p>
+
+  <p>Most teams respond by investigating the model: different priors, different transformations, different baseline specifications. This rarely helps, because the problem isn't the model. The problem is the data design. Channels that always moved together can't be reliably distinguished by any estimation method, however sophisticated.</p>
+
+  <p>The question isn't whether your MMM is biased. It probably isn't. The question is whether the data you gave it contained enough independent variation to pin down the channel effects — or whether the number it produced is just one of many equally plausible answers.</p>
+
+  <div class="up-next">
+    <strong>Next:</strong> <a href="#diagnostic" style="color:inherit">Section 2 — The Diagnostic</a> quantifies this unreliability for your specific spend data, using your actual channel correlation structure to produce a personalised answer to "how wrong is your MMM?"
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     STUBS — sections 2–4
+═══════════════════════════════════════════════════ -->
+
+<section id="diagnostic" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+  <p class="s-label">Section 2</p>
+  <h2>The Diagnostic</h2>
+
+  <p>Section 1 showed <em>why</em> collinearity causes unreliability. This section turns that into a number — a concrete, personalised answer to <em>how wrong is my MMM?</em></p>
+
+  <p>The approach is simulation. We treat the problem as a thought experiment: if we could run the same market many times over, same true elasticities but different noise realisations, how much would the estimated elasticities vary? The spread of those estimates — quantified by the coefficient of variation — is the unreliability score.</p>
+
+  <h3>The coefficient of variation</h3>
+
+  <p>The coefficient of variation (CV) is a simple ratio: standard deviation of the estimated elasticity divided by its mean. A CV of 10% means estimates cluster tightly around their average — the model gives consistent answers across different data realisations. A CV of 40% means estimates swing wildly; the answer your specific dataset produced could easily be half or double the truth.</p>
+
+  <p>CV is more informative than a raw standard error because it's relative to the magnitude of the estimate. A standard error of 0.05 means something very different if the elasticity is 0.10 versus 0.50. CV normalises this, making channels and models directly comparable.</p>
+
+  <h3>How unreliability scales with correlation</h3>
+
+  <p>The relationship between channel correlation and CV is not linear — it accelerates. Moving from correlation 0.3 to 0.5 roughly doubles TV elasticity CV. Moving from 0.5 to 0.9 more than doubles it again. At 0.9, the CV exceeds 50% for every channel — the model is producing more noise than signal.</p>
+
+  <!-- Chart 3: CV vs correlation -->
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Elasticity unreliability rises sharply with correlation</div>
+      <div class="fig-sub">TV elasticity coefficient of variation (CV) by mean pairwise channel correlation · 50 seeds per level</div>
+    </div>
+    <div class="fig-body">
+      <svg class="chart" id="chart3" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">CV is the standard deviation of the estimated elasticity divided by its mean — a measure of how much the answer changes across plausible realisations of the same market. At correlation 0.3 (CV 18%), estimates are noisy but directionally consistent. At 0.7 (CV 36%), a third of the estimate's magnitude is unexplained variance. At 0.9 (CV 60%), the model is largely guessing.</p>
+  </div>
+
+  <p>The practical inflection is around 0.6–0.7. Below that, the model is imprecise but still directionally useful — estimates are scattered but mostly on the right side of zero. Above 0.7, estimates become genuinely unreliable: the direction of the error is unpredictable, and the specific number your model produced is one of many equally defensible answers.</p>
+
+  <p>Most real marketing datasets sit between 0.5 and 0.8. That's the zone where collinearity is doing real damage — not obvious enough to flag, but severe enough to make budget decisions based on the output genuinely risky.</p>
+
+  <h3>The personalised diagnostic</h3>
+
+  <p>Generic thresholds are useful benchmarks, but the most informative diagnostic uses your own spend data — your actual channel correlation structure — rather than a synthetic example.</p>
+
+  <p>The approach sidesteps the obvious problem: you don't know the true elasticities, which is the whole reason you ran the MMM. The diagnostic works around this by assigning plausible elasticities, simulating what sales would look like if those were true, then measuring how consistently OLS recovers them from your actual spend data. The collinearity — the thing driving unreliability — comes entirely from your real spend history. The sales simulation is just scaffolding to measure it.</p>
+
+  <p>The output is an elasticity interval per channel: not a point estimate, but a range. "Given how your channels actually moved over the last two years, your TV elasticity could plausibly be anywhere from X to Y." That range quantifies the unreliability in your specific data.</p>
+
+  <!-- Chart 4: Personalised interval chart -->
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Your elasticity uncertainty report</div>
+      <div class="fig-sub">80% interval across 50 noise seeds · based on real spend correlation structure (mean pairwise = 0.65) · diamond = mean estimate</div>
+    </div>
+    <div class="fig-body">
+      <svg class="chart" id="chart4" viewBox="0 0 700 200" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">A narrow interval means the channels varied independently enough for the model to distinguish their effects. A wide interval — especially one spanning more than the estimate itself — means the data design has failed: the number in your budget model is one of many equally plausible answers. Search typically shows the widest interval because it correlates most tightly with overall business activity.</p>
+  </div>
+
+  <h3>Reading the output</h3>
+
+  <p>Three things to check in the diagnostic output:</p>
+
+  <p><strong>Interval width relative to the estimate.</strong> A practical rule: if the 80% interval is narrower than 50% of the point estimate, the model is reasonably informative. If the interval is wider than the estimate itself, treat the output as directional at best.</p>
+
+  <p><strong>Which channels are worst affected.</strong> Search almost always shows wider intervals than TV or Meta, because search spend tracks overall business activity most tightly. If Search has a very wide interval, treat its elasticity as a rough order-of-magnitude indicator, not a number to optimise against.</p>
+
+  <p><strong>How intervals change over refits.</strong> Run the diagnostic quarterly. Widening intervals mean your spend has become more correlated over time — tighter campaign coordination, reduced mix variation. Narrowing intervals mean the data design is improving.</p>
+
+  <div class="up-next">
+    <strong>Next:</strong> Section 3 — The Fix shows how to deliberately reduce channel correlation in your spend plan, narrowing those intervals without touching monthly or annual budget totals.
+  </div>
+</section>
+
+<section id="fix" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+  <p class="s-label">Section 3</p>
+  <h2>The Fix</h2>
+
+  <p>The diagnostic tells you how unreliable your elasticities are. The fix reduces that unreliability — and it doesn't require changing your annual budget, your channel mix, or your campaign strategy.</p>
+
+  <p>The idea is simple: vary the <em>weekly split</em> between channels independently, while keeping monthly totals exactly the same. If TV is heavier in week one, let Meta be lighter — and vice versa the following week. Over time, the channels stop moving in lockstep. The MMM starts to see TV-high / Meta-low periods alongside TV-low / Meta-high periods, and can begin to distinguish their effects.</p>
+
+  <h3>The mechanism</h3>
+
+  <p>Within each calendar month, redistribute each channel's weekly spend randomly. One month, TV gets more budget in the first two weeks; the next month, the last two. Meta does the same independently. At the end of each month, rescale so the channel's monthly total is exactly preserved.</p>
+
+  <p>The media agency sees the same monthly booking. The annual budget is untouched. The only thing that changes is the within-month timing — which the business already adjusts informally for flights and promotional peaks. What's new is making that adjustment deliberately, independently, and consistently across all channels.</p>
+
+  <!-- Chart 5: Before / after weekly spend -->
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">The same monthly budget, de-correlated</div>
+      <div class="fig-sub">Illustrative weekly spend · TV and Meta · 3 months · monthly totals identical in both panels</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li">
+          <svg width="20" height="3" style="display:inline;vertical-align:middle">
+            <line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#2563eb" stroke-width="2.5"/>
+          </svg>
+          TV
+        </span>
+        <span class="li">
+          <svg width="20" height="3" style="display:inline;vertical-align:middle">
+            <line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#d97706" stroke-width="2.5"/>
+          </svg>
+          Meta
+        </span>
+      </div>
+      <svg class="chart" id="chart5" viewBox="0 0 700 230" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Left: original plan — TV and Meta follow the same weekly rhythm (channel correlation 0.68). Right: phased plan — weekly split varies independently per channel, monthly totals unchanged (correlation drops to ~0.2). The MMM can now observe TV-high / Meta-low weeks alongside TV-low / Meta-high weeks.</p>
+  </div>
+
+  <h3>How much variation to introduce</h3>
+
+  <p>The amplitude of the phasing — how aggressively the weekly split is reshuffled — is the main dial. More variation de-correlates channels faster and produces greater CV reduction; less variation is operationally easier but takes longer to show up in the model.</p>
+
+  <p>The relationship is roughly linear: each additional 10 percentage points of weekly deviation produces approximately the same incremental improvement. There's no cliff edge or discontinuity — just a smooth trade-off between aggressiveness and benefit.</p>
+
+  <!-- Chart 6: CV reduction vs deviation amplitude -->
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">More weekly variation → greater CV reduction</div>
+      <div class="fig-sub">Max elasticity band-width reduction (%) vs max weekly deviation from original plan · 52-week phased plan · uniform weighting</div>
+    </div>
+    <div class="fig-body">
+      <svg class="chart" id="chart6" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">At ±40% weekly deviation (a moderate level that most agencies can accommodate), phasing reduces maximum elasticity uncertainty by ~30% after one year. At ±80%, the reduction reaches ~53%. The payoff is roughly linear — there is no magic threshold, just more de-correlation for more variation.</p>
+  </div>
+
+  <h3>What you get</h3>
+
+  <p>The output of the phasing recommendation is a concrete 52-week spend schedule: one number per channel per week, with monthly totals guaranteed to match the original plan exactly. This is what you hand to the media agency — not a strategy document or a framework, but a booking grid.</p>
+
+  <p>In a real dataset (4 years of history, 1 year of plan, correlation 0.68), a ±37% weekly deviation produces a 12% reduction in maximum CV after one year of phasing. That sounds modest, and it is — because four years of correlated history dilutes one year of de-correlated plan data. Section 4 addresses this directly: how long does phasing need to run before the improvement becomes material?</p>
+
+  <h3>What this isn't</h3>
+
+  <p>Budget phasing is not A/B testing, and it's not a geo-experiment. You don't need a control group. You don't need to sacrifice efficiency in some markets to learn in others. The spend still goes where it was always going — the timing just varies more. The data design improvement is a by-product of normal media operations, not a separate experiment running in parallel.</p>
+
+  <div class="up-next">
+    <strong>Next:</strong> <a href="#timeline" style="color:inherit">Section 4 — Time to Benefit</a> shows how the improvement accumulates over time, and how aggressively you need to phase to see a material reduction within one to two years.
+  </div>
+</section>
+
+<section id="timeline" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+  <p class="s-label">Section 4</p>
+  <h2>Time to Benefit</h2>
+
+  <p>Section 3 showed what to do. This section answers how long it takes — and how aggressively you need to phase to see a material improvement within a typical planning horizon.</p>
+
+  <p>The short answer: one year of phasing against four years of correlated history produces a modest improvement (around 12–30% CV reduction, depending on deviation amplitude). The benefit is real, but it takes time to compound. As phased periods accumulate, they displace correlated history and the model becomes progressively more reliable.</p>
+
+  <h3>The time-to-benefit curve</h3>
+
+  <p>The chart below plots CV reduction against the length of the phased period, for three levels of weekly deviation. Also shown is the unphased baseline: what happens if you simply add more (correlated) data without any deliberate mix variation.</p>
+
+  <!-- Chart 7: Time-to-benefit multi-line -->
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Phasing compounds; correlated data doesn't</div>
+      <div class="fig-sub">Max elasticity band-width reduction (%) vs phased plan length · 4 years of correlated history fixed · uniform weighting</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li">
+          <svg width="20" height="3" style="display:inline;vertical-align:middle">
+            <line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#1d4ed8" stroke-width="2.5"/>
+          </svg>
+          ±80% deviation
+        </span>
+        <span class="li">
+          <svg width="20" height="3" style="display:inline;vertical-align:middle">
+            <line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#60a5fa" stroke-width="2.5"/>
+          </svg>
+          ±40% deviation
+        </span>
+        <span class="li">
+          <svg width="20" height="3" style="display:inline;vertical-align:middle">
+            <line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#93c5fd" stroke-width="2.5"/>
+          </svg>
+          ±20% deviation
+        </span>
+        <span class="li">
+          <svg width="20" height="3" style="display:inline;vertical-align:middle">
+            <line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4,3"/>
+          </svg>
+          Unphased (more correlated data)
+        </span>
+      </div>
+      <svg class="chart" id="chart7" viewBox="0 0 700 270" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Each line shows average CV reduction across channels as the phased period grows, holding 4 years of correlated history fixed. The phased curves are monotonically increasing (more phasing always helps). The unphased curve oscillates near zero — adding correlated data doesn't reliably reduce uncertainty and sometimes makes it worse. Data: 50 seeds per point, uniform weighting.</p>
+  </div>
+
+  <h3>Reading the chart</h3>
+
+  <p>Three practical conclusions:</p>
+
+  <p><strong>Time and aggressiveness are substitutes.</strong> ±80% deviation reaches ~53% CV reduction in one year. ±40% deviation needs roughly 2.5 years to reach the same level. If your planning horizon is short, use a higher deviation amplitude. If you have three or more years, moderate deviation is sufficient and operationally easier to maintain.</p>
+
+  <p><strong>Unphased data doesn't reliably help.</strong> The grey dashed line oscillates unpredictably — positive in some periods, negative in others. This is the key finding: collinearity-driven unreliability doesn't fix itself just by adding more observations. The benefit requires deliberate mix variation. More data without de-correlation is not the answer.</p>
+
+  <p><strong>The improvement is monotonic but slowing.</strong> The biggest gains come in the first year. By year 2–3 the curve flattens, because the phased period is large enough to dominate the history and further accumulation produces diminishing returns. For most teams, year 1 delivers the most meaningful uplift relative to effort.</p>
+
+  <div class="knums">
+    <div class="kbox">
+      <div class="corr">±80% deviation · 1 year</div>
+      <div class="num" style="color:#1d4ed8">53%</div>
+      <div class="lab">CV reduction — aggressive but fast; viable where agencies accept high weekly volatility</div>
+    </div>
+    <div class="kbox">
+      <div class="corr">±40% deviation · 1 year</div>
+      <div class="num" style="color:#60a5fa">30%</div>
+      <div class="lab">CV reduction — moderate; practical for most planning teams within normal booking tolerances</div>
+    </div>
+    <div class="kbox">
+      <div class="corr">±40% deviation · 2.5 years</div>
+      <div class="num" style="color:#60a5fa">55%</div>
+      <div class="lab">CV reduction — same endpoint as ±80% after 1 year, reached by running longer at lower amplitude</div>
+    </div>
+  </div>
+
+  <h3>Bringing it together</h3>
+
+  <p>The four sections of this guide tell one story:</p>
+
+  <p>Marketing channels move together because business decisions are coordinated. That correlation doesn't bias your MMM — but it makes the elasticity estimates unreliable. The specific numbers your model produced are one draw from a wide distribution; a slightly different data window would give a different answer. The coefficient of variation quantifies exactly how wide that distribution is for your specific spend history.</p>
+
+  <p>The fix is to vary the weekly channel split independently within each month, preserving monthly totals exactly. This introduces the kind of natural variation that lets the model distinguish individual channel effects. The improvement compounds over time: the more phased periods accumulate in the training data, the more reliable the elasticity estimates become.</p>
+
+  <p>This is not a complex statistical intervention. It's a deliberate data design choice — the same logic that motivates geo-experiments in paid search, applied to the temporal dimension of channel mix planning.</p>
+
+  <div class="callout">
+    <p>The question isn't whether to trust your MMM. It's whether your data gave it a fair chance. Budget phasing is how you give it one.</p>
+  </div>
+
+  <p style="margin-top:1.5rem;font-size:.9rem;color:var(--muted)">
+    The <code>how_wrong_is_your_mmm</code> Python package implements the diagnostic and phasing recommendation described here.
+    Source and notebooks: <a href="https://github.com/raz1470/how_wrong_is_your_mmm" style="color:var(--muted)">github.com/raz1470/how_wrong_is_your_mmm</a>
+  </p>
+</section>
+
+</main>
+
+<script>
+// ── Seeded RNG (splitmix32) ────────────────────────────────────────────────
+function mkRng(seed) {
+  let a = seed | 0;
+  return function() {
+    a = (a + 0x9e3779b9) | 0;
+    let t = a ^ (a >>> 16);
+    t = Math.imul(t, 0x21f0aaad);
+    t = t ^ (t >>> 15);
+    t = Math.imul(t, 0x735a2d97);
+    return ((t ^ (t >>> 15)) >>> 0) / 4294967296;
+  };
+}
+
+const rng = mkRng(0xc0ffee);
+
+// Box-Muller normal sample
+function rnorm(mu, sd) {
+  const u1 = Math.max(rng(), 1e-10);
+  const u2 = rng();
+  return mu + sd * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+
+// SVG element helper
+function el(tag, attrs, text) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const e = document.createElementNS(ns, tag);
+  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+// ── Chart 1: Correlated spend time series ─────────────────────────────────
+(function drawSpend() {
+  const svg = document.getElementById('chart1');
+  if (!svg) return;
+
+  const W = 700, H = 250;
+  const m = { top: 12, right: 20, bottom: 38, left: 65 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+
+  const T = 52;
+  const weeks = Array.from({ length: T }, (_, i) => i);
+
+  // Shared seasonal demand signal (0 → 1)
+  const demand = weeks.map(t =>
+    0.45 + 0.42 * Math.sin(2 * Math.PI * t / 52 - Math.PI / 4) +
+    0.08 * Math.sin(2 * Math.PI * t / 13)
+  );
+
+  // Three channels following demand with noise (in £k)
+  const tv     = demand.map(d => Math.max(10, 55 + 95 * d + rnorm(0, 9)));
+  const meta   = demand.map(d => Math.max(5,  32 + 78 * d + rnorm(0, 10)));
+  const search = demand.map(d => Math.max(3,  16 + 42 * d + rnorm(0, 6)));
+
+  const maxV = Math.max(...tv, ...meta, ...search) * 1.08;
+
+  const scX = x => m.left + (x / (T - 1)) * pw;
+  const scY = y => m.top + ph - (y / maxV) * ph;
+  const pathD = (data) =>
+    data.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
+
+  const g = el('g', {});
+
+  // Horizontal grid
+  const yStep = maxV > 180 ? 50 : 40;
+  for (let v = 0; v <= maxV; v += yStep) {
+    const y = scY(v);
+    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', { x: m.left - 8, y: y + 4, 'text-anchor': 'end', 'font-size': 10, fill: '#9ca3af' }, `£${v}k`));
+  }
+
+  // Y axis label
+  const yl = el('text', {
+    x: 10, y: m.top + ph / 2,
+    'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af',
+    transform: `rotate(-90, 10, ${m.top + ph / 2})`
+  }, 'Weekly spend');
+  g.appendChild(yl);
+
+  // X axis ticks (quarterly)
+  const xMarks = [[0, 'Jan'], [13, 'Apr'], [26, 'Jul'], [39, 'Oct'], [51, 'Dec']];
+  for (const [t, lbl] of xMarks) {
+    const x = scX(t);
+    g.appendChild(el('line', { x1: x, y1: m.top + ph, x2: x, y2: m.top + ph + 5, stroke: '#d1d5db', 'stroke-width': 1 }));
+    g.appendChild(el('text', { x, y: m.top + ph + 16, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, lbl));
+  }
+
+  // Axes
+  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+
+  // Lines
+  const series = [
+    { data: tv,     color: '#2563eb' },
+    { data: meta,   color: '#d97706' },
+    { data: search, color: '#059669' },
+  ];
+  for (const s of series) {
+    g.appendChild(el('path', {
+      d: pathD(s.data),
+      fill: 'none', stroke: s.color,
+      'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round',
+      opacity: 0.85,
+    }));
+  }
+
+  svg.appendChild(g);
+})();
+
+
+// ── Chart 2: Elasticity estimates strip chart ──────────────────────────────
+(function drawElasticities() {
+  const svg = document.getElementById('chart2');
+  if (!svg) return;
+
+  const W = 700, H = 210;
+  const m = { top: 18, right: 30, bottom: 40, left: 78 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+
+  // Data from notebook 01, section 2 (50 seeds, correlation 0.70)
+  const channels = [
+    { name: 'TV',     color: '#2563eb', mu: 0.329, sd: 0.117, trueE: 0.30, p10: 0.197, p90: 0.457 },
+    { name: 'Meta',   color: '#d97706', mu: 0.503, sd: 0.145, trueE: 0.50, p10: 0.338, p90: 0.662 },
+    { name: 'Search', color: '#059669', mu: 0.357, sd: 0.223, trueE: 0.40, p10: 0.111, p90: 0.622 },
+  ];
+
+  const N    = 50;
+  const xMin = -0.05;
+  const xMax =  0.85;
+  const scX  = v => m.left + ((v - xMin) / (xMax - xMin)) * pw;
+
+  const rowH  = ph / channels.length;
+  const rowCy = i => m.top + rowH * i + rowH / 2;
+  const jR    = rowH * 0.30;  // jitter radius
+
+  const g = el('g', {});
+
+  // Alternating row backgrounds
+  for (let i = 0; i < channels.length; i++) {
+    if (i % 2 === 1) {
+      g.appendChild(el('rect', {
+        x: m.left, y: m.top + rowH * i, width: pw, height: rowH, fill: '#f9fafb'
+      }));
+    }
+  }
+
+  // Vertical grid + X axis labels
+  const xTicks = [0, 0.2, 0.4, 0.6, 0.8];
+  for (const v of xTicks) {
+    const x = scX(v);
+    g.appendChild(el('line', { x1: x, y1: m.top, x2: x, y2: m.top + ph, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', {
+      x, y: m.top + ph + 14,
+      'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af'
+    }, v.toFixed(1)));
+  }
+
+  // X axis label
+  g.appendChild(el('text', {
+    x: m.left + pw / 2, y: H - 4,
+    'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af'
+  }, 'Estimated elasticity'));
+
+  // Outer border
+  g.appendChild(el('rect', {
+    x: m.left, y: m.top, width: pw, height: ph,
+    fill: 'none', stroke: '#e5e7eb', 'stroke-width': 1
+  }));
+
+  for (let ci = 0; ci < channels.length; ci++) {
+    const ch = channels[ci];
+    const cy = rowCy(ci);
+
+    // 80% interval band
+    g.appendChild(el('rect', {
+      x: scX(ch.p10),
+      y: cy - jR * 0.95,
+      width: scX(ch.p90) - scX(ch.p10),
+      height: jR * 1.9,
+      fill: ch.color, opacity: 0.13, rx: 3,
+    }));
+
+    // True value line
+    const tx = scX(ch.trueE);
+    g.appendChild(el('line', {
+      x1: tx, y1: cy - jR * 1.2, x2: tx, y2: cy + jR * 1.2,
+      stroke: ch.color, 'stroke-width': 2.5,
+    }));
+
+    // Dots — sample from distribution matching notebook output
+    for (let i = 0; i < N; i++) {
+      const est  = rnorm(ch.mu, ch.sd);
+      const xPos = scX(Math.max(xMin + 0.01, Math.min(xMax - 0.01, est)));
+      const yPos = cy + (rng() - 0.5) * 2 * jR * 0.82;
+      g.appendChild(el('circle', {
+        cx: xPos, cy: yPos, r: 3.5,
+        fill: ch.color, opacity: 0.50,
+      }));
+    }
+
+    // Row channel label
+    g.appendChild(el('text', {
+      x: m.left - 10, y: cy + 4,
+      'text-anchor': 'end', 'font-size': 11, 'font-weight': '600', fill: ch.color
+    }, ch.name));
+  }
+
+  // Legend (bottom right)
+  const lx = m.left + pw - 195;
+  const ly = m.top + ph + 27;
+  // True value swatch
+  g.appendChild(el('line', { x1: lx, y1: ly, x2: lx + 14, y2: ly, stroke: '#6b7280', 'stroke-width': 2.5 }));
+  g.appendChild(el('text', { x: lx + 19, y: ly + 4, 'font-size': 9.5, fill: '#9ca3af' }, 'true value'));
+  // 80% band swatch
+  const bx = lx + 78;
+  g.appendChild(el('rect', { x: bx, y: ly - 5, width: 16, height: 10, fill: '#6b7280', opacity: 0.2, rx: 2 }));
+  g.appendChild(el('text', { x: bx + 21, y: ly + 4, 'font-size': 9.5, fill: '#9ca3af' }, '80% range'));
+
+  svg.appendChild(g);
+})();
+
+// ── Chart 7: Time-to-benefit multi-line ───────────────────────────────────
+(function drawTimeToBenefit() {
+  const svg = document.getElementById('chart7');
+  if (!svg) return;
+
+  const W = 700, H = 270;
+  const m = { top: 20, right: 30, bottom: 44, left: 58 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+
+  // Exact data from notebook 03 cells 4 + 19
+  // Baseline max band width = 0.460; unphased from cell 4
+  const weeks = [4, 8, 13, 26, 39, 52, 78, 104, 130, 156, 182, 208, 260];
+
+  const unphased = [3.9, -5.0, 1.5, 8.0, 11.3, 12.4, 27.4, 17.2, 40.4, 24.1, 41.3, 25.7, 46.7];
+  const dev20    = [4.8, -1.7,  7.1,  8.0, 22.9, 15.6, 32.5, 32.3, 42.8, 39.8, 46.3, 36.4, 51.4];
+  const dev40    = [6.7,  7.6, 12.0, 17.5, 35.4, 29.8, 41.3, 47.5, 55.3, 54.9, 58.8, 54.5, 63.3];
+  const dev80    = [13.3, 19.8, 26.8, 40.5, 52.7, 53.4, 60.8, 66.7, 71.4, 72.5, 73.9, 72.8, 77.4];
+
+  const xMax = 270, yMin = -10, yMax = 82;
+  const scX = w => m.left + (w / xMax) * pw;
+  const scY = v => m.top + ph - ((v - yMin) / (yMax - yMin)) * ph;
+  const pathD = (data) =>
+    data.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(weeks[i]).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
+
+  const g = el('g', {});
+
+  // Zero line (slightly heavier)
+  g.appendChild(el('line', {
+    x1: m.left, y1: scY(0), x2: m.left + pw, y2: scY(0),
+    stroke: '#9ca3af', 'stroke-width': 1, 'stroke-dasharray': '2,2'
+  }));
+
+  // Horizontal grid
+  for (const v of [0, 20, 40, 60, 80]) {
+    const y = scY(v);
+    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', { x: m.left - 8, y: y + 4, 'text-anchor': 'end', 'font-size': 10, fill: '#9ca3af' }, `${v}%`));
+  }
+
+  // Year markers
+  for (const [w, lbl] of [[52, '1 yr'], [104, '2 yr'], [156, '3 yr'], [208, '4 yr'], [260, '5 yr']]) {
+    const x = scX(w);
+    g.appendChild(el('line', { x1: x, y1: m.top, x2: x, y2: m.top + ph, stroke: '#f3f4f6', 'stroke-width': 1.5 }));
+    g.appendChild(el('text', { x, y: m.top + ph + 14, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, lbl));
+  }
+
+  // Axes
+  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+
+  // Axis labels
+  g.appendChild(el('text', {
+    x: 11, y: m.top + ph / 2, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af',
+    transform: `rotate(-90, 11, ${m.top + ph / 2})`
+  }, 'CV band-width reduction'));
+  g.appendChild(el('text', {
+    x: m.left + pw / 2, y: H - 2, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af'
+  }, 'Length of phased plan'));
+
+  // Lines (draw unphased first so it's behind)
+  g.appendChild(el('path', { d: pathD(unphased), fill: 'none', stroke: '#9ca3af', 'stroke-width': 1.5, 'stroke-dasharray': '4,3', 'stroke-linejoin': 'round' }));
+  g.appendChild(el('path', { d: pathD(dev20),    fill: 'none', stroke: '#93c5fd', 'stroke-width': 2,   'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+  g.appendChild(el('path', { d: pathD(dev40),    fill: 'none', stroke: '#60a5fa', 'stroke-width': 2.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+  g.appendChild(el('path', { d: pathD(dev80),    fill: 'none', stroke: '#1d4ed8', 'stroke-width': 2.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+
+  // End-of-line labels
+  const lastW = weeks[weeks.length - 1];
+  for (const [data, color, lbl] of [
+    [dev80,    '#1d4ed8', '77%'],
+    [dev40,    '#60a5fa', '63%'],
+    [dev20,    '#93c5fd', '51%'],
+    [unphased, '#9ca3af', '47%'],
+  ]) {
+    const x = scX(lastW) + 5;
+    const y = scY(data[data.length - 1]);
+    g.appendChild(el('text', { x, y: y + 4, 'font-size': 9.5, fill: color, 'font-weight': color === '#9ca3af' ? '400' : '600' }, lbl));
+  }
+
+  // Annotation: 1yr milestone for ±80%
+  const annX = scX(52), annY = scY(53.4);
+  g.appendChild(el('circle', { cx: annX, cy: annY, r: 3.5, fill: '#1d4ed8' }));
+  g.appendChild(el('text', { x: annX - 6, y: annY - 8, 'text-anchor': 'middle', 'font-size': 9, fill: '#1d4ed8' }, '53%'));
+
+  svg.appendChild(g);
+})();
+
+
+// ── Chart 5: Before / after weekly spend (two panels) ─────────────────────
+(function drawBeforeAfter() {
+  const svg = document.getElementById('chart5');
+  if (!svg) return;
+
+  const W = 700, H = 230;
+  const gap = 24;   // gap between panels
+  const panelW = (W - gap) / 2;
+  const m = { top: 28, right: 12, bottom: 36, left: 52 };
+  const ph = H - m.top - m.bottom;
+  const pw = panelW - m.left - m.right;
+
+  // 13 weeks (3 months: 4+4+5 weeks)
+  // Monthly TV totals: £365k, £280k, £430k
+  // Monthly Meta totals: £275k, £200k, £320k
+  const tvMonthly   = [365, 280, 430];
+  const metaMonthly = [275, 200, 320];
+  const monthLengths = [4, 4, 5];
+
+  // BEFORE: correlated — spend follows a shared seasonal signal within each month
+  const tvBefore   = [96, 90, 85, 94,   60, 72, 78, 70,   88, 92, 86, 80, 84];
+  const metaBefore = [72, 68, 63, 72,   44, 53, 57, 46,   64, 70, 66, 58, 62];
+  // Rescale to exact monthly totals
+  let wi = 0;
+  for (let m2 = 0; m2 < 3; m2++) {
+    const L = monthLengths[m2];
+    const tvSlice   = tvBefore.slice(wi, wi + L);
+    const metaSlice = metaBefore.slice(wi, wi + L);
+    const tvSum   = tvSlice.reduce((a, b) => a + b, 0);
+    const metaSum = metaSlice.reduce((a, b) => a + b, 0);
+    for (let j = 0; j < L; j++) {
+      tvBefore[wi + j]   = tvBefore[wi + j]   * tvMonthly[m2] / tvSum;
+      metaBefore[wi + j] = metaBefore[wi + j] * metaMonthly[m2] / metaSum;
+    }
+    wi += L;
+  }
+
+  // AFTER: de-correlated — within-month split is independent per channel
+  const tvAfter   = [55, 95, 115, 100,   85, 60, 70, 65,   75, 95, 100, 85, 75];
+  const metaAfter = [90, 55,  70,  60,   65, 80, 30, 25,   78, 55,  65, 72, 50];
+  wi = 0;
+  for (let m2 = 0; m2 < 3; m2++) {
+    const L = monthLengths[m2];
+    const tvSlice   = tvAfter.slice(wi, wi + L);
+    const metaSlice = metaAfter.slice(wi, wi + L);
+    const tvSum   = tvSlice.reduce((a, b) => a + b, 0);
+    const metaSum = metaSlice.reduce((a, b) => a + b, 0);
+    for (let j = 0; j < L; j++) {
+      tvAfter[wi + j]   = tvAfter[wi + j]   * tvMonthly[m2] / tvSum;
+      metaAfter[wi + j] = metaAfter[wi + j] * metaMonthly[m2] / metaSum;
+    }
+    wi += L;
+  }
+
+  const allVals = [...tvBefore, ...metaBefore, ...tvAfter, ...metaAfter];
+  const maxV = Math.max(...allVals) * 1.12;
+
+  const T = 13;
+  const weeks = Array.from({length: T}, (_, i) => i);
+
+  function drawPanel(offsetX, tvData, metaData, title, corrLabel) {
+    const g = el('g', { transform: `translate(${offsetX}, 0)` });
+
+    const scX = x => m.left + (x / (T - 1)) * pw;
+    const scY = y => m.top + ph - (y / maxV) * ph;
+    const pathD = (data) =>
+      data.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
+
+    // Panel label
+    g.appendChild(el('text', {
+      x: m.left + pw / 2, y: 14,
+      'text-anchor': 'middle', 'font-size': 11, 'font-weight': '700', fill: '#374151'
+    }, title));
+    g.appendChild(el('text', {
+      x: m.left + pw / 2, y: 25,
+      'text-anchor': 'middle', 'font-size': 9.5, fill: '#9ca3af'
+    }, corrLabel));
+
+    // Y grid + labels (left panel only)
+    const yTicks = [0, 40, 80, 120];
+    for (const v of yTicks) {
+      if (v > maxV) continue;
+      g.appendChild(el('line', { x1: m.left, y1: scY(v), x2: m.left + pw, y2: scY(v), stroke: '#e5e7eb', 'stroke-width': 1 }));
+      if (offsetX === 0) {
+        g.appendChild(el('text', { x: m.left - 7, y: scY(v) + 4, 'text-anchor': 'end', 'font-size': 9.5, fill: '#9ca3af' }, `£${v}k`));
+      }
+    }
+
+    // Month dividers + labels
+    const monthNames = ['Jan', 'Feb', 'Mar'];
+    let cumW = 0;
+    for (let mi = 0; mi < monthLengths.length; mi++) {
+      const startX = scX(cumW);
+      const endX   = scX(cumW + monthLengths[mi] - 1);
+      if (mi > 0) {
+        g.appendChild(el('line', { x1: startX, y1: m.top, x2: startX, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1, 'stroke-dasharray': '3,3' }));
+      }
+      g.appendChild(el('text', {
+        x: (startX + endX) / 2, y: m.top + ph + 14,
+        'text-anchor': 'middle', 'font-size': 9.5, fill: '#9ca3af'
+      }, monthNames[mi]));
+      cumW += monthLengths[mi];
+    }
+
+    // Axes
+    g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+    g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+
+    // Week tick marks
+    for (let w = 0; w < T; w++) {
+      g.appendChild(el('line', { x1: scX(w), y1: m.top + ph, x2: scX(w), y2: m.top + ph + 3, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    }
+
+    // Lines
+    g.appendChild(el('path', { d: pathD(tvData),   fill: 'none', stroke: '#2563eb', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.85 }));
+    g.appendChild(el('path', { d: pathD(metaData), fill: 'none', stroke: '#d97706', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.85 }));
+
+    return g;
+  }
+
+  const g = el('g', {});
+  g.appendChild(drawPanel(0,        tvBefore, metaBefore, 'Before phasing',  'channel correlation: 0.68'));
+  g.appendChild(drawPanel(panelW + gap, tvAfter,  metaAfter,  'After phasing',   'channel correlation: ~0.20'));
+  svg.appendChild(g);
+})();
+
+
+// ── Chart 6: CV reduction vs deviation amplitude ───────────────────────────
+(function drawAmplitude() {
+  const svg = document.getElementById('chart6');
+  if (!svg) return;
+
+  const W = 700, H = 240;
+  const m = { top: 20, right: 30, bottom: 42, left: 60 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+
+  // From notebook 03 cell 16 (amplitude sweep, 52-week plan, corr=0.7, uniform weighting)
+  const data = [
+    { dev: 10,  red: 8.8  },
+    { dev: 20,  red: 15.6 },
+    { dev: 30,  red: 23.0 },
+    { dev: 40,  red: 29.8 },
+    { dev: 60,  red: 44.1 },
+    { dev: 80,  red: 53.4 },
+    { dev: 100, red: 61.2 },
+  ];
+
+  const xMin = 0, xMax = 105;
+  const yMax = 70;
+
+  const scX = v => m.left + ((v - xMin) / (xMax - xMin)) * pw;
+  const scY = v => m.top + ph - (v / yMax) * ph;
+
+  const g = el('g', {});
+
+  // Grid
+  for (const v of [0, 10, 20, 30, 40, 50, 60]) {
+    const y = scY(v);
+    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', { x: m.left - 8, y: y + 4, 'text-anchor': 'end', 'font-size': 10, fill: '#9ca3af' }, `${v}%`));
+  }
+
+  // Fill area under curve
+  const areaD = [
+    `M${scX(data[0].dev)},${scY(data[0].red)}`,
+    ...data.slice(1).map(d => `L${scX(d.dev)},${scY(d.red)}`),
+    `L${scX(data[data.length-1].dev)},${scY(0)}`,
+    `L${scX(data[0].dev)},${scY(0)}`,
+    'Z',
+  ].join(' ');
+  g.appendChild(el('path', { d: areaD, fill: '#2563eb', opacity: 0.08 }));
+
+  // Line
+  const lineD = data.map((d, i) => `${i === 0 ? 'M' : 'L'}${scX(d.dev)},${scY(d.red)}`).join(' ');
+  g.appendChild(el('path', { d: lineD, fill: 'none', stroke: '#2563eb', 'stroke-width': 2.5, 'stroke-linejoin': 'round' }));
+
+  // Dots + labels
+  for (const d of data) {
+    const x = scX(d.dev), y = scY(d.red);
+    g.appendChild(el('circle', { cx: x, cy: y, r: 4.5, fill: '#2563eb' }));
+    if (d.dev === 40 || d.dev === 80) {
+      g.appendChild(el('text', {
+        x: x + 7, y: y - 7,
+        'font-size': 9.5, fill: '#2563eb', 'font-weight': '600'
+      }, `${d.red}%`));
+    }
+  }
+
+  // Axes
+  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+
+  // X ticks
+  for (const d of data) {
+    const x = scX(d.dev);
+    g.appendChild(el('line', { x1: x, y1: m.top + ph, x2: x, y2: m.top + ph + 4, stroke: '#d1d5db', 'stroke-width': 1 }));
+    g.appendChild(el('text', { x, y: m.top + ph + 15, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, `±${d.dev}%`));
+  }
+
+  // Axis labels
+  g.appendChild(el('text', {
+    x: m.left + pw / 2, y: H - 3,
+    'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af'
+  }, 'Max weekly deviation from original plan'));
+  g.appendChild(el('text', {
+    x: 11, y: m.top + ph / 2,
+    'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af',
+    transform: `rotate(-90, 11, ${m.top + ph / 2})`
+  }, 'CV band-width reduction'));
+
+  // Reference line at ±40% (practical recommendation)
+  const refX = scX(40);
+  g.appendChild(el('line', { x1: refX, y1: m.top, x2: refX, y2: m.top + ph, stroke: '#6b7280', 'stroke-width': 1, 'stroke-dasharray': '4,3' }));
+  g.appendChild(el('text', { x: refX - 5, y: m.top + 10, 'text-anchor': 'end', 'font-size': 9, fill: '#9ca3af' }, '±40% practical range'));
+
+  svg.appendChild(g);
+})();
+
+
+// ── Chart 3: CV vs correlation (bar chart) ─────────────────────────────────
+(function drawCvByCorr() {
+  const svg = document.getElementById('chart3');
+  if (!svg) return;
+
+  const W = 700, H = 240;
+  const m = { top: 20, right: 30, bottom: 42, left: 58 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+
+  // TV elasticity CV from notebook 01 sweep (cell 8), exact values
+  const data = [
+    { corr: 0.1, cv: 0.096 },
+    { corr: 0.2, cv: 0.142 },
+    { corr: 0.3, cv: 0.182 },
+    { corr: 0.4, cv: 0.219 },
+    { corr: 0.5, cv: 0.258 },
+    { corr: 0.6, cv: 0.302 },
+    { corr: 0.7, cv: 0.357 },
+    { corr: 0.8, cv: 0.437 },
+    { corr: 0.9, cv: 0.596 },
+  ];
+
+  const maxCV = 0.65;
+  const scY = v => m.top + ph - (v / maxCV) * ph;
+
+  const n = data.length;
+  const barW = pw / n;
+  const gap  = barW * 0.18;
+
+  const g = el('g', {});
+
+  // Horizontal grid + Y axis labels
+  const yTicks = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6];
+  for (const v of yTicks) {
+    const y = scY(v);
+    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', {
+      x: m.left - 8, y: y + 4,
+      'text-anchor': 'end', 'font-size': 10, fill: '#9ca3af'
+    }, `${Math.round(v * 100)}%`));
+  }
+
+  // Threshold zone labels
+  const zones = [
+    { y1: scY(0.20), y2: scY(0.00), color: '#dcfce7', label: 'manageable' },
+    { y1: scY(0.40), y2: scY(0.20), color: '#fef9c3', label: 'unreliable' },
+    { y1: scY(0.65), y2: scY(0.40), color: '#fee2e2', label: 'severe' },
+  ];
+  for (const z of zones) {
+    g.appendChild(el('rect', { x: m.left, y: z.y1, width: pw, height: z.y2 - z.y1, fill: z.color, opacity: 0.35 }));
+  }
+
+  // Axes
+  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+
+  // Y axis label
+  g.appendChild(el('text', {
+    x: 11, y: m.top + ph / 2,
+    'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af',
+    transform: `rotate(-90, 11, ${m.top + ph / 2})`
+  }, 'TV elasticity CV'));
+
+  // Bars
+  for (let i = 0; i < data.length; i++) {
+    const d = data[i];
+    const x = m.left + i * barW + gap;
+    const bw = barW - gap * 2;
+    const barTop = scY(d.cv);
+    const barH = m.top + ph - barTop;
+
+    // Bar color by severity
+    const color = d.cv < 0.20 ? '#16a34a' : d.cv < 0.40 ? '#d97706' : '#dc2626';
+
+    g.appendChild(el('rect', { x, y: barTop, width: bw, height: barH, fill: color, rx: 2, opacity: 0.85 }));
+
+    // CV label on top of bar
+    g.appendChild(el('text', {
+      x: x + bw / 2, y: barTop - 5,
+      'text-anchor': 'middle', 'font-size': 9.5, fill: color, 'font-weight': '600'
+    }, `${Math.round(d.cv * 100)}%`));
+
+    // X axis label
+    g.appendChild(el('text', {
+      x: x + bw / 2, y: m.top + ph + 15,
+      'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af'
+    }, d.corr.toFixed(1)));
+  }
+
+  // X axis title
+  g.appendChild(el('text', {
+    x: m.left + pw / 2, y: H - 3,
+    'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af'
+  }, 'Mean pairwise channel correlation'));
+
+  // Zone legend (top right)
+  const lx = m.left + pw - 180;
+  const ly = m.top + 6;
+  const zones2 = [
+    { color: '#16a34a', label: 'manageable  (<20%)' },
+    { color: '#d97706', label: 'unreliable  (20–40%)' },
+    { color: '#dc2626', label: 'severe  (>40%)' },
+  ];
+  for (let i = 0; i < zones2.length; i++) {
+    const y = ly + i * 16;
+    g.appendChild(el('rect', { x: lx, y: y - 7, width: 10, height: 10, fill: zones2[i].color, opacity: 0.85, rx: 2 }));
+    g.appendChild(el('text', { x: lx + 14, y: y + 2, 'font-size': 9.5, fill: '#9ca3af' }, zones2[i].label));
+  }
+
+  svg.appendChild(g);
+})();
+
+
+// ── Chart 4: Personalised interval (forest) chart ──────────────────────────
+(function drawIntervals() {
+  const svg = document.getElementById('chart4');
+  if (!svg) return;
+
+  const W = 700, H = 200;
+  const m = { top: 18, right: 30, bottom: 40, left: 78 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+
+  // From notebook 01 section 3 (real spend entry point, mean corr=0.65)
+  const channels = [
+    { name: 'TV',     color: '#2563eb', mean: 0.303, p10: 0.130, p90: 0.463 },
+    { name: 'Meta',   color: '#d97706', mean: 0.496, p10: 0.311, p90: 0.653 },
+    { name: 'Search', color: '#059669', mean: 0.453, p10: 0.188, p90: 0.769 },
+  ];
+
+  const xMin = 0, xMax = 0.90;
+  const scX  = v => m.left + ((v - xMin) / (xMax - xMin)) * pw;
+
+  const rowH  = ph / channels.length;
+  const rowCy = i => m.top + rowH * i + rowH / 2;
+
+  const g = el('g', {});
+
+  // Alternating rows
+  for (let i = 0; i < channels.length; i++) {
+    if (i % 2 === 1) {
+      g.appendChild(el('rect', { x: m.left, y: m.top + rowH * i, width: pw, height: rowH, fill: '#f9fafb' }));
+    }
+  }
+
+  // Vertical grid + X labels
+  const xTicks = [0, 0.2, 0.4, 0.6, 0.8];
+  for (const v of xTicks) {
+    const x = scX(v);
+    g.appendChild(el('line', { x1: x, y1: m.top, x2: x, y2: m.top + ph, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', {
+      x, y: m.top + ph + 14,
+      'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af'
+    }, v.toFixed(1)));
+  }
+
+  // X axis title
+  g.appendChild(el('text', {
+    x: m.left + pw / 2, y: H - 3,
+    'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af'
+  }, 'Elasticity'));
+
+  // Border
+  g.appendChild(el('rect', {
+    x: m.left, y: m.top, width: pw, height: ph,
+    fill: 'none', stroke: '#e5e7eb', 'stroke-width': 1
+  }));
+
+  for (let ci = 0; ci < channels.length; ci++) {
+    const ch = channels[ci];
+    const cy = rowCy(ci);
+    const lineH = 2.5;
+    const capH  = rowH * 0.25;
+
+    // Interval line (thick)
+    g.appendChild(el('line', {
+      x1: scX(ch.p10), y1: cy, x2: scX(ch.p90), y2: cy,
+      stroke: ch.color, 'stroke-width': lineH,
+    }));
+
+    // End caps
+    for (const end of [ch.p10, ch.p90]) {
+      g.appendChild(el('line', {
+        x1: scX(end), y1: cy - capH, x2: scX(end), y2: cy + capH,
+        stroke: ch.color, 'stroke-width': 1.5,
+      }));
+    }
+
+    // Mean diamond
+    const dx = scX(ch.mean);
+    const ds = rowH * 0.22;
+    g.appendChild(el('polygon', {
+      points: `${dx},${cy - ds} ${dx + ds * 0.6},${cy} ${dx},${cy + ds} ${dx - ds * 0.6},${cy}`,
+      fill: ch.color,
+    }));
+
+    // Interval width label (right side)
+    const wLabel = (ch.p90 - ch.p10).toFixed(2);
+    g.appendChild(el('text', {
+      x: scX(ch.p90) + 6, y: cy + 4,
+      'font-size': 9.5, fill: ch.color, 'font-weight': '600'
+    }, `±${wLabel}`));
+
+    // Channel label (left)
+    g.appendChild(el('text', {
+      x: m.left - 10, y: cy + 4,
+      'text-anchor': 'end', 'font-size': 11, 'font-weight': '600', fill: ch.color
+    }, ch.name));
+  }
+
+  // Legend
+  const lx = m.left + 12;
+  const ly = m.top + ph + 26;
+  // Diamond swatch
+  g.appendChild(el('polygon', {
+    points: `${lx + 5},${ly - 5} ${lx + 8},${ly} ${lx + 5},${ly + 5} ${lx + 2},${ly}`,
+    fill: '#6b7280'
+  }));
+  g.appendChild(el('text', { x: lx + 14, y: ly + 4, 'font-size': 9.5, fill: '#9ca3af' }, 'mean estimate'));
+
+  // Line swatch
+  const lx2 = lx + 105;
+  g.appendChild(el('line', { x1: lx2, y1: ly, x2: lx2 + 16, y2: ly, stroke: '#6b7280', 'stroke-width': 2.5 }));
+  g.appendChild(el('line', { x1: lx2, y1: ly - 5, x2: lx2, y2: ly + 5, stroke: '#6b7280', 'stroke-width': 1.5 }));
+  g.appendChild(el('line', { x1: lx2 + 16, y1: ly - 5, x2: lx2 + 16, y2: ly + 5, stroke: '#6b7280', 'stroke-width': 1.5 }));
+  g.appendChild(el('text', { x: lx2 + 22, y: ly + 4, 'font-size': 9.5, fill: '#9ca3af' }, '80% interval'));
+
+  svg.appendChild(g);
+})();
+</script>
+
+</body>
+</html>
