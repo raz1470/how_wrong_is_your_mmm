@@ -14,7 +14,7 @@ This package quantifies that problem and recommends a fix.
 
 **Part 2 — Phase.** Recommend a 52-week spend schedule that varies the weekly channel split independently, preserving monthly totals exactly. This introduces the independent variation the model needs to distinguish channel effects. At ±40% weekly deviation, one year of phasing reduces CV by ~30%. At ±80%, it's ~53%.
 
-**Part 3 — Weight.** Upweight recent de-correlated observations in the model fit so the improvement takes effect without waiting for the phased history to dominate.
+**Part 3 — Retrain.** Once the phased plan has run, refit your MMM on the new data. The de-correlated spend does the work: elasticity estimates come back measurably tighter, without waiting years for the phased weeks to outnumber the correlated history.
 
 ---
 
@@ -73,8 +73,6 @@ The model isn't broken. The data design is.
 
 ## Notebooks
 
-Outputs committed — view without running.
-
 | Notebook | What it shows |
 |----------|--------------|
 | [`01_dgp_diagnostic_walkthrough`](notebooks/01_dgp_diagnostic_walkthrough.ipynb) | Correlation sweep 0.1→0.9; elasticity estimates across 50 seeds; personalised diagnostic on real spend |
@@ -85,7 +83,7 @@ Outputs committed — view without running.
 
 ## Practitioner guide
 
-[**How Wrong Is Your MMM? A Practitioner's Guide to Collinearity Bias**](https://raz1470.github.io/how_wrong_is_your_mmm/guide.html) — theory-led, no code, SVG charts. Four sections: the problem, the diagnostic, the fix, time to benefit.
+[**How Wrong Is Your MMM? A Practitioner's Guide to Collinearity Bias**](https://raz1470.github.io/how_wrong_is_your_mmm/guide.html)
 
 ---
 

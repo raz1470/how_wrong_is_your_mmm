@@ -33,7 +33,14 @@ body {
   max-width: var(--w);
   margin: 0 auto;
   border-bottom: 2px solid var(--text);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
 }
+.hdr-text { flex: 1 1 auto; min-width: 0; }
+.hdr-icon { flex: 0 0 auto; width: 84px; height: 84px; }
+@media (max-width: 560px) { .hdr-icon { display: none; } }
 .eyebrow {
   font-size: .7rem;
   letter-spacing: .12em;
@@ -195,6 +202,10 @@ svg.chart { display: block; width: 100%; }
 .tldr p { margin-bottom: .85rem; font-size: .95rem; max-width: none; }
 .tldr p:last-child { margin-bottom: 0; }
 .tldr strong { color: var(--text); }
+.tldr ul { margin: 0; padding-left: 1.2rem; }
+.tldr li { margin-bottom: .85rem; font-size: .95rem; }
+.tldr li:last-child { margin-bottom: 0; }
+.tldr li::marker { color: var(--light); }
 
 /* ── Stub sections ── */
 .stub {
@@ -216,9 +227,27 @@ svg.chart { display: block; width: 100%; }
 <body>
 
 <header class="hdr">
-  <p class="eyebrow">Bayesian Marketing Science · Ryan O'Sullivan</p>
-  <h1>How Wrong Is Your MMM?</h1>
-  <p class="tagline">A practitioner's guide to collinearity bias in Marketing Mix Models</p>
+  <div class="hdr-text">
+    <p class="eyebrow">Marketing Science · Ryan O'Sullivan</p>
+    <h1>How Wrong Is Your MMM?</h1>
+    <p class="tagline">A practitioner's guide to collinearity bias in Marketing Mix Models</p>
+  </div>
+  <svg class="hdr-icon" viewBox="0 0 100 100" aria-hidden="true">
+    <!-- Broken gauge -->
+    <circle cx="38" cy="42" r="24" fill="#f9fafb" stroke="#d1d5db" stroke-width="2"/>
+    <line x1="38" y1="21" x2="38" y2="26" stroke="#d1d5db" stroke-width="2"/>
+    <line x1="59" y1="42" x2="54" y2="42" stroke="#d1d5db" stroke-width="2"/>
+    <line x1="17" y1="42" x2="22" y2="42" stroke="#d1d5db" stroke-width="2"/>
+    <line x1="22.5" y1="26.5" x2="25.7" y2="29.7" stroke="#d1d5db" stroke-width="2"/>
+    <path d="M50,23 L56,29 L50,35 L58,41" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="38" cy="42" r="3" fill="#dc2626"/>
+    <line x1="38" y1="42" x2="53" y2="23" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Wrench fixing it -->
+    <g transform="translate(64,64) rotate(12) scale(1.9)">
+      <path d="M2.7,-5.7 a1,1 0 0,0 0,1.4 l1.6,1.6 a1,1 0 0,0 1.4,0 l3.77,-3.77 a6,6 0 0,1 -7.94,7.94 l-6.91,6.91 a2.12,2.12 0 0,1 -3,-3 l6.91,-6.91 a6,6 0 0,1 7.94,-7.94 l-3.76,3.76 z"
+        fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </svg>
 </header>
 
 <nav class="snav">
@@ -232,10 +261,74 @@ svg.chart { display: block; width: 100%; }
 
 <div class="tldr">
   <p class="s-label">TL;DR</p>
-  <p><strong>What this is.</strong> A guide to a hidden risk in Marketing Mix Models, or MMMs (statistical models that estimate how much each marketing channel contributes to sales). The output you actually use — elasticity, the modelled link between a £ of spend and the resulting change in sales — is the number ROI and budget-allocation decisions are built on.</p>
-  <p><strong>What we're showing.</strong> Marketing channels are usually collinear — their spend rises and falls together because the same planning decisions drive them all. That doesn't make your MMM biased, but it makes its elasticity estimates unstable: refit the same model on a slightly different data window and the number can swing by a third or more.</p>
-  <p><strong>How the analysis is built.</strong> Everything here is simulation-based: we generate many plausible versions of the same market — same true elasticities, different noise — fit the model to each, and measure how much the answers vary. The same method runs on your own spend data for a personalised result.</p>
-  <p><strong>Why it's worth your time.</strong> If your elasticities swing by 30%+ between refits, the ROI and budget decisions built on them are sitting on mostly noise. This guide shows how to measure that risk, and a concrete fix — budget phasing — that reduces it without touching your annual budget.</p>
+  <ul>
+    <li><strong>What this is.</strong> A guide to a hidden risk in Marketing Mix Models, or MMMs (statistical models that estimate how much each marketing channel contributes to sales). The output you actually use, elasticity (the modelled link between a £ of spend and the resulting change in sales), is the number ROI and budget-allocation decisions are built on.</li>
+    <li><strong>What we're showing.</strong> Marketing channels are usually collinear, with spend rising and falling together because the same planning decisions drive them all. That doesn't make your MMM biased, but it makes its elasticity estimates unstable: refit the same model on a slightly different data window and the number can swing by a third or more.</li>
+    <li><strong>How the analysis is built.</strong> Everything here is simulation-based: we generate many plausible versions of the same market (same true elasticities, different noise), fit the model to each, and measure how much the answers vary. The same method runs on your own spend data for a personalised result.</li>
+    <li><strong>Why it's worth your time.</strong> If your elasticities swing by 30%+ between refits, the ROI and budget decisions built on them are sitting on mostly noise. This guide shows how to measure that risk, and a concrete fix, budget phasing, that reduces it without touching your annual budget.</li>
+  </ul>
+</div>
+
+<!-- Pipeline overview figure -->
+<div class="fig" style="margin-bottom:2.75rem">
+  <div class="fig-hdr">
+    <div class="fig-title">The three-step pipeline</div>
+    <div class="fig-sub">Diagnose, then phase, then retrain, the same three steps for every practitioner and every spend history</div>
+  </div>
+  <div class="fig-body">
+    <svg class="chart" viewBox="0 0 700 210" preserveAspectRatio="xMinYMin meet">
+      <!-- Arrows -->
+      <defs>
+        <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#9ca3af"/>
+        </marker>
+      </defs>
+      <line x1="210" y1="105" x2="248" y2="105" stroke="#9ca3af" stroke-width="1.75" marker-end="url(#arrowhead)"/>
+      <line x1="445" y1="105" x2="483" y2="105" stroke="#9ca3af" stroke-width="1.75" marker-end="url(#arrowhead)"/>
+
+      <!-- Step 1: Diagnose -->
+      <g>
+        <rect x="20" y="50" width="190" height="110" rx="10" fill="#fff" stroke="#2563eb" stroke-width="1.5"/>
+        <circle cx="115" cy="40" r="13" fill="#2563eb"/>
+        <text x="115" y="45" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">1</text>
+        <!-- magnifying glass icon -->
+        <circle cx="103" cy="76" r="11" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+        <line x1="111" y1="84" x2="120" y2="93" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="115" y="112" text-anchor="middle" font-size="13" font-weight="700" fill="#111827">Diagnose</text>
+        <text x="115" y="130" text-anchor="middle" font-size="10.5" fill="#6b7280">Simulate plausible histories,</text>
+        <text x="115" y="144" text-anchor="middle" font-size="10.5" fill="#6b7280">measure the elasticity spread</text>
+      </g>
+
+      <!-- Step 2: Phase -->
+      <g>
+        <rect x="255" y="50" width="190" height="110" rx="10" fill="#fff" stroke="#d97706" stroke-width="1.5"/>
+        <circle cx="350" cy="40" r="13" fill="#d97706"/>
+        <text x="350" y="45" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">2</text>
+        <!-- shuffle icon -->
+        <path d="M332,71 L348,71 L368,89" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M362,71 L368,71 L368,77" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M332,89 L348,89 L368,71" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M362,89 L368,89 L368,83" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="350" y="112" text-anchor="middle" font-size="13" font-weight="700" fill="#111827">Phase</text>
+        <text x="350" y="130" text-anchor="middle" font-size="10.5" fill="#6b7280">De-correlate the weekly split,</text>
+        <text x="350" y="144" text-anchor="middle" font-size="10.5" fill="#6b7280">monthly totals stay identical</text>
+      </g>
+
+      <!-- Step 3: Retrain -->
+      <g>
+        <rect x="490" y="50" width="190" height="110" rx="10" fill="#fff" stroke="#059669" stroke-width="1.5"/>
+        <circle cx="585" cy="40" r="13" fill="#059669"/>
+        <text x="585" y="45" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">3</text>
+        <!-- refresh/retrain icon -->
+        <path d="M576,68 A12,12 0 1 1 573,84" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M573,77 L573,84 L580,84" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="585" y="112" text-anchor="middle" font-size="13" font-weight="700" fill="#111827">Retrain</text>
+        <text x="585" y="130" text-anchor="middle" font-size="10.5" fill="#6b7280">Refit on the phased data,</text>
+        <text x="585" y="144" text-anchor="middle" font-size="10.5" fill="#6b7280">get measurably tighter estimates</text>
+      </g>
+    </svg>
+  </div>
+  <p class="fig-cap">One pipeline, three steps. The diagnostic quantifies how unreliable your elasticities are today. Phasing recommends a de-correlated spend schedule that preserves monthly totals exactly. Retraining on that new data is where the payoff lands, tighter elasticity estimates without waiting years for it to happen naturally.</p>
 </div>
 
 <!-- ═══════════════════════════════════════════════════
@@ -247,7 +340,7 @@ svg.chart { display: block; width: 100%; }
 
   <p>Every MMM produces numbers: TV elasticity 0.42, Meta elasticity 0.28, Search elasticity 0.51. These numbers feed into budget recommendations, agency briefs, and board decks. The question most practitioners don't ask often enough is: <em>how much should we trust them?</em></p>
 
-  <p>For most marketing datasets, the honest answer is less than you think — not because the model is broken, but because the data was never designed to answer the question.</p>
+  <p>For most marketing datasets, the honest answer is less than you think, not because the model is broken, but because the data was never designed to answer the question.</p>
 
   <h3>Why channels move together</h3>
 
@@ -284,28 +377,28 @@ svg.chart { display: block; width: 100%; }
       </div>
       <svg class="chart" id="chart1" viewBox="0 0 700 250" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">All three channels follow the same underlying demand rhythm. When business conditions drive one channel up, they all go up — because the same planning cycle and demand signals control all of them.</p>
+    <p class="fig-cap">All three channels follow the same underlying demand rhythm. When business conditions drive one channel up, they all go up, because the same planning cycle and demand signals control all of them.</p>
   </div>
 
-  <p>This is not a modelling problem — it's a data design problem. Real marketing data is generated by business decisions, not experiments. And business decisions, by nature, are coordinated.</p>
+  <p>This is not a modelling problem, it's a data design problem. Real marketing data is generated by business decisions, not experiments. And business decisions, by nature, are coordinated.</p>
 
   <h3>What this does to your MMM</h3>
 
   <p>An MMM estimates each channel's contribution by asking: "holding everything else constant, what does an extra pound of TV spend do to sales?" But if TV is always high when Meta is also high, the model never observes TV-high with Meta-low. It can't hold everything else constant, because nothing ever varies independently.</p>
 
-  <p>The result is that the model has to split the credit between channels that always moved together — and it does so inconsistently: which channel gets the credit can change a lot depending on small, essentially random differences in the data you happened to use. The elasticity estimates are unstable: small changes to the training window or the data vintage can shift the answer substantially.</p>
+  <p>The result is that the model has to split the credit between channels that always moved together, and it does so inconsistently: which channel gets the credit can change a lot depending on small, essentially random differences in the data you happened to use. The elasticity estimates are unstable: small changes to the training window or the data vintage can shift the answer substantially.</p>
 
   <div class="callout">
-    <p>Collinearity doesn't make the average estimate wrong. It makes any given estimate <em>unreliable</em> — sensitive to which period of data you used, which quarter you refitted, and what noise happened to turn up in your training window.</p>
+    <p>Collinearity doesn't make the average estimate wrong. It makes any given estimate <em>unreliable</em>, sensitive to which period of data you used, which quarter you refitted, and what noise happened to turn up in your training window.</p>
   </div>
 
   <h3>Variance, not bias</h3>
 
-  <p>This is the key technical point — and it matters for how you think about the problem. OLS (ordinary least squares, the standard regression method behind most MMMs) is still <em>unbiased</em> with correlated predictors. Given enough independent data, the average estimate would converge on the truth. The problem is that you don't have enough independent data, and you never will: 2–5 years of weekly observations, trying to identify 10–20 parameters in a world where channels have barely moved independently.</p>
+  <p>This is the key technical point, and it matters for how you think about the problem. OLS (ordinary least squares, the standard regression method behind most MMMs) is still <em>unbiased</em> with correlated predictors. Given enough independent data, the average estimate would converge on the truth. The problem is that you don't have enough independent data, and you never will: 2–5 years of weekly observations, trying to identify 10–20 parameters in a world where channels have barely moved independently.</p>
 
-  <p>What you get instead is high variance: estimates that are centred near the truth on average, but swing widely in practice. Your specific TV elasticity — the number in your budget model — is one draw from a wide distribution. A company in the same market, with the same true elasticities, but a slightly different observation window, would get a different number.</p>
+  <p>What you get instead is high variance: estimates that are centred near the truth on average, but swing widely in practice. Your specific TV elasticity (the number in your budget model) is one draw from a wide distribution. A company in the same market, with the same true elasticities, but a slightly different observation window, would get a different number.</p>
 
-  <p>Below: three channels, known true elasticities (TV 0.30, Meta 0.50, Search 0.40), mean pairwise correlation (the average correlation across every pair of channels) of 0.70. We simulate 50 plausible histories of the same market — same truth, different noise draws — and fit OLS to each one.</p>
+  <p>Below: three channels, known true elasticities (TV 0.30, Meta 0.50, Search 0.40), mean pairwise correlation (the average correlation across every pair of channels) of 0.70. We simulate 50 plausible histories of the same market (same truth, different noise draws) and fit OLS to each one.</p>
 
   <!-- Figure 2: Elasticity estimate distribution -->
   <div class="fig">
@@ -316,36 +409,36 @@ svg.chart { display: block; width: 100%; }
     <div class="fig-body">
       <svg class="chart" id="chart2" viewBox="0 0 700 210" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Each dot is one OLS estimate from a plausible realisation of the same market. Vertical lines mark the true elasticity for each channel. The shaded band is the 80% interval across seeds. TV: true 0.30, 80% range [0.20, 0.46]. Meta: true 0.50, 80% range [0.34, 0.66]. Search: true 0.40, 80% range [0.11, 0.62] — note the span is wider than the true value itself.</p>
+    <p class="fig-cap">Each dot is one OLS estimate from a plausible realisation of the same market. Vertical lines mark the true elasticity for each channel. The shaded band is the 80% interval across seeds. TV: true 0.30, 80% range [0.20, 0.46]. Meta: true 0.50, 80% range [0.34, 0.66]. Search: true 0.40, 80% range [0.11, 0.62], note the span is wider than the true value itself.</p>
   </div>
 
-  <p>The coefficient of variation — standard deviation divided by mean estimate — measures how unstable the estimates are relative to their magnitude. In the simulation above (mean pairwise correlation 0.70), TV elasticity has a CV of 36%. That means if you refitted the same model on a slightly different data window, your number could shift by a third in either direction, not because the market changed, but because the data was never informative enough to pin it down.</p>
+  <p>The coefficient of variation (standard deviation divided by mean estimate) measures how unstable the estimates are relative to their magnitude. In the simulation above (mean pairwise correlation 0.70), TV elasticity has a CV of 36%. That means if you refitted the same model on a slightly different data window, your number could shift by a third in either direction, not because the market changed, but because the data was never informative enough to pin it down.</p>
 
   <div class="knums">
     <div class="kbox">
       <div class="corr">Channel correlation 0.3</div>
       <div class="num" style="color:#059669">18%</div>
-      <div class="lab">TV elasticity CV — estimates are stable and broadly trustworthy</div>
+      <div class="lab">TV elasticity CV: estimates are stable and broadly trustworthy</div>
     </div>
     <div class="kbox">
       <div class="corr">Channel correlation 0.7</div>
       <div class="num" style="color:#d97706">36%</div>
-      <div class="lab">TV elasticity CV — meaningful uncertainty; treat estimates with caution</div>
+      <div class="lab">TV elasticity CV: meaningful uncertainty; treat estimates with caution</div>
     </div>
     <div class="kbox">
       <div class="corr">Channel correlation 0.9</div>
       <div class="num" style="color:#dc2626">60%</div>
-      <div class="lab">TV elasticity CV — estimates are largely noise; the model can say almost anything</div>
+      <div class="lab">TV elasticity CV: estimates are largely noise; the model can say almost anything</div>
     </div>
   </div>
 
   <h3>Why this matters more than you might think</h3>
 
-  <p>Practitioners see this every time they refit. TV elasticity was 0.42 last quarter; now it's 0.31. The market hasn't changed. The model hasn't changed. Three more months of correlated data shifted the answer by 26%. That's high-variance estimation in practice — not a sign of a broken model, but a sign that the data never gave the model enough to work with.</p>
+  <p>Practitioners see this every time they refit. TV elasticity was 0.42 last quarter; now it's 0.31. The market hasn't changed. The model hasn't changed. Three more months of correlated data shifted the answer by 26%. That's high-variance estimation in practice, not a sign of a broken model, but a sign that the data never gave the model enough to work with.</p>
 
   <p>Most teams respond by investigating the model: different priors, different transformations, different baseline specifications. This rarely helps, because the problem isn't the model. The problem is the data design. Channels that always moved together can't be reliably distinguished by any estimation method, however sophisticated.</p>
 
-  <p>The question isn't whether your MMM is biased. It probably isn't. The question is whether the data you gave it contained enough independent variation to pin down the channel effects — or whether the number it produced is just one of many equally plausible answers.</p>
+  <p>The question isn't whether your MMM is biased. It probably isn't. The question is whether the data you gave it contained enough independent variation to pin down the channel effects, or whether the number it produced is just one of many equally plausible answers.</p>
 
   <div class="up-next">
     <strong>Next:</strong> <a href="#diagnostic" style="color:inherit">Section 2 — The Diagnostic</a> quantifies this unreliability for your specific spend data, using your actual channel correlation structure to produce a personalised answer to "how wrong is your MMM?"
@@ -360,19 +453,19 @@ svg.chart { display: block; width: 100%; }
   <p class="s-label">Section 2</p>
   <h2>The Diagnostic</h2>
 
-  <p>Section 1 showed <em>why</em> collinearity causes unreliability. This section turns that into a number — a concrete, personalised answer to <em>how wrong is my MMM?</em></p>
+  <p>Section 1 showed <em>why</em> collinearity causes unreliability. This section turns that into a number: a concrete, personalised answer to <em>how wrong is my MMM?</em></p>
 
-  <p>The approach is simulation. We treat the problem as a thought experiment: if we could run the same market many times over, same true elasticities but different noise realisations, how much would the estimated elasticities vary? The spread of those estimates — quantified by the coefficient of variation — is the unreliability score.</p>
+  <p>The approach is simulation. We treat the problem as a thought experiment: if we could run the same market many times over, same true elasticities but different noise realisations, how much would the estimated elasticities vary? The spread of those estimates (quantified by the coefficient of variation) is the unreliability score.</p>
 
   <h3>The coefficient of variation</h3>
 
-  <p>The coefficient of variation (CV) is a simple ratio: standard deviation of the estimated elasticity divided by its mean. A CV of 10% means estimates cluster tightly around their average — the model gives consistent answers across different data realisations. A CV of 40% means estimates swing wildly; the answer your specific dataset produced could easily be half or double the truth.</p>
+  <p>The coefficient of variation (CV) is a simple ratio: standard deviation of the estimated elasticity divided by its mean. A CV of 10% means estimates cluster tightly around their average: the model gives consistent answers across different data realisations. A CV of 40% means estimates swing wildly; the answer your specific dataset produced could easily be half or double the truth.</p>
 
   <p>CV is more informative than a raw standard error (a measure of an estimate's precision, in the same units as the estimate itself) because it's relative to the magnitude of the estimate. A standard error of 0.05 means something very different if the elasticity is 0.10 versus 0.50. CV normalises this, making channels and models directly comparable.</p>
 
   <h3>How unreliability scales with correlation</h3>
 
-  <p>Our simulations show this relationship between channel correlation and CV is not linear — it accelerates. Moving from correlation 0.3 to 0.5 roughly doubles TV elasticity CV. Moving from 0.5 to 0.9 more than doubles it again. At 0.9, the CV exceeds 50% for every channel — the model is producing more noise than signal.</p>
+  <p>Our simulations show this relationship between channel correlation and CV is not linear, it accelerates. Moving from correlation 0.3 to 0.5 roughly doubles TV elasticity CV. Moving from 0.5 to 0.9 more than doubles it again. At 0.9, the CV exceeds 50% for every channel, the model is producing more noise than signal.</p>
 
   <!-- Chart 3: CV vs correlation -->
   <div class="fig">
@@ -383,18 +476,18 @@ svg.chart { display: block; width: 100%; }
     <div class="fig-body">
       <svg class="chart" id="chart3" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">CV is the standard deviation of the estimated elasticity divided by its mean — a measure of how much the answer changes across plausible realisations of the same market. At correlation 0.3 (CV 18%), estimates are noisy but directionally consistent. At 0.7 (CV 36%), a third of the estimate's magnitude is unexplained variance. At 0.9 (CV 60%), the model is largely guessing.</p>
+    <p class="fig-cap">CV is the standard deviation of the estimated elasticity divided by its mean, a measure of how much the answer changes across plausible realisations of the same market. At correlation 0.3 (CV 18%), estimates are noisy but directionally consistent. At 0.7 (CV 36%), a third of the estimate's magnitude is unexplained variance. At 0.9 (CV 60%), the model is largely guessing.</p>
   </div>
 
-  <p>The practical inflection is around 0.6–0.7. Below that, the model is imprecise but still directionally useful — estimates are scattered but mostly on the right side of zero. Above 0.7, estimates become genuinely unreliable: the direction of the error is unpredictable, and the specific number your model produced is one of many equally defensible answers.</p>
+  <p>The practical inflection is around 0.6–0.7. Below that, the model is imprecise but still directionally useful: estimates are scattered but mostly on the right side of zero. Above 0.7, estimates become genuinely unreliable: the direction of the error is unpredictable, and the specific number your model produced is one of many equally defensible answers.</p>
 
-  <p>Most real marketing datasets sit between 0.5 and 0.8. That's the zone where collinearity is doing real damage — not obvious enough to flag, but severe enough to make budget decisions based on the output genuinely risky.</p>
+  <p>Most real marketing datasets sit between 0.5 and 0.8. That's the zone where collinearity is doing real damage, not obvious enough to flag, but severe enough to make budget decisions based on the output genuinely risky.</p>
 
   <h3>The personalised diagnostic</h3>
 
-  <p>Generic thresholds are useful benchmarks, but the most informative diagnostic uses your own spend data — your actual channel correlation structure — rather than a synthetic example.</p>
+  <p>Generic thresholds are useful benchmarks, but the most informative diagnostic uses your own spend data (your actual channel correlation structure) rather than a synthetic example.</p>
 
-  <p>The approach sidesteps the obvious problem: you don't know the true elasticities, which is the whole reason you ran the MMM. The diagnostic works around this by assigning plausible elasticities, simulating what sales would look like if those were true, then measuring how consistently OLS recovers them from your actual spend data. The collinearity — the thing driving unreliability — comes entirely from your real spend history. The sales simulation is just scaffolding to measure it.</p>
+  <p>The approach sidesteps the obvious problem: you don't know the true elasticities, which is the whole reason you ran the MMM. The diagnostic works around this by assigning plausible elasticities, simulating what sales would look like if those were true, then measuring how consistently OLS recovers them from your actual spend data. The collinearity (the thing driving unreliability) comes entirely from your real spend history. The sales simulation is just scaffolding to measure it.</p>
 
   <p>The output is an elasticity interval per channel: not a point estimate, but a range. "Given how your channels actually moved over the last two years, your TV elasticity could plausibly be anywhere from X to Y." That range quantifies the unreliability in your specific data.</p>
 
@@ -407,7 +500,7 @@ svg.chart { display: block; width: 100%; }
     <div class="fig-body">
       <svg class="chart" id="chart4" viewBox="0 0 700 200" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">A narrow interval means the channels varied independently enough for the model to distinguish their effects. A wide interval — especially one spanning more than the estimate itself — means the data design has failed: the number in your budget model is one of many equally plausible answers. Search typically shows the widest interval because it correlates most tightly with overall business activity.</p>
+    <p class="fig-cap">A narrow interval means the channels varied independently enough for the model to distinguish their effects. A wide interval (especially one spanning more than the estimate itself) means the data design has failed: the number in your budget model is one of many equally plausible answers. Search typically shows the widest interval because it correlates most tightly with overall business activity.</p>
   </div>
 
   <h3>Reading the output</h3>
@@ -418,7 +511,7 @@ svg.chart { display: block; width: 100%; }
 
   <p><strong>Which channels are worst affected.</strong> Search almost always shows wider intervals than TV or Meta, because search spend tracks overall business activity most tightly. If Search has a very wide interval, treat its elasticity as a rough order-of-magnitude indicator, not a number to optimise against.</p>
 
-  <p><strong>How intervals change over refits.</strong> Run the diagnostic quarterly. Widening intervals mean your spend has become more correlated over time — tighter campaign coordination, reduced mix variation. Narrowing intervals mean the data design is improving.</p>
+  <p><strong>How intervals change over refits.</strong> Run the diagnostic quarterly. Widening intervals mean your spend has become more correlated over time: tighter campaign coordination, reduced mix variation. Narrowing intervals mean the data design is improving.</p>
 
   <div class="up-next">
     <strong>Next:</strong> Section 3 — The Fix shows how to deliberately reduce channel correlation in your spend plan, narrowing those intervals without touching monthly or annual budget totals.
@@ -429,15 +522,15 @@ svg.chart { display: block; width: 100%; }
   <p class="s-label">Section 3</p>
   <h2>The Fix</h2>
 
-  <p>The diagnostic tells you how unreliable your elasticities are. The fix reduces that unreliability — and it doesn't require changing your annual budget, your channel mix, or your campaign strategy.</p>
+  <p>The diagnostic tells you how unreliable your elasticities are. The fix reduces that unreliability, and it doesn't require changing your annual budget, your channel mix, or your campaign strategy.</p>
 
-  <p>The idea is simple: vary the <em>weekly split</em> between channels independently, while keeping monthly totals exactly the same. If TV is heavier in week one, let Meta be lighter — and vice versa the following week. Over time, the channels stop moving in lockstep. The MMM starts to see TV-high / Meta-low periods alongside TV-low / Meta-high periods, and can begin to distinguish their effects.</p>
+  <p>The idea is simple: vary the <em>weekly split</em> between channels independently, while keeping monthly totals exactly the same. If TV is heavier in week one, let Meta be lighter, and vice versa the following week. Over time, the channels stop moving in lockstep. The MMM starts to see TV-high / Meta-low periods alongside TV-low / Meta-high periods, and can begin to distinguish their effects.</p>
 
   <h3>The mechanism</h3>
 
   <p>Within each calendar month, redistribute each channel's weekly spend randomly. One month, TV gets more budget in the first two weeks; the next month, the last two. Meta does the same independently. At the end of each month, rescale so the channel's monthly total is exactly preserved.</p>
 
-  <p>The media agency sees the same monthly booking. The annual budget is untouched. The only thing that changes is the within-month timing — which the business already adjusts informally for flights and promotional peaks. What's new is making that adjustment deliberately, independently, and consistently across all channels.</p>
+  <p>The media agency sees the same monthly booking. The annual budget is untouched. The only thing that changes is the within-month timing, which the business already adjusts informally for flights and promotional peaks. What's new is making that adjustment deliberately, independently, and consistently across all channels.</p>
 
   <!-- Chart 5: Before / after weekly spend -->
   <div class="fig">
@@ -462,14 +555,14 @@ svg.chart { display: block; width: 100%; }
       </div>
       <svg class="chart" id="chart5" viewBox="0 0 700 230" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Left: original plan — TV and Meta follow the same weekly rhythm (channel correlation 0.68). Right: phased plan — weekly split varies independently per channel, monthly totals unchanged (correlation drops to ~0.2). The MMM can now observe TV-high / Meta-low weeks alongside TV-low / Meta-high weeks.</p>
+    <p class="fig-cap">Left: original plan, TV and Meta follow the same weekly rhythm (channel correlation 0.68). Right: phased plan, weekly split varies independently per channel, monthly totals unchanged (correlation drops to ~0.2). The MMM can now observe TV-high / Meta-low weeks alongside TV-low / Meta-high weeks.</p>
   </div>
 
   <h3>How much variation to introduce, and how we pick it</h3>
 
-  <p>The amplitude of the phasing — how aggressively the weekly split is reshuffled — is the main dial. We choose it by grid search: testing a range of amplitudes, measuring the resulting CV at each, and recommending the amplitude that minimises the <em>worst-case</em> CV across channels — not the average, the worst case, so no single channel is left unreliable. More variation de-correlates channels faster and produces greater CV reduction; less variation is operationally easier but takes longer to show up in the model.</p>
+  <p>The amplitude of the phasing (how aggressively the weekly split is reshuffled) is the main dial. We choose it by grid search: testing a range of amplitudes, measuring the resulting CV at each, and recommending the amplitude that minimises the <em>worst-case</em> CV across channels, not the average, the worst case, so no single channel is left unreliable. More variation de-correlates channels faster and produces greater CV reduction; less variation is operationally easier but takes longer to show up in the model.</p>
 
-  <p>Our research shows this relationship is roughly linear: each additional 10 percentage points of weekly deviation produces approximately the same incremental improvement. There's no cliff edge or discontinuity — just a smooth trade-off between aggressiveness and benefit.</p>
+  <p>Our research shows this relationship is roughly linear: each additional 10 percentage points of weekly deviation produces approximately the same incremental improvement. There's no cliff edge or discontinuity, just a smooth trade-off between aggressiveness and benefit.</p>
 
   <!-- Chart 6: CV reduction vs deviation amplitude -->
   <div class="fig">
@@ -480,18 +573,18 @@ svg.chart { display: block; width: 100%; }
     <div class="fig-body">
       <svg class="chart" id="chart6" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">At ±40% weekly deviation (a moderate level that most agencies can accommodate), phasing reduces maximum elasticity uncertainty by ~30% after one year. At ±80%, the reduction reaches ~53%. The payoff is roughly linear — there is no magic threshold, just more de-correlation for more variation.</p>
+    <p class="fig-cap">At ±40% weekly deviation (a moderate level that most agencies can accommodate), phasing reduces maximum elasticity uncertainty by ~30% after one year. At ±80%, the reduction reaches ~53%. The payoff is roughly linear, there is no magic threshold, just more de-correlation for more variation.</p>
   </div>
 
   <h3>What you get</h3>
 
-  <p>The output of the phasing recommendation is a concrete 52-week spend schedule: one number per channel per week, with monthly totals guaranteed to match the original plan exactly. This is what you hand to the media agency — not a strategy document or a framework, but a booking grid.</p>
+  <p>The output of the phasing recommendation is a concrete 52-week spend schedule: one number per channel per week, with monthly totals guaranteed to match the original plan exactly. This is what you hand to the media agency, not a strategy document or a framework, but a booking grid.</p>
 
-  <p>In a real dataset (4 years of history, 1 year of plan, correlation 0.68), a ±37% weekly deviation produces a 12% reduction in maximum CV after one year of phasing. That sounds modest, and it is — because four years of correlated history dilutes one year of de-correlated plan data. Section 4 addresses this directly: how long does phasing need to run before the improvement becomes material?</p>
+  <p>In a real dataset (4 years of history, 1 year of plan, correlation 0.68), a ±37% weekly deviation produces a 12% reduction in maximum CV after one year of phasing. That sounds modest, and it is, because four years of correlated history dilutes one year of de-correlated plan data. Section 4 addresses this directly: how long does phasing need to run before the improvement becomes material?</p>
 
   <h3>What this isn't</h3>
 
-  <p>Budget phasing is not A/B testing, and it's not a geo-experiment. You don't need a control group. You don't need to sacrifice efficiency in some markets to learn in others. The spend still goes where it was always going — the timing just varies more. The data design improvement is a by-product of normal media operations, not a separate experiment running in parallel.</p>
+  <p>Budget phasing is not A/B testing, and it's not a geo-experiment. You don't need a control group. You don't need to sacrifice efficiency in some markets to learn in others. The spend still goes where it was always going, the timing just varies more. The data design improvement is a by-product of normal media operations, not a separate experiment running in parallel.</p>
 
   <div class="up-next">
     <strong>Next:</strong> <a href="#timeline" style="color:inherit">Section 4 — Time to Benefit</a> shows how the improvement accumulates over time, and how aggressively you need to phase to see a material reduction within one to two years.
@@ -502,7 +595,7 @@ svg.chart { display: block; width: 100%; }
   <p class="s-label">Section 4</p>
   <h2>Time to Benefit</h2>
 
-  <p>Section 3 showed what to do. This section answers how long it takes — and how aggressively you need to phase to see a material improvement within a typical planning horizon.</p>
+  <p>Section 3 showed what to do. This section answers how long it takes, and how aggressively you need to phase to see a material improvement within a typical planning horizon.</p>
 
   <p>The short answer: one year of phasing against four years of correlated history produces a modest improvement (around 12–30% CV reduction, depending on deviation amplitude). The benefit is real, but it takes time to compound. As phased periods accumulate, they displace correlated history and the model becomes progressively more reliable.</p>
 
@@ -545,7 +638,7 @@ svg.chart { display: block; width: 100%; }
       </div>
       <svg class="chart" id="chart7" viewBox="0 0 700 270" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Each line shows average CV reduction across channels as the phased period grows, holding 4 years of correlated history fixed. The phased curves are monotonically increasing (more phasing always helps). The unphased curve oscillates and climbs only slowly — more correlated data does eventually reduce uncertainty, but unreliably, far more slowly than deliberate phasing, and in some periods it temporarily makes things worse. Data: 50 seeds per point, uniform weighting.</p>
+    <p class="fig-cap">Each line shows average CV reduction across channels as the phased period grows, holding 4 years of correlated history fixed. The phased curves are monotonically increasing (more phasing always helps). The unphased curve oscillates and climbs only slowly, more correlated data does eventually reduce uncertainty, but unreliably, far more slowly than deliberate phasing, and in some periods it temporarily makes things worse. Data: 50 seeds per point, uniform weighting.</p>
   </div>
 
   <h3>Reading the chart</h3>
@@ -554,7 +647,7 @@ svg.chart { display: block; width: 100%; }
 
   <p><strong>Time and aggressiveness are substitutes.</strong> ±80% deviation reaches ~53% CV reduction in one year. ±40% deviation needs roughly 2.5 years to reach the same level. If your planning horizon is short, use a higher deviation amplitude. If you have three or more years, moderate deviation is sufficient and operationally easier to maintain.</p>
 
-  <p><strong>Unphased data helps eventually, but slowly and unreliably.</strong> The grey dashed line oscillates — positive in some periods, negative in others — and only catches up to even the lightest phasing (±20% deviation) after five years. This is the key finding from our research: collinearity-driven unreliability doesn't fix itself quickly just by adding more observations. More data does help over the long run, but deliberate mix variation gets you a comparable benefit years sooner, and more predictably.</p>
+  <p><strong>Unphased data helps eventually, but slowly and unreliably.</strong> The grey dashed line oscillates (positive in some periods, negative in others) and only catches up to even the lightest phasing (±20% deviation) after five years. This is the key finding from our research: collinearity-driven unreliability doesn't fix itself quickly just by adding more observations. More data does help over the long run, but deliberate mix variation gets you a comparable benefit years sooner, and more predictably.</p>
 
   <p><strong>The improvement is monotonic but slowing.</strong> The biggest gains come in the first year. By year 2–3 the curve flattens, because the phased period is large enough to dominate the history and further accumulation produces diminishing returns. For most teams, year 1 delivers the most meaningful uplift relative to effort.</p>
 
@@ -562,17 +655,17 @@ svg.chart { display: block; width: 100%; }
     <div class="kbox">
       <div class="corr">±80% deviation · 1 year</div>
       <div class="num" style="color:#1d4ed8">53%</div>
-      <div class="lab">CV reduction — aggressive but fast; viable where agencies accept high weekly volatility</div>
+      <div class="lab">CV reduction: aggressive but fast; viable where agencies accept high weekly volatility</div>
     </div>
     <div class="kbox">
       <div class="corr">±40% deviation · 1 year</div>
       <div class="num" style="color:#60a5fa">30%</div>
-      <div class="lab">CV reduction — moderate; practical for most planning teams within normal booking tolerances</div>
+      <div class="lab">CV reduction: moderate; practical for most planning teams within normal booking tolerances</div>
     </div>
     <div class="kbox">
       <div class="corr">±40% deviation · 2.5 years</div>
       <div class="num" style="color:#60a5fa">55%</div>
-      <div class="lab">CV reduction — same endpoint as ±80% after 1 year, reached by running longer at lower amplitude</div>
+      <div class="lab">CV reduction: same endpoint as ±80% after 1 year, reached by running longer at lower amplitude</div>
     </div>
   </div>
 
@@ -580,11 +673,11 @@ svg.chart { display: block; width: 100%; }
 
   <p>The four sections of this guide tell one story:</p>
 
-  <p>Marketing channels move together because business decisions are coordinated. That correlation doesn't bias your MMM — but it makes the elasticity estimates unreliable. The specific numbers your model produced are one draw from a wide distribution; a slightly different data window would give a different answer. The coefficient of variation quantifies exactly how wide that distribution is for your specific spend history.</p>
+  <p>Marketing channels move together because business decisions are coordinated. That correlation doesn't bias your MMM, but it makes the elasticity estimates unreliable. The specific numbers your model produced are one draw from a wide distribution; a slightly different data window would give a different answer. The coefficient of variation quantifies exactly how wide that distribution is for your specific spend history.</p>
 
   <p>The fix is to vary the weekly channel split independently within each month, preserving monthly totals exactly. This introduces the kind of natural variation that lets the model distinguish individual channel effects. The improvement compounds over time: the more phased periods accumulate in the training data, the more reliable the elasticity estimates become.</p>
 
-  <p>This is not a complex statistical intervention. It's a deliberate data design choice — the same logic that motivates geo-experiments in paid search, applied to the temporal dimension of channel mix planning.</p>
+  <p>This is not a complex statistical intervention. It's a deliberate data design choice: the same logic that motivates geo-experiments in paid search, applied to the temporal dimension of channel mix planning.</p>
 
   <div class="callout">
     <p>The question isn't whether to trust your MMM. It's whether your data gave it a fair chance. Budget phasing is how you give it one.</p>
