@@ -419,6 +419,28 @@ Streamlit app: practitioners upload their own spend CSV → personalised diagnos
 - **The `_noise_std_from_correlation` derivation.** If TV = demand + noise, Meta = demand + noise (all N(0,1)), then Corr(TV, Meta) = 1/(1 + sigma²). Solve: sigma = sqrt((1-corr)/corr). This gives target correlation ≈ actual correlation for large n_obs but diverges at small samples — the actual correlation reported by `actual_correlation` is what matters for the notebook.
 - **Actual correlation ≠ target correlation at n_obs=104.** The target is a population parameter; the actual is a sample statistic. Always report actual in the notebook, not target.
 
+## Status as of session 11 (2026-07-01, README + guide copy pass round 2)
+
+- **Branch:** `feat/guide-copy-pass-2` (off `feat/readme-pages-link`, which is still awaiting PR/merge from session 10).
+- **README.md:**
+  - Part 3 reframed from "Weight" (upweighting, which research showed wasn't worthwhile, see session 5/7) to **"Retrain"**: phase the plan, then refit the MMM on the new de-correlated data for measurably tighter estimates. Matches how the package actually works, no standalone weighting class exists.
+  - Removed "Outputs committed, view without running" line above the notebooks table (no longer needed).
+  - Practitioner guide link trimmed to just the linked title, dropped the trailing description.
+- **docs/guide.html:**
+  - Eyebrow changed from "Bayesian Marketing Science" to "Marketing Science".
+  - TL;DR rewritten as a 4-item bulleted list (was 4 paragraphs).
+  - New pipeline figure added right after the TL;DR: left-to-right SVG diagram, Diagnose → Phase → Retrain, icons + one-line captions per step.
+  - New top-right header graphic: broken gauge (cracked, skewed needle) with a wrench fixing it, inline SVG, no external image dependency.
+  - Full copy pass converting em-dash constructions to Ryan's preferred comma/colon/parenthetical style throughout all four sections (title tag, HTML comment section markers, "Next:" nav labels, and JS code comments left as-is, those are titles/code not prose).
+- Both new SVG pieces rendered and visually checked (cairosvg) before handoff.
+- Not yet committed. Ryan to review, commit, and push from local terminal (sandbox can't reliably git commit, see below).
+
+## Next slice
+
+- Review `feat/guide-copy-pass-2` diff, commit, push, open PR against `feat/readme-pages-link` (or rebase onto main once that one merges).
+- Still pending from session 10: merge `feat/readme-pages-link`.
+- £-translation feature and LinkedIn post still on the table after these land.
+
 ## Workflow reminder
 
 Pushes to `main` are rejected once branch protection is set up. Always work on a feature branch:
