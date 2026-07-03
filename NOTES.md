@@ -421,7 +421,7 @@ Streamlit app: practitioners upload their own spend CSV → personalised diagnos
 
 ## Status as of session 11 (2026-07-01, README + guide copy pass round 2)
 
-- **Branch:** `feat/guide-copy-pass-2` (off `feat/readme-pages-link`, which is still awaiting PR/merge from session 10).
+- **Branch:** `feat/guide-copy-pass-2`. Note: `feat/readme-pages-link` (session 10) merged to `main` on 2026-06-30, ahead of when this branch was cut, so it needed a rebase onto `main` before its own PR.
 - **README.md:**
   - Part 3 reframed from "Weight" (upweighting, which research showed wasn't worthwhile, see session 5/7) to **"Retrain"**: phase the plan, then refit the MMM on the new de-correlated data for measurably tighter estimates. Matches how the package actually works, no standalone weighting class exists.
   - Removed "Outputs committed, view without running" line above the notebooks table (no longer needed).
@@ -435,11 +435,38 @@ Streamlit app: practitioners upload their own spend CSV → personalised diagnos
 - Both new SVG pieces rendered and visually checked (cairosvg) before handoff.
 - Not yet committed. Ryan to review, commit, and push from local terminal (sandbox can't reliably git commit, see below).
 
-## Next slice
+## Next slice (locked session 11 — remaining focus, in order)
 
-- Review `feat/guide-copy-pass-2` diff, commit, push, open PR against `feat/readme-pages-link` (or rebase onto main once that one merges).
-- Still pending from session 10: merge `feat/readme-pages-link`.
-- £-translation feature and LinkedIn post still on the table after these land.
+1. **Remove sampling weights entirely.** Confirmed not worthwhile (session 7 research: uniform weighting always wins, binary/decay actively hurt). Strip `weighting`/`plan_weight`/`half_life` params and `_compute_weights` from `BudgetPhaser`, and the `weights` argument from `fit_ols`/`CollinearityDiagnostic`. Back to plain OLS throughout. Update tests and notebooks (02, 03) that reference weighting schemes.
+2. **K-channel realism sweep.** Run simulations at 5, 10, 15, 20 channels — everything so far has used the 3-channel TV/Meta/Search toy example. `BudgetPhaser` v2 is already N-channel generalised (session 4); this is about actually validating diagnostic + phasing behaviour at realistic channel counts, not just proving the 2–3 channel case.
+3. **New HTML guide section** presenting the channel-count sweep results (new section 5, or folded into an existing one — decide when the numbers are in).
+4. **Final text/copy review pass** on the whole guide + README once the above land — one more read-through before treating the guide as finished.
+5. **PyPI packaging.** Get `how_wrong_is_your_mmm` actually pip-installable — README already says `pip install how-wrong-is-your-mmm  # coming to PyPI`, need to make that true (build, publish, update the comment).
+
+£-translation feature and LinkedIn post are parked behind this list, not dropped.
+
+## Status as of session 12 (2026-07-03, sampling weights removed)
+
+- **Item 1 of the session 11 next-slice list complete: sampling weights removed entirely.**
+  - `_mmm.py`: `fit_ols` no longer accepts a `weights` argument. Back to plain OLS, no WLS path.
+  - `_diagnostic.py`: `CollinearityDiagnostic` no longer accepts `weights`. Docstring updated.
+  - `_phaser.py`: `_compute_weights` helper deleted. `BudgetPhaser` no longer accepts `weighting`, `plan_weight`, or `half_life`. Module and class docstrings rewritten to describe plain OLS evaluation (history + phased plan), with a note that weighting schemes were evaluated and dropped per the session 7 research study.
+  - Tests: removed `TestFitWls` (test_mmm.py), `TestWeightedPath` (test_diagnostic.py), `TestComputeWeights` plus the weighting-specific `BudgetPhaser` tests (test_phaser.py). **65 tests passing** (down from 87 — the 22 removed were all weighting-specific).
+  - Notebook 02 (`02_phaser_walkthrough.ipynb`): dropped the "Weighting schemes" table and `weighting="binary", plan_weight=5.0` override in the `BudgetPhaser` call (this had drifted from the session 8 default-to-uniform decision anyway). Fan chart section no longer precomputes weights.
+  - Notebook 03 (`03_time_to_benefit.ipynb`): removed Section 3 (weighting sensitivity) entirely — its finding (uniform wins) is what motivated this removal, so the comparison is now moot. Section 4 renumbered to Section 3. All `weights=` computations and arguments stripped from Sections 1, 2, and the renumbered Section 3.
+  - Both notebooks re-executed end-to-end in FAST_MODE with no errors after the edits; `ruff check .` clean; `ruff format --check` clean for src/tests (the two notebooks have pre-existing formatting gaps unrelated to this change — confirmed by checking the pre-edit versions from git HEAD, not touched here to keep the diff focused).
+- **Branch:** not yet created — this session's work is uncommitted in the working tree. Ryan to create `feat/remove-sampling-weights` (or similar), commit, push, and open a PR from the local terminal (sandbox can't reliably git commit, per longstanding limitation).
+- Note: a stray `.coverage.claude.pid*` file from test runs is untracked and can't be deleted from the sandbox (permissions) — safe to ignore or delete locally; `.coverage` is already gitignored but the pid-suffixed variant doesn't match the glob exactly.
+
+## Next slice (session 11 list, item 1 done — items 2–5 remain, in order)
+
+1. ~~Remove sampling weights entirely.~~ **Done, session 12.**
+2. **K-channel realism sweep.** Run simulations at 5, 10, 15, 20 channels — everything so far has used the 3-channel TV/Meta/Search toy example. `BudgetPhaser` v2 is already N-channel generalised (session 4); this is about actually validating diagnostic + phasing behaviour at realistic channel counts, not just proving the 2–3 channel case.
+3. **New HTML guide section** presenting the channel-count sweep results (new section 5, or folded into an existing one — decide when the numbers are in).
+4. **Final text/copy review pass** on the whole guide + README once the above land — one more read-through before treating the guide as finished.
+5. **PyPI packaging.** Get `how_wrong_is_your_mmm` actually pip-installable — README already says `pip install how-wrong-is-your-mmm  # coming to PyPI`, need to make that true (build, publish, update the comment).
+
+£-translation feature and LinkedIn post are parked behind this list, not dropped.
 
 ## Workflow reminder
 

@@ -568,7 +568,7 @@ svg.chart { display: block; width: 100%; }
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">More weekly variation → greater CV reduction</div>
-      <div class="fig-sub">Max elasticity band-width reduction (%) vs max weekly deviation from original plan · 52-week phased plan · uniform weighting</div>
+      <div class="fig-sub">Max elasticity band-width reduction (%) vs max weekly deviation from original plan · 52-week phased plan</div>
     </div>
     <div class="fig-body">
       <svg class="chart" id="chart6" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
@@ -607,7 +607,7 @@ svg.chart { display: block; width: 100%; }
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Phasing compounds; correlated data doesn't</div>
-      <div class="fig-sub">Max elasticity band-width reduction (%) vs phased plan length · 4 years of correlated history fixed · uniform weighting</div>
+      <div class="fig-sub">Max elasticity band-width reduction (%) vs phased plan length · 4 years of correlated history fixed</div>
     </div>
     <div class="fig-body">
       <div class="legend">
@@ -638,7 +638,7 @@ svg.chart { display: block; width: 100%; }
       </div>
       <svg class="chart" id="chart7" viewBox="0 0 700 270" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Each line shows average CV reduction across channels as the phased period grows, holding 4 years of correlated history fixed. The phased curves are monotonically increasing (more phasing always helps). The unphased curve oscillates and climbs only slowly, more correlated data does eventually reduce uncertainty, but unreliably, far more slowly than deliberate phasing, and in some periods it temporarily makes things worse. Data: 50 seeds per point, uniform weighting.</p>
+    <p class="fig-cap">Each line shows average CV reduction across channels as the phased period grows, holding 4 years of correlated history fixed. The phased curves are monotonically increasing (more phasing always helps). The unphased curve oscillates and climbs only slowly, more correlated data does eventually reduce uncertainty, but unreliably, far more slowly than deliberate phasing, and in some periods it temporarily makes things worse. Data: 50 seeds per point.</p>
   </div>
 
   <h3>Reading the chart</h3>
@@ -1140,7 +1140,7 @@ function el(tag, attrs, text) {
   const pw = W - m.left - m.right;
   const ph = H - m.top - m.bottom;
 
-  // From notebook 03 cell 16 (amplitude sweep, 52-week plan, corr=0.7, uniform weighting)
+  // From notebook 03 cell 16 (amplitude sweep, 52-week plan, corr=0.7)
   const data = [
     { dev: 10,  red: 8.8  },
     { dev: 20,  red: 15.6 },
