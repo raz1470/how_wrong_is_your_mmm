@@ -1,6 +1,5 @@
 """Tests for _diagnostic.py — CollinearityDiagnostic."""
 
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -116,51 +115,3 @@ class TestRealSpendPath:
             spend_df=self.spend_df, true_elasticities=ELASTICITIES, correlation=0.9
         ).fit(n_sims=5)
         assert abs(diag_low.actual_correlation - diag_high.actual_correlation) < 1e-10
-
-
-class TestWeightedPath:
-    def setup_method(self):
-        self.spend_df = simulate_spend(n_obs=104, correlation=0.6, seed=0)
-        self.weights = np.ones(104)
-        self.weights[52:] = 5.0
-
-    def test_fit_runs_with_weights(self):
-        diag = CollinearityDiagnostic(
-            spend_df=self.spend_df,
-            true_elasticities=ELASTICITIES,
-            weights=self.weights,
-        ).fit(n_sims=5)
-        assert diag.results_ is not None
-
-    def test_summary_columns_unchanged(self):
-        diag = CollinearityDiagnostic(
-            spend_df=self.spend_df,
-            true_elasticities=ELASTICITIES,
-            weights=self.weights,
-        ).fit(n_sims=5)
-        assert set(diag.summary().columns) == SUMMARY_COLS
-
-    def test_uniform_weights_match_no_weights(self):
-        """Uniform weights should give identical summary to unweighted."""
-        uniform = np.ones(104)
-        diag_plain = CollinearityDiagnostic(
-            spend_df=self.spend_df, true_elasticities=ELASTICITIES
-        ).fit(n_sims=5)
-        diag_uniform = CollinearityDiagnostic(
-            spend_df=self.spend_df, true_elasticities=ELASTICITIES, weights=uniform
-        ).fit(n_sims=5)
-        pd.testing.assert_frame_equal(diag_plain.summary(), diag_uniform.summary())
-
-    def test_non_uniform_weights_change_estimates(self):
-        """Heavy upweighting of the second half should shift mean estimates."""
-        heavy = np.ones(104)
-        heavy[52:] = 100.0
-        diag_plain = CollinearityDiagnostic(
-            spend_df=self.spend_df, true_elasticities=ELASTICITIES
-        ).fit(n_sims=10)
-        diag_weighted = CollinearityDiagnostic(
-            spend_df=self.spend_df, true_elasticities=ELASTICITIES, weights=heavy
-        ).fit(n_sims=10)
-        plain_means = diag_plain.summary().set_index("channel")["mean_estimated"]
-        weighted_means = diag_weighted.summary().set_index("channel")["mean_estimated"]
-        assert not np.allclose(plain_means.values, weighted_means.values, atol=1e-6)

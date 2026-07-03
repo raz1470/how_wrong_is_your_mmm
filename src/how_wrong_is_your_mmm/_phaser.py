@@ -15,14 +15,13 @@ It grid-searches over a phasing amplitude alpha ∈ [0, 1]:
   alpha = 1  →  maximum allowed variation under the channel constraint
 
 For each alpha it generates a phased plan schedule (monthly totals preserved per
-channel), concatenates it with the history, fits a weighted CollinearityDiagnostic
-(so the plan year has more influence than the correlated history), and measures
-the max CV across channels. The recommended alpha minimises max CV.
+channel), concatenates it with the history, fits a CollinearityDiagnostic on the
+combined dataset, and measures the max CV across channels. The recommended alpha
+minimises max CV.
 
-Three weighting schemes are supported:
-  "uniform"  →  all observations weighted equally (baseline)
-  "binary"   →  history gets weight 1, plan year gets plan_weight (default 5)
-  "decay"    →  exponential decay from most recent week, parameterised by half_life
+Weighting schemes (uniform / binary / decay) were evaluated in a research study
+(session 7) and dropped: uniform weighting always outperformed upweighting the
+plan year, so the evaluation is plain OLS on history + phased plan throughout.
 
 The output is a concrete plan-year weekly spend schedule the practitioner can
 hand to their media agency, with monthly totals unchanged.
@@ -35,8 +34,6 @@ import pandas as pd
 
 from how_wrong_is_your_mmm._dgp import _DEFAULT_ELASTICITIES
 from how_wrong_is_your_mmm._diagnostic import CollinearityDiagnostic
-
-_WEIGHTING_SCHEMES = ("uniform", "binary", "decay")
 
 
 def _get_month_labels(spend_df: pd.DataFrame) -> np.ndarray:
@@ -131,54 +128,12 @@ def _max_monthly_deviation(
     return max_dev
 
 
-def _compute_weights(
-    n_history: int,
-    n_plan: int,
-    weighting: str,
-    plan_weight: float,
-    half_life: int,
-) -> np.ndarray:
-    """Compute per-observation weights for the combined history + plan dataset.
-
-    Parameters
-    ----------
-    n_history:
-        Number of historical observations (rows in history_df).
-    n_plan:
-        Number of plan-year observations (rows in plan_df).
-    weighting:
-        One of "uniform", "binary", or "decay".
-    plan_weight:
-        Weight assigned to plan-year observations under "binary" scheme.
-    half_life:
-        Number of weeks over which weight halves under "decay" scheme.
-
-    Returns
-    -------
-    np.ndarray of shape (n_history + n_plan,).
-    """
-    if weighting not in _WEIGHTING_SCHEMES:
-        raise ValueError(
-            f"weighting must be one of {_WEIGHTING_SCHEMES}. Got '{weighting}'."
-        )
-    n_total = n_history + n_plan
-    if weighting == "uniform":
-        return np.ones(n_total)
-    if weighting == "binary":
-        w = np.ones(n_total)
-        w[n_history:] = plan_weight
-        return w
-    # decay: exponential, most recent observation has weight 1
-    distances = np.arange(n_total - 1, -1, -1, dtype=float)
-    return np.exp(-np.log(2) / half_life * distances)
-
-
 class BudgetPhaser:
     """Recommend the weekly spend phasing needed to reduce elasticity uncertainty.
 
     Takes a multi-year spend history and a plan-year budget. Grid-searches over
     phasing amplitude to find the plan-year schedule that minimises max CV across
-    channels (under a weighted OLS that upweights the plan year), while preserving
+    channels (under plain OLS on history + phased plan), while preserving
     monthly budgets.
 
     Parameters
@@ -192,18 +147,6 @@ class BudgetPhaser:
     true_elasticities:
         Dict mapping channel name to true elasticity. Defaults to
         {"tv": 0.3, "meta": 0.5, "search": 0.4}.
-    weighting:
-        How to weight observations in the diagnostic OLS.
-        "uniform"  — all observations equally weighted (baseline).
-        "binary"   — history gets weight 1, plan year gets plan_weight.
-        "decay"    — exponential decay from most recent week, half-life
-                     controlled by half_life parameter.
-        Default "binary".
-    plan_weight:
-        Weight assigned to plan-year observations under "binary" weighting.
-        Default 5.0 (plan year counts 5x as much as a history week).
-    half_life:
-        Weeks over which weight halves under "decay" weighting. Default 52.
     max_monthly_deviation_pct:
         Maximum allowed fractional deviation in monthly totals per channel (%).
         Default 1.0. Enforced by construction (rescaling).
@@ -219,9 +162,6 @@ class BudgetPhaser:
         history_df: pd.DataFrame,
         plan_df: pd.DataFrame,
         true_elasticities: dict[str, float] | None = None,
-        weighting: str = "uniform",
-        plan_weight: float = 5.0,
-        half_life: int = 52,
         max_monthly_deviation_pct: float = 1.0,
         max_weekly_deviation_pct: float = 40.0,
         seed: int = 0,
@@ -234,10 +174,6 @@ class BudgetPhaser:
                 "history_df and plan_df must have the same columns. "
                 f"Got {list(history_df.columns)} vs {list(plan_df.columns)}."
             )
-        if weighting not in _WEIGHTING_SCHEMES:
-            raise ValueError(
-                f"weighting must be one of {_WEIGHTING_SCHEMES}. Got '{weighting}'."
-            )
 
         self.history_df = history_df
         self.plan_df = plan_df
@@ -246,9 +182,6 @@ class BudgetPhaser:
             if true_elasticities is not None
             else _DEFAULT_ELASTICITIES
         )
-        self.weighting = weighting
-        self.plan_weight = plan_weight
-        self.half_life = half_life
         self.max_monthly_deviation_pct = max_monthly_deviation_pct
         self.max_weekly_deviation_pct = max_weekly_deviation_pct
         self.seed = seed
@@ -268,7 +201,7 @@ class BudgetPhaser:
 
         For each alpha:
           1. Generate n_phasing_seeds independent phased plan schedules.
-          2. For each: concatenate history + phased plan, run weighted
+          2. For each: concatenate history + phased plan, run
              CollinearityDiagnostic, record per-channel CVs.
           3. Average CVs across phasing seeds — this smooths the CV curve
              so the grid search isn't driven by a single lucky/unlucky draw.
@@ -296,14 +229,6 @@ class BudgetPhaser:
             grid_steps = 10
             n_phasing_seeds = 1
 
-        weights = _compute_weights(
-            n_history=len(self.history_df),
-            n_plan=len(self.plan_df),
-            weighting=self.weighting,
-            plan_weight=self.plan_weight,
-            half_life=self.half_life,
-        )
-
         alphas = np.linspace(0, 1, grid_steps)
         channels = list(self.plan_df.columns)
         rows = []
@@ -329,7 +254,6 @@ class BudgetPhaser:
                 diag = CollinearityDiagnostic(
                     spend_df=combined,
                     true_elasticities=self.true_elasticities,
-                    weights=weights,
                 )
                 diag.fit(n_sims=n_sims)
                 summ = diag.summary().set_index("channel")

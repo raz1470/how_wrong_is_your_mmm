@@ -56,12 +56,6 @@ class CollinearityDiagnostic:
         Base sales intercept in the synthetic sales equation.
     revenue_noise_std:
         Standard deviation of sales noise.
-    weights:
-        Optional 1-D array of observation weights, length len(spend_df).
-        When supplied, each OLS fit becomes WLS — observations with higher
-        weights have more influence. Typically used by BudgetPhaser to
-        upweight the plan year relative to the correlated history.
-        None (default) gives plain OLS.
     """
 
     def __init__(
@@ -74,7 +68,6 @@ class CollinearityDiagnostic:
         spend_seed: int = 0,
         base_sales: float = 1_000.0,
         revenue_noise_std: float = 20_000.0,
-        weights: np.ndarray | None = None,
     ) -> None:
         self.correlation = correlation
         self.spend_df = spend_df
@@ -88,7 +81,6 @@ class CollinearityDiagnostic:
         self.spend_seed = spend_seed
         self.base_sales = base_sales
         self.revenue_noise_std = revenue_noise_std
-        self.weights = weights
 
         self.spend_df_: pd.DataFrame | None = None
         self.channels_: list[str] = []
@@ -132,7 +124,7 @@ class CollinearityDiagnostic:
                 revenue_noise_std=self.revenue_noise_std,
                 seed=sim,
             )
-            estimated = fit_ols(self.spend_df_, sales, weights=self.weights)
+            estimated = fit_ols(self.spend_df_, sales)
             for channel in self.channels_:
                 true_e = self.true_elasticities[channel]
                 est_e = estimated[channel]

@@ -7,7 +7,6 @@ import pytest
 from how_wrong_is_your_mmm._dgp import simulate_spend
 from how_wrong_is_your_mmm._phaser import (
     BudgetPhaser,
-    _compute_weights,
     _generate_phased_schedule,
     _get_month_labels,
     _max_monthly_deviation,
@@ -87,52 +86,6 @@ class TestGeneratePhasedSchedule:
             return np.mean([c[i, j] for i in range(n) for j in range(i + 1, n)])
 
         assert mean_corr(high) < mean_corr(low)
-
-
-class TestComputeWeights:
-    def test_uniform_all_ones(self):
-        w = _compute_weights(208, 52, "uniform", 5.0, 52)
-        assert np.allclose(w, 1.0)
-
-    def test_uniform_length(self):
-        w = _compute_weights(208, 52, "uniform", 5.0, 52)
-        assert len(w) == 260
-
-    def test_binary_history_weight_is_one(self):
-        w = _compute_weights(208, 52, "binary", 5.0, 52)
-        assert np.allclose(w[:208], 1.0)
-
-    def test_binary_plan_weight(self):
-        w = _compute_weights(208, 52, "binary", 5.0, 52)
-        assert np.allclose(w[208:], 5.0)
-
-    def test_binary_custom_plan_weight(self):
-        w = _compute_weights(10, 5, "binary", 3.0, 52)
-        assert np.allclose(w[10:], 3.0)
-
-    def test_decay_most_recent_is_one(self):
-        w = _compute_weights(208, 52, "decay", 5.0, 52)
-        assert abs(w[-1] - 1.0) < 1e-10
-
-    def test_decay_monotone_increasing(self):
-        w = _compute_weights(208, 52, "decay", 5.0, 52)
-        assert np.all(np.diff(w) > 0)
-
-    def test_decay_half_life(self):
-        """Weight at half_life weeks from end should be ~0.5."""
-        half_life = 52
-        w = _compute_weights(208, 52, "decay", 5.0, half_life)
-        # index of observation that is half_life weeks from the end
-        idx = len(w) - 1 - half_life
-        assert abs(w[idx] - 0.5) < 1e-10
-
-    def test_invalid_scheme_raises(self):
-        with pytest.raises(ValueError, match="weighting"):
-            _compute_weights(10, 5, "invalid", 5.0, 52)
-
-    def test_length_matches_total(self):
-        w = _compute_weights(100, 20, "binary", 5.0, 52)
-        assert len(w) == 120
 
 
 class TestBudgetPhaser:
@@ -227,10 +180,6 @@ class TestBudgetPhaser:
                 HISTORY_DF, plan_2ch, true_elasticities={"tv": 0.3, "meta": 0.5}
             )
 
-    def test_invalid_weighting_raises(self):
-        with pytest.raises(ValueError, match="weighting"):
-            BudgetPhaser(HISTORY_DF, PLAN_DF, weighting="bad")
-
     def test_alpha_starts_at_zero(self):
         phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
             n_sims=5, grid_steps=5, n_phasing_seeds=1
@@ -242,22 +191,6 @@ class TestBudgetPhaser:
             n_sims=5, grid_steps=5, n_phasing_seeds=1
         )
         assert phaser.results_["alpha"].iloc[-1] == 1.0
-
-    def test_weighting_uniform(self):
-        phaser = BudgetPhaser(
-            HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES, weighting="uniform"
-        ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=1)
-        assert phaser.results_ is not None
-
-    def test_weighting_decay(self):
-        phaser = BudgetPhaser(
-            HISTORY_DF,
-            PLAN_DF,
-            true_elasticities=ELASTICITIES,
-            weighting="decay",
-            half_life=52,
-        ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=1)
-        assert phaser.results_ is not None
 
 
 class TestNPhasingSeedsParam:
