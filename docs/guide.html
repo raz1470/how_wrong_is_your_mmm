@@ -256,6 +256,8 @@ svg.chart { display: block; width: 100%; }
   <a href="#fix">3 · The Fix</a>
   <a href="#timeline">4 · Time to Benefit</a>
   <a href="#scale">5 · Does It Scale?</a>
+  <a href="#bayesian">6 · Won't Bayes Fix It?</a>
+  <a href="#challenges">7 · Common Objections</a>
 </nav>
 
 <main>
@@ -574,14 +576,14 @@ svg.chart { display: block; width: 100%; }
     <div class="fig-body">
       <svg class="chart" id="chart6" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">At ±40% weekly deviation (a moderate level that most agencies can accommodate), phasing reduces maximum elasticity uncertainty by ~30% after one year. At ±80%, the reduction reaches ~53%. The payoff is roughly linear, there is no magic threshold, just more de-correlation for more variation.</p>
+    <p class="fig-cap">At ±40% weekly deviation (a moderate level that most agencies can accommodate), phasing reduces maximum elasticity uncertainty by ~30% after one year (27–35% across 5 independent phasing draws). At ±80%, the reduction reaches ~53% (49–60% across the same 5 draws). The payoff is roughly linear, there is no magic threshold, just more de-correlation for more variation. The range reflects that "phasing" means one specific random reshuffle of the week-to-week mix; a different draw of the same amplitude gives a slightly different result, which is itself worth remembering before treating any single reduction number as exact.</p>
   </div>
 
   <h3>What you get</h3>
 
   <p>The output of the phasing recommendation is a concrete 52-week spend schedule: one number per channel per week, with monthly totals guaranteed to match the original plan exactly. This is what you hand to the media agency, not a strategy document or a framework, but a booking grid.</p>
 
-  <p>In a real dataset (4 years of history, 1 year of plan, correlation 0.68), a ±37% weekly deviation produces a 12% reduction in maximum CV after one year of phasing. That sounds modest, and it is, because four years of correlated history dilutes one year of de-correlated plan data. Section 4 addresses this directly: how long does phasing need to run before the improvement becomes material?</p>
+  <p>In a real dataset (4 years of history, 1 year of plan, correlation 0.68), a ±37% weekly deviation produces a 16% reduction in maximum CV after one year of phasing (8–21% across 10 independent phasing draws). That sounds modest, and it is, because four years of correlated history dilutes one year of de-correlated plan data. Section 4 addresses this directly: how long does phasing need to run before the improvement becomes material?</p>
 
   <h3>What this isn't</h3>
 
@@ -598,7 +600,7 @@ svg.chart { display: block; width: 100%; }
 
   <p>Section 3 showed what to do. This section answers how long it takes, and how aggressively you need to phase to see a material improvement within a typical planning horizon.</p>
 
-  <p>The short answer: one year of phasing against four years of correlated history produces a modest improvement (around 12–30% CV reduction, depending on deviation amplitude). The benefit is real, but it takes time to compound. As phased periods accumulate, they displace correlated history and the model becomes progressively more reliable.</p>
+  <p>The short answer: one year of phasing against four years of correlated history produces a modest improvement (roughly 16–30% CV reduction, depending on deviation amplitude, with some spread depending on which specific de-correlated schedule you happen to run). The benefit is real, but it takes time to compound. As phased periods accumulate, they displace correlated history and the model becomes progressively more reliable.</p>
 
   <h3>The time-to-benefit curve</h3>
 
@@ -743,18 +745,154 @@ svg.chart { display: block; width: 100%; }
 </section>
 
 <!-- ═══════════════════════════════════════════════════
+     SECTION 6 — WON'T A BAYESIAN METHOD FIX IT?
+═══════════════════════════════════════════════════ -->
+<section id="bayesian" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+  <p class="s-label">Section 6</p>
+  <h2>Won't a Bayesian Method Fix It?</h2>
+
+  <p>A common reaction to everything so far: "we don't use plain OLS, we use a Bayesian MMM, priors regularise the estimates, so surely this isn't our problem." It's a reasonable question, and it deserves a real answer rather than a hand-wave in either direction.</p>
+
+  <h3>What priors can and can't do</h3>
+
+  <p>A prior is a statement about what you believed before seeing the data. In a Bayesian regression, it shrinks noisy estimates toward a plausible range and stabilises models that would otherwise overfit thin or noisy data. That's genuinely useful, and it's a large part of why Bayesian MMMs have become popular.</p>
+
+  <p>But collinearity is not a noisy-estimation problem in that sense. When TV and Meta spend move almost together, the likelihood, the function describing how well each combination of channel effects fits the observed sales, is nearly flat along a ridge: dozens of very different (TV effect, Meta effect) pairs explain the data almost equally well, because the data never showed the model TV moving without Meta. A weakly-informative prior can pick a point to lean on within that ridge and shrink toward it, but it doesn't add the missing information about <em>which</em> point is correct. The data still can't tell TV and Meta apart; the prior just expresses a mild opinion about how to split the difference.</p>
+
+  <div class="callout">
+    <p>Priors regularise noise. They can't manufacture the independent variation that was never in the data to begin with.</p>
+  </div>
+
+  <h3>A paired test: same data, two estimation methods</h3>
+
+  <p>Rather than argue this in the abstract, we ran it. We took the highest-collinearity scenario already used in Section 2 (three channels, correlation 0.9, where OLS elasticity CV hits 60%) and fit the identical simulated dataset two ways: classical OLS with an analytic 95% confidence interval, and a Bayesian linear model in PyMC with deliberately weak, untuned priors, Normal(0, 1) on each channel effect and a wide half-normal on the noise scale, the kind of generic defaults a practitioner reaches for without special knowledge of the true answer, not priors chosen to make the result look a particular way.</p>
+
+  <p>One methodological catch surfaced while building this: fitting both methods on a single arbitrary noise draw can itself mislead, because a single-sample confidence interval can be a lucky or unlucky draw (the exact same phenomenon this guide is about, showing up one level down). We checked this by fitting the classical OLS interval across ten different noise draws on the same spend data. The first draw we tried produced a CI roughly a third the width of every other draw, a fluke, not a representative result. So the numbers below are averaged across ten independent noise draws, not a single comparison.</p>
+
+  <!-- Chart 10: OLS vs Bayesian interval comparison -->
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Weakly-informative priors narrow the interval a little, not a lot</div>
+      <div class="fig-sub">95% OLS confidence interval vs 95% Bayesian credible interval · same data, correlation = 0.9 · averaged over 10 noise draws</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li">
+          <svg width="20" height="3" style="display:inline;vertical-align:middle"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#9ca3af" stroke-width="4"/></svg>
+          OLS 95% CI
+        </span>
+        <span class="li">
+          <svg width="20" height="3" style="display:inline;vertical-align:middle"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#7c3aed" stroke-width="4"/></svg>
+          Bayesian 95% HDI
+        </span>
+      </div>
+      <svg class="chart" id="chart10" viewBox="0 0 700 220" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Mean interval width across 10 noise draws. TV: OLS 0.998 vs Bayes 0.894 (10.3% narrower). Meta: 1.056 vs 0.969 (8.2% narrower). Search: 1.760 vs 1.582 (9.9% narrower). Consistent across seeds (per-draw narrowing never exceeded 14% or fell below 4% for any channel). A real, modest regularisation effect, not a resolution of the underlying identification problem.</p>
+  </div>
+
+  <p>Roughly 8–10% tighter intervals is what weakly-informative priors bought us here, not nothing, but nowhere close to fixing a problem that leaves OLS's own interval spanning most of the plausible range. Going Bayesian, on its own, changes the estimation method. It doesn't change what the data can and can't tell you.</p>
+
+  <h3>The distinction that matters: functional form vs. identification</h3>
+
+  <p>This is not an argument against Bayesian MMMs, modern tools like Meridian and Robyn earn their keep on a genuinely different problem: functional form. Media effects decay over time (adstock) and saturate at high spend (diminishing returns), and the shape of that decay or saturation curve is something the data does contain information about, from the timing and range of spend levels observed. A prior encoding "adstock decays geometrically" or "response saturates" is expressing real domain knowledge about a well-posed estimation problem, and it measurably improves those estimates.</p>
+
+  <p>Channel-level collinearity is a different failure mode entirely. No amount of correctly-specified adstock or saturation curve fixes the fact that TV and Meta spend rose and fell together. Getting the functional form right and getting the channel-split right are separate problems; solving the first does nothing for the second.</p>
+
+  <h3>When priors do narrow intervals, and the catch</h3>
+
+  <p>A strongly informative prior absolutely can produce a tight interval, if you assert, say, a prior centred at 0.30 with a small standard deviation, the posterior will land close to that regardless of how flat the underlying likelihood is. This is sometimes presented as a solution. It isn't, unless the prior itself is right.</p>
+
+  <p>The problem is that a strong prior is only as good as the external knowledge behind it, category benchmarks, a past experiment, a well-validated rate card, and that knowledge is exactly what's missing in the situation this guide describes. A confidently narrow interval built on an uncalibrated prior is worse than an honestly wide one: it looks precise enough to act on, and the budget decision built on it fails silently, only surfacing as "the model was wrong" months later. An honest wide interval at least tells you where you stand.</p>
+
+  <div class="knums">
+    <div class="kbox">
+      <div class="corr">Weakly-informative priors</div>
+      <div class="num" style="color:#7c3aed">8–10%</div>
+      <div class="lab">Interval narrowing vs OLS, averaged across channels and noise draws: real, but modest</div>
+    </div>
+    <div class="kbox">
+      <div class="corr">Strong, uncalibrated priors</div>
+      <div class="num" style="color:#dc2626">risky</div>
+      <div class="lab">Can narrow intervals a lot, but only look right; a confident wrong answer is worse than an honest wide one</div>
+    </div>
+  </div>
+
+  <div class="up-next">
+    <strong>Next:</strong> <a href="#challenges" style="color:inherit">Section 7 — Common Objections</a> works through the practical pushback this guide tends to get: geo-testing, phasing's cost to performance, and hierarchical pooling.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 7 — COMMON OBJECTIONS
+═══════════════════════════════════════════════════ -->
+<section id="challenges" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+  <p class="s-label">Section 7</p>
+  <h2>Common Objections</h2>
+
+  <p>Three questions come up whenever this argument is presented to practitioners. Each deserves a direct answer rather than a dismissal.</p>
+
+  <h3>Why not just run a geo-lift test?</h3>
+
+  <p>Geo-experiments (holding out matched control markets to measure incremental lift) are a genuine gold standard for causal identification, and where they're feasible, they should usually be preferred to any observational fix. But "just run a geo-test" undersells the practical cost, on four counts. It's impractical to run one for every channel simultaneously, TV, Meta and Search all at once, without the tests confounding each other. Each test produces one incrementality estimate for one channel in one period, not the ongoing, time-varying elasticities a budget allocator needs across the whole plan. Running one means genuinely holding spend back in control markets for the test window, a real, deliberate cost, not a hypothetical one. And it requires media buying and measurement infrastructure most teams don't have set up for continuous use.</p>
+
+  <p>Even where a geo-test is run, it isn't the clean fallback it's often presented as. Recast's June 2026 open-source benchmark study ran 32,000 simulated experiments across four widely-used geo-lift tools, CausalPy, Google Matched Markets, Meta GeoLift, and Google Causal Impact, under conditions practitioners actually encounter: an outlier test market, a small donor pool, and a short pre-treatment calibration window.</p>
+
+  <p>The headline finding: every tool trades off two failure modes, and none escapes the trade-off. Meta GeoLift keeps its 95% coverage promise and rarely false-alarms (3–5%), but its intervals are wide enough that it misses 89–96% of real effects, most tests simply come back inconclusive. Google Causal Impact sits at the other end: it detects a real 7.5% lift 52–66% of the time, but false-alarms nearly 30% of the time and carries a consistent positive bias. CausalPy and Google Matched Markets land in between, under-covering (76–86%) relative to their nominal 95%. And the conditions that make this worse, a short pre-treatment window, a small donor pool, an unusually large test market, are common, not edge cases: under a 30-day (rather than 90-day) pre-period, CausalPy and Causal Impact's false-positive rates both climb above 24%.</p>
+
+  <p>None of this means these tools are broken, they're doing exactly what their designers intended, and each is defensible depending on which mistake is more expensive for your business. The point is narrower: "just geo-test it" swaps one uncertainty problem (channel collinearity in an MMM) for another (calibration trade-offs in a geo-experiment tool), and doesn't scale to covering every channel in the plan. It's a genuinely useful complementary check, not a clean substitute.</p>
+
+  <h3>Doesn't phasing hurt performance by moving spend away from the "right" moments?</h3>
+
+  <p>Two different objections get bundled under this question, and they deserve different answers. The first is the media-planning folklore around dayparting and flighting: that there are optimal windows to spend in, and moving budget away from them destroys value. Much of that orthodoxy is promoted by the publishers selling the inventory it favours, with thin independent causal evidence behind the specific timing claims. We're not relying on it, and don't need to.</p>
+
+  <p>The second objection is real and checkable: if a channel's response to spend is concave (each additional pound does a little less than the last, the standard diminishing-returns shape), then spending unevenly across weeks has a genuine expected-value cost, by Jensen's inequality, the expected response to an uneven spend pattern is always less than or equal to the response to a smooth pattern spending the same total. Phasing deliberately introduces week-to-week unevenness, so this cost is real, not folklore.</p>
+
+  <p>We can check its size directly. The package doesn't yet fit a saturation curve (that's flagged as future work), so we illustrate the mechanism with a simple, clearly-stylised diminishing-returns curve, applied to the actual recommended phasing schedule from Section 3's real-dataset example, not a hypothetical one.</p>
+
+  <!-- Chart 11: Jensen's inequality cost -->
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">The curvature cost of phasing is real, and small</div>
+      <div class="fig-sub">Expected response lost vs. perfectly smooth spend at the same annual total · illustrative diminishing-returns curve, response ∝ spend^b · recommended 52-week schedule</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="10" height="10" style="display:inline;vertical-align:middle"><rect width="10" height="10" fill="#fca5a5"/></svg> strong curvature (b=0.5)</span>
+        <span class="li"><svg width="10" height="10" style="display:inline;vertical-align:middle"><rect width="10" height="10" fill="#f59e0b"/></svg> moderate (b=0.7)</span>
+        <span class="li"><svg width="10" height="10" style="display:inline;vertical-align:middle"><rect width="10" height="10" fill="#a3a3a3"/></svg> mild (b=0.9)</span>
+      </div>
+      <svg class="chart" id="chart11" viewBox="0 0 700 220" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Percentage of total expected response given up by the recommended phased schedule versus a perfectly flat spend pattern at the same annual total, under three illustrative curvature assumptions. Even at strong curvature (b=0.5, roughly a square-root-shaped response), the cost stays under 1.3% for every channel. Weighed against the 16–53% reliability improvement phasing buys (Sections 3–4), this is a real but modest price.</p>
+  </div>
+
+  <p>This is exactly the trade-off Jensen's inequality predicts, and it's small at the phasing amplitudes recommended in this guide (monthly totals preserved, weekly deviation capped at 40–80%). It's worth checking against your own fitted response curve once your MMM has one; if your channels saturate unusually sharply at the spend levels you're planning, the cost could run higher than shown here, and that's a reasonable input into how aggressive a phasing amplitude to choose.</p>
+
+  <h3>Doesn't hierarchical pooling solve this?</h3>
+
+  <p>In a panel MMM spanning multiple markets or countries, hierarchical (multilevel) models can partially pool channel effects across geographies, each market gets its own estimate, shrunk toward a shared group-level estimate, borrowing strength across markets to reduce the variance of any single one. It's a legitimate technique, and where the data supports it, it helps with a real problem.</p>
+
+  <p>It's just not a problem most readers of this guide have the data to solve. Most UK MMM practitioners run a single-market model, there's no second geography to pool across. Hierarchical pooling addresses cross-market variance; this guide addresses within-market identification variance from correlated channel spend, a different problem, and one that doesn't go away because a technique exists to solve a problem you don't have the data structure for.</p>
+
+  <div class="up-next">
+    <strong>Next:</strong> closing summary below.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
      CLOSING
 ═══════════════════════════════════════════════════ -->
 <section style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
   <h3>Bringing it together</h3>
 
-  <p>The five sections of this guide tell one story:</p>
+  <p>The seven sections of this guide tell one story:</p>
 
   <p>Marketing channels move together because business decisions are coordinated. That correlation doesn't bias your MMM, but it makes the elasticity estimates unreliable. The specific numbers your model produced are one draw from a wide distribution; a slightly different data window would give a different answer. The coefficient of variation quantifies exactly how wide that distribution is for your specific spend history.</p>
 
   <p>The fix is to vary the weekly channel split independently within each month, preserving monthly totals exactly. This introduces the kind of natural variation that lets the model distinguish individual channel effects. The improvement compounds over time: the more phased periods accumulate in the training data, the more reliable the elasticity estimates become. And it isn't a toy-example artefact: the same benefit shows up whether your MMM has three channels or twenty.</p>
 
-  <p>This is not a complex statistical intervention. It's a deliberate data design choice: the same logic that motivates geo-experiments in paid search, applied to the temporal dimension of channel mix planning.</p>
+  <p>This is not a complex statistical intervention. It's a deliberate data design choice: the same logic that motivates geo-experiments in paid search, applied to the temporal dimension of channel mix planning. Switching to a Bayesian estimation method doesn't sidestep this: priors regularise noise, they don't manufacture the independent variation the data never had. And the usual practical objections, run a geo-test instead, phasing must hurt performance, pool hierarchically, either don't hold up under scrutiny or don't apply to most practitioners' actual data.</p>
 
   <div class="callout">
     <p>The question isn't whether to trust your MMM. It's whether your data gave it a fair chance. Budget phasing is how you give it one.</p>
@@ -1527,6 +1665,161 @@ function el(tag, attrs, text) {
   g.appendChild(el('line', { x1: lx2, y1: ly - 5, x2: lx2, y2: ly + 5, stroke: '#6b7280', 'stroke-width': 1.5 }));
   g.appendChild(el('line', { x1: lx2 + 16, y1: ly - 5, x2: lx2 + 16, y2: ly + 5, stroke: '#6b7280', 'stroke-width': 1.5 }));
   g.appendChild(el('text', { x: lx2 + 22, y: ly + 4, 'font-size': 9.5, fill: '#9ca3af' }, '80% interval'));
+
+  svg.appendChild(g);
+})();
+
+
+// ── Chart 10: OLS vs Bayesian interval comparison ──────────────────────────
+(function drawOlsBayesIntervals() {
+  const svg = document.getElementById('chart10');
+  if (!svg) return;
+
+  const W = 700, H = 220;
+  const m = { top: 18, right: 30, bottom: 40, left: 78 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+
+  // Averaged across 10 noise draws, correlation=0.9 scenario. Each channel's
+  // absolute interval width is on a different scale (TV/Meta ~1.0, Search
+  // ~1.76), so the comparison that matters is relative: OLS width is drawn
+  // as a fixed 100% reference bar per row, Bayes as its fraction of that.
+  // Absolute widths are given in the fig-cap text below the chart.
+  const channels = [
+    { name: 'TV',     color: '#2563eb', olsW: 0.998, bayesW: 0.894 },
+    { name: 'Meta',   color: '#d97706', olsW: 1.056, bayesW: 0.969 },
+    { name: 'Search', color: '#059669', olsW: 1.760, bayesW: 1.582 },
+  ];
+
+  const xMax = 1.0; // 100% of that row's own OLS width
+  const scX = v => m.left + (v / xMax) * pw;
+
+  const rowH = ph / channels.length;
+  const rowCy = i => m.top + rowH * i + rowH / 2;
+
+  const g = el('g', {});
+
+  for (let i = 0; i < channels.length; i++) {
+    if (i % 2 === 1) {
+      g.appendChild(el('rect', { x: m.left, y: m.top + rowH * i, width: pw, height: rowH, fill: '#f9fafb' }));
+    }
+  }
+
+  const xTicks = [0, 0.25, 0.5, 0.75, 1.0];
+  for (const v of xTicks) {
+    const x = scX(v);
+    g.appendChild(el('line', { x1: x, y1: m.top, x2: x, y2: m.top + ph, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', { x, y: m.top + ph + 14, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, `${Math.round(v * 100)}%`));
+  }
+  g.appendChild(el('text', { x: m.left + pw / 2, y: H - 3, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, "Interval width relative to that channel's own OLS width (OLS = 100%)"));
+  g.appendChild(el('rect', { x: m.left, y: m.top, width: pw, height: ph, fill: 'none', stroke: '#e5e7eb', 'stroke-width': 1 }));
+
+  for (let ci = 0; ci < channels.length; ci++) {
+    const ch = channels[ci];
+    const baseCy = rowCy(ci);
+    const olsCy = baseCy - rowH * 0.16;
+    const bayesCy = baseCy + rowH * 0.16;
+    const capH = rowH * 0.11;
+    const bayesFrac = ch.bayesW / ch.olsW; // always < 1 here, so always fits inside [0, xMax]
+
+    // OLS bar (grey) — fixed 0 to 100% reference, centred in the row
+    const olsLo = 0, olsHi = xMax;
+    g.appendChild(el('line', { x1: scX(olsLo), y1: olsCy, x2: scX(olsHi), y2: olsCy, stroke: '#9ca3af', 'stroke-width': 4 }));
+    for (const end of [olsLo, olsHi]) {
+      g.appendChild(el('line', { x1: scX(end), y1: olsCy - capH, x2: scX(end), y2: olsCy + capH, stroke: '#9ca3af', 'stroke-width': 1.5 }));
+    }
+
+    // Bayes bar (purple) — centred within the same [0, xMax] reference span
+    const bLo = (xMax - bayesFrac) / 2, bHi = bLo + bayesFrac;
+    g.appendChild(el('line', { x1: scX(bLo), y1: bayesCy, x2: scX(bHi), y2: bayesCy, stroke: '#7c3aed', 'stroke-width': 4 }));
+    for (const end of [bLo, bHi]) {
+      g.appendChild(el('line', { x1: scX(end), y1: bayesCy - capH, x2: scX(end), y2: bayesCy + capH, stroke: '#7c3aed', 'stroke-width': 1.5 }));
+    }
+
+    const pct = Math.round(100 * (ch.bayesW - ch.olsW) / ch.olsW);
+    g.appendChild(el('text', {
+      x: scX(xMax) + 6, y: baseCy + 4,
+      'font-size': 9.5, fill: '#7c3aed', 'font-weight': '600'
+    }, `${pct}%`));
+
+    g.appendChild(el('text', {
+      x: m.left - 10, y: baseCy + 4,
+      'text-anchor': 'end', 'font-size': 11, 'font-weight': '600', fill: ch.color
+    }, ch.name));
+  }
+
+  svg.appendChild(g);
+})();
+
+
+// ── Chart 11: Jensen's inequality cost of phasing ──────────────────────────
+(function drawJensenGap() {
+  const svg = document.getElementById('chart11');
+  if (!svg) return;
+
+  const W = 700, H = 220;
+  const m = { top: 20, right: 30, bottom: 42, left: 58 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+
+  // % of total expected response given up by the recommended phased schedule
+  // vs. perfectly smooth spend at the same annual total (computed directly
+  // from the actual recommended schedule, Section 3's real-dataset example)
+  const data = [
+    { channel: 'TV',     b05: 1.118, b07: 0.927, b09: 0.393 },
+    { channel: 'Meta',   b05: 0.950, b07: 0.794, b09: 0.339 },
+    { channel: 'Search', b05: 1.232, b07: 1.022, b09: 0.433 },
+  ];
+  const colors = { b05: '#fca5a5', b07: '#f59e0b', b09: '#a3a3a3' };
+
+  const maxV = 1.5;
+  const scY = v => m.top + ph - (v / maxV) * ph;
+
+  const n = data.length;
+  const groupW = pw / n;
+  const barW = groupW / 5;
+
+  const g = el('g', {});
+
+  const yTicks = [0, 0.3, 0.6, 0.9, 1.2, 1.5];
+  for (const v of yTicks) {
+    const y = scY(v);
+    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', { x: m.left - 8, y: y + 4, 'text-anchor': 'end', 'font-size': 10, fill: '#9ca3af' }, `${v.toFixed(1)}%`));
+  }
+
+  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+  g.appendChild(el('text', {
+    x: 11, y: m.top + ph / 2, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af',
+    transform: `rotate(-90, 11, ${m.top + ph / 2})`
+  }, 'Expected response given up (%)'));
+
+  for (let i = 0; i < data.length; i++) {
+    const d = data[i];
+    const gx = m.left + i * groupW;
+    const bars = [
+      { key: 'b05', x: gx + barW * 1.0 },
+      { key: 'b07', x: gx + barW * 2.0 },
+      { key: 'b09', x: gx + barW * 3.0 },
+    ];
+    for (const bar of bars) {
+      const v = d[bar.key];
+      const top = scY(v);
+      const h = m.top + ph - top;
+      g.appendChild(el('rect', { x: bar.x, y: top, width: barW * 0.85, height: h, fill: colors[bar.key], rx: 2 }));
+      g.appendChild(el('text', {
+        x: bar.x + barW * 0.425, y: top - 4,
+        'text-anchor': 'middle', 'font-size': 8.5, fill: '#6b7280'
+      }, v.toFixed(2)));
+    }
+    g.appendChild(el('text', {
+      x: gx + groupW / 2, y: m.top + ph + 15,
+      'text-anchor': 'middle', 'font-size': 10.5, 'font-weight': '600', fill: '#111827'
+    }, d.channel));
+  }
+
+  g.appendChild(el('text', { x: m.left + pw / 2, y: H - 3, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, 'Channel'));
 
   svg.appendChild(g);
 })();
