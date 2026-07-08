@@ -115,3 +115,138 @@ class TestRealSpendPath:
             spend_df=self.spend_df, true_elasticities=ELASTICITIES, correlation=0.9
         ).fit(n_sims=5)
         assert abs(diag_low.actual_correlation - diag_high.actual_correlation) < 1e-10
+
+
+class TestPlannedSpend:
+    def setup_method(self):
+        self.diag = CollinearityDiagnostic(correlation=0.7).fit(n_sims=20)
+
+    def test_backward_compatible_when_none(self):
+        # planned_spend=None must reproduce exactly the pre-feature columns/values.
+        assert set(self.diag.summary().columns) == SUMMARY_COLS
+        assert set(self.diag.summary(planned_spend=None).columns) == SUMMARY_COLS
+        pd.testing.assert_frame_equal(
+            self.diag.summary(), self.diag.summary(planned_spend=None)
+        )
+
+    def test_adds_revenue_columns(self):
+        summary = self.diag.summary(
+            planned_spend={"tv": 1_000_000, "meta": 800_000, "search": 600_000}
+        )
+        assert {"incremental_revenue_p10", "incremental_revenue_p90"}.issubset(
+            summary.columns
+        )
+        # p10 should not exceed p90 for any channel.
+        assert (
+            summary["incremental_revenue_p10"] <= summary["incremental_revenue_p90"]
+        ).all()
+
+    def test_unit_spend_matches_elasticity_quantiles(self):
+        # With planned_spend=1 per channel, incremental revenue equals the raw
+        # elasticity distribution, so its quantiles must match a direct computation.
+        planned_spend = {"tv": 1.0, "meta": 1.0, "search": 1.0}
+        summary = self.diag.summary(planned_spend=planned_spend)
+        direct = (
+            self.diag.results_.groupby("channel")["estimated_elasticity"]
+            .quantile([0.1, 0.9])
+            .unstack()
+        )
+        for channel in CHANNELS:
+            row = summary[summary["channel"] == channel].iloc[0]
+            # summary() rounds to 4dp; compare against equally-rounded direct value.
+            assert row["incremental_revenue_p10"] == round(direct.loc[channel, 0.1], 4)
+            assert row["incremental_revenue_p90"] == round(direct.loc[channel, 0.9], 4)
+
+    def test_scaling_is_linear(self):
+        base = {"tv": 100_000, "meta": 100_000, "search": 100_000}
+        scaled = {k: v * 3 for k, v in base.items()}
+        summary_base = self.diag.summary(planned_spend=base)
+        summary_scaled = self.diag.summary(planned_spend=scaled)
+        for channel in CHANNELS:
+            base_p90 = summary_base.loc[
+                summary_base["channel"] == channel, "incremental_revenue_p90"
+            ].iloc[0]
+            scaled_p90 = summary_scaled.loc[
+                summary_scaled["channel"] == channel, "incremental_revenue_p90"
+            ].iloc[0]
+            # summary() rounds to 4dp; allow rounding error compounded by the 3x scale.
+            assert abs(scaled_p90 - 3 * base_p90) < 1e-3
+
+    def test_missing_channel_key_raises(self):
+        with pytest.raises(KeyError):
+            self.diag.summary(planned_spend={"tv": 1_000_000, "meta": 800_000})
+
+    def test_extra_keys_are_ignored(self):
+        planned_spend = {
+            "tv": 1_000_000,
+            "meta": 800_000,
+            "search": 600_000,
+            "tiktok": 500_000,
+        }
+        summary = self.diag.summary(planned_spend=planned_spend)
+        assert len(summary) == 3
+
+
+class TestValuePerUnit:
+    def setup_method(self):
+        self.diag = CollinearityDiagnostic(correlation=0.7).fit(n_sims=20)
+
+    def test_backward_compatible_when_none(self):
+        assert set(self.diag.summary().columns) == SUMMARY_COLS
+        assert set(self.diag.summary(value_per_unit=None).columns) == SUMMARY_COLS
+        pd.testing.assert_frame_equal(
+            self.diag.summary(), self.diag.summary(value_per_unit=None)
+        )
+
+    def test_adds_cac_and_roi_columns(self):
+        summary = self.diag.summary(value_per_unit=150.0)
+        assert {"cac_p10", "cac_p90", "roi_p10", "roi_p90"}.issubset(summary.columns)
+
+    def test_cac_is_reciprocal_of_elasticity_quantiles(self):
+        summary = self.diag.summary(value_per_unit=150.0)
+        direct = self.diag.results_.copy()
+        direct["cac"] = 1.0 / direct["estimated_elasticity"]
+        direct_range = direct.groupby("channel")["cac"].quantile([0.1, 0.9]).unstack()
+        for channel in CHANNELS:
+            row = summary[summary["channel"] == channel].iloc[0]
+            assert row["cac_p10"] == round(direct_range.loc[channel, 0.1], 4)
+            assert row["cac_p90"] == round(direct_range.loc[channel, 0.9], 4)
+
+    def test_roi_equals_elasticity_times_value_per_unit(self):
+        value_per_unit = 150.0
+        summary = self.diag.summary(value_per_unit=value_per_unit)
+        direct = self.diag.results_.copy()
+        direct["roi"] = direct["estimated_elasticity"] * value_per_unit
+        direct_range = direct.groupby("channel")["roi"].quantile([0.1, 0.9]).unstack()
+        for channel in CHANNELS:
+            row = summary[summary["channel"] == channel].iloc[0]
+            assert row["roi_p10"] == round(direct_range.loc[channel, 0.1], 4)
+            assert row["roi_p90"] == round(direct_range.loc[channel, 0.9], 4)
+
+    def test_cac_and_roi_independent_of_planned_spend(self):
+        # Linear DGP: CAC and ROI are channel properties, not scaled by
+        # how much you plan to spend.
+        small = self.diag.summary(
+            planned_spend={"tv": 1, "meta": 1, "search": 1}, value_per_unit=150.0
+        )
+        large = self.diag.summary(
+            planned_spend={"tv": 10_000_000, "meta": 8_000_000, "search": 6_000_000},
+            value_per_unit=150.0,
+        )
+        pd.testing.assert_frame_equal(
+            small[["channel", "cac_p10", "cac_p90", "roi_p10", "roi_p90"]],
+            large[["channel", "cac_p10", "cac_p90", "roi_p10", "roi_p90"]],
+        )
+
+    def test_value_per_unit_scales_incremental_revenue(self):
+        planned_spend = {"tv": 1_000_000, "meta": 800_000, "search": 600_000}
+        no_ltv = self.diag.summary(planned_spend=planned_spend)
+        with_ltv = self.diag.summary(planned_spend=planned_spend, value_per_unit=150.0)
+        for channel in CHANNELS:
+            no_ltv_p90 = no_ltv.loc[
+                no_ltv["channel"] == channel, "incremental_revenue_p90"
+            ].iloc[0]
+            with_ltv_p90 = with_ltv.loc[
+                with_ltv["channel"] == channel, "incremental_revenue_p90"
+            ].iloc[0]
+            assert abs(with_ltv_p90 - 150.0 * no_ltv_p90) < 1

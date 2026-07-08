@@ -93,4 +93,4 @@ The model isn't broken. The data design is.
 uv run ruff format . && uv run ruff check . && uv run pytest
 ```
 
-87 tests. Python 3.12+. MIT licence.
+77 tests. Python 3.12+. MIT licence.
