@@ -142,8 +142,37 @@ class CollinearityDiagnostic:
         self.results_ = pd.DataFrame(records)
         return self
 
-    def summary(self) -> pd.DataFrame:
-        """Return a summary of elasticity estimates across simulations."""
+    def summary(
+        self,
+        planned_spend: dict[str, float] | None = None,
+        value_per_unit: float | None = None,
+    ) -> pd.DataFrame:
+        """Return a summary of elasticity estimates across simulations.
+
+        Parameters
+        ----------
+        planned_spend:
+            Optional dict mapping channel name to planned spend. When
+            supplied, adds an incremental-revenue range (p10/p90) per
+            channel, computed as the simulated elasticity distribution
+            multiplied by planned spend (and by `value_per_unit`, if that
+            is also given). Assumes sales is already a £ value (revenue)
+            when `value_per_unit` is not supplied. Must cover every channel
+            in the fitted data; extra keys are ignored.
+        value_per_unit:
+            Optional £ value per unit of "sales" — e.g. average LTV per new
+            customer, for use when the sales column represents signups or
+            conversions rather than £ revenue directly. When supplied,
+            adds CAC (£ spend per unit of sales) and ROI (£ value per £
+            spent) ranges (p10/p90) per channel, computed per simulation
+            draw as ``cac = 1 / estimated_elasticity`` and
+            ``roi = estimated_elasticity * value_per_unit``. In this
+            linear DGP both are spend-independent channel properties —
+            they don't depend on `planned_spend`. Draws with elasticity
+            near zero can make CAC swing wildly or go negative; that
+            instability is itself part of the diagnostic (an unreliable
+            elasticity estimate makes for an unreliable CAC estimate too).
+        """
         if self.results_ is None:
             raise RuntimeError("Call fit() before summary().")
 
@@ -160,6 +189,48 @@ class CollinearityDiagnostic:
         summary["coef_of_variation"] = (
             summary["std_estimated"] / summary["mean_estimated"].abs()
         ).round(4)
+
+        if planned_spend is not None:
+            missing = set(self.channels_) - set(planned_spend.keys())
+            if missing:
+                raise KeyError(
+                    f"planned_spend is missing channel(s): {sorted(missing)}"
+                )
+            multiplier = 1.0 if value_per_unit is None else value_per_unit
+            revenue = self.results_.copy()
+            revenue["planned_spend"] = revenue["channel"].map(planned_spend)
+            revenue["incremental_revenue"] = (
+                revenue["estimated_elasticity"] * revenue["planned_spend"] * multiplier
+            )
+            revenue_range = (
+                revenue.groupby("channel")["incremental_revenue"]
+                .quantile([0.1, 0.9])
+                .unstack()
+                .rename(
+                    columns={
+                        0.1: "incremental_revenue_p10",
+                        0.9: "incremental_revenue_p90",
+                    }
+                )
+                .reset_index()
+            )
+            summary = summary.merge(revenue_range, on="channel")
+
+        if value_per_unit is not None:
+            derived = self.results_.copy()
+            derived["cac"] = 1.0 / derived["estimated_elasticity"]
+            derived["roi"] = derived["estimated_elasticity"] * value_per_unit
+            derived_range = (
+                derived.groupby("channel")[["cac", "roi"]]
+                .quantile([0.1, 0.9])
+                .unstack()
+            )
+            derived_range.columns = [
+                f"{metric}_p{int(q * 100)}" for metric, q in derived_range.columns
+            ]
+            derived_range = derived_range.reset_index()
+            summary = summary.merge(derived_range, on="channel")
+
         return summary.round(4)
 
     @property
