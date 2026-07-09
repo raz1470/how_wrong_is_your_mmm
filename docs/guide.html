@@ -788,10 +788,10 @@ svg.chart { display: block; width: 100%; }
       </div>
       <svg class="chart" id="chart10" viewBox="0 0 700 220" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Mean interval width across 10 noise draws. TV: OLS 0.998 vs Bayes 0.894 (10.3% narrower). Meta: 1.056 vs 0.969 (8.2% narrower). Search: 1.760 vs 1.582 (9.9% narrower). Consistent across seeds (per-draw narrowing never exceeded 14% or fell below 4% for any channel). A real, modest regularisation effect, not a resolution of the underlying identification problem.</p>
+    <p class="fig-cap">Mean interval width across 10 noise draws. TV: OLS 0.929 vs Bayes 0.862 (6.5% narrower). Meta: 0.984 vs 0.926 (5.2% narrower). Search: 1.639 vs 1.473 (9.1% narrower). Individual draws varied more, per-draw narrowing ranged from around 14% narrower to a slight ~3% widening in a few isolated draws for TV and Meta, a reminder that any single comparison is noisy; the mean across draws is the stable number. A real, modest regularisation effect, not a resolution of the underlying identification problem.</p>
   </div>
 
-  <p>Roughly 8–10% tighter intervals is what weakly-informative priors bought us here, not nothing, but nowhere close to fixing a problem that leaves OLS's own interval spanning most of the plausible range. Going Bayesian, on its own, changes the estimation method. It doesn't change what the data can and can't tell you.</p>
+  <p>Roughly 5–9% tighter intervals is what weakly-informative priors bought us here, not nothing, but nowhere close to fixing a problem that leaves OLS's own interval spanning most of the plausible range. Going Bayesian, on its own, changes the estimation method. It doesn't change what the data can and can't tell you.</p>
 
   <h3>The distinction that matters: functional form vs. identification</h3>
 
@@ -808,7 +808,7 @@ svg.chart { display: block; width: 100%; }
   <div class="knums">
     <div class="kbox">
       <div class="corr">Weakly-informative priors</div>
-      <div class="num" style="color:#7c3aed">8–10%</div>
+      <div class="num" style="color:#7c3aed">5–9%</div>
       <div class="lab">Interval narrowing vs OLS, averaged across channels and noise draws: real, but modest</div>
     </div>
     <div class="kbox">
@@ -1686,9 +1686,9 @@ function el(tag, attrs, text) {
   // as a fixed 100% reference bar per row, Bayes as its fraction of that.
   // Absolute widths are given in the fig-cap text below the chart.
   const channels = [
-    { name: 'TV',     color: '#2563eb', olsW: 0.998, bayesW: 0.894 },
-    { name: 'Meta',   color: '#d97706', olsW: 1.056, bayesW: 0.969 },
-    { name: 'Search', color: '#059669', olsW: 1.760, bayesW: 1.582 },
+    { name: 'TV',     color: '#2563eb', olsW: 0.929, bayesW: 0.862 },
+    { name: 'Meta',   color: '#d97706', olsW: 0.984, bayesW: 0.926 },
+    { name: 'Search', color: '#059669', olsW: 1.639, bayesW: 1.473 },
   ];
 
   const xMax = 1.0; // 100% of that row's own OLS width
