@@ -17,10 +17,13 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "arviz>=0.18,<0.24",
     "ipykernel>=6.0",
     "jupyter>=1.0",
     "matplotlib>=3.8",
     "pre-commit>=3.0",
+    "pymc>=5.16,<5.26",
+    "pytensor>=2.22",
     "pytest>=8.0",
     "pytest-cov>=5.0",
     "ruff>=0.4",
