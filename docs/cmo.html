@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Wrong Is Your MMM? by Ryan O'Sullivan</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --tv:     #2563eb;
+  --meta:   #d97706;
+  --search: #059669;
+  --text:   #111827;
+  --muted:  #6b7280;
+  --light:  #d1d5db;
+  --border: #e5e7eb;
+  --bg:     #f9fafb;
+  --w:      700px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  color: var(--text);
+  background: #fff;
+  line-height: 1.7;
+  font-size: 17px;
+}
+
+/* ── Header ── */
+.hdr {
+  padding: 3rem 1.5rem 2rem;
+  max-width: var(--w);
+  margin: 0 auto;
+  border-bottom: 2px solid var(--text);
+}
+.eyebrow {
+  font-size: .75rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: .7rem;
+}
+h1 {
+  font-size: clamp(1.8rem, 5.5vw, 2.5rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -.025em;
+  margin-bottom: .8rem;
+}
+.tagline { color: var(--muted); font-size: 1.1rem; }
+
+/* ── Section nav ── */
+.snav {
+  max-width: var(--w);
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  overflow-x: auto;
+  gap: 0;
+}
+.snav a {
+  flex-shrink: 0;
+  padding: .75rem 0;
+  margin-right: 2rem;
+  text-decoration: none;
+  font-size: .82rem;
+  font-weight: 500;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.snav a.active { color: var(--text); border-bottom-color: var(--text); }
+
+/* ── Main ── */
+main {
+  max-width: var(--w);
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+p {
+  margin-bottom: 1.1rem;
+  max-width: 64ch;
+  font-size: 1.03rem;
+}
+
+.lede { font-size: 1.15rem; color: #1f2937; }
+
+section { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+
+.s-label {
+  font-size: .72rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: .4rem;
+}
+
+h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.25;
+  margin-bottom: 1rem;
+}
+
+/* ── Figure ── */
+.fig {
+  margin: 1.75rem 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.fig-hdr {
+  padding: .75rem 1.1rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.fig-title { font-size: .95rem; font-weight: 700; }
+.fig-sub   { font-size: .8rem; color: var(--muted); margin-top: .15rem; }
+.fig-body  { padding: 1.1rem 1.1rem .3rem; }
+.fig-cap   { padding: .6rem 1.1rem .95rem; font-size: .825rem; color: var(--muted); line-height: 1.55; max-width: none; }
+
+svg.chart { display: block; width: 100%; }
+
+/* ── Legend ── */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .85rem;
+  padding: .1rem 0 .5rem;
+  font-size: .78rem;
+  color: var(--text);
+}
+.li { display: flex; align-items: center; gap: .35rem; }
+
+/* ── Callout ── */
+.callout {
+  border-left: 3px solid var(--text);
+  padding: 1rem 1.4rem;
+  margin: 1.75rem 0;
+  background: var(--bg);
+  border-radius: 0 6px 6px 0;
+}
+.callout p {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1f2937;
+  max-width: none;
+}
+
+/* ── Key numbers ── */
+.knums {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .75rem;
+  margin: 1.75rem 0 .5rem;
+}
+@media (max-width: 520px) { .knums { grid-template-columns: 1fr; } }
+.kbox {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  background: var(--bg);
+  text-align: center;
+}
+.kbox .lbl { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .3rem; }
+.kbox .num  { font-size: 1.75rem; font-weight: 800; line-height: 1; margin-bottom: .3rem; color: var(--text); }
+.kbox .lab  { font-size: .74rem; color: var(--muted); line-height: 1.4; }
+
+/* ── CTA ── */
+.cta {
+  margin: 2.75rem 0 1rem;
+  padding: 1.75rem;
+  background: var(--text);
+  border-radius: 10px;
+  text-align: center;
+}
+.cta p { color: #f3f4f6; max-width: none; margin-bottom: 1.1rem; font-size: 1.05rem; }
+.cta-btn {
+  display: inline-block;
+  background: #fff;
+  color: var(--text);
+  font-weight: 700;
+  font-size: .95rem;
+  padding: .8rem 1.6rem;
+  border-radius: 7px;
+  text-decoration: none;
+}
+.cta-btn:hover { background: #f3f4f6; }
+
+footer {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  font-size: .825rem;
+  color: var(--muted);
+}
+footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <p class="eyebrow">Ryan O'Sullivan</p>
+  <h1>How Wrong Is Your MMM?</h1>
+  <p class="tagline">Your model gives you one number, but the honest answer is a (very wide) range.</p>
+</header>
+
+<nav class="snav">
+  <a href="#problem" class="active">1 · The problem</a>
+  <a href="#cause">2 · The cause</a>
+  <a href="#fix">3 · The fix</a>
+  <a href="#impact">4 · The impact</a>
+  <a href="#how">5 · How it works</a>
+  <a href="#faq">6 · Questions</a>
+</nav>
+
+<main>
+
+<p class="lede">Here's an uncomfortable question. Take the marketing mix model you already trust, the one that split last year's sales across TV, Meta and Search. Now run it again: same channels, same market, just a slightly different slice of history. Would it give you the same answer?</p>
+
+<p>For most brands, no. Here's why, and what to do about it.</p>
+
+<!-- SECTION 1: THE PROBLEM -->
+<section id="problem">
+  <p class="s-label">1 · The problem</p>
+  <h2>Your model is more unsure than it lets on</h2>
+
+  <p>Take a real £12.3m annual plan: £5.1m on TV, £4.1m on Meta, £3.1m on Search. Ask the model for a single number and you'll get one. Ask it to be honest about the range of answers the same data could plausibly support, and the picture changes.</p>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">One plan, three honest ranges</div>
+      <div class="fig-sub">Incremental revenue, 80% range, before any fix</div>
+    </div>
+    <div class="fig-body">
+      <svg class="chart" id="chartProblem" viewBox="0 0 700 200" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Same spend, same market, same true effect. This is the honest range once you account for how much the answer can genuinely move given how these channels were planned.</p>
+  </div>
+
+  <p>Look closely and none of these ranges are tight. TV could be earning anywhere from £945k to £2.09m off the same spend, more than double. Search's range is almost as wide in absolute terms, on barely a third of the budget. That's not a rounding error. That's the model telling you it genuinely doesn't know which channel is really carrying the plan.</p>
+</section>
+
+<!-- SECTION 2: THE CAUSE -->
+<section id="cause">
+  <p class="s-label">2 · The cause</p>
+  <h2>Your channels never move on their own</h2>
+
+  <p>Here's why the model is so unsure. TV, Meta and Search budgets get set in the same planning cycle, so when one goes up, they usually all go up. Look at an actual planned year of spend below: the three lines rise and fall almost in lockstep.</p>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Three channels, one planning cycle</div>
+      <div class="fig-sub">Real planned weekly spend, 52 weeks</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#2563eb" stroke-width="2.5"/></svg> TV</span>
+        <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#d97706" stroke-width="2.5"/></svg> Meta</span>
+        <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#059669" stroke-width="2.5"/></svg> Search</span>
+      </div>
+      <svg class="chart" id="chartCause" viewBox="0 0 700 220" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">TV, Meta and Search spend move together nearly every week, an average correlation of 0.68. Your model has never actually seen TV move independently of the other two, so it can't confidently tell you how much of your sales are down to TV rather than Meta or Search.</p>
+  </div>
+
+  <p>It isn't that the model is badly built. It's that the data it's learning from was never designed to answer this question.</p>
+</section>
+
+<!-- SECTION 3: THE FIX -->
+<section id="fix">
+  <p class="s-label">3 · The fix</p>
+  <h2>Pace the same budget differently</h2>
+
+  <p>You don't need a bigger model, a bigger budget, or an AI agent bolted onto your MMM. You need to move some of that same spend to different weeks within each month, so the channels stop moving in lockstep, and keep doing it. Every month still lands on the same total. So does every year. Here's what that looks like: the same annual and monthly totals, paced differently week to week.</p>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Same monthly totals, different weekly pacing</div>
+      <div class="fig-sub">Original plan vs recommended pacing, one representative year of a three-year plan</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#9ca3af" stroke-width="2.5"/></svg> Original plan</span>
+        <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#2563eb" stroke-width="2.5"/></svg> Recommended pacing</span>
+      </div>
+      <svg class="chart" id="chartFix" viewBox="0 0 700 228" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">The recommended schedule swings each channel's weekly spend by up to 80% either side of the original plan, repeated consistently for three years. Every month still adds up to exactly the same total, pound for pound.</p>
+  </div>
+</section>
+
+<!-- SECTION 4: THE IMPACT -->
+<section id="impact">
+  <p class="s-label">4 · The impact</p>
+  <h2>The least reliable number gets more reliable</h2>
+
+  <p>We ran the model again, same starting point, but this time it had three years of consistently repaced spend behind it instead of none. Here's what moved.</p>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">The ranges tighten, substantially</div>
+      <div class="fig-sub">Incremental revenue, 80% range, today vs after three years of phasing</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.45"/></svg> Today</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> After 3 years of phasing</span>
+      </div>
+      <svg class="chart" id="chartImpact" viewBox="0 0 700 230" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Every channel's range narrows sharply: TV by 63%, Meta by 68%, Search by 75%, all off the same £12.3m a year, with no extra spend, just three years of consistently pacing it differently. Search was the least reliable channel to begin with, so its improvement is the one the fix is specifically built to deliver; TV and Meta moving this much too is the bonus of sticking with a bolder weekly swing for longer.</p>
+  </div>
+
+  <div class="knums">
+    <div class="kbox">
+      <div class="lbl">Annual plan</div>
+      <div class="num">£12.3m</div>
+      <div class="lab">Same every year, no increase</div>
+    </div>
+    <div class="kbox">
+      <div class="lbl">Extra spend needed</div>
+      <div class="num">£0</div>
+      <div class="lab">Only the weekly pacing changes</div>
+    </div>
+    <div class="kbox">
+      <div class="lbl">Uncertainty reduction</div>
+      <div class="num" style="color:#059669">75%</div>
+      <div class="lab">This plan's least reliable channel, after 3 years</div>
+    </div>
+  </div>
+</section>
+
+<!-- CLOSING: HOW IT WORKS -->
+<section id="how">
+  <p class="s-label">5 · How it works</p>
+  <h2>One pipeline, three steps</h2>
+
+  <p>All of this runs through <code>how_wrong_is_your_mmm</code>, a free, open-source python package. Point it at your own spend history and it runs the same three steps on your numbers, not a hypothetical example.</p>
+
+  <div class="fig">
+    <div class="fig-body">
+      <svg class="chart" viewBox="0 0 700 190" preserveAspectRatio="xMinYMin meet">
+        <defs>
+          <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 Z" fill="#9ca3af"/>
+          </marker>
+        </defs>
+        <line x1="210" y1="95" x2="248" y2="95" stroke="#9ca3af" stroke-width="1.75" marker-end="url(#arrowhead)"/>
+        <line x1="445" y1="95" x2="483" y2="95" stroke="#9ca3af" stroke-width="1.75" marker-end="url(#arrowhead)"/>
+
+        <g>
+          <rect x="20" y="40" width="190" height="110" rx="10" fill="#fff" stroke="#2563eb" stroke-width="1.5"/>
+          <circle cx="115" cy="30" r="13" fill="#2563eb"/>
+          <text x="115" y="35" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">1</text>
+          <circle cx="103" cy="66" r="11" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+          <line x1="111" y1="74" x2="120" y2="83" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"/>
+          <text x="115" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="#111827">Diagnose</text>
+          <text x="115" y="120" text-anchor="middle" font-size="10.5" fill="#6b7280">Measure how wide</text>
+          <text x="115" y="134" text-anchor="middle" font-size="10.5" fill="#6b7280">your true range is</text>
+        </g>
+
+        <g>
+          <rect x="255" y="40" width="190" height="110" rx="10" fill="#fff" stroke="#d97706" stroke-width="1.5"/>
+          <circle cx="350" cy="30" r="13" fill="#d97706"/>
+          <text x="350" y="35" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">2</text>
+          <path d="M332,61 L348,61 L368,79" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M362,61 L368,61 L368,67" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M332,79 L348,79 L368,61" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M362,79 L368,79 L368,73" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="350" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="#111827">Phase</text>
+          <text x="350" y="120" text-anchor="middle" font-size="10.5" fill="#6b7280">Re-pace the weekly split,</text>
+          <text x="350" y="134" text-anchor="middle" font-size="10.5" fill="#6b7280">monthly totals unchanged</text>
+        </g>
+
+        <g>
+          <rect x="490" y="40" width="190" height="110" rx="10" fill="#fff" stroke="#059669" stroke-width="1.5"/>
+          <circle cx="585" cy="30" r="13" fill="#059669"/>
+          <text x="585" y="35" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">3</text>
+          <path d="M576,58 A12,12 0 1 1 573,74" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M573,67 L573,74 L580,74" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="585" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="#111827">Retrain</text>
+          <text x="585" y="120" text-anchor="middle" font-size="10.5" fill="#6b7280">Refit on the repaced data,</text>
+          <text x="585" y="134" text-anchor="middle" font-size="10.5" fill="#6b7280">get a tighter answer back</text>
+        </g>
+      </svg>
+    </div>
+    <p class="fig-cap">The diagnostic tells you how wide your true range is. Phasing gives you a spend schedule that narrows it, same budget, same totals. Retraining is where the payoff lands.</p>
+  </div>
+</section>
+
+<section id="faq">
+  <p class="s-label">6 · Questions</p>
+  <h2>What people ask first</h2>
+
+  <p style="font-weight:700; margin-bottom: .3rem;">Why not just run a geo-lift test instead?</p>
+  <p>Geo-experiments are the academic gold standard, but they test one channel at a time, need a real blackout region, and take months to read. You can't run one for TV, Meta and Search simultaneously. This works with the spend and channel mix you already have.</p>
+
+  <p style="font-weight:700; margin-bottom: .3rem;">How long until I see the benefit?</p>
+  <p>It builds, it doesn't switch on overnight. At the pacing shown above, meaningful improvement shows up within the first year, and it keeps compounding the longer you stick with it: the 75% figure here is what three consistent years buys you, not week one.</p>
+
+  <p style="font-weight:700; margin-bottom: .3rem;">What do I actually hand my media agency?</p>
+  <p>A weekly spend number per channel, covering the same plan year. Every month still totals exactly what it does today. Nothing about the buy itself changes, only which week the money lands in.</p>
+</section>
+
+<div class="cta">
+  <p>Want a deeper understanding of the research behind this?</p>
+  <a class="cta-btn" href="guide.html">Read the practitioner's guide →</a>
+</div>
+
+<footer>
+  <p><code>how_wrong_is_your_mmm</code> is an open-source python package that diagnoses this and recommends the fix, built on real simulation, not a rule of thumb. Source and notebooks: <a href="https://github.com/raz1470/how_wrong_is_your_mmm">github.com/raz1470/how_wrong_is_your_mmm</a></p>
+</footer>
+
+</main>
+
+<script>
+// SVG element helper
+function el(tag, attrs, text) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const e = document.createElementNS(ns, tag);
+  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function fmtGBP(vM) {
+  if (vM < 1) return `£${Math.round(vM * 1000)}k`;
+  return `£${vM.toFixed(2)}m`;
+}
+
+// Real weekly spend, notebooks/02_phaser_walkthrough.ipynb (history seed=0,
+// plan seed=1, correlation=0.7, reproduced via the committed BudgetPhaser
+// recipe: n_sims=50, grid_steps=25, n_phasing_seeds=10, fast_mode=False).
+// PLAN is the illustrative 1-year plan used in the Cause chart above.
+const PLAN = {
+  tv:     [116491,109867,118120,59904,130080,108665,72911,107512,108000,109454,87709,96435,87884,90631,93441,121921,79207,97482,100396,90961,89547,104337,129200,131864,41257,42818,95064,85719,114424,106882,121004,62111,104019,149756,104551,113248,95554,73171,114822,105538,74211,82946,112382,51634,96219,102342,82050,94232,103348,129115,104773,92397],
+  meta:   [97153,96085,76357,45582,110798,85603,65184,90133,83589,92780,80760,88336,61936,82167,62616,95522,95561,60641,44053,82200,105142,66037,87129,100884,31077,46696,73960,78891,79225,85989,110034,55025,71195,101309,89765,78910,61558,69586,81990,81106,66613,65619,76675,70004,81299,70048,88717,66608,78536,84525,80978,83706],
+  search: [54912,71117,47171,44350,77931,63497,48612,68792,69875,68743,75837,68204,46509,57055,53645,68040,60241,57857,37491,63431,55583,47477,80539,82429,31339,38598,50579,77492,69479,53658,79289,47339,43255,85838,64154,77590,61390,18924,62337,48602,53989,53122,63444,40296,73185,77015,52062,56853,61836,70509,53908,64849],
+};
+
+// The fix now runs at max_weekly_deviation_pct=80 across a 3-year plan (not
+// the package's 40% default, not a single year), reproduced the same way.
+// PLAN_YEAR1 / RECOMMENDED below are year 1 of that 3-year plan and its
+// phased counterpart, shown as one representative year of the full schedule.
+const PLAN_YEAR1 = {
+  tv:     [91520,118528,78618,73916,129885,105829,81021,114654,116459,114572,126394,113673,77514,95092,89408,113401,100401,96429,62485,105719,92638,79128,134231,137382,52232,64330,84299,129154,115798,89430,132149,78898,72092,143063,106923,129317,102317,31539,103895,81003,89982,88536,105739,67159,121974,128359,86771,94755,103059,117515,89846,108082],
+  meta:   [78971,84387,81360,59326,79820,86351,55571,102387,84673,78108,71507,84426,66763,67299,63736,87145,75482,84836,79445,76299,84773,62755,105670,94801,44092,67380,54981,76230,72412,89075,98871,58455,76327,116666,90435,82161,66854,63965,82458,65100,69874,73839,87496,62523,86658,71013,86131,67590,95528,103243,77585,67223],
+  search: [62585,70992,67376,37411,70791,53397,55605,71872,65663,65775,64976,61336,49285,62059,62085,70289,80532,55773,58470,66865,59047,50247,66238,73356,36188,39466,59261,51955,66971,45829,87240,46877,44704,101604,56861,59492,44398,48946,55033,66561,49887,53841,48863,43854,71964,51006,53894,52650,73480,72671,69680,41797],
+};
+const RECOMMENDED = {
+  tv:     [66404,204014,34830,57336,62311,137711,97870,133497,155634,59404,162114,93946,54392,113601,106065,101357,83052,81127,132607,70648,90237,96916,162224,86931,56903,91530,63202,78871,116076,133332,140198,91966,63726,130312,125268,160306,67891,16632,194156,46335,57462,64221,106983,26937,74597,109167,193562,99333,49810,169385,86647,112408],
+  meta:   [23116,158685,44982,77260,22562,84682,77822,139063,23597,128704,52598,113815,46816,44456,81202,112470,44757,91217,63090,98902,102869,59834,102114,63495,81875,101530,41289,83201,98910,35148,107133,39596,109197,94393,67308,117326,91719,27061,33592,50757,67720,49644,177055,51912,144368,37558,72488,16540,138295,134252,54859,132451],
+  search: [121513,30147,57384,29320,40381,19104,62600,129580,68867,25897,93790,69195,82530,17291,73372,70525,25234,57716,21053,84378,132305,11694,71807,83967,58562,33772,61838,99823,47324,20724,62031,69855,77370,71167,50944,56512,51291,50951,92886,42428,46830,45878,46163,20457,134249,15533,50480,60006,38039,48331,122104,31773],
+};
+
+// ── Chart: Problem (forest plot, before phasing) ────────────────────────────
+// From the same reproduction: revenue = elasticity draw x planned spend,
+// no-phasing scenario, p10/p90 of the resulting distribution.
+function drawForest(svgId, data, xMax) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+
+  const W = 700, H = 200;
+  const m = { top: 14, right: 92, bottom: 42, left: 70 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+
+  const scX = v => m.left + (v / xMax) * pw;
+  const rowH = ph / data.length;
+  const rowCy = i => m.top + rowH * i + rowH / 2;
+
+  const g = el('g', {});
+
+  for (let i = 0; i < data.length; i++) {
+    if (i % 2 === 1) {
+      g.appendChild(el('rect', { x: m.left, y: m.top + rowH * i, width: pw, height: rowH, fill: '#f9fafb' }));
+    }
+  }
+
+  const xTicks = [0, 0.5, 1.0, 1.5, 2.0, 2.5];
+  for (const v of xTicks) {
+    const x = scX(v);
+    g.appendChild(el('line', { x1: x, y1: m.top, x2: x, y2: m.top + ph, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', { x, y: m.top + ph + 16, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, `£${v}m`));
+  }
+
+  g.appendChild(el('text', { x: m.left + pw / 2, y: m.top + ph + 30, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, 'Incremental revenue (£m)'));
+
+  g.appendChild(el('rect', { x: m.left, y: m.top, width: pw, height: ph, fill: 'none', stroke: '#e5e7eb', 'stroke-width': 1 }));
+
+  for (let ci = 0; ci < data.length; ci++) {
+    const ch = data[ci];
+    const cy = rowCy(ci);
+
+    g.appendChild(el('line', { x1: scX(ch.p10), y1: cy, x2: scX(ch.p90), y2: cy, stroke: ch.color, 'stroke-width': 7, 'stroke-linecap': 'round' }));
+
+    g.appendChild(el('text', { x: scX(ch.p90) + 8, y: cy + 4, 'font-size': 11.5, fill: ch.color, 'font-weight': '700' }, `${fmtGBP(ch.p10)} – ${fmtGBP(ch.p90)}`));
+    g.appendChild(el('text', { x: m.left - 10, y: cy - 2, 'text-anchor': 'end', 'font-size': 12.5, 'font-weight': '700', fill: ch.color }, ch.name));
+    g.appendChild(el('text', { x: m.left - 10, y: cy + 12, 'text-anchor': 'end', 'font-size': 9.5, fill: '#9ca3af' }, `£${ch.spend.toFixed(1)}m spend`));
+  }
+
+  svg.appendChild(g);
+}
+
+drawForest('chartProblem', [
+  { name: 'TV',     color: '#2563eb', spend: 5.098, p10: 0.945, p90: 2.093 },
+  { name: 'Meta',   color: '#d97706', spend: 4.066, p10: 1.406, p90: 2.574 },
+  { name: 'Search', color: '#059669', spend: 3.100, p10: 0.712, p90: 1.885 },
+], 2.8);
+
+// ── Chart: Cause (correlated spend time series) ─────────────────────────────
+(function drawCause() {
+  const svg = document.getElementById('chartCause');
+  if (!svg) return;
+
+  const W = 700, H = 220;
+  const m = { top: 12, right: 20, bottom: 34, left: 55 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+
+  const T = 52;
+  const maxV = 160000;
+
+  const scX = i => m.left + (i / (T - 1)) * pw;
+  const scY = v => m.top + ph - (v / maxV) * ph;
+  const pathD = data => data.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
+
+  const g = el('g', {});
+
+  const yTicks = [0, 50000, 100000, 150000];
+  for (const v of yTicks) {
+    const y = scY(v);
+    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', { x: m.left - 8, y: y + 4, 'text-anchor': 'end', 'font-size': 10, fill: '#9ca3af' }, `£${v / 1000}k`));
+  }
+
+  const xTicks = [0, 12, 25, 38, 51];
+  for (const t of xTicks) {
+    const x = scX(t);
+    g.appendChild(el('line', { x1: x, y1: m.top + ph, x2: x, y2: m.top + ph + 5, stroke: '#d1d5db', 'stroke-width': 1 }));
+    g.appendChild(el('text', { x, y: m.top + ph + 16, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, `Wk ${t + 1}`));
+  }
+
+  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+
+  for (const [key, color] of [['tv', '#2563eb'], ['meta', '#d97706'], ['search', '#059669']]) {
+    g.appendChild(el('path', { d: pathD(PLAN[key]), fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.85 }));
+  }
+
+  svg.appendChild(g);
+})();
+
+// ── Chart: Fix (before/after small multiples) ───────────────────────────────
+(function drawFix() {
+  const svg = document.getElementById('chartFix');
+  if (!svg) return;
+
+  const W = 700, H = 228;
+  const gap = 14;
+  const panelW = (W - gap * 2) / 3;
+  const m = { top: 22, right: 8, bottom: 46, left: 40 };
+  const ph = H - m.top - m.bottom;
+  const pw = panelW - m.left - m.right;
+
+  const panels = [
+    { key: 'tv',     name: 'TV',     color: '#2563eb', yMax: 220000 },
+    { key: 'meta',   name: 'Meta',   color: '#d97706', yMax: 190000 },
+    { key: 'search', name: 'Search', color: '#059669', yMax: 150000 },
+  ];
+
+  const T = 52;
+  const g = el('g', {});
+
+  panels.forEach((p, idx) => {
+    const offsetX = idx * (panelW + gap);
+    const pg = el('g', { transform: `translate(${offsetX},0)` });
+
+    const scX = i => m.left + (i / (T - 1)) * pw;
+    const scY = v => m.top + ph - (v / p.yMax) * ph;
+    const pathD = data => data.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
+
+    pg.appendChild(el('text', { x: m.left + pw / 2, y: 12, 'text-anchor': 'middle', 'font-size': 11.5, 'font-weight': '700', fill: p.color }, p.name));
+
+    const yTicks = [0, p.yMax];
+    for (const v of yTicks) {
+      const y = scY(v);
+      pg.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
+      pg.appendChild(el('text', { x: m.left - 6, y: y + 3, 'text-anchor': 'end', 'font-size': 8.5, fill: '#9ca3af' }, `£${Math.round(v / 1000)}k`));
+    }
+
+    pg.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+    pg.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+
+    pg.appendChild(el('text', { x: m.left, y: m.top + ph + 13, 'text-anchor': 'start', 'font-size': 8.5, fill: '#9ca3af' }, 'Wk 1'));
+    pg.appendChild(el('text', { x: m.left + pw, y: m.top + ph + 13, 'text-anchor': 'end', 'font-size': 8.5, fill: '#9ca3af' }, 'Wk 52'));
+
+    pg.appendChild(el('path', { d: pathD(PLAN_YEAR1[p.key]), fill: 'none', stroke: '#9ca3af', 'stroke-width': 1.75, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.9 }));
+    pg.appendChild(el('path', { d: pathD(RECOMMENDED[p.key]), fill: 'none', stroke: p.color, 'stroke-width': 1.75, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.9 }));
+
+    g.appendChild(pg);
+  });
+
+  g.appendChild(el('text', { x: W / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, 'Week (original plan year)'));
+
+  svg.appendChild(g);
+})();
+
+// ── Chart: Impact (before/after forest plot) ────────────────────────────────
+(function drawImpact() {
+  const svg = document.getElementById('chartImpact');
+  if (!svg) return;
+
+  const W = 700, H = 230;
+  const m = { top: 14, right: 92, bottom: 42, left: 70 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+
+  const data = [
+    { name: 'TV',     color: '#2563eb', before: [0.945, 2.093], after: [1.307, 1.735] },
+    { name: 'Meta',   color: '#d97706', before: [1.406, 2.574], after: [1.807, 2.179] },
+    { name: 'Search', color: '#059669', before: [0.712, 1.885], after: [1.148, 1.437] },
+  ];
+
+  const xMax = 2.8;
+  const scX = v => m.left + (v / xMax) * pw;
+  const rowH = ph / data.length;
+  const rowCy = i => m.top + rowH * i + rowH / 2;
+
+  const g = el('g', {});
+
+  for (let i = 0; i < data.length; i++) {
+    if (i % 2 === 1) {
+      g.appendChild(el('rect', { x: m.left, y: m.top + rowH * i, width: pw, height: rowH, fill: '#f9fafb' }));
+    }
+  }
+
+  const xTicks = [0, 0.5, 1.0, 1.5, 2.0, 2.5];
+  for (const v of xTicks) {
+    const x = scX(v);
+    g.appendChild(el('line', { x1: x, y1: m.top, x2: x, y2: m.top + ph, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', { x, y: m.top + ph + 16, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, `£${v}m`));
+  }
+
+  g.appendChild(el('text', { x: m.left + pw / 2, y: m.top + ph + 30, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, 'Incremental revenue (£m)'));
+
+  g.appendChild(el('rect', { x: m.left, y: m.top, width: pw, height: ph, fill: 'none', stroke: '#e5e7eb', 'stroke-width': 1 }));
+
+  for (let ci = 0; ci < data.length; ci++) {
+    const ch = data[ci];
+    const cy = rowCy(ci);
+    const offset = rowH * 0.19;
+    const capH = rowH * 0.14;
+
+    // Before (light, upper sub-row)
+    const cyB = cy - offset;
+    g.appendChild(el('line', { x1: scX(ch.before[0]), y1: cyB, x2: scX(ch.before[1]), y2: cyB, stroke: ch.color, 'stroke-width': 6, 'stroke-linecap': 'round', opacity: 0.4 }));
+
+    // After (solid, lower sub-row)
+    const cyA = cy + offset;
+    g.appendChild(el('line', { x1: scX(ch.after[0]), y1: cyA, x2: scX(ch.after[1]), y2: cyA, stroke: ch.color, 'stroke-width': 6, 'stroke-linecap': 'round' }));
+
+    g.appendChild(el('text', { x: scX(ch.after[1]) + 8, y: cyA + 3, 'font-size': 10, fill: ch.color, 'font-weight': '700' }, `${fmtGBP(ch.after[0])} – ${fmtGBP(ch.after[1])}`));
+
+    g.appendChild(el('text', { x: m.left - 10, y: cy + 4, 'text-anchor': 'end', 'font-size': 12.5, 'font-weight': '700', fill: ch.color }, ch.name));
+  }
+
+  svg.appendChild(g);
+})();
+</script>
+
+</body>
+</html>
