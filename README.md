@@ -36,7 +36,7 @@ uv venv --python 3.12 && uv sync
 from how_wrong_is_your_mmm import CollinearityDiagnostic, BudgetPhaser
 
 # Diagnose — synthetic spend
-diag = CollinearityDiagnostic(correlation=0.7, seed=0)
+diag = CollinearityDiagnostic(correlation=0.7, spend_seed=0)
 diag.fit()
 diag.summary()
 # channel  true_elasticity  mean_estimated  coef_of_variation
@@ -50,6 +50,8 @@ diag.fit()
 diag.summary()   # same output, personalised to your correlation structure
 
 # Phase — recommend a de-correlated spend schedule
+# history: your multi-year spend history (DatetimeIndex)
+# plan:    the upcoming year's spend plan (DatetimeIndex, same channels)
 phaser = BudgetPhaser(history_df=history, plan_df=plan)
 phaser.fit()
 phaser.recommended_schedule_   # 52-week DataFrame, monthly totals guaranteed to match
@@ -75,15 +77,21 @@ The model isn't broken. The data design is.
 
 | Notebook | What it shows |
 |----------|--------------|
-| [`01_dgp_diagnostic_walkthrough`](notebooks/01_dgp_diagnostic_walkthrough.ipynb) | Correlation sweep 0.1→0.9; elasticity estimates across 50 seeds; personalised diagnostic on real spend |
-| [`02_phaser_walkthrough`](notebooks/02_phaser_walkthrough.ipynb) | BudgetPhaser end-to-end; CV curve vs phasing amplitude; elasticity fan chart before/after |
+| [`01_dgp_diagnostic_walkthrough`](notebooks/01_dgp_diagnostic_walkthrough.ipynb) | Correlation sweep 0.1→0.9; elasticity estimates across 50 seeds; personalised diagnostic on real spend; turning elasticity into £ and CAC/ROI |
+| [`02_phaser_walkthrough`](notebooks/02_phaser_walkthrough.ipynb) | BudgetPhaser end-to-end; CV curve vs phasing amplitude; elasticity fan chart before/after; per-channel deviation constraints |
 | [`03_time_to_benefit`](notebooks/03_time_to_benefit.ipynb) | Research study: how long phasing takes; correlation sensitivity; deviation amplitude lever |
+| [`04_channel_count_sweep`](notebooks/04_channel_count_sweep.ipynb) | Validates the diagnostic and phasing at realistic channel counts (5–20); channel count barely matters, correlation does |
+| [`05_bayesian_comparison`](notebooks/05_bayesian_comparison.ipynb) | Paired OLS vs Bayesian comparison; priors narrow intervals a little (5–9%), not a fix for collinearity |
 
 ---
 
-## Practitioner guide
+## Guides
 
-[**How Wrong Is Your MMM? A Practitioner's Guide to Collinearity Bias**](https://raz1470.github.io/how_wrong_is_your_mmm/guide.html)
+[**How Wrong Is Your MMM?**](https://raz1470.github.io/how_wrong_is_your_mmm/introduction.html)
+A two-minute read: the headline numbers and the fix, no maths.
+
+[**How Wrong Is Your MMM?**](https://raz1470.github.io/how_wrong_is_your_mmm/research.html)
+The full method, the research behind it, and how to run it yourself.
 
 ---
 
@@ -93,4 +101,4 @@ The model isn't broken. The data design is.
 uv run ruff format . && uv run ruff check . && uv run pytest
 ```
 
-77 tests. Python 3.12+. MIT licence.
+132 tests. Python 3.12+. MIT licence.

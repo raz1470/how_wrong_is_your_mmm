@@ -258,6 +258,7 @@ svg.chart { display: block; width: 100%; }
   <a href="#scale">5 · Does It Scale?</a>
   <a href="#bayesian">6 · Won't Bayes Fix It?</a>
   <a href="#challenges">7 · Common Objections</a>
+  <a href="#blackout">8 · Going Further</a>
 </nav>
 
 <main>
@@ -876,6 +877,107 @@ svg.chart { display: block; width: 100%; }
   <p>It's just not a problem most readers of this guide have the data to solve. Most UK MMM practitioners run a single-market model, there's no second geography to pool across. Hierarchical pooling addresses cross-market variance; this guide addresses within-market identification variance from correlated channel spend, a different problem, and one that doesn't go away because a technique exists to solve a problem you don't have the data structure for.</p>
 
   <div class="up-next">
+    <strong>Next:</strong> <a href="#blackout" style="color:inherit">Section 8 — Going Further</a> covers what to do when an agency won't let every channel move by the same amount, including a harder lever than a continuous range: switching a channel fully on or off.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 8 — GOING FURTHER
+═══════════════════════════════════════════════════ -->
+<section id="blackout" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+  <p class="s-label">Section 8</p>
+  <h2>Going Further: Per-Channel Rules, and a Harder On/Off Lever</h2>
+
+  <p>Every result so far assumed every channel could move by the same amount. Real media plans rarely work that way. TV is often booked and contracted well ahead of time and simply can't be reshuffled week to week, while a channel like Search or paid social can flex much more freely. The phasing recommendation needs to respect that, not assume it away.</p>
+
+  <p>The package supports this directly: the weekly deviation allowance can be set per channel, a single number for a symmetric range, or, for a channel that genuinely can be turned off, a <code>Blackout()</code> setting that switches it fully on or fully off rather than nudging it up and down.</p>
+
+  <h3>Locking a channel costs more than it looks like</h3>
+
+  <p>If TV can't move at all, phasing still helps, Meta and Search de-correlate from each other and, to a lesser extent, from the now-fixed TV, but most of TV's own reliability gain disappears. In a worked example (three channels, correlation 0.7, ±40% deviation where allowed): phasing all three channels normally reduces worst-case CV by 16%; locking TV and phasing only Meta and Search reduces it by 12%, with TV's own CV barely moving. The lesson: a channel only gets more reliable if it's actually allowed to vary. Locking it protects operational simplicity, at the cost of leaving that channel's number exactly as uncertain as it was before.</p>
+
+  <h3>Blackout: a harder lever than a continuous range</h3>
+
+  <p>Sometimes the honest constraint from an agency isn't "vary it a bit", it's "it's either running or it's off." <code>Blackout()</code> models that directly: instead of a continuous ± range, each week is either spent at the full planned amount or at exactly zero, nothing in between. Left uncapped, a bad month could land several dark weeks at once, forcing the few surviving weeks to carry an implausible multiple of the original budget. A <code>max_dark_weeks_per_month</code> cap bounds this, capped at one dark week a month, at most one week's spend ever needs a new home.</p>
+
+  <p>Because it concentrates variation into a genuine on/off switch rather than spreading it thinly, Blackout buys more reliability per unit of disruption than a continuous range at the same nominal deviation budget. Checked across three independent data draws (same 3-channel, correlation-0.7 scenario used throughout this guide):</p>
+
+  <!-- Chart 12: scenario comparison -->
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Blackout beats a continuous range at the same nominal budget</div>
+      <div class="fig-sub">Reduction in worst-case elasticity CV · 52-week plan · range across 3 independent data draws</div>
+    </div>
+    <div class="fig-body">
+      <svg class="chart" id="chart12" viewBox="0 0 700 230" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Baseline (every channel on a symmetric ±40% range): 16–24% reduction. Search alone switched to Blackout, TV and Meta left on the normal ±40% range: 17–49%. Every channel switched to Blackout: 47–59%, with a consistent, modest cost across draws, around 12 of 52 weeks dark per channel (one a month, as designed) and surviving weeks spending roughly 1.2–1.4x the original weekly maximum, no worse than the single-channel case.</p>
+  </div>
+
+  <h3>Optimal Blackout beats even the most aggressive continuous range</h3>
+
+  <p>Section 3 found that raising the continuous deviation range from the package default (±40%) up to ±80%, double the default, pushed the one-year CV reduction to around 53% in the headline scenario. Blackout, applied to every channel at the package default cap of one dark week per month, beats that outright, without asking for double the weekly volatility.</p>
+
+  <!-- Chart 13: per-channel comparison, dev=80 vs Blackout -->
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">One dark week a month outperforms doubling the deviation range</div>
+      <div class="fig-sub">Per-channel elasticity band-width reduction · 52-week plan · ±80% continuous range vs Blackout(max_dark_weeks_per_month=1)</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="10" height="10" style="display:inline;vertical-align:middle"><rect width="10" height="10" fill="#9ca3af"/></svg> ±80% continuous range</span>
+        <span class="li"><svg width="10" height="10" style="display:inline;vertical-align:middle"><rect width="10" height="10" fill="#059669"/></svg> Blackout, cap = 1 dark week/month</span>
+      </div>
+      <svg class="chart" id="chart13" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">±80% continuous range: TV 46.8%, Meta 54.2%, Search 53.4%. Blackout (cap = 1): TV 64.5%, Meta 61.5%, Search 64.6%, higher for every channel, despite ±80% already being twice the package's own default weekly allowance. Each channel goes dark 12 of 52 weeks, with surviving weeks spending 1.2–1.3x their original maximum.</p>
+  </div>
+
+  <h3>Faster too, not just bigger</h3>
+
+  <p>Section 4 showed that reaching a given reliability target takes time, because new phased data has to displace years of correlated history. Blackout reaches the same targets in a fraction of the time.</p>
+
+  <div class="knums">
+    <div class="kbox">
+      <div class="corr">20% CV reduction</div>
+      <div class="num" style="color:#059669">39wk → 8wk</div>
+      <div class="lab">±40% continuous range vs Blackout(cap=1), weeks needed to reach the same reduction</div>
+    </div>
+    <div class="kbox">
+      <div class="corr">30% CV reduction</div>
+      <div class="num" style="color:#059669">39wk → 13wk</div>
+      <div class="lab">The continuous range's own curve isn't perfectly smooth, 20% and 30% happen to clear at the same point</div>
+    </div>
+    <div class="kbox">
+      <div class="corr">50% CV reduction</div>
+      <div class="num" style="color:#059669">130wk → 26wk</div>
+      <div class="lab">Two and a half years of continuous-range phasing vs half a year of Blackout</div>
+    </div>
+  </div>
+
+  <p>A 3–5x speed-up depending on the target. Blackout doesn't just raise the eventual ceiling, it front-loads the benefit: if years of correlated history have already accumulated, a channel that can go fully dark for one week a month gets a de-correlated MMM meaningfully sooner than one merely nudged ±40% either way.</p>
+
+  <h3>Holds beyond the 3-channel toy example</h3>
+
+  <p>The same question Section 5 asked of standard phasing applies here: does Blackout's extra leverage survive at realistic channel counts, or is it a small-channel-count artefact? At a worked N=15 example, Blackout collapses mean pairwise correlation from 0.684 to 0.067, close to zero, versus 0.684 to 0.356 (roughly halved) for the continuous range at the same channel count. A full sweep across 5–20 channels, at the same simulation settings used throughout this section, found Blackout consistently reducing max band width by roughly 3x more than the continuous range at every count tested: 56.3% vs 17.0% at N=5, down to 46.7% vs 15.5% at N=20, with no sign of the advantage collapsing as channel count grows, the same flat-across-channel-count pattern Section 5 already established for standard phasing.</p>
+
+  <div class="knums">
+    <div class="kbox">
+      <div class="corr">15-channel example</div>
+      <div class="num" style="color:#059669">0.68 → 0.07</div>
+      <div class="lab">Mean pairwise correlation before vs after Blackout, near-total decorrelation</div>
+    </div>
+    <div class="kbox">
+      <div class="corr">5–20 channels tested</div>
+      <div class="num" style="color:#059669">~3x</div>
+      <div class="lab">Blackout's band-width reduction versus the continuous range, consistently around triple at every count tested</div>
+    </div>
+  </div>
+
+  <p>Blackout is a blunter instrument to hand a media buyer than a continuous range, full weeks at zero spend are a bigger operational ask than a modest weekly wobble, but where an agency can accommodate it, it is a substantially stronger lever: bigger, faster, and, on the evidence so far, no worse behaved as more channels are added.</p>
+
+  <div class="up-next">
     <strong>Next:</strong> closing summary below.
   </div>
 </section>
@@ -886,13 +988,15 @@ svg.chart { display: block; width: 100%; }
 <section style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
   <h3>Bringing it together</h3>
 
-  <p>The seven sections of this guide tell one story:</p>
+  <p>The eight sections of this guide tell one story:</p>
 
   <p>Marketing channels move together because business decisions are coordinated. That correlation doesn't bias your MMM, but it makes the elasticity estimates unreliable. The specific numbers your model produced are one draw from a wide distribution; a slightly different data window would give a different answer. The coefficient of variation quantifies exactly how wide that distribution is for your specific spend history.</p>
 
   <p>The fix is to vary the weekly channel split independently within each month, preserving monthly totals exactly. This introduces the kind of natural variation that lets the model distinguish individual channel effects. The improvement compounds over time: the more phased periods accumulate in the training data, the more reliable the elasticity estimates become. And it isn't a toy-example artefact: the same benefit shows up whether your MMM has three channels or twenty.</p>
 
   <p>This is not a complex statistical intervention. It's a deliberate data design choice: the same logic that motivates geo-experiments in paid search, applied to the temporal dimension of channel mix planning. Switching to a Bayesian estimation method doesn't sidestep this: priors regularise noise, they don't manufacture the independent variation the data never had. And the usual practical objections, run a geo-test instead, phasing must hurt performance, pool hierarchically, either don't hold up under scrutiny or don't apply to most practitioners' actual data.</p>
+
+  <p>And phasing isn't one-size-fits-all: it adapts to what an agency will actually accept, from a channel that's locked entirely to one that can be switched fully on or off. That harder lever, Blackout, turns out to be not just more flexible but more effective, bigger reliability gains, reached faster, holding up as channel count grows.</p>
 
   <div class="callout">
     <p>The question isn't whether to trust your MMM. It's whether your data gave it a fair chance. Budget phasing is how you give it one.</p>
@@ -1997,6 +2101,163 @@ function el(tag, attrs, text) {
     x: m.left + pw / 2, y: H - 3,
     'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af'
   }, 'Number of channels'));
+
+  svg.appendChild(g);
+})();
+
+
+// ── Chart 12: Blackout scenario comparison (bar + range whisker) ──────────
+(function drawBlackoutScenarios() {
+  const svg = document.getElementById('chart12');
+  if (!svg) return;
+
+  const W = 700, H = 230;
+  const m = { top: 20, right: 30, bottom: 46, left: 58 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+
+  // From notebook 02's follow-up comparison, 3 independent data draws
+  const data = [
+    { label: 'Baseline\n(all symmetric ±40%)', lo: 16, hi: 24, color: '#9ca3af' },
+    { label: 'Search Blackout only\n(TV/Meta normal)', lo: 17, hi: 49, color: '#60a5fa' },
+    { label: 'All-Blackout\n(every channel)', lo: 47, hi: 59, color: '#059669' },
+  ];
+
+  const maxY = 65;
+  const scY = v => m.top + ph - (v / maxY) * ph;
+
+  const n = data.length;
+  const groupW = pw / n;
+  const barW = groupW * 0.4;
+
+  const g = el('g', {});
+
+  // Horizontal grid + Y axis labels
+  const yTicks = [0, 10, 20, 30, 40, 50, 60];
+  for (const v of yTicks) {
+    const y = scY(v);
+    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', {
+      x: m.left - 8, y: y + 4,
+      'text-anchor': 'end', 'font-size': 10, fill: '#9ca3af'
+    }, `${v}%`));
+  }
+
+  // Axes
+  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+
+  // Y axis label
+  g.appendChild(el('text', {
+    x: 11, y: m.top + ph / 2,
+    'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af',
+    transform: `rotate(-90, 11, ${m.top + ph / 2})`
+  }, 'Max-CV reduction'));
+
+  for (let i = 0; i < data.length; i++) {
+    const d = data[i];
+    const mid = (d.lo + d.hi) / 2;
+    const cx = m.left + i * groupW + groupW / 2;
+    const barTop = scY(mid);
+
+    g.appendChild(el('rect', { x: cx - barW / 2, y: barTop, width: barW, height: m.top + ph - barTop, fill: d.color, rx: 2, opacity: 0.55 }));
+
+    // Range whisker
+    const yLo = scY(d.lo), yHi = scY(d.hi);
+    g.appendChild(el('line', { x1: cx, y1: yLo, x2: cx, y2: yHi, stroke: d.color, 'stroke-width': 2 }));
+    g.appendChild(el('line', { x1: cx - 9, y1: yLo, x2: cx + 9, y2: yLo, stroke: d.color, 'stroke-width': 2 }));
+    g.appendChild(el('line', { x1: cx - 9, y1: yHi, x2: cx + 9, y2: yHi, stroke: d.color, 'stroke-width': 2 }));
+
+    g.appendChild(el('text', {
+      x: cx, y: yHi - 8,
+      'text-anchor': 'middle', 'font-size': 10, fill: '#111827', 'font-weight': '600'
+    }, `${d.lo}–${d.hi}%`));
+
+    // Multi-line x label
+    const lines = d.label.split('\n');
+    lines.forEach((ln, li) => {
+      g.appendChild(el('text', {
+        x: cx, y: m.top + ph + 16 + li * 12,
+        'text-anchor': 'middle', 'font-size': 9.5, fill: '#6b7280'
+      }, ln));
+    });
+  }
+
+  svg.appendChild(g);
+})();
+
+
+// ── Chart 13: dev=80 vs Blackout, per channel ──────────────────────────────
+(function drawBlackoutVsDev80() {
+  const svg = document.getElementById('chart13');
+  if (!svg) return;
+
+  const W = 700, H = 240;
+  const m = { top: 20, right: 30, bottom: 42, left: 58 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+
+  // From notebook 03: dev=80 "optimal" (Part C) vs Blackout(cap=1) at 52 weeks
+  const data = [
+    { name: 'TV',     color: '#2563eb', dev80: 46.8, blackout: 64.5 },
+    { name: 'Meta',   color: '#d97706', dev80: 54.2, blackout: 61.5 },
+    { name: 'Search', color: '#059669', dev80: 53.4, blackout: 64.6 },
+  ];
+
+  const maxY = 75;
+  const scY = v => m.top + ph - (v / maxY) * ph;
+
+  const n = data.length;
+  const groupW = pw / n;
+  const barW = groupW * 0.3;
+  const gap = groupW * 0.06;
+
+  const g = el('g', {});
+
+  const yTicks = [0, 15, 30, 45, 60, 75];
+  for (const v of yTicks) {
+    const y = scY(v);
+    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', {
+      x: m.left - 8, y: y + 4,
+      'text-anchor': 'end', 'font-size': 10, fill: '#9ca3af'
+    }, `${v}%`));
+  }
+
+  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+
+  g.appendChild(el('text', {
+    x: 11, y: m.top + ph / 2,
+    'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af',
+    transform: `rotate(-90, 11, ${m.top + ph / 2})`
+  }, 'Band-width reduction'));
+
+  for (let i = 0; i < data.length; i++) {
+    const d = data[i];
+    const groupX = m.left + i * groupW;
+
+    const d80X = groupX + gap;
+    const d80Top = scY(d.dev80);
+    g.appendChild(el('rect', { x: d80X, y: d80Top, width: barW, height: m.top + ph - d80Top, fill: d.color, rx: 2, opacity: 0.35 }));
+    g.appendChild(el('text', {
+      x: d80X + barW / 2, y: d80Top - 5,
+      'text-anchor': 'middle', 'font-size': 9, fill: '#6b7280', 'font-weight': '600'
+    }, `${d.dev80.toFixed(1)}%`));
+
+    const boX = d80X + barW + gap;
+    const boTop = scY(d.blackout);
+    g.appendChild(el('rect', { x: boX, y: boTop, width: barW, height: m.top + ph - boTop, fill: d.color, rx: 2, opacity: 0.9 }));
+    g.appendChild(el('text', {
+      x: boX + barW / 2, y: boTop - 5,
+      'text-anchor': 'middle', 'font-size': 9, fill: d.color, 'font-weight': '600'
+    }, `${d.blackout.toFixed(1)}%`));
+
+    g.appendChild(el('text', {
+      x: groupX + groupW / 2, y: m.top + ph + 16,
+      'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af'
+    }, d.name));
+  }
 
   svg.appendChild(g);
 })();
