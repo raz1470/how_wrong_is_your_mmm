@@ -18,6 +18,19 @@ This package quantifies that problem and recommends a fix.
 
 ---
 
+## Guides
+
+[**Introduction**](https://raz1470.github.io/how_wrong_is_your_mmm/introduction.html)
+A two-minute read: the headline numbers and the fix, no maths.
+
+[**Research**](https://raz1470.github.io/how_wrong_is_your_mmm/research.html)
+The full method, the research behind it, and how to run it yourself.
+
+[**API Reference**](https://raz1470.github.io/how_wrong_is_your_mmm/api/)
+Full class and function docs for `CollinearityDiagnostic`, `BudgetPhaser`, and `Blackout`.
+
+---
+
 ## Quick start
 
 ```bash
@@ -85,16 +98,6 @@ The model isn't broken. The data design is.
 
 ---
 
-## Guides
-
-[**How Wrong Is Your MMM?**](https://raz1470.github.io/how_wrong_is_your_mmm/introduction.html)
-A two-minute read: the headline numbers and the fix, no maths.
-
-[**How Wrong Is Your MMM?**](https://raz1470.github.io/how_wrong_is_your_mmm/research.html)
-The full method, the research behind it, and how to run it yourself.
-
----
-
 ## Development
 
 ```bash
@@ -102,3 +105,15 @@ uv run ruff format . && uv run ruff check . && uv run pytest
 ```
 
 132 tests. Python 3.12+. MIT licence.
+
+The [API reference](https://raz1470.github.io/how_wrong_is_your_mmm/api/) is built with `mkdocs` + `mkdocstrings` from the docstrings in `src/`, and the built site is committed under `docs/api/` (this repo has no CI build step for GitHub Pages, so the site has to be built and committed locally, same as the notebooks). To preview changes locally:
+
+```bash
+uv run mkdocs serve
+```
+
+To rebuild the committed site before a release:
+
+```bash
+uv run mkdocs build --strict
+```

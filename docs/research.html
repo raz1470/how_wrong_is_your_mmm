@@ -243,7 +243,7 @@ svg.chart { display: block; width: 100%; }
   <ul>
     <li><strong>What this is.</strong> A guide to a hidden risk in Marketing Mix Models, or MMMs (statistical models that estimate how much each marketing channel contributes to sales). The output you actually use, elasticity (the modelled link between a £ of spend and the resulting change in sales), is the number ROI and budget-allocation decisions are built on.</li>
     <li><strong>What we're showing.</strong> Marketing channels are usually collinear, with spend rising and falling together because the same planning decisions drive them all. That doesn't make your MMM biased, but it makes its elasticity estimates unstable: refit the same model on a slightly different data window and the number can swing by a third or more.</li>
-    <li><strong>How the analysis is built.</strong> Everything here is simulation-based: we generate many plausible versions of the same market (same true elasticities, different noise), fit the model to each, and measure how much the answers vary. The same method runs on your own spend data for a personalised result.</li>
+    <li><strong>How the analysis is built.</strong> Everything here is simulation-based: we generate many plausible versions of the same market (same true elasticities, different noise), fit the model to each, and measure how much the answers vary. The same method runs on your own spend data for a personalised result, via <code>how_wrong_is_your_mmm</code>, a free, open-source Python package (<a href="#how">Section 5</a> shows the pipeline).</li>
     <li><strong>Why it's worth your time.</strong> If your elasticities swing by 30%+ between refits, the ROI and budget decisions built on them are sitting on mostly noise. This guide shows how to measure that risk, and a concrete fix, budget phasing, that reduces it without touching your annual budget.</li>
   </ul>
 </div>
@@ -301,10 +301,6 @@ svg.chart { display: block; width: 100%; }
     <p class="fig-cap">CV is the standard deviation of the estimated elasticity divided by its mean, a measure of how much the answer changes across plausible realisations of the same market. At correlation 0.3 (CV 18%), estimates are noisy but directionally consistent. At 0.7 (CV 36%), a third of the estimate's magnitude is unexplained variance. At 0.9 (CV 60%), the model is largely guessing.</p>
   </div>
 
-  <p>The practical inflection is around 0.6–0.7. Below that, the model is imprecise but still directionally useful: estimates are scattered but mostly on the right side of zero. Above 0.7, estimates become genuinely unreliable: the direction of the error is unpredictable, and the specific number your model produced is one of many equally defensible answers.</p>
-
-  <p>Most real marketing datasets sit between 0.5 and 0.8. That's the zone where collinearity is doing real damage, not obvious enough to flag, but severe enough to make budget decisions based on the output genuinely risky.</p>
-
   <div class="knums">
     <div class="kbox">
       <div class="corr">Channel correlation 0.3</div>
@@ -344,6 +340,30 @@ svg.chart { display: block; width: 100%; }
   </div>
 
   <p><strong>Reading the output:</strong> if the 80% interval is narrower than 50% of the point estimate, the model is reasonably informative; wider than the estimate itself, treat it as directional at best. Search almost always shows wider intervals than TV or Meta, because search spend tracks overall business activity most tightly, treat a very wide Search interval as a rough order-of-magnitude indicator, not a number to optimise against. Run the diagnostic quarterly: widening intervals mean your spend has become more correlated over time; narrowing intervals mean the data design is improving.</p>
+
+  <h3>From elasticity to £</h3>
+
+  <p>An elasticity interval is honest, but it isn't what a budget conversation runs on. Pass a <code>planned_spend</code> dict to <code>summary()</code> and the same simulated elasticity distribution rescales into an incremental-revenue range: each draw is multiplied by the planned spend for that channel, then the 10th–90th percentile is reported. On a real £12.3m annual plan (£5.1m TV, £4.1m Meta, £3.1m Search), the same interval above becomes:</p>
+
+  <div class="knums">
+    <div class="kbox">
+      <div class="corr">TV, £5.1m planned</div>
+      <div class="num">£664k – £2.36m</div>
+      <div class="lab">80% incremental-revenue range</div>
+    </div>
+    <div class="kbox">
+      <div class="corr">Meta, £4.1m planned</div>
+      <div class="num">£1.28m – £2.68m</div>
+      <div class="lab">80% incremental-revenue range</div>
+    </div>
+    <div class="kbox">
+      <div class="corr">Search, £3.1m planned</div>
+      <div class="num">£583k – £2.39m</div>
+      <div class="lab">80% incremental-revenue range</div>
+    </div>
+  </div>
+
+  <p>Same underlying unreliability, expressed in the units a CMO actually budgets in. This assumes sales is already a £ value; for volume targets, a <code>value_per_unit</code> parameter converts to CAC and ROI instead (see the notebooks). For the full case built entirely around this £ framing, see <a href="introduction.html">introduction.html</a>.</p>
 
   <div class="up-next">
     <strong>Next:</strong> <a href="#cause" style="color:inherit">Section 2 — The Cause</a> explains why this happens: channels that always move together can't be reliably told apart, however good the estimation method.
@@ -907,15 +927,7 @@ svg.chart { display: block; width: 100%; }
 <section style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
   <h3>Bringing it together</h3>
 
-  <p>The six sections of this guide tell one story:</p>
-
-  <p>Marketing channels move together because business decisions are coordinated. That correlation doesn't bias your MMM, but it makes the elasticity estimates unreliable. The specific numbers your model produced are one draw from a wide distribution; a slightly different data window would give a different answer. The coefficient of variation quantifies exactly how wide that distribution is for your specific spend history.</p>
-
-  <p>The fix is to vary the weekly channel split independently within each month, preserving monthly totals exactly. This introduces the kind of natural variation that lets the model distinguish individual channel effects. The improvement compounds over time: the more phased periods accumulate in the training data, the more reliable the elasticity estimates become. And it isn't a toy-example artefact: the same benefit shows up whether your MMM has three channels or twenty.</p>
-
-  <p>This is not a complex statistical intervention. It's a deliberate data design choice: the same logic that motivates geo-experiments in paid search, applied to the temporal dimension of channel mix planning. Switching to a Bayesian estimation method doesn't sidestep this: priors regularise noise, they don't manufacture the independent variation the data never had. And the usual practical objections, run a geo-test instead, phasing must hurt performance, pool hierarchically, either don't hold up under scrutiny or don't apply to most practitioners' actual data.</p>
-
-  <p>And phasing isn't one-size-fits-all: it adapts to what an agency will actually accept, from a channel that's locked entirely to one that can be switched fully on or off. That harder lever, Blackout, turns out to be not just more flexible but more effective, bigger reliability gains, reached faster, holding up as channel count grows.</p>
+  <p>Marketing channels move together because business decisions are coordinated, and that makes elasticity estimates unreliable, not biased: your model's number is one draw from a wide distribution, and the coefficient of variation measures how wide it is for your own spend history. Budget phasing fixes this directly, varying the weekly channel split within each month while preserving monthly totals exactly, the same logic behind geo-experiments applied to channel mix rather than geography, and it works whether your MMM has three channels or twenty. Blackout, the harder on/off version of phasing, buys more reliability per week of disruption than a continuous swing, and switching to a Bayesian model doesn't sidestep any of this: priors regularise noise, they don't manufacture variation the data never had.</p>
 
   <div class="callout">
     <p>The question isn't whether to trust your MMM. It's whether your data gave it a fair chance. Budget phasing is how you give it one.</p>

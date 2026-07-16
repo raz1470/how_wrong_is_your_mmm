@@ -1,0 +1,52 @@
+site_name: how_wrong_is_your_mmm
+site_description: Collinearity diagnostics and budget phasing for Marketing Mix Models
+site_url: https://raz1470.github.io/how_wrong_is_your_mmm/api/
+repo_url: https://github.com/raz1470/how_wrong_is_your_mmm
+repo_name: raz1470/how_wrong_is_your_mmm
+
+docs_dir: mkdocs_src
+site_dir: docs/api
+
+theme:
+  name: material
+  palette:
+    scheme: default
+    primary: black
+    accent: blue
+  features:
+    - navigation.sections
+    - content.code.copy
+
+plugins:
+  - search:
+      lang: en
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: numpy
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            merge_init_into_class: true
+            separate_signature: true
+            show_signature_annotations: true
+            members_order: source
+            docstring_section_style: table
+
+nav:
+  - Home: index.md
+  - API Reference:
+      - Diagnostic: api/diagnostic.md
+      - Phaser: api/phaser.md
+      - DGP (simulation): api/dgp.md
+      - OLS fitting: api/mmm.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - toc:
+      permalink: true
