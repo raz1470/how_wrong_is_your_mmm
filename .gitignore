@@ -10,3 +10,4 @@ dist/
 htmlcov/
 .ipynb_checkpoints/
 notebooks/*.nbconvert.ipynb
+.DS_Store

@@ -277,21 +277,22 @@ footer a { color: var(--muted); }
   <p class="s-label">3 · The fix</p>
   <h2>Pace the same budget differently</h2>
 
-  <p>You don't need a bigger model, a bigger budget, or an AI agent bolted onto your MMM. You need to move some of that same spend to different weeks within each month, so the channels stop moving in lockstep, and keep doing it. Every month still lands on the same total. So does every year. Here's what that looks like: the same annual and monthly totals, paced differently week to week.</p>
+  <p>You don't need a bigger model, a bigger budget, or an AI agent bolted onto your MMM. You need to stop spending the same amount every week. The clearest version of this is blunt: some weeks a channel gets nothing, other weeks it gets the difference on top of what it would have gotten anyway, still landing on exactly the same monthly total. Here's what that looks like.</p>
 
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Same monthly totals, different weekly pacing</div>
-      <div class="fig-sub">Original plan vs recommended pacing, one representative year of a three-year plan</div>
+      <div class="fig-sub">Original plan vs recommended pacing, one plan year</div>
     </div>
     <div class="fig-body">
       <div class="legend">
         <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#9ca3af" stroke-width="2.5"/></svg> Original plan</span>
         <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#2563eb" stroke-width="2.5"/></svg> Recommended pacing</span>
+        <span class="li"><svg width="10" height="10"><circle cx="5" cy="5" r="3.6" fill="#111827"/></svg> Dark week (£0)</span>
       </div>
       <svg class="chart" id="chartFix" viewBox="0 0 700 228" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">The recommended schedule swings each channel's weekly spend by up to 80% either side of the original plan, repeated consistently for three years. Every month still adds up to exactly the same total, pound for pound.</p>
+    <p class="fig-cap">Each week, each channel is either spent at its full planned amount or switched off entirely, capped at one dark week per month so the weeks that stay on never have to carry more than about 30–45% above their usual amount. Every month still adds up to exactly the same total, pound for pound, just concentrated into fewer, bigger weeks instead of spread thinly.</p>
   </div>
 </section>
 
@@ -300,21 +301,21 @@ footer a { color: var(--muted); }
   <p class="s-label">4 · The impact</p>
   <h2>The least reliable number gets more reliable</h2>
 
-  <p>We ran the model again, same starting point, but this time it had three years of consistently repaced spend behind it instead of none. Here's what moved.</p>
+  <p>We ran the model again, same starting point, but this time every channel used that harder on/off lever instead of sitting on its usual weekly amount. Here's what moved, after just one plan year.</p>
 
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">The ranges tighten, substantially</div>
-      <div class="fig-sub">Incremental revenue, 80% range, today vs after three years of phasing</div>
+      <div class="fig-sub">Incremental revenue, 80% range, today vs after one year of phasing</div>
     </div>
     <div class="fig-body">
       <div class="legend">
         <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.45"/></svg> Today</span>
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> After 3 years of phasing</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> After 1 year of phasing</span>
       </div>
       <svg class="chart" id="chartImpact" viewBox="0 0 700 230" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Every channel's range narrows sharply: TV by 63%, Meta by 68%, Search by 75%, all off the same £12.3m a year, with no extra spend, just three years of consistently pacing it differently. Search was the least reliable channel to begin with, so its improvement is the one the fix is specifically built to deliver; TV and Meta moving this much too is the bonus of sticking with a bolder weekly swing for longer.</p>
+    <p class="fig-cap">Every channel's range narrows sharply: TV by 51%, Meta by 59%, Search by 59%, all off the same £12.3m a year, with no extra spend and no extra time, just one plan year of pacing every channel this way. Search remains the channel the model is specifically tuned against (its own reliability is what drives the recommendation), so its improvement is the headline number below; TV and Meta narrowing by a similar amount is the built-in bonus of switching every channel to the same lever, not just the least reliable one.</p>
   </div>
 
   <div class="knums">
@@ -330,8 +331,8 @@ footer a { color: var(--muted); }
     </div>
     <div class="kbox">
       <div class="lbl">Uncertainty reduction</div>
-      <div class="num" style="color:#059669">75%</div>
-      <div class="lab">This plan's least reliable channel, after 3 years</div>
+      <div class="num" style="color:#059669">59%</div>
+      <div class="lab">This plan's least reliable channel, after one year</div>
     </div>
   </div>
 </section>
@@ -402,7 +403,7 @@ footer a { color: var(--muted); }
   <p>Geo-experiments are the academic gold standard, but they test one channel at a time, need a real blackout region, and take months to read. You can't run one for TV, Meta and Search simultaneously. This works with the spend and channel mix you already have.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">How long until I see the benefit?</p>
-  <p>It builds, it doesn't switch on overnight. At the pacing shown above, meaningful improvement shows up within the first year, and it keeps compounding the longer you stick with it: the 75% figure here is what three consistent years buys you, not week one.</p>
+  <p>This isn't a multi-year commitment. The 59% figure above is what one plan year of this pacing buys you, not a promise for week one, but not three years away either. It keeps compounding if you stick with it, but you don't need to wait to see a real difference.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">What do I actually hand my media agency?</p>
   <p>A weekly spend number per channel, covering the same plan year. Every month still totals exactly what it does today. Nothing about the buy itself changes, only which week the money lands in.</p>
@@ -444,19 +445,17 @@ const PLAN = {
   search: [54912,71117,47171,44350,77931,63497,48612,68792,69875,68743,75837,68204,46509,57055,53645,68040,60241,57857,37491,63431,55583,47477,80539,82429,31339,38598,50579,77492,69479,53658,79289,47339,43255,85838,64154,77590,61390,18924,62337,48602,53989,53122,63444,40296,73185,77015,52062,56853,61836,70509,53908,64849],
 };
 
-// The fix now runs at max_weekly_deviation_pct=80 across a 3-year plan (not
-// the package's 40% default, not a single year), reproduced the same way.
-// PLAN_YEAR1 / RECOMMENDED below are year 1 of that 3-year plan and its
-// phased counterpart, shown as one representative year of the full schedule.
-const PLAN_YEAR1 = {
-  tv:     [91520,118528,78618,73916,129885,105829,81021,114654,116459,114572,126394,113673,77514,95092,89408,113401,100401,96429,62485,105719,92638,79128,134231,137382,52232,64330,84299,129154,115798,89430,132149,78898,72092,143063,106923,129317,102317,31539,103895,81003,89982,88536,105739,67159,121974,128359,86771,94755,103059,117515,89846,108082],
-  meta:   [78971,84387,81360,59326,79820,86351,55571,102387,84673,78108,71507,84426,66763,67299,63736,87145,75482,84836,79445,76299,84773,62755,105670,94801,44092,67380,54981,76230,72412,89075,98871,58455,76327,116666,90435,82161,66854,63965,82458,65100,69874,73839,87496,62523,86658,71013,86131,67590,95528,103243,77585,67223],
-  search: [62585,70992,67376,37411,70791,53397,55605,71872,65663,65775,64976,61336,49285,62059,62085,70289,80532,55773,58470,66865,59047,50247,66238,73356,36188,39466,59261,51955,66971,45829,87240,46877,44704,101604,56861,59492,44398,48946,55033,66561,49887,53841,48863,43854,71964,51006,53894,52650,73480,72671,69680,41797],
-};
-const RECOMMENDED = {
-  tv:     [66404,204014,34830,57336,62311,137711,97870,133497,155634,59404,162114,93946,54392,113601,106065,101357,83052,81127,132607,70648,90237,96916,162224,86931,56903,91530,63202,78871,116076,133332,140198,91966,63726,130312,125268,160306,67891,16632,194156,46335,57462,64221,106983,26937,74597,109167,193562,99333,49810,169385,86647,112408],
-  meta:   [23116,158685,44982,77260,22562,84682,77822,139063,23597,128704,52598,113815,46816,44456,81202,112470,44757,91217,63090,98902,102869,59834,102114,63495,81875,101530,41289,83201,98910,35148,107133,39596,109197,94393,67308,117326,91719,27061,33592,50757,67720,49644,177055,51912,144368,37558,72488,16540,138295,134252,54859,132451],
-  search: [121513,30147,57384,29320,40381,19104,62600,129580,68867,25897,93790,69195,82530,17291,73372,70525,25234,57716,21053,84378,132305,11694,71807,83967,58562,33772,61838,99823,47324,20724,62031,69855,77370,71167,50944,56512,51291,50951,92886,42428,46830,45878,46163,20457,134249,15533,50480,60006,38039,48331,122104,31773],
+// The fix now uses Blackout(max_dark_weeks_per_month=1) on every channel, one
+// plan year (not the earlier 3-year +/-80% continuous scenario), reproduced
+// via BudgetPhaser's default seed=0 at the package's own full-mode settings
+// (n_sims=50, grid_steps=25, n_phasing_seeds=10, fast_mode=False). Each week
+// is either the channel's full planned spend or exactly £0, capped at one
+// dark week per month, monthly totals preserved exactly (notebooks/02_phaser_walkthrough.ipynb,
+// "What does the reliability gain look like in £?").
+const BLACKOUT_RECOMMENDED = {
+  tv:     [164559,155201,0,84622,0,157560,105719,155890,138178,140039,0,123382,115218,118818,0,159841,98858,121667,125304,0,111763,152922,0,193268,60468,57643,127979,115398,0,143888,184114,94505,158271,0,128965,139692,117867,0,135321,124380,0,97754,132445,0,113924,121173,97147,123912,0,169783,137773,92397],
+  meta:   [128215,126805,0,60156,0,124971,95162,131585,114281,0,110413,120771,85061,0,85994,131186,121281,76963,55911,0,133442,102196,134838,0,48093,0,84818,90474,90856,98613,139444,69732,0,128387,116895,102760,80163,0,104850,0,85185,83914,98053,90434,105026,0,114609,91506,107893,0,111247,83706],
+  search: [0,95129,63097,59324,95952,78181,0,84700,92098,90606,99955,0,0,71901,67604,85745,75529,72540,47006,79529,0,71190,0,123601,46993,46759,0,93876,84169,65003,119352,71258,65111,0,98610,0,94362,29087,80475,62743,69698,68578,0,59042,107232,0,76283,76247,0,94561,72297,64849],
 };
 
 // ── Chart: Problem (forest plot, before phasing) ────────────────────────────
@@ -571,8 +570,8 @@ drawForest('chartProblem', [
 
   const panels = [
     { key: 'tv',     name: 'TV',     color: '#2563eb', yMax: 220000 },
-    { key: 'meta',   name: 'Meta',   color: '#d97706', yMax: 190000 },
-    { key: 'search', name: 'Search', color: '#059669', yMax: 150000 },
+    { key: 'meta',   name: 'Meta',   color: '#d97706', yMax: 160000 },
+    { key: 'search', name: 'Search', color: '#059669', yMax: 140000 },
   ];
 
   const T = 52;
@@ -601,8 +600,15 @@ drawForest('chartProblem', [
     pg.appendChild(el('text', { x: m.left, y: m.top + ph + 13, 'text-anchor': 'start', 'font-size': 8.5, fill: '#9ca3af' }, 'Wk 1'));
     pg.appendChild(el('text', { x: m.left + pw, y: m.top + ph + 13, 'text-anchor': 'end', 'font-size': 8.5, fill: '#9ca3af' }, 'Wk 52'));
 
-    pg.appendChild(el('path', { d: pathD(PLAN_YEAR1[p.key]), fill: 'none', stroke: '#9ca3af', 'stroke-width': 1.75, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.9 }));
-    pg.appendChild(el('path', { d: pathD(RECOMMENDED[p.key]), fill: 'none', stroke: p.color, 'stroke-width': 1.75, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.9 }));
+    pg.appendChild(el('path', { d: pathD(PLAN[p.key]), fill: 'none', stroke: '#9ca3af', 'stroke-width': 1.75, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.9 }));
+    pg.appendChild(el('path', { d: pathD(BLACKOUT_RECOMMENDED[p.key]), fill: 'none', stroke: p.color, 'stroke-width': 1.75, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.9 }));
+
+    // Dark weeks: exactly £0, marked with a solid dot on the baseline
+    BLACKOUT_RECOMMENDED[p.key].forEach((v, i) => {
+      if (v === 0) {
+        pg.appendChild(el('circle', { cx: scX(i), cy: scY(0), r: 2.6, fill: '#111827' }));
+      }
+    });
 
     g.appendChild(pg);
   });
@@ -623,9 +629,9 @@ drawForest('chartProblem', [
   const ph = H - m.top - m.bottom;
 
   const data = [
-    { name: 'TV',     color: '#2563eb', before: [0.945, 2.093], after: [1.307, 1.735] },
-    { name: 'Meta',   color: '#d97706', before: [1.406, 2.574], after: [1.807, 2.179] },
-    { name: 'Search', color: '#059669', before: [0.712, 1.885], after: [1.148, 1.437] },
+    { name: 'TV',     color: '#2563eb', before: [0.945, 2.093], after: [1.282, 1.846] },
+    { name: 'Meta',   color: '#d97706', before: [1.406, 2.574], after: [1.792, 2.274] },
+    { name: 'Search', color: '#059669', before: [0.712, 1.885], after: [1.042, 1.523] },
   ];
 
   const xMax = 2.8;
