@@ -799,11 +799,31 @@ Three more requests from Ryan in the same session: tighten `research.html`'s clo
   - README: added a third Guides entry, "API Reference", linking to `docs/api/`. Development section gained `mkdocs serve` (local preview) and `mkdocs build --strict` (rebuild-before-release) instructions, with a note that this repo has no CI build step for Pages — the site has to be built and committed locally, same convention as the notebooks.
 - All of this session's changes (`docs/research.html`, `notebooks/02_phaser_walkthrough.ipynb`, `docs/introduction.html`, `docs/api/` built site, `mkdocs.yml`, `mkdocs_src/`, `pyproject.toml`, `README.md`) are still uncommitted, sitting together in the working tree.
 
+## Same day, continued: branch merged, launch sequence agreed
+
+`feat/blackout-and-docs-site` reviewed and merged by Ryan locally. Two things caught during his own pre-commit check, worth remembering:
+
+- **`uv run pytest` was interrupted (Ctrl+C) on the first attempt**, 128 of 132 completed — not a hang, just a manual interrupt. Re-run came back clean, all 132 passing. Worth a reminder for future sessions: always confirm a full, uninterrupted local run before treating "tests passed" as settled.
+- **`uv run ruff format .` reformatted two notebooks unrelated to the session's work** (`01_dgp_diagnostic_walkthrough.ipynb`, `04_channel_count_sweep.ipynb`) — the same pre-existing formatting gap flagged and deliberately left alone since session 12. **Decision: excluded from this commit** (`git restore --staged` + `git checkout --`) to keep the PR focused, consistent with the project's standing preference. The debt itself is still there, unresolved — trivial to clear later as its own one-line commit whenever it's convenient, just not bundled into unrelated work.
+
+**Launch sequence agreed:** finalise `research.html` (Ryan is still pondering further changes, unspecified) and `introduction.html` → publish to PyPI → share on LinkedIn. Confirmed PyPI packaging and the `research.html`/`introduction.html` content work are genuinely decoupled — PyPI publishes `src/`, the guide pages are independent static GitHub Pages content — so there's no technical reason to sequence one before the other. Ryan's chosen to do content first anyway.
+
+**Gaps found while scoping "what's left before that sequence":**
+
+- **No `LICENSE` file in the repo.** `pyproject.toml` declares `license = { text = "MIT" }` but there's no actual `LICENSE` file checked in — GitHub won't show a license badge without one, and it's usually the first thing checked before trusting a `pip install`. Confirmed via direct `ls`, not assumed.
+- **`pyproject.toml` has no PyPI-listing metadata** — no `classifiers`, `keywords`, or `[project.urls]` (homepage/repository/docs links). Doesn't block publishing, but it's what makes the PyPI project page look like a real package rather than a bare listing, worth having before a LinkedIn-driven traffic spike hits it.
+- **`introduction.html`'s Blackout chart (this session's change) still needs a real-browser check** — folded into the general research/introduction review pass rather than tracked separately, per Ryan's call. Don't treat it as done until that pass explicitly covers it.
+- **PyPI publish checklist, not yet started:** decide on version for first release (0.1.0 is a reasonable default, Ryan's call), build, sanity-install the built wheel in a clean venv before publishing, need a PyPI account + API token, then flip the README's `# coming to PyPI` comment once live.
+- **LinkedIn post not yet drafted.** Parked until the guide content is locked, per the agreed sequence above.
+
 ## Next slice
 
-1. Review and commit this session's changes — new branch, e.g. `feat/blackout-and-docs-site`. This is a big diff spanning three separate threads (Blackout on `introduction.html`, research.html polish, mkdocs site), worth reading carefully rather than skimming. Ryan should open `introduction.html` in a real browser to confirm the new Fix/Impact charts look right (jsdom confirms the JS runs, not that it looks right), and open `docs/api/index.html` locally to sanity-check the rendered docs site.
-2. The broader `research.html`/`introduction.html`/README final copy pass (session 11 item 4) is still open — the closing section and Guides link fixes from this session cover part of it, not all.
-3. PyPI packaging (session 11 item 5, still open) — the docs site was explicitly sequenced *before* this, per Ryan's question this session.
+1. Ryan to finish pondering and land whatever changes he wants on `research.html` and `introduction.html` (including a real-browser check of the Blackout chart from this session) — this gates everything below.
+2. Add the missing `LICENSE` file (MIT, matching `pyproject.toml`'s declared license).
+3. Add PyPI-listing metadata to `pyproject.toml` (`classifiers`, `keywords`, `[project.urls]`).
+4. PyPI publish: version decision, build, clean-venv sanity install, publish, update README's `# coming to PyPI` comment.
+5. Draft and post the LinkedIn share.
+6. Separately, whenever convenient and not bundled with unrelated work: clear the long-standing `ruff format` debt on notebooks 01 and 04.
 
 ## Workflow reminder
 
@@ -816,3 +836,26 @@ git push -u origin feat/<slice-name>
 # Open PR, wait for CI, merge
 git switch main && git pull && git branch -d feat/<slice-name>
 ```
+
+## Status as of session 22 (2026-07-22, merge-status correction + PyPI-prep started)
+
+- **Corrected a false alarm at the start of this session: `feat/blackout-and-docs-site` (session 20-21's Blackout/research-restructure/mkdocs work) IS merged to `main`, via PR #22, confirmed live.** Claude initially read the sandbox's local git clone (`git log --all`, `git branch --merged main`) and concluded the branch was still unmerged, contradicting NOTES.md's own session-21 log. Ryan corrected this with a GitHub screenshot of PR #22 merged into `main`. Root cause, confirmed directly: **the sandbox's git remote has no network access at all** — `git fetch --all` fails outright (`socat... Forbidden`, `Connection closed by remote host`), so the sandbox's local `main`/`origin/main` refs are permanently stale and were never actually re-synced with GitHub this session or, likely, in prior sessions either. The sandbox's git history was last accurate as of whenever the mounted clone was last pulled from Ryan's own terminal.
+  - **Standing rule, extending the existing "no git commands from the sandbox" rule: never trust the sandbox's local git refs (`git log`, `git branch --merged`, etc.) for anything beyond the immediate uncommitted working-tree diff (`git status --short`, `git diff <file>`).** For "is X merged / is Y live" questions, verify against GitHub directly — WebFetch a raw file with a cache-busting query param (`raw.githubusercontent.com/.../<file>?cachebust=<anything>`, since the un-busted URL can serve a stale CDN cache) or the rendered GitHub page itself. This is a stronger rule than "don't run git commands" — it's "don't trust what's already there either."
+  - Verified against GitHub directly (not the sandbox clone): `main` has the `introduction.html`/`research.html` rename, the Blackout section, `docs/api/` mkdocs site, 132-test README, all of it. Confirmed via cache-busted `raw.githubusercontent.com` fetches of `pyproject.toml` and `README.md`.
+- **Plan reconfirmed with Ryan, in order:** (1) Ryan finishes his own review/final-changes pass on `research.html` and `introduction.html` — his call what changes, not yet specified, he's doing this pass himself rather than delegating it; (2) publish to PyPI; (3) **new step, added this session, not previously scoped anywhere in this project**: validate the package against real Monzo spend data before the LinkedIn post, not just synthetic/toy examples — this has been the aspirational "long-term validation story" since session 1's original notes but was never turned into an actual task. Needs its own scoping conversation next time it's picked up: what Monzo spend data Ryan can actually access and share, what the deliverable is (a new notebook? a section added to `research.html`/`introduction.html`? both?), and whether it blocks or just precedes the LinkedIn post; (4) LinkedIn post(s).
+- **PyPI-prep work started this session (both items are genuinely decoupled from the research/introduction review and from the Monzo step, per session 21's own note that PyPI publishing and guide content are independent):**
+  - **Added the missing `LICENSE` file** (MIT, copyright Ryan O'Sullivan 2026) — confirmed missing via a live 404 on `github.com/.../blob/main/LICENSE` before adding it, matches `pyproject.toml`'s already-declared `license = { text = "MIT" }`.
+  - **Added PyPI-listing metadata to `pyproject.toml`:** `keywords` (marketing-mix-modeling, mmm, collinearity, econometrics, marketing-analytics, bayesian, media-planning), `classifiers` (Development Status :: 4 - Beta, MIT License, Python 3.12/3.13, Science/Research audience, Scientific/Engineering + Office/Business :: Financial topics), and `[project.urls]` (Homepage → `introduction.html`, Repository → GitHub, Documentation → `docs/api/`, Research → `research.html`).
+  - **Also fixed a stale word found in passing:** `pyproject.toml`'s `description` field still said "budget perturbation" — the terminology was renamed to "phasing" project-wide back in session 4, this one field was missed. Changed to "budget phasing tools for Marketing Mix Models".
+  - **Both changes were written directly to the files on Ryan's machine via the device bridge (stage → edit → commit-back), not committed to git** — per the project's standing rule, git commits happen from Ryan's local terminal, never the sandbox. `LICENSE` is a new untracked file; `pyproject.toml` has these changes sitting as an uncommitted working-tree diff, same as `NOTES.md` itself.
+  - **Not yet verified:** these changes haven't been run through `ruff check`/`ruff format` or the test suite (neither `LICENSE` nor `pyproject.toml`'s metadata fields are code, low risk, but should still be confirmed clean before committing, same standard as every other change in this project). No PyPI build/publish attempted yet — that's step 2 of the plan above, and still needs a version decision (currently `0.1.0`, already set, Ryan's call whether that's the real first-release number), a clean-venv sanity install of the built wheel, a PyPI account + API token, and flipping README's `# coming to PyPI` comment once live.
+
+## Next slice (updated session 22 — this supersedes the session-21 list above, which is now stale)
+
+1. **Ryan:** commit `LICENSE` + `pyproject.toml` (new branch, e.g. `chore/pypi-metadata`) — run `ruff check`/`format`/`pytest` first, same standard as every other change.
+2. **Ryan:** finish reviewing `research.html`/`introduction.html` and land whatever final changes he wants — no changes made by Claude yet, waiting on Ryan's specifics.
+3. **Scope the real-Monzo-data validation step** (new, added this session) — a conversation, not a coding task yet: what data, what deliverable, where it lives.
+4. **PyPI publish**, once 1 is committed: build, clean-venv sanity install, publish, flip README's `# coming to PyPI` comment.
+5. Monzo validation itself (once scoped in item 3).
+6. LinkedIn post(s), last — explicitly gated on the Monzo validation landing first, per Ryan's instruction this session.
+7. Still parked, low priority, whenever convenient: the long-standing `ruff format` debt on notebooks 01 and 04 (flagged since session 12, deliberately excluded from every commit since to keep diffs focused).

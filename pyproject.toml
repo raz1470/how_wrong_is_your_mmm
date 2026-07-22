@@ -5,15 +5,41 @@ build-backend = "hatchling.build"
 [project]
 name = "how-wrong-is-your-mmm"
 version = "0.1.0"
-description = "Collinearity diagnostics and budget perturbation tools for Marketing Mix Models"
+description = "Collinearity diagnostics and budget phasing tools for Marketing Mix Models"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Ryan O'Sullivan", email = "raz1470@hotmail.co.uk" }]
 requires-python = ">=3.12"
+keywords = [
+    "marketing-mix-modeling",
+    "mmm",
+    "collinearity",
+    "econometrics",
+    "marketing-analytics",
+    "bayesian",
+    "media-planning",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Office/Business :: Financial",
+]
 dependencies = [
     "numpy>=1.26",
     "pandas>=2.0",
 ]
+
+[project.urls]
+Homepage = "https://raz1470.github.io/how_wrong_is_your_mmm/introduction.html"
+Repository = "https://github.com/raz1470/how_wrong_is_your_mmm"
+Documentation = "https://raz1470.github.io/how_wrong_is_your_mmm/api/"
+Research = "https://raz1470.github.io/how_wrong_is_your_mmm/research.html"
 
 [dependency-groups]
 dev = [
