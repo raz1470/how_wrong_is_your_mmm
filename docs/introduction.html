@@ -52,6 +52,10 @@ h1 {
 
 /* ── Section nav ── */
 .snav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #fff;
   max-width: var(--w);
   margin: 0 auto;
   padding: 0 1.5rem;
@@ -207,21 +211,22 @@ footer a { color: var(--muted); }
 <header class="hdr">
   <p class="eyebrow">Marketing Science · Ryan O'Sullivan</p>
   <h1>How Wrong Is Your MMM?</h1>
-  <p class="tagline">Your model gives you one number, but the honest answer is a (very wide) range.</p>
+  <p class="tagline">How using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.</p>
 </header>
 
 <nav class="snav">
   <a href="#problem" class="active">1 · The problem</a>
   <a href="#cause">2 · The cause</a>
   <a href="#fix">3 · The fix</a>
-  <a href="#impact">4 · The impact</a>
-  <a href="#how">5 · How it works</a>
-  <a href="#faq">6 · Questions</a>
+  <a href="#algorithm">4 · The algorithm</a>
+  <a href="#impact">5 · The impact</a>
+  <a href="#how">6 · How it works</a>
+  <a href="#faq">7 · Questions</a>
 </nav>
 
 <main>
 
-<p class="lede">Here's an uncomfortable question. Take the marketing mix model you already trust, the one that split last year's sales across TV, Meta and Search. Now run it again: same channels, same market, just a slightly different slice of history. Would it give you the same answer?</p>
+<p class="lede">Here's an uncomfortable question. Take the marketing mix model (MMM) you use to allocate your marketing budget across channels. Now run it again: same channels, same market, just a slightly different slice of history. Would it give you the same answer?</p>
 
 <p>For most brands, no. Here's why, and what to do about it.</p>
 
@@ -230,12 +235,12 @@ footer a { color: var(--muted); }
   <p class="s-label">1 · The problem</p>
   <h2>Your model is more unsure than it lets on</h2>
 
-  <p>Take a real £12.3m annual plan: £5.1m on TV, £4.1m on Meta, £3.1m on Search. Ask the model for a single number and you'll get one. Ask it to be honest about the range of answers the same data could plausibly support, and the picture changes.</p>
+  <p>Take an example £12.3m annual plan: £5.1m on TV, £4.1m on Meta, £3.1m on Search. Ask the model for a single number and you'll get one. Ask it to be honest about the range of answers the same data could plausibly support, and the picture changes.</p>
 
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">One plan, three honest ranges</div>
-      <div class="fig-sub">Incremental revenue, 80% range, before any fix</div>
+      <div class="fig-sub">Incremental revenue, the honest range, before any fix</div>
     </div>
     <div class="fig-body">
       <svg class="chart" id="chartProblem" viewBox="0 0 700 200" preserveAspectRatio="xMinYMin meet"></svg>
@@ -251,12 +256,12 @@ footer a { color: var(--muted); }
   <p class="s-label">2 · The cause</p>
   <h2>Your channels never move on their own</h2>
 
-  <p>Here's why the model is so unsure. TV, Meta and Search budgets get set in the same planning cycle, so when one goes up, they usually all go up. Look at an actual planned year of spend below: the three lines rise and fall almost in lockstep.</p>
+  <p>Here's why the model is so unsure. TV, Meta and Search budgets get set in the same planning cycle, so when one goes up, they usually all go up. Look at an example planned year of spend below: the three lines rise and fall almost in lockstep.</p>
 
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Three channels, one planning cycle</div>
-      <div class="fig-sub">Real planned weekly spend, 52 weeks</div>
+      <div class="fig-sub">Example planned weekly spend, 52 weeks</div>
     </div>
     <div class="fig-body">
       <div class="legend">
@@ -275,47 +280,67 @@ footer a { color: var(--muted); }
 <!-- SECTION 3: THE FIX -->
 <section id="fix">
   <p class="s-label">3 · The fix</p>
-  <h2>Pace the same budget differently</h2>
+  <h2>Same budget, a smarter phasing algorithm</h2>
 
-  <p>You don't need a bigger model, a bigger budget, or an AI agent bolted onto your MMM. You need to stop spending the same amount every week. The clearest version of this is blunt: some weeks a channel gets nothing, other weeks it gets the difference on top of what it would have gotten anyway, still landing on exactly the same monthly total. Here's what that looks like.</p>
+  <p>You don't need a bigger model, a bigger budget, or an AI agent bolted onto your MMM. You need to break the correlation between channels using a phasing algorithm. Nudge a channel's weekly spend up or down by a set percentage, or go further and switch it off entirely some weeks, giving that spend to another week instead. Either way, the month still lands on exactly the same total for each channel. Breaking that cycle of correlated spend gives the model weeks where each channel finally moves on its own, so it can tell which one is actually driving your sales.</p>
 
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Same monthly totals, different weekly pacing</div>
-      <div class="fig-sub">Original plan vs recommended pacing, one plan year</div>
+      <div class="fig-sub">TV: continuous ±40% range &nbsp;·&nbsp; Meta &amp; Search: Blackout (cap 1 dark week/month)</div>
     </div>
     <div class="fig-body">
       <div class="legend">
         <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#9ca3af" stroke-width="2.5"/></svg> Original plan</span>
         <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#2563eb" stroke-width="2.5"/></svg> Recommended pacing</span>
-        <span class="li"><svg width="10" height="10"><circle cx="5" cy="5" r="3.6" fill="#111827"/></svg> Dark week (£0)</span>
+        <span class="li"><svg width="10" height="10"><circle cx="5" cy="5" r="3.6" fill="#111827"/></svg> Dark week (£0) — Meta &amp; Search only</span>
       </div>
-      <svg class="chart" id="chartFix" viewBox="0 0 700 228" preserveAspectRatio="xMinYMin meet"></svg>
+      <svg class="chart" id="chartFix" viewBox="0 0 700 560" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Each week, each channel is either spent at its full planned amount or switched off entirely, capped at one dark week per month so the weeks that stay on never have to carry more than about 30–45% above their usual amount. Every month still adds up to exactly the same total, pound for pound, just concentrated into fewer, bigger weeks instead of spread thinly.</p>
+    <p class="fig-cap">TV never goes fully dark here, it just runs up to 40% above or below its usual week, still landing on the same monthly total. Meta and Search use the harder on/off lever: some weeks nothing at all, the weeks that stay on absorbing that spend on top of their own. Same guarantee either way, just applied differently per channel.</p>
   </div>
 </section>
 
-<!-- SECTION 4: THE IMPACT -->
-<section id="impact">
-  <p class="s-label">4 · The impact</p>
-  <h2>The least reliable number gets more reliable</h2>
+<!-- SECTION 4: THE ALGORITHM -->
+<section id="algorithm">
+  <p class="s-label">4 · The algorithm</p>
+  <h2>What the algorithm actually does</h2>
 
-  <p>We ran the model again, same starting point, but this time every channel used that harder on/off lever instead of sitting on its usual weekly amount. Here's what moved, after just one plan year.</p>
+  <p>Two steps run every month, for every channel: a nudge, then a rescale. Here's exactly what that looks like, with real numbers, and what's actually driving the choice underneath it.</p>
+
+  <p><strong>Step 1, nudge:</strong> each week gets a random adjustment, up or down by a set percentage, or all the way down to £0 on a dark week. Say a channel plans to spend £100k a week for four weeks, £400k for the month, and the algorithm lands on £100k, £120k, £0 and £100k, £320k in total.</p>
+
+  <p><strong>Step 2, rescale:</strong> that £320k is £80k short of the original £400k. Multiply every week by 400 ÷ 320 (1.25) and you get £125k, £150k, £0 and £125k, which adds back up to exactly £400k.</p>
+
+  <div class="callout" style="padding: 1.1rem 1.4rem;">
+    <p style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:.92rem; font-weight:600; margin:0 0 .6rem 0;">raw<sub>week</sub> = plan<sub>week</sub> &times; nudge<sub>week</sub></p>
+    <p style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:.92rem; font-weight:600; margin:0;">phased<sub>week</sub> = raw<sub>week</sub> &times; ( &Sigma;plan<sub>month</sub> &divide; &Sigma;raw<sub>month</sub> )</p>
+  </div>
+
+  <p>That arithmetic is the easy part. The harder part happens before any of this runs. For every channel, the algorithm searches the nudge size, from small to the maximum you're willing to tolerate, refitting the model against thousands of simulated alternative histories at each setting, and keeps whichever one narrows your least reliable channel the most.</p>
+</section>
+
+<!-- SECTION 5: THE IMPACT -->
+<section id="impact">
+  <p class="s-label">5 · The impact</p>
+  <h2>What the phasing algorithm buys you</h2>
+
+  <p>The example above shows you can mix levers per channel. To see the ceiling, we simulated what happens when every channel uses the harder on/off lever: pace the budget, refit the model on the result, and check how much tighter the confidence gets. Here's what moved — after one year, and after two.</p>
 
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">The ranges tighten, substantially</div>
-      <div class="fig-sub">Incremental revenue, 80% range, today vs after one year of phasing</div>
+      <div class="fig-title">The ranges tighten, and keep tightening</div>
+      <div class="fig-sub">Incremental revenue, the honest range: today vs after 1 year vs after 2 years of phasing</div>
     </div>
     <div class="fig-body">
       <div class="legend">
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.45"/></svg> Today</span>
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> After 1 year of phasing</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Today</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.75"/></svg> After 1 year</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> After 2 years</span>
       </div>
       <svg class="chart" id="chartImpact" viewBox="0 0 700 230" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Every channel's range narrows sharply: TV by 51%, Meta by 59%, Search by 59%, all off the same £12.3m a year, with no extra spend and no extra time, just one plan year of pacing every channel this way. Search remains the channel the model is specifically tuned against (its own reliability is what drives the recommendation), so its improvement is the headline number below; TV and Meta narrowing by a similar amount is the built-in bonus of switching every channel to the same lever, not just the least reliable one.</p>
+    <p class="fig-cap">Every channel narrows substantially, and keeps narrowing: TV 51% then 56%, Meta 59% then 71%, Search 59% then 67% — off the same £12.3m, no extra spend, just pacing every channel with the on/off lever for longer.</p>
   </div>
 
   <div class="knums">
@@ -331,15 +356,15 @@ footer a { color: var(--muted); }
     </div>
     <div class="kbox">
       <div class="lbl">Uncertainty reduction</div>
-      <div class="num" style="color:#059669">59%</div>
-      <div class="lab">This plan's least reliable channel, after one year</div>
+      <div class="num" style="color:#059669">67%</div>
+      <div class="lab">This plan's least reliable channel, after two years (59% within year one alone)</div>
     </div>
   </div>
 </section>
 
 <!-- CLOSING: HOW IT WORKS -->
 <section id="how">
-  <p class="s-label">5 · How it works</p>
+  <p class="s-label">6 · How it works</p>
   <h2>One pipeline, three steps</h2>
 
   <p>All of this runs through <code>how_wrong_is_your_mmm</code>, a free, open-source python package. Point it at your own spend history and it runs the same three steps on your numbers, not a hypothetical example.</p>
@@ -396,14 +421,23 @@ footer a { color: var(--muted); }
 </section>
 
 <section id="faq">
-  <p class="s-label">6 · Questions</p>
-  <h2>What people ask first</h2>
+  <p class="s-label">7 · Questions</p>
+  <h2>Frequently asked questions</h2>
+
+  <p style="font-weight:700; margin-bottom: .3rem;">Doesn't this need me to already know my elasticity?</p>
+  <p>You supply a plausible one, not a proven one, that's the whole trick. The model simulates what your sales would look like if that number were true, then checks how reliably it can recover it from your actual spend pattern. The unreliability it finds comes from your channels moving together in real life, not from the number you picked. Pick a different plausible number and the diagnosis barely changes, your spend pattern is doing the work.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Why not just run a geo-lift test instead?</p>
   <p>Geo-experiments are the academic gold standard, but they test one channel at a time, need a real blackout region, and take months to read. You can't run one for TV, Meta and Search simultaneously. This works with the spend and channel mix you already have.</p>
 
+  <p style="font-weight:700; margin-bottom: .3rem;">Doesn't a Bayesian model already fix this?</p>
+  <p>Not on its own. Priors are genuinely useful, they stabilise noisy estimates and help capture things like how spend decays or saturates over time. But they can't invent information that was never in the data: if TV and Meta always moved together, no prior tells you which one actually drove sales. We tested it directly, and switching to a Bayesian fit only narrowed the uncertainty by 5 to 9%.</p>
+
+  <p style="font-weight:700; margin-bottom: .3rem;">Does it scale to all of my channels?</p>
+  <p>Yes. Everything on this page uses three channels for clarity, but we reran the same diagnostic and phasing fix at 5, 10, 15 and 20 channels. Reliability barely moves as you add more, what matters is how correlated your channels are with each other, not how many you have. Phasing delivers roughly the same improvement the whole way, from 5 channels to 20.</p>
+
   <p style="font-weight:700; margin-bottom: .3rem;">How long until I see the benefit?</p>
-  <p>This isn't a multi-year commitment. The 59% figure above is what one plan year of this pacing buys you, not a promise for week one, but not three years away either. It keeps compounding if you stick with it, but you don't need to wait to see a real difference.</p>
+  <p>This isn't a multi-year commitment. Year one alone gets Search to 59% narrower, not a promise for week one, but not three years away either. Stick with it and it keeps compounding: 67% by year two. You don't need to wait to see a real difference, and it gets better if you do.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">What do I actually hand my media agency?</p>
   <p>A weekly spend number per channel, covering the same plan year. Every month still totals exactly what it does today. Nothing about the buy itself changes, only which week the money lands in.</p>
@@ -415,7 +449,7 @@ footer a { color: var(--muted); }
 </div>
 
 <footer>
-  <p><code>how_wrong_is_your_mmm</code> is an open-source python package that diagnoses this and recommends the fix, built on real simulation, not a rule of thumb. Source and notebooks: <a href="https://github.com/raz1470/how_wrong_is_your_mmm">github.com/raz1470/how_wrong_is_your_mmm</a></p>
+  <p><code>how_wrong_is_your_mmm</code> is an open-source python package that diagnoses this and recommends the fix, built on real simulation using your own spend data. Source and notebooks: <a href="https://github.com/raz1470/how_wrong_is_your_mmm">github.com/raz1470/how_wrong_is_your_mmm</a></p>
 </footer>
 
 </main>
@@ -445,17 +479,19 @@ const PLAN = {
   search: [54912,71117,47171,44350,77931,63497,48612,68792,69875,68743,75837,68204,46509,57055,53645,68040,60241,57857,37491,63431,55583,47477,80539,82429,31339,38598,50579,77492,69479,53658,79289,47339,43255,85838,64154,77590,61390,18924,62337,48602,53989,53122,63444,40296,73185,77015,52062,56853,61836,70509,53908,64849],
 };
 
-// The fix now uses Blackout(max_dark_weeks_per_month=1) on every channel, one
-// plan year (not the earlier 3-year +/-80% continuous scenario), reproduced
-// via BudgetPhaser's default seed=0 at the package's own full-mode settings
-// (n_sims=50, grid_steps=25, n_phasing_seeds=10, fast_mode=False). Each week
-// is either the channel's full planned spend or exactly £0, capped at one
-// dark week per month, monthly totals preserved exactly (notebooks/02_phaser_walkthrough.ipynb,
-// "What does the reliability gain look like in £?").
-const BLACKOUT_RECOMMENDED = {
-  tv:     [164559,155201,0,84622,0,157560,105719,155890,138178,140039,0,123382,115218,118818,0,159841,98858,121667,125304,0,111763,152922,0,193268,60468,57643,127979,115398,0,143888,184114,94505,158271,0,128965,139692,117867,0,135321,124380,0,97754,132445,0,113924,121173,97147,123912,0,169783,137773,92397],
-  meta:   [128215,126805,0,60156,0,124971,95162,131585,114281,0,110413,120771,85061,0,85994,131186,121281,76963,55911,0,133442,102196,134838,0,48093,0,84818,90474,90856,98613,139444,69732,0,128387,116895,102760,80163,0,104850,0,85185,83914,98053,90434,105026,0,114609,91506,107893,0,111247,83706],
-  search: [0,95129,63097,59324,95952,78181,0,84700,92098,90606,99955,0,0,71901,67604,85745,75529,72540,47006,79529,0,71190,0,123601,46993,46759,0,93876,84169,65003,119352,71258,65111,0,98610,0,94362,29087,80475,62743,69698,68578,0,59042,107232,0,76283,76247,0,94561,72297,64849],
+// The Fix chart illustrates mixing levers per channel rather than every
+// channel on the same setting: TV on a continuous +/-40% range, Meta and
+// Search on Blackout(max_dark_weeks_per_month=1). Reproduced via
+// BudgetPhaser's default seed=0 at the package's own full-mode settings
+// (n_sims=50, grid_steps=25, n_phasing_seeds=10, fast_mode=False) against
+// this same history/plan (history seed=0, plan seed=1, correlation=0.7).
+// TV's weekly spend moves within its range but never hits £0; Meta and
+// Search hit exactly £0 on a dark week, capped at one per month. Monthly
+// totals preserved exactly for all three, same guarantee either way.
+const MIXED_RECOMMENDED = {
+  tv:     [106592,148102,93569,56119,137195,140280,49829,91864,120520,119847,59943,101287,53397,80908,106907,152666,48247,125203,83777,103384,96981,84201,141150,143423,37884,56482,117167,53903,116645,100709,96832,57504,95994,186560,84760,130236,79566,91962,111122,135396,70768,79572,93042,46114,103985,116053,66092,110141,81956,124248,115122,92397],
+  meta:   [139760,0,109844,65573,148976,115099,87644,0,109091,121086,0,115286,90556,120136,91550,0,107815,68417,0,92740,118625,0,113391,131292,40444,59652,94481,100780,0,109847,157218,78621,101725,0,116895,102760,80163,0,99550,98477,80880,0,93097,0,105006,90474,114587,89145,0,113124,108377,83706],
+  search: [68973,89327,59249,0,0,90851,69554,98427,95497,93950,0,93212,66638,81749,76863,0,75529,72540,47006,79529,0,71190,0,123601,46993,46759,0,93876,84169,65003,119352,71258,65111,0,70131,84818,67109,0,0,62426,69346,68232,81490,59042,107232,0,76283,76247,0,94561,72297,64849],
 };
 
 // ── Chart: Problem (forest plot, before phasing) ────────────────────────────
@@ -556,69 +592,75 @@ drawForest('chartProblem', [
   svg.appendChild(g);
 })();
 
-// ── Chart: Fix (before/after small multiples) ───────────────────────────────
+// ── Chart: Fix (stacked, one row per channel, mixed levers) ─────────────────
 (function drawFix() {
   const svg = document.getElementById('chartFix');
   if (!svg) return;
 
-  const W = 700, H = 228;
-  const gap = 14;
-  const panelW = (W - gap * 2) / 3;
-  const m = { top: 22, right: 8, bottom: 46, left: 40 };
-  const ph = H - m.top - m.bottom;
-  const pw = panelW - m.left - m.right;
+  const W = 700, H = 560;
+  const rowH = H / 3;
+  const m = { top: 26, right: 16, bottom: 14, left: 56 };
+  const pw = W - m.left - m.right;
+  const ph = rowH - m.top - m.bottom;
 
   const panels = [
-    { key: 'tv',     name: 'TV',     color: '#2563eb', yMax: 220000 },
-    { key: 'meta',   name: 'Meta',   color: '#d97706', yMax: 160000 },
-    { key: 'search', name: 'Search', color: '#059669', yMax: 140000 },
+    { key: 'tv',     name: 'TV — continuous ±40% range',  color: '#2563eb', yMax: 220000, dark: false },
+    { key: 'meta',   name: 'Meta — Blackout',              color: '#d97706', yMax: 160000, dark: true },
+    { key: 'search', name: 'Search — Blackout',            color: '#059669', yMax: 140000, dark: true },
   ];
 
   const T = 52;
   const g = el('g', {});
 
   panels.forEach((p, idx) => {
-    const offsetX = idx * (panelW + gap);
-    const pg = el('g', { transform: `translate(${offsetX},0)` });
+    const offsetY = idx * rowH;
+    const pg = el('g', { transform: `translate(0,${offsetY})` });
 
     const scX = i => m.left + (i / (T - 1)) * pw;
     const scY = v => m.top + ph - (v / p.yMax) * ph;
     const pathD = data => data.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
 
-    pg.appendChild(el('text', { x: m.left + pw / 2, y: 12, 'text-anchor': 'middle', 'font-size': 11.5, 'font-weight': '700', fill: p.color }, p.name));
+    pg.appendChild(el('text', { x: m.left, y: 14, 'font-size': 12.5, 'font-weight': '700', fill: p.color }, p.name));
 
     const yTicks = [0, p.yMax];
     for (const v of yTicks) {
       const y = scY(v);
       pg.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
-      pg.appendChild(el('text', { x: m.left - 6, y: y + 3, 'text-anchor': 'end', 'font-size': 8.5, fill: '#9ca3af' }, `£${Math.round(v / 1000)}k`));
+      pg.appendChild(el('text', { x: m.left - 8, y: y + 3, 'text-anchor': 'end', 'font-size': 9.5, fill: '#9ca3af' }, `£${Math.round(v / 1000)}k`));
     }
 
     pg.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
     pg.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
 
-    pg.appendChild(el('text', { x: m.left, y: m.top + ph + 13, 'text-anchor': 'start', 'font-size': 8.5, fill: '#9ca3af' }, 'Wk 1'));
-    pg.appendChild(el('text', { x: m.left + pw, y: m.top + ph + 13, 'text-anchor': 'end', 'font-size': 8.5, fill: '#9ca3af' }, 'Wk 52'));
+    pg.appendChild(el('text', { x: m.left, y: m.top + ph + 13, 'text-anchor': 'start', 'font-size': 9.5, fill: '#9ca3af' }, 'Wk 1'));
+    pg.appendChild(el('text', { x: m.left + pw, y: m.top + ph + 13, 'text-anchor': 'end', 'font-size': 9.5, fill: '#9ca3af' }, 'Wk 52'));
 
     pg.appendChild(el('path', { d: pathD(PLAN[p.key]), fill: 'none', stroke: '#9ca3af', 'stroke-width': 1.75, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.9 }));
-    pg.appendChild(el('path', { d: pathD(BLACKOUT_RECOMMENDED[p.key]), fill: 'none', stroke: p.color, 'stroke-width': 1.75, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.9 }));
+    pg.appendChild(el('path', { d: pathD(MIXED_RECOMMENDED[p.key]), fill: 'none', stroke: p.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.95 }));
 
-    // Dark weeks: exactly £0, marked with a solid dot on the baseline
-    BLACKOUT_RECOMMENDED[p.key].forEach((v, i) => {
-      if (v === 0) {
-        pg.appendChild(el('circle', { cx: scX(i), cy: scY(0), r: 2.6, fill: '#111827' }));
-      }
-    });
+    // Dark weeks (Meta/Search only): exactly £0, marked with a solid dot on the baseline
+    if (p.dark) {
+      MIXED_RECOMMENDED[p.key].forEach((v, i) => {
+        if (v === 0) {
+          pg.appendChild(el('circle', { cx: scX(i), cy: scY(0), r: 3, fill: '#111827' }));
+        }
+      });
+    }
 
     g.appendChild(pg);
   });
 
-  g.appendChild(el('text', { x: W / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, 'Week (original plan year)'));
-
   svg.appendChild(g);
 })();
 
-// ── Chart: Impact (before/after forest plot) ────────────────────────────────
+// ── Chart: Impact (today / 1yr / 2yr forest plot, all-Blackout scenario) ────
+// Real full-mode numbers (n_sims=50, grid_steps=25, n_phasing_seeds=10),
+// same history/plan seeds as elsewhere on this page (history seed=0, plan
+// seed=1, correlation=0.7), every channel on Blackout(max_dark_weeks_per_month=1)
+// — the ceiling case, distinct from the mixed-lever illustration in the Fix
+// chart above. 1yr reproduces notebooks/02_phaser_walkthrough.ipynb's "What
+// does the reliability gain look like in £?" exactly; 2yr re-runs the same
+// recipe with a 104-week plan in place of 52.
 (function drawImpact() {
   const svg = document.getElementById('chartImpact');
   if (!svg) return;
@@ -629,9 +671,9 @@ drawForest('chartProblem', [
   const ph = H - m.top - m.bottom;
 
   const data = [
-    { name: 'TV',     color: '#2563eb', before: [0.945, 2.093], after: [1.282, 1.846] },
-    { name: 'Meta',   color: '#d97706', before: [1.406, 2.574], after: [1.792, 2.274] },
-    { name: 'Search', color: '#059669', before: [0.712, 1.885], after: [1.042, 1.523] },
+    { name: 'TV',     color: '#2563eb', today: [0.945, 2.094], y1: [1.282, 1.846], y2: [1.322, 1.733] },
+    { name: 'Meta',   color: '#d97706', today: [1.418, 2.595], y1: [1.792, 2.274], y2: [1.875, 2.188] },
+    { name: 'Search', color: '#059669', today: [0.712, 1.885], y1: [1.042, 1.523], y2: [1.082, 1.413] },
   ];
 
   const xMax = 2.8;
@@ -661,23 +703,57 @@ drawForest('chartProblem', [
   for (let ci = 0; ci < data.length; ci++) {
     const ch = data[ci];
     const cy = rowCy(ci);
-    const offset = rowH * 0.19;
-    const capH = rowH * 0.14;
+    const step = rowH * 0.27;
 
-    // Before (light, upper sub-row)
-    const cyB = cy - offset;
-    g.appendChild(el('line', { x1: scX(ch.before[0]), y1: cyB, x2: scX(ch.before[1]), y2: cyB, stroke: ch.color, 'stroke-width': 6, 'stroke-linecap': 'round', opacity: 0.4 }));
+    // Today (lightest, top sub-row)
+    const cyToday = cy - step;
+    g.appendChild(el('line', { x1: scX(ch.today[0]), y1: cyToday, x2: scX(ch.today[1]), y2: cyToday, stroke: ch.color, 'stroke-width': 5.5, 'stroke-linecap': 'round', opacity: 0.35 }));
 
-    // After (solid, lower sub-row)
-    const cyA = cy + offset;
-    g.appendChild(el('line', { x1: scX(ch.after[0]), y1: cyA, x2: scX(ch.after[1]), y2: cyA, stroke: ch.color, 'stroke-width': 6, 'stroke-linecap': 'round' }));
+    // After 1 year (medium, middle sub-row)
+    const cyY1 = cy;
+    g.appendChild(el('line', { x1: scX(ch.y1[0]), y1: cyY1, x2: scX(ch.y1[1]), y2: cyY1, stroke: ch.color, 'stroke-width': 5.5, 'stroke-linecap': 'round', opacity: 0.75 }));
 
-    g.appendChild(el('text', { x: scX(ch.after[1]) + 8, y: cyA + 3, 'font-size': 10, fill: ch.color, 'font-weight': '700' }, `${fmtGBP(ch.after[0])} – ${fmtGBP(ch.after[1])}`));
+    // After 2 years (solid, bottom sub-row)
+    const cyY2 = cy + step;
+    g.appendChild(el('line', { x1: scX(ch.y2[0]), y1: cyY2, x2: scX(ch.y2[1]), y2: cyY2, stroke: ch.color, 'stroke-width': 5.5, 'stroke-linecap': 'round' }));
+
+    g.appendChild(el('text', { x: scX(ch.y2[1]) + 8, y: cyY2 + 3, 'font-size': 9.5, fill: ch.color, 'font-weight': '700' }, `${fmtGBP(ch.y2[0])} – ${fmtGBP(ch.y2[1])}`));
 
     g.appendChild(el('text', { x: m.left - 10, y: cy + 4, 'text-anchor': 'end', 'font-size': 12.5, 'font-weight': '700', fill: ch.color }, ch.name));
   }
 
   svg.appendChild(g);
+})();
+
+// Scrollspy: keep the sticky section nav's "active" tab in sync with whichever
+// section is actually in view, rather than leaving it permanently on the first
+// link (the nav didn't need this while it scrolled out of sight with the page;
+// now that it's pinned via position: sticky, a static active link reads as broken).
+(function () {
+  const navEl = document.querySelector('.snav');
+  const navLinks = Array.from(document.querySelectorAll('.snav a'));
+  const sections = Array.from(document.querySelectorAll('main section[id]'));
+  if (!navEl || !sections.length) return;
+
+  function setActive(id) {
+    navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === `#${id}`));
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    const visible = entries.filter(e => e.isIntersecting);
+    if (!visible.length) return;
+    // If several sections are partly in view at once, the one nearest the top
+    // (just under the sticky bar) is the one the reader is actually looking at.
+    visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+    setActive(visible[0].target.id);
+  }, {
+    // Offset for the sticky nav's own height, then only count a section as
+    // "current" while its heading sits in the top third of the viewport.
+    rootMargin: `-${navEl.offsetHeight + 1}px 0px -70% 0px`,
+    threshold: 0,
+  });
+
+  sections.forEach((s) => observer.observe(s));
 })();
 </script>
 
