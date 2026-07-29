@@ -1,8 +1,10 @@
 # How Wrong Is Your MMM?
 
-**Collinearity diagnostics and budget phasing for Marketing Mix Models.**
+**How using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.**
 
-TV, Meta, and Search budgets move together because the same planning cycle drives them all. When channels are correlated, an MMM can't reliably distinguish their individual effects — not because the model is wrong, but because the data was never designed to answer the question. The result is elasticity estimates that shift every time you refit, not because the market changed, but because the data was never informative enough to pin them down.
+Take the marketing mix model (MMM) you use to allocate your marketing budget across channels. Run it again on a slightly different slice of history, same channels, same market. Would it give you the same answer?
+
+For most brands, no. TV, Meta, and Search budgets move together because the same planning cycle drives them all, and that makes it hard for an MMM to tell their individual effects apart. The result is elasticity estimates that shift every time you refit, not because the market changed, but because the data was never informative enough to pin them down.
 
 This package quantifies that problem and recommends a fix.
 
@@ -10,21 +12,21 @@ This package quantifies that problem and recommends a fix.
 
 ## The three-part solution
 
-**Part 1 — Diagnose.** Simulate many plausible histories of your market and measure how much the estimated elasticities vary. The coefficient of variation (CV) is your "how wrong" number. At mean channel correlation 0.7, TV elasticity CV is ~36% — a third of the estimate's magnitude is unexplained variance.
+**Part 1 — Diagnose.** Simulate many plausible histories of your market and measure how much your elasticity estimates swing. The coefficient of variation (CV) is your "how wrong" number: at mean channel correlation 0.7, TV's CV is ~36%.
 
-**Part 2 — Phase.** Recommend a 52-week spend schedule that varies the weekly channel split independently, preserving monthly totals exactly. This introduces the independent variation the model needs to distinguish channel effects. At ±40% weekly deviation, one year of phasing reduces CV by ~30%. At ±80%, it's ~53%.
+**Part 2 — Phase.** Recommend a weekly spend schedule that breaks the correlation between channels while keeping monthly totals exactly the same, either a continuous nudge to each week's split, or `Blackout`, a harder on/off switch that takes a channel fully dark some weeks and makes it up on the weeks it stays on. At the package default (±40% continuous), one year of phasing cuts CV by ~30%. `Blackout` alone reaches 47–59%, using no more than one dark week a month.
 
-**Part 3 — Retrain.** Once the phased plan has run, refit your MMM on the new data. The de-correlated spend does the work: elasticity estimates come back measurably tighter, without waiting years for the phased weeks to outnumber the correlated history.
+**Part 3 — Retrain.** Refit your MMM on the phased data. The de-correlated spend does the work: elasticity estimates come back measurably tighter, without waiting years for it to accumulate.
 
 ---
 
 ## Guides
 
 [**Introduction**](https://raz1470.github.io/how_wrong_is_your_mmm/introduction.html)
-A two-minute read: the headline numbers and the fix, no maths.
+An introduction to the problem and the fix.
 
 [**Research**](https://raz1470.github.io/how_wrong_is_your_mmm/research.html)
-The full method, the research behind it, and how to run it yourself.
+How the diagnostic and the phasing algorithm actually work, and the research behind every number.
 
 [**API Reference**](https://raz1470.github.io/how_wrong_is_your_mmm/api/)
 Full class and function docs for `CollinearityDiagnostic`, `BudgetPhaser`, and `Blackout`.
@@ -72,29 +74,15 @@ phaser.recommended_schedule_   # 52-week DataFrame, monthly totals guaranteed to
 
 ---
 
-## Key result
-
-At mean pairwise channel correlation **0.70**, with 50 noise seeds:
-
-| Channel | True elasticity | 80% range | Width |
-|---------|----------------|-----------|-------|
-| TV      | 0.30           | [0.20, 0.46] | 0.26 |
-| Meta    | 0.50           | [0.34, 0.66] | 0.32 |
-| Search  | 0.40           | [0.11, 0.62] | 0.51 |
-
-The model isn't broken. The data design is.
-
----
-
 ## Notebooks
 
 | Notebook | What it shows |
 |----------|--------------|
-| [`01_dgp_diagnostic_walkthrough`](notebooks/01_dgp_diagnostic_walkthrough.ipynb) | Correlation sweep 0.1→0.9; elasticity estimates across 50 seeds; personalised diagnostic on real spend; turning elasticity into £ and CAC/ROI |
-| [`02_phaser_walkthrough`](notebooks/02_phaser_walkthrough.ipynb) | BudgetPhaser end-to-end; CV curve vs phasing amplitude; elasticity fan chart before/after; per-channel deviation constraints |
-| [`03_time_to_benefit`](notebooks/03_time_to_benefit.ipynb) | Research study: how long phasing takes; correlation sensitivity; deviation amplitude lever |
-| [`04_channel_count_sweep`](notebooks/04_channel_count_sweep.ipynb) | Validates the diagnostic and phasing at realistic channel counts (5–20); channel count barely matters, correlation does |
-| [`05_bayesian_comparison`](notebooks/05_bayesian_comparison.ipynb) | Paired OLS vs Bayesian comparison; priors narrow intervals a little (5–9%), not a fix for collinearity |
+| [`01_diagnostic_walkthrough`](notebooks/01_diagnostic_walkthrough.ipynb) | Shows how unreliable your elasticity estimates get as your channels become more correlated, then runs the same check on your own spend data |
+| [`02_phaser_walkthrough`](notebooks/02_phaser_walkthrough.ipynb) | Walks through `BudgetPhaser` end to end: how much phasing helps, and the actual recommended weekly schedule it produces |
+| [`03_time_to_benefit`](notebooks/03_time_to_benefit.ipynb) | How long you need to phase your budget before you see a real improvement |
+| [`04_channel_scaling_walkthrough`](notebooks/04_channel_scaling_walkthrough.ipynb) | Checks that the diagnostic and the fix still work when you have more than three channels |
+| [`05_bayesian_comparison`](notebooks/05_bayesian_comparison.ipynb) | Checks whether switching to a Bayesian model fixes the problem on its own (it doesn't, not by much) |
 
 ---
 
