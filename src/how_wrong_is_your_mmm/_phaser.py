@@ -56,6 +56,38 @@ def _get_month_labels(spend_df: pd.DataFrame) -> np.ndarray:
     return spend_df.index.to_period("M").to_numpy()
 
 
+def _tile_plan(plan_df: pd.DataFrame, n_weeks: int) -> pd.DataFrame:
+    """Extend or truncate plan_df to n_weeks by repeating its weekly pattern.
+
+    Used for horizon comparisons beyond (or short of) the supplied plan
+    length — e.g. a 2-year view built from a 52-week plan, or a 3-month
+    view built from the same plan truncated. There is no real data past
+    the supplied plan, so a longer horizon is a projection that assumes
+    next year repeats this year's weekly pattern, not a claim about an
+    actual future plan — callers should treat it accordingly. Matches the
+    tiling approach already used ad hoc in
+    notebooks/02_phaser_walkthrough.ipynb for its own 2-year figures.
+
+    Parameters
+    ----------
+    plan_df:
+        Weekly spend plan with a DatetimeIndex.
+    n_weeks:
+        Target length in weeks. Can be shorter or longer than plan_df.
+
+    Returns
+    -------
+    pd.DataFrame of length n_weeks, same columns as plan_df, with a
+    DatetimeIndex continuing plan_df's own frequency from its start date.
+    """
+    n_orig = len(plan_df)
+    reps = -(-n_weeks // n_orig)  # ceil division
+    tiled_values = np.tile(plan_df.to_numpy(), (reps, 1))[:n_weeks]
+    freq = plan_df.index.freqstr or pd.infer_freq(plan_df.index) or "W-MON"
+    new_index = pd.date_range(start=plan_df.index[0], periods=n_weeks, freq=freq)
+    return pd.DataFrame(tiled_values, index=new_index, columns=plan_df.columns)
+
+
 class Blackout:
     """Marker for blackout-mode phasing on a channel.
 
@@ -436,7 +468,74 @@ class BudgetPhaser:
 
         self._plan_month_labels = _get_month_labels(plan_df)
         self.results_: pd.DataFrame | None = None
+        self.confirmation_: pd.DataFrame | None = None
         self.recommended_schedule_: pd.DataFrame | None = None
+
+    def _evaluate_spec_at_alpha(
+        self,
+        spec: DeviationSpec | dict[str, DeviationSpec],
+        alpha: float,
+        n_sims: int,
+        n_phasing_seeds: int,
+        seed_offset: int,
+    ) -> dict:
+        """Run n_phasing_seeds phased-schedule draws at one (spec, alpha)
+        setting, average the resulting per-channel CVs, and return one row.
+
+        Shared by fit()'s joint alpha grid search (spec =
+        self.max_weekly_deviation_pct, every channel scaled together) and
+        channel_sensitivity()'s per-channel marginal sweep (spec has every
+        channel but one locked at 0) — both go through identical simulation
+        machinery, only the spec being evaluated differs. Keeping this in
+        one place means the two can't quietly drift out of sync.
+        """
+        channels = list(self.plan_df.columns)
+        seed_results = []
+
+        for j in range(n_phasing_seeds):
+            phased_plan = _generate_phased_schedule(
+                self.plan_df,
+                self._plan_month_labels,
+                alpha=alpha,
+                max_weekly_deviation_pct=spec,
+                seed=self.seed + seed_offset + j,
+            )
+
+            monthly_dev = _max_monthly_deviation(
+                self.plan_df, phased_plan, self._plan_month_labels
+            )
+
+            combined = pd.concat([self.history_df, phased_plan])
+
+            diag = CollinearityDiagnostic(
+                spend_df=combined,
+                true_elasticities=self.true_elasticities,
+            )
+            diag.fit(n_sims=n_sims)
+            summ = diag.summary().set_index("channel")
+
+            seed_results.append(
+                {
+                    "actual_correlation": diag.actual_correlation,
+                    "monthly_dev": monthly_dev,
+                    **{ch: float(summ.loc[ch, "coef_of_variation"]) for ch in channels},
+                }
+            )
+
+        # Average across phasing seeds to smooth the CV curve
+        avg_corr = float(np.mean([r["actual_correlation"] for r in seed_results]))
+        avg_monthly_dev = float(np.mean([r["monthly_dev"] for r in seed_results]))
+        avg_cv = {ch: float(np.mean([r[ch] for r in seed_results])) for ch in channels}
+
+        row: dict = {
+            "alpha": round(float(alpha), 4),
+            "actual_correlation": round(avg_corr, 4),
+            "max_cv": round(max(avg_cv.values()), 4),
+            "max_monthly_deviation_pct": round(avg_monthly_dev * 100, 6),
+        }
+        for ch in channels:
+            row[f"cv_{ch}"] = round(avg_cv[ch], 4)
+        return row
 
     def fit(
         self,
@@ -444,6 +543,8 @@ class BudgetPhaser:
         grid_steps: int = 20,
         n_phasing_seeds: int = 3,
         fast_mode: bool = False,
+        confirm_top_k: int = 3,
+        confirm_n_phasing_seeds: int | None = None,
     ) -> BudgetPhaser:
         """Grid-search over phasing amplitude and store results.
 
@@ -453,7 +554,22 @@ class BudgetPhaser:
              CollinearityDiagnostic, record per-channel CVs.
           3. Average CVs across phasing seeds — this smooths the CV curve
              so the grid search isn't driven by a single lucky/unlucky draw.
-          4. Record the alpha with the lowest averaged max CV as the recommendation.
+          4. Record the alpha with the lowest averaged max CV as a candidate.
+
+        Selection-bias correction ("optimizer's curse"): step 4's argmin is
+        itself picked from `grid_steps` noisy estimates, so it's biased
+        towards whichever alpha happened to get a lucky draw — confirmed
+        empirically in a session-29 follow-up investigation: independently
+        re-evaluating a grid "winner" regresses its CV back up towards the
+        honest value, sometimes substantially. To correct for this, the top
+        `confirm_top_k` candidates by max_cv are re-evaluated with fresh
+        seeds (well clear of the grid search's own seed range) and a larger
+        sample (`confirm_n_phasing_seeds`), and *that* honestly-measured
+        winner becomes the actual recommendation used for
+        recommended_schedule_ and recommend() — not the raw grid argmin.
+        Both the raw grid (`results_`) and the confirmation pass
+        (`confirmation_`) are kept, so the size of the correction stays
+        inspectable rather than silently overwritten.
 
         Parameters
         ----------
@@ -466,7 +582,23 @@ class BudgetPhaser:
             CVs are averaged across seeds before selecting the best alpha.
             Default 3. Set to 1 to match the single-seed behaviour of v2.
         fast_mode:
-            If True, uses n_sims=10, grid_steps=10, n_phasing_seeds=1.
+            If True, uses n_sims=10, grid_steps=10, n_phasing_seeds=1,
+            confirm_top_k=1 (skips the extra confirmation cost — this mode
+            is for iterating on report layout, not for numbers to hand a
+            client).
+        confirm_top_k:
+            Number of the grid's lowest-max_cv candidates to re-evaluate
+            independently before picking the final recommendation. Default
+            3. Set to 1 to just re-confirm the raw grid winner without
+            considering its near neighbours (cheaper, less protection
+            against a genuinely close second place being the honest winner).
+        confirm_n_phasing_seeds:
+            Phasing seeds used for the confirmation pass. Defaults to
+            3x n_phasing_seeds — independently *and* more precisely
+            measured than the search itself, per the standard fix for
+            optimizer's-curse-style selection bias (evaluate the winner on
+            a fresh, larger sample rather than trust the value that won the
+            search that picked it).
 
         Returns
         -------
@@ -476,70 +608,47 @@ class BudgetPhaser:
             n_sims = 10
             grid_steps = 10
             n_phasing_seeds = 1
+            confirm_top_k = 1
+
+        if confirm_n_phasing_seeds is None:
+            confirm_n_phasing_seeds = n_phasing_seeds * 3
 
         alphas = np.linspace(0, 1, grid_steps)
-        channels = list(self.plan_df.columns)
-        rows = []
-
-        for i, alpha in enumerate(alphas):
-            seed_results = []
-
-            for j in range(n_phasing_seeds):
-                phased_plan = _generate_phased_schedule(
-                    self.plan_df,
-                    self._plan_month_labels,
-                    alpha=float(alpha),
-                    max_weekly_deviation_pct=self.max_weekly_deviation_pct,
-                    seed=self.seed + i * n_phasing_seeds + j,
-                )
-
-                monthly_dev = _max_monthly_deviation(
-                    self.plan_df, phased_plan, self._plan_month_labels
-                )
-
-                combined = pd.concat([self.history_df, phased_plan])
-
-                diag = CollinearityDiagnostic(
-                    spend_df=combined,
-                    true_elasticities=self.true_elasticities,
-                )
-                diag.fit(n_sims=n_sims)
-                summ = diag.summary().set_index("channel")
-
-                seed_results.append(
-                    {
-                        "actual_correlation": diag.actual_correlation,
-                        "monthly_dev": monthly_dev,
-                        **{
-                            ch: float(summ.loc[ch, "coef_of_variation"])
-                            for ch in channels
-                        },
-                    }
-                )
-
-            # Average across phasing seeds to smooth the CV curve
-            avg_corr = float(np.mean([r["actual_correlation"] for r in seed_results]))
-            avg_monthly_dev = float(np.mean([r["monthly_dev"] for r in seed_results]))
-            avg_cv = {
-                ch: float(np.mean([r[ch] for r in seed_results])) for ch in channels
-            }
-            max_cv = max(avg_cv.values())
-
-            row: dict = {
-                "alpha": round(float(alpha), 4),
-                "actual_correlation": round(avg_corr, 4),
-                "max_cv": round(max_cv, 4),
-                "max_monthly_deviation_pct": round(avg_monthly_dev * 100, 6),
-            }
-            for ch in channels:
-                row[f"cv_{ch}"] = round(avg_cv[ch], 4)
-
-            rows.append(row)
+        rows = [
+            self._evaluate_spec_at_alpha(
+                self.max_weekly_deviation_pct,
+                float(alpha),
+                n_sims,
+                n_phasing_seeds,
+                seed_offset=i * n_phasing_seeds,
+            )
+            for i, alpha in enumerate(alphas)
+        ]
 
         self.results_ = pd.DataFrame(rows)
 
-        # generate the recommended schedule at the best alpha
-        best_alpha = float(self.results_.loc[self.results_["max_cv"].idxmin(), "alpha"])
+        # Selection-bias correction: re-evaluate the top confirm_top_k
+        # candidates (by the grid's own noisy max_cv) independently, with a
+        # larger sample and seeds well clear of the grid search's own range,
+        # then recommend whichever of THOSE is best — not the raw grid
+        # argmin, which is systematically optimistic. See docstring above.
+        k = min(confirm_top_k, len(self.results_))
+        candidates = self.results_.nsmallest(k, "max_cv")
+        confirm_rows = [
+            self._evaluate_spec_at_alpha(
+                self.max_weekly_deviation_pct,
+                float(cand["alpha"]),
+                n_sims,
+                confirm_n_phasing_seeds,
+                seed_offset=100_000 + i * confirm_n_phasing_seeds,
+            )
+            for i, (_, cand) in enumerate(candidates.iterrows())
+        ]
+        self.confirmation_ = pd.DataFrame(confirm_rows)
+
+        best_alpha = float(
+            self.confirmation_.loc[self.confirmation_["max_cv"].idxmin(), "alpha"]
+        )
         self.recommended_schedule_ = _generate_phased_schedule(
             self.plan_df,
             self._plan_month_labels,
@@ -550,16 +659,345 @@ class BudgetPhaser:
 
         return self
 
+    def channel_sensitivity(
+        self,
+        channel: str,
+        alphas: list[float] | None = None,
+        magnitude_pct: float = 40.0,
+        blackout: Blackout | None = None,
+        n_sims: int = 50,
+        n_phasing_seeds: int = 3,
+        fast_mode: bool = False,
+    ) -> pd.DataFrame:
+        """Marginal CV-vs-amplitude curve for one channel, others left unphased.
+
+        Answers "how much does phasing THIS channel alone help", isolated
+        from the other channels — every other channel's spec is locked at 0
+        (no phasing) while `channel` sweeps a symmetric +/-`magnitude_pct`
+        continuous range from 0% (alpha=0) up to full amplitude (alpha=1),
+        via the same `_generate_phased_schedule` mechanism `fit()` uses. If
+        `blackout` is given, one further point is added using `Blackout`
+        instead of a continuous range at that channel, so the two levers
+        are directly comparable for this specific channel.
+
+        This is a *marginal* curve, not the joint one `fit()` computes: it
+        holds every other channel fixed, so it doesn't capture interaction
+        effects from phasing several channels at once (that's what
+        `results_`'s `cv_<channel>` columns already measure, across a
+        single shared alpha applied to every channel together). Use this
+        chart to decide which lever a channel needs; use `fit()`'s
+        recommendation for the actual schedule to hand over.
+
+        Parameters
+        ----------
+        channel:
+            Channel to vary. Must be a column of plan_df.
+        alphas:
+            Alpha levels to evaluate for the continuous sweep. Defaults to
+            [0, 0.2, 0.4, 0.6, 0.8, 1.0].
+        magnitude_pct:
+            Symmetric +/-X% weekly deviation at alpha=1 for the continuous
+            sweep. Default 40.0, matching BudgetPhaser's own default.
+        blackout:
+            Optional Blackout spec to evaluate as one extra "Blackout" row
+            at full amplitude, for comparison against the continuous
+            sweep. Omit (None) to skip it.
+        n_sims, n_phasing_seeds:
+            Same meaning as in fit().
+        fast_mode:
+            If True, uses n_sims=10, n_phasing_seeds=1.
+
+        Returns
+        -------
+        pd.DataFrame with one row per point: label, magnitude_pct
+        (NaN for the Blackout row), is_blackout, cv (this channel's own
+        coefficient of variation at that setting).
+        """
+        channels = list(self.plan_df.columns)
+        if channel not in channels:
+            raise ValueError(f"Unknown channel {channel!r}. Must be one of {channels}.")
+
+        if fast_mode:
+            n_sims = 10
+            n_phasing_seeds = 1
+
+        if alphas is None:
+            alphas = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+
+        locked = dict.fromkeys(channels, 0.0)
+        rows = []
+
+        for i, alpha in enumerate(alphas):
+            spec = {**locked, channel: magnitude_pct}
+            result = self._evaluate_spec_at_alpha(
+                spec,
+                float(alpha),
+                n_sims,
+                n_phasing_seeds,
+                seed_offset=10_000 + i * n_phasing_seeds,
+            )
+            rows.append(
+                {
+                    "label": f"{round(alpha * magnitude_pct)}%",
+                    "magnitude_pct": round(alpha * magnitude_pct, 2),
+                    "is_blackout": False,
+                    "cv": result[f"cv_{channel}"],
+                }
+            )
+
+        if blackout is not None:
+            spec = {**locked, channel: blackout}
+            result = self._evaluate_spec_at_alpha(
+                spec, 1.0, n_sims, n_phasing_seeds, seed_offset=20_000
+            )
+            rows.append(
+                {
+                    "label": "Blackout",
+                    "magnitude_pct": float("nan"),
+                    "is_blackout": True,
+                    "cv": result[f"cv_{channel}"],
+                }
+            )
+
+        return pd.DataFrame(rows)
+
+    def recommend_levers(
+        self,
+        magnitude_pct: float = 40.0,
+        blackout: Blackout | None = Blackout(max_dark_weeks_per_month=1),
+        improvement_threshold_pct: float = 10.0,
+        n_sims: int = 50,
+        n_phasing_seeds: int = 3,
+        fast_mode: bool = False,
+    ) -> dict[str, DeviationSpec]:
+        """Decide, per channel, whether Blackout is worth it over a continuous range.
+
+        fit() applies a single shared lever to every channel by default,
+        which can hide real per-channel differences: one channel might
+        barely respond to a continuous +/-40% range while a hard on/off
+        Blackout would meaningfully help it, and that gap is invisible
+        unless someone actually checks each channel in isolation (this
+        method exists because exactly that gap showed up in a real report
+        — a headline channel that barely improved under the flat default
+        lever, while another channel on the same report improved a lot
+        more; see session 29's follow-up investigation).
+
+        For each channel, compares its own marginal CV (see
+        channel_sensitivity — every other channel locked at 0) at full
+        continuous amplitude (+/-magnitude_pct) against Blackout, and picks
+        Blackout only when it's a *meaningfully* better result for that
+        channel — at least improvement_threshold_pct relative CV
+        improvement, not just a noisier-looking single draw. This avoids
+        reaching for the operationally harder lever (locking a channel to
+        hard on/off weeks, which a media agency has to actually plan
+        around) on a difference that's within this method's own sampling
+        noise.
+
+        This is a one-shot, per-channel *marginal* decision, same caveat as
+        channel_sensitivity(): it doesn't capture interaction effects from
+        phasing several channels at once. Typical use: feed this method's
+        output straight into a subsequent BudgetPhaser's own
+        max_weekly_deviation_pct (ReportBuilder does this automatically by
+        default — see its auto_lever parameter).
+
+        Parameters
+        ----------
+        magnitude_pct:
+            Symmetric +/-X% continuous option to compare against Blackout.
+            Default 40.0, matching BudgetPhaser's own default lever.
+        blackout:
+            Blackout spec to compare against. If None, every channel keeps
+            the continuous lever — nothing to compare against, so there's
+            nothing to decide.
+        improvement_threshold_pct:
+            Minimum relative CV improvement (%) Blackout must show over the
+            continuous option for a channel before it's picked instead.
+            Default 10.0 — comfortably above this method's own run-to-run
+            sampling noise (typically a few percentage points at
+            n_phasing_seeds=3), so the choice isn't flipped by noise alone.
+        n_sims, n_phasing_seeds:
+            Same meaning as channel_sensitivity()/fit().
+        fast_mode:
+            If True, uses n_sims=10, n_phasing_seeds=1 — cheap, for
+            iterating on the report itself, not a lever choice to actually
+            hand a client.
+
+        Returns
+        -------
+        dict[str, float | Blackout], one entry per channel in plan_df,
+        ready to pass as max_weekly_deviation_pct to a BudgetPhaser.
+        """
+        channels = list(self.plan_df.columns)
+        if fast_mode:
+            n_sims = 10
+            n_phasing_seeds = 1
+
+        spec: dict[str, DeviationSpec] = {}
+        for ch in channels:
+            if blackout is None:
+                spec[ch] = magnitude_pct
+                continue
+            curve = self.channel_sensitivity(
+                ch,
+                alphas=[1.0],
+                magnitude_pct=magnitude_pct,
+                blackout=blackout,
+                n_sims=n_sims,
+                n_phasing_seeds=n_phasing_seeds,
+            )
+            cv_continuous = float(curve.loc[~curve["is_blackout"], "cv"].iloc[0])
+            cv_blackout = float(curve.loc[curve["is_blackout"], "cv"].iloc[0])
+            improvement = 100 * (cv_continuous - cv_blackout) / cv_continuous
+            spec[ch] = (
+                blackout if improvement >= improvement_threshold_pct else magnitude_pct
+            )
+
+        return spec
+
+    def impact_over_horizons(
+        self,
+        horizons_weeks: list[int] | None = None,
+        n_sims: int = 50,
+        n_phasing_seeds: int = 3,
+        fast_mode: bool = False,
+        include_revenue: bool = False,
+    ) -> pd.DataFrame:
+        """Before-vs-after CV (and optionally £ revenue range) at several horizons.
+
+        fit() must be called first — this reuses its recommended alpha
+        rather than re-searching. For each horizon in `horizons_weeks`,
+        plan_df is tiled to that length (see `_tile_plan`; shorter horizons
+        truncate it, longer ones repeat its weekly pattern), then:
+          - "today": history + tiled plan, unphased.
+          - "after": history + tiled plan phased at the recommended alpha,
+            averaged across n_phasing_seeds independent draws — the same
+            averaging fit() already applies to its own CV curve, extended
+            here across per-channel revenue ranges too (promoted from the
+            single-draw-then-averaged pattern used in
+            notebooks/02_phaser_walkthrough.ipynb, session 27).
+
+        Parameters
+        ----------
+        horizons_weeks:
+            Plan lengths to evaluate, in weeks. Defaults to [13, 52, 104]
+            (roughly 3 months, 1 year, 2 years).
+        n_sims, n_phasing_seeds:
+            Same meaning as in fit().
+        fast_mode:
+            If True, uses n_sims=10, n_phasing_seeds=1.
+        include_revenue:
+            If True, also compute £ incremental-revenue ranges via
+            CollinearityDiagnostic.summary(planned_spend=...), using each
+            horizon's *own* tiled-plan total spend per channel as
+            planned_spend — not a single fixed total shared across
+            horizons, since a 104-week horizon plans roughly double the
+            spend of a 52-week one and the revenue scale must track that.
+            Without this, only CV is returned.
+
+        Returns
+        -------
+        pd.DataFrame with one row per (horizon, channel): horizon_weeks,
+        channel, cv_today, cv_after, cv_reduction_pct, and — if
+        include_revenue — revenue_today_p10/p90 and revenue_after_p10/p90.
+        """
+        if self.results_ is None or self.recommended_schedule_ is None:
+            raise RuntimeError("Call fit() before impact_over_horizons().")
+
+        if horizons_weeks is None:
+            horizons_weeks = [13, 52, 104]
+        if fast_mode:
+            n_sims = 10
+            n_phasing_seeds = 1
+
+        best_alpha = float(self.recommend()["alpha"])
+        channels = list(self.plan_df.columns)
+        rows = []
+
+        for h in horizons_weeks:
+            tiled_plan = _tile_plan(self.plan_df, h)
+            tiled_labels = _get_month_labels(tiled_plan)
+            planned_spend = tiled_plan.sum().to_dict() if include_revenue else None
+
+            today_combined = pd.concat([self.history_df, tiled_plan])
+            today_diag = CollinearityDiagnostic(
+                spend_df=today_combined, true_elasticities=self.true_elasticities
+            )
+            today_diag.fit(n_sims=n_sims)
+            today_summ = today_diag.summary(planned_spend=planned_spend).set_index(
+                "channel"
+            )
+
+            after_cv: dict[str, list[float]] = {ch: [] for ch in channels}
+            after_p10: dict[str, list[float]] = {ch: [] for ch in channels}
+            after_p90: dict[str, list[float]] = {ch: [] for ch in channels}
+
+            for j in range(n_phasing_seeds):
+                phased = _generate_phased_schedule(
+                    tiled_plan,
+                    tiled_labels,
+                    alpha=best_alpha,
+                    max_weekly_deviation_pct=self.max_weekly_deviation_pct,
+                    seed=self.seed + 30_000 + h * 100 + j,
+                )
+                combined = pd.concat([self.history_df, phased])
+                diag = CollinearityDiagnostic(
+                    spend_df=combined, true_elasticities=self.true_elasticities
+                )
+                diag.fit(n_sims=n_sims)
+                summ = diag.summary(planned_spend=planned_spend).set_index("channel")
+                for ch in channels:
+                    after_cv[ch].append(float(summ.loc[ch, "coef_of_variation"]))
+                    if include_revenue:
+                        after_p10[ch].append(
+                            float(summ.loc[ch, "incremental_revenue_p10"])
+                        )
+                        after_p90[ch].append(
+                            float(summ.loc[ch, "incremental_revenue_p90"])
+                        )
+
+            for ch in channels:
+                cv_today = float(today_summ.loc[ch, "coef_of_variation"])
+                cv_after = float(np.mean(after_cv[ch]))
+                row = {
+                    "horizon_weeks": h,
+                    "channel": ch,
+                    "cv_today": round(cv_today, 4),
+                    "cv_after": round(cv_after, 4),
+                    "cv_reduction_pct": round(
+                        100 * (cv_today - cv_after) / cv_today, 2
+                    ),
+                }
+                if include_revenue:
+                    row["revenue_today_p10"] = float(
+                        today_summ.loc[ch, "incremental_revenue_p10"]
+                    )
+                    row["revenue_today_p90"] = float(
+                        today_summ.loc[ch, "incremental_revenue_p90"]
+                    )
+                    row["revenue_after_p10"] = float(np.mean(after_p10[ch]))
+                    row["revenue_after_p90"] = float(np.mean(after_p90[ch]))
+                rows.append(row)
+
+        return pd.DataFrame(rows)
+
     def recommend(self) -> pd.Series:
-        """Return the grid point with the lowest max CV.
+        """Return the recommended alpha and its honestly re-evaluated CV.
+
+        This is deliberately *not* the grid's own lowest-max_cv row — see
+        fit()'s docstring on selection-bias correction. It's the best of
+        the top confirm_top_k candidates after independent re-evaluation on
+        a larger sample, which is what recommended_schedule_ is actually
+        built from. Use summary()/results_ to see the raw, noisier grid
+        instead (useful for plotting the CV-vs-alpha curve, not for citing
+        a specific channel's CV at the recommended alpha).
 
         Returns
         -------
         pd.Series with alpha, actual_correlation, max_cv, and per-channel CVs.
         """
-        if self.results_ is None:
+        if self.confirmation_ is None:
             raise RuntimeError("Call fit() before recommend().")
-        return self.results_.loc[self.results_["max_cv"].idxmin()]
+        return self.confirmation_.loc[self.confirmation_["max_cv"].idxmin()]
 
     def summary(self) -> pd.DataFrame:
         """Return the full grid search results.
