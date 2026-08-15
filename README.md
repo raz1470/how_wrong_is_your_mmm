@@ -73,7 +73,9 @@ diag.summary()   # same output, personalised to your correlation structure
 phaser = BudgetPhaser(history_df=history, plan_df=plan)
 phaser.fit()
 phaser.recommended_schedule_   # 52-week DataFrame, monthly totals guaranteed to match
+```
 
+```python
 # Report — diagnose + phase, packaged into one client-ready HTML report
 from how_wrong_is_your_mmm import ReportBuilder
 

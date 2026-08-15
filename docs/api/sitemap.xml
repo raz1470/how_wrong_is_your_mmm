@@ -2,22 +2,26 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://raz1470.github.io/how_wrong_is_your_mmm/api/</loc>
-         <lastmod>2026-07-16</lastmod>
+         <lastmod>2026-08-15</lastmod>
     </url>
     <url>
          <loc>https://raz1470.github.io/how_wrong_is_your_mmm/api/api/dgp/</loc>
-         <lastmod>2026-07-16</lastmod>
+         <lastmod>2026-08-15</lastmod>
     </url>
     <url>
          <loc>https://raz1470.github.io/how_wrong_is_your_mmm/api/api/diagnostic/</loc>
-         <lastmod>2026-07-16</lastmod>
+         <lastmod>2026-08-15</lastmod>
     </url>
     <url>
          <loc>https://raz1470.github.io/how_wrong_is_your_mmm/api/api/mmm/</loc>
-         <lastmod>2026-07-16</lastmod>
+         <lastmod>2026-08-15</lastmod>
     </url>
     <url>
          <loc>https://raz1470.github.io/how_wrong_is_your_mmm/api/api/phaser/</loc>
-         <lastmod>2026-07-16</lastmod>
+         <lastmod>2026-08-15</lastmod>
+    </url>
+    <url>
+         <loc>https://raz1470.github.io/how_wrong_is_your_mmm/api/api/report/</loc>
+         <lastmod>2026-08-15</lastmod>
     </url>
 </urlset>

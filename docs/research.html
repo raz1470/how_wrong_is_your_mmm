@@ -52,6 +52,10 @@ h1 {
 
 /* ── Section nav ── */
 .snav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #fff;
   max-width: var(--w);
   margin: 0 auto;
   padding: 0 1.5rem;
@@ -808,6 +812,8 @@ svg.chart { display: block; width: 100%; }
   </div>
   <p class="fig-cap">One pipeline, three steps. The diagnostic quantifies how unreliable your elasticities are today. Phasing recommends a de-correlated spend schedule that preserves monthly totals exactly. Retraining on that new data is where the payoff lands, tighter elasticity estimates without waiting years for it to happen naturally.</p>
 </div>
+
+  <p>Run all three steps against your own spend and <code>ReportBuilder</code> packages the result into a single client-ready HTML report: today's honest range, the recommended weekly schedule, and how much it narrows things, no code required to read it. <a href="example-report.html">See a full example report →</a></p>
 
   <div class="up-next">
     <strong>Next:</strong> <a href="#questions" style="color:inherit">Section 6 — Questions</a> works through the practical pushback this guide tends to get: Bayesian methods, geo-testing, phasing's cost to performance, and hierarchical pooling.
@@ -2191,6 +2197,37 @@ function el(tag, attrs, text) {
   }
 
   svg.appendChild(g);
+})();
+
+// Scrollspy: keep the sticky section nav's "active" tab in sync with whichever
+// section is actually in view, rather than leaving it permanently on the first
+// link (the nav didn't need this while it scrolled out of sight with the page;
+// now that it's pinned via position: sticky, a static active link reads as broken).
+(function () {
+  const navEl = document.querySelector('.snav');
+  const navLinks = Array.from(document.querySelectorAll('.snav a'));
+  const sections = Array.from(document.querySelectorAll('main section[id]'));
+  if (!navEl || !sections.length) return;
+
+  function setActive(id) {
+    navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === `#${id}`));
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    const visible = entries.filter(e => e.isIntersecting);
+    if (!visible.length) return;
+    // If several sections are partly in view at once, the one nearest the top
+    // (just under the sticky bar) is the one the reader is actually looking at.
+    visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+    setActive(visible[0].target.id);
+  }, {
+    // Offset for the sticky nav's own height, then only count a section as
+    // "current" while its heading sits in the top third of the viewport.
+    rootMargin: `-${navEl.offsetHeight + 1}px 0px -70% 0px`,
+    threshold: 0,
+  });
+
+  sections.forEach((s) => observer.observe(s));
 })();
 </script>
 

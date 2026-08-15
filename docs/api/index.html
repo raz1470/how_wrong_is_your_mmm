@@ -303,10 +303,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-three-classes" class="md-nav__link">
+  <a href="#the-classes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The three classes
+        The classes
       
     </span>
   </a>
@@ -447,6 +447,34 @@
   
   
     <li class="md-nav__item">
+      <a href="api/report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="api/dgp/" class="md-nav__link">
         
   
@@ -541,10 +569,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-three-classes" class="md-nav__link">
+  <a href="#the-classes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The three classes
+        The classes
       
     </span>
   </a>
@@ -598,7 +626,7 @@ start with one of these instead:</p>
 <h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>how-wrong-is-your-mmm<span class="w">  </span><span class="c1"># coming to PyPI</span>
 </code></pre></div>
-<h2 id="the-three-classes">The three classes<a class="headerlink" href="#the-three-classes" title="Permanent link">&para;</a></h2>
+<h2 id="the-classes">The classes<a class="headerlink" href="#the-classes" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -619,13 +647,17 @@ start with one of these instead:</p>
 <td><a href="api/phaser/#how_wrong_is_your_mmm.Blackout"><code>Blackout</code></a></td>
 <td>A harder on/off phasing lever for <code>BudgetPhaser</code>, in place of a continuous weekly range.</td>
 </tr>
+<tr>
+<td><a href="api/report/"><code>ReportBuilder</code></a></td>
+<td>Packages <code>CollinearityDiagnostic</code> + <code>BudgetPhaser</code> into a single client-ready HTML report.</td>
+</tr>
 </tbody>
 </table>
 <p>Two lower-level building blocks — <a href="api/dgp/"><code>simulate_spend</code>/<code>simulate_sales</code></a>
 and <a href="api/mmm/"><code>fit_ols</code></a> — are also exported, mainly useful if you're
 extending the package rather than just using it.</p>
 <h2 id="minimal-example">Minimal example<a class="headerlink" href="#minimal-example" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">how_wrong_is_your_mmm</span><span class="w"> </span><span class="kn">import</span> <span class="n">CollinearityDiagnostic</span><span class="p">,</span> <span class="n">BudgetPhaser</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">how_wrong_is_your_mmm</span><span class="w"> </span><span class="kn">import</span> <span class="n">CollinearityDiagnostic</span><span class="p">,</span> <span class="n">BudgetPhaser</span><span class="p">,</span> <span class="n">ReportBuilder</span>
 
 <span class="n">diag</span> <span class="o">=</span> <span class="n">CollinearityDiagnostic</span><span class="p">(</span><span class="n">spend_df</span><span class="o">=</span><span class="n">my_spend_df</span><span class="p">)</span>
 <span class="n">diag</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
@@ -634,6 +666,10 @@ extending the package rather than just using it.</p>
 <span class="n">phaser</span> <span class="o">=</span> <span class="n">BudgetPhaser</span><span class="p">(</span><span class="n">history_df</span><span class="o">=</span><span class="n">history</span><span class="p">,</span> <span class="n">plan_df</span><span class="o">=</span><span class="n">plan</span><span class="p">)</span>
 <span class="n">phaser</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
 <span class="n">phaser</span><span class="o">.</span><span class="n">recommended_schedule_</span>
+
+<span class="n">report</span> <span class="o">=</span> <span class="n">ReportBuilder</span><span class="p">(</span><span class="n">history_df</span><span class="o">=</span><span class="n">history</span><span class="p">,</span> <span class="n">plan_df</span><span class="o">=</span><span class="n">plan</span><span class="p">,</span> <span class="n">client_name</span><span class="o">=</span><span class="s2">&quot;Acme Co&quot;</span><span class="p">)</span>
+<span class="n">report</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+<span class="n">report</span><span class="o">.</span><span class="n">to_html</span><span class="p">(</span><span class="s2">&quot;reports/acme_co.html&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p>Source: <a href="https://github.com/raz1470/how_wrong_is_your_mmm">github.com/raz1470/how_wrong_is_your_mmm</a></p>
 
