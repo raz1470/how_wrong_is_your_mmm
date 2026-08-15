@@ -40,6 +40,7 @@ nav:
   - API Reference:
       - Diagnostic: api/diagnostic.md
       - Phaser: api/phaser.md
+      - Report: api/report.md
       - DGP (simulation): api/dgp.md
       - OLS fitting: api/mmm.md
 
