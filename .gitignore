@@ -11,3 +11,10 @@ htmlcov/
 .ipynb_checkpoints/
 notebooks/*.nbconvert.ipynb
 .DS_Store
+
+# Generated ReportBuilder output (client reports/schedules) — real client
+# data has no business in a public repo. reports/example*.html is the one
+# deliberate exception: hand-copied into docs/ for the live public example,
+# never generated straight into this folder.
+reports/*
+!reports/.gitkeep
