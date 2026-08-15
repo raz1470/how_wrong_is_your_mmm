@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MMM Reliability &amp; Phasing Report</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --text:   #111827;
+  --muted:  #6b7280;
+  --light:  #d1d5db;
+  --border: #e5e7eb;
+  --bg:     #f9fafb;
+  --good:   #059669;
+  --w:      760px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  color: var(--text);
+  background: #f3f4f6;
+  line-height: 1.7;
+  font-size: 17px;
+}
+
+.page {
+  max-width: var(--w);
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+
+/* -- Header -- */
+.cover {
+  padding: 2.75rem 2rem 2.25rem;
+  border-bottom: 3px solid var(--text);
+}
+.cover-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+}
+.brand { font-size: .8rem; font-weight: 700; letter-spacing: .02em; }
+.brand span { color: var(--muted); font-weight: 500; }
+.gen-date { font-size: .78rem; color: var(--muted); text-align: right; }
+.report-title-eyebrow {
+  font-size: .75rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: .6rem;
+}
+.report-title { font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; margin-bottom: .5rem; }
+.report-sub { color: var(--muted); font-size: 1.02rem; max-width: 56ch; }
+
+.cover-meta {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .75rem;
+  margin-top: 2rem;
+}
+@media (max-width: 620px) { .cover-meta { grid-template-columns: repeat(2, 1fr); } }
+.meta-box { border: 1px solid var(--border); border-radius: 8px; padding: .85rem 1rem; background: var(--bg); }
+.meta-box .lbl { font-size: .66rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .25rem; }
+.meta-box .val { font-size: 1.15rem; font-weight: 700; }
+
+/* -- Headline callout -- */
+.headline {
+  margin: 2rem 2rem 0;
+  padding: 1.1rem 1.4rem;
+  border-left: 3px solid var(--good);
+  background: var(--bg);
+  border-radius: 0 6px 6px 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+.headline b { color: var(--good); }
+
+main { padding: 0 2rem 3rem; }
+
+p { margin-bottom: 1.05rem; max-width: 64ch; font-size: .98rem; }
+
+section { margin-top: 2.75rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+
+.s-label { font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: .4rem; }
+h2 { font-size: 1.3rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.25; margin-bottom: .9rem; }
+
+/* -- Figure -- */
+.fig { margin: 1.5rem 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; page-break-inside: avoid; }
+.fig-hdr { padding: .75rem 1.1rem; background: var(--bg); border-bottom: 1px solid var(--border); }
+.fig-title { font-size: .95rem; font-weight: 700; }
+.fig-sub   { font-size: .8rem; color: var(--muted); margin-top: .15rem; }
+.fig-body  { padding: 1.1rem 1.1rem .3rem; }
+.fig-cap   { padding: .6rem 1.1rem .95rem; font-size: .82rem; color: var(--muted); line-height: 1.55; max-width: none; }
+
+svg.chart { display: block; width: 100%; }
+
+.legend { display: flex; flex-wrap: wrap; gap: .85rem; padding: .1rem 0 .5rem; font-size: .78rem; color: var(--text); }
+.li { display: flex; align-items: center; gap: .35rem; }
+
+/* -- Table -- */
+table.rpt { width: 100%; border-collapse: collapse; font-size: .88rem; margin: 1.25rem 0; }
+table.rpt th, table.rpt td { padding: .55rem .7rem; text-align: left; border-bottom: 1px solid var(--border); }
+table.rpt th { font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 700; }
+table.rpt td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.rpt th.num { text-align: right; }
+table.rpt .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: .45rem; }
+table.rpt tr:last-child td { border-bottom: none; }
+
+/* -- Key numbers -- */
+.knums { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin: 1.5rem 0 .5rem; }
+@media (max-width: 560px) { .knums { grid-template-columns: 1fr; } }
+.kbox { border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.1rem; background: var(--bg); text-align: center; }
+.kbox .lbl { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .3rem; }
+.kbox .num { font-size: 1.6rem; font-weight: 800; line-height: 1; margin-bottom: .3rem; color: var(--text); }
+.kbox .lab { font-size: .74rem; color: var(--muted); line-height: 1.4; }
+
+.corr-wrap { display: flex; justify-content: center; padding: 1.3rem 1.1rem 1.5rem; overflow-x: auto; }
+table.corr { border-collapse: collapse; }
+table.corr th { font-size: .76rem; font-weight: 700; color: var(--muted); padding: 0 .5rem .5rem; text-align: center; }
+table.corr th.rh { text-align: right; padding-right: .7rem; }
+table.corr td { width: 58px; height: 40px; text-align: center; font-size: .84rem; font-weight: 700; font-variant-numeric: tabular-nums; border-radius: 4px; }
+table.corr td.diag { background: repeating-linear-gradient(45deg, #f3f4f6, #f3f4f6 4px, #e5e7eb 4px, #e5e7eb 8px); color: var(--muted); font-weight: 500; }
+
+.caveat { display: flex; gap: .65rem; align-items: flex-start; border: 1px solid #fde68a; background: #fffbeb; border-radius: 8px; padding: .85rem 1.1rem; margin: 1.5rem 0 0; font-size: .84rem; color: #78350f; line-height: 1.55; }
+.caveat .icon { flex: none; font-size: 1rem; color: #b45309; line-height: 1.5; }
+.caveat b { color: #78350f; }
+.caveat p { margin: 0; max-width: none; font-size: inherit; color: inherit; }
+
+/* -- Draft/fast-mode watermark -- shown only when the report was built with
+   fast_mode=True, so a quick preview run can never be mistaken for a real
+   one further down the line (this is what happened before this banner
+   existed — see fit()'s fast_mode docstring). Deliberately alarming (red,
+   not the amber used for the elasticity caveat above) and kept visible in
+   print, since the whole point is that it must survive a PDF export too. */
+.draft-banner { display: none; }
+.draft-banner.show {
+  display: flex; gap: .6rem; align-items: center;
+  background: #dc2626; color: #fff; font-weight: 700; font-size: .82rem;
+  letter-spacing: .02em; padding: .65rem 1.1rem; text-align: center;
+  justify-content: center;
+}
+@media print { .draft-banner.show { display: flex; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
+.appendix { font-size: .84rem; color: var(--muted); }
+.appendix code { background: var(--bg); padding: .1rem .35rem; border-radius: 4px; font-size: .82rem; }
+
+footer { margin-top: 2.5rem; padding: 1.5rem 2rem 2rem; border-top: 1px solid var(--border); font-size: .8rem; color: var(--muted); }
+
+/* -- Page 2 -- */
+.page2 { margin-top: 1.75rem; padding: 2.25rem 2rem 1rem; }
+.page2-hdr { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 3px solid var(--text); padding-bottom: 1.1rem; margin-bottom: .5rem; }
+.page2-hdr h1 { font-size: 1.55rem; font-weight: 800; letter-spacing: -.02em; }
+.page2-hdr .page-tag { font-size: .74rem; color: var(--muted); font-weight: 600; }
+.page2-sub { color: var(--muted); font-size: .95rem; max-width: 60ch; margin: .9rem 0 0; }
+.insight { border: 1px solid var(--border); border-radius: 8px; padding: .9rem 1.1rem; margin: 1.25rem 0; background: var(--bg); }
+.insight-row { display: flex; gap: .7rem; align-items: baseline; padding: .35rem 0; border-bottom: 1px dashed var(--border); font-size: .87rem; }
+.insight-row:last-child { border-bottom: none; }
+.insight-row .swatch { width: 9px; height: 9px; border-radius: 2px; flex: none; margin-top: .35rem; }
+.insight-row b { font-size: .87rem; }
+.insight-row .verdict { color: var(--muted); }
+
+@media print {
+  .page2 { break-before: page; }
+  body { background: #fff; }
+  .page { box-shadow: none; }
+  section { break-inside: avoid-page; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<div class="draft-banner" id="draftBanner">&#9888; DRAFT &mdash; generated in fast mode. Not for client use; re-run with fast_mode=False for real numbers.</div>
+
+<div class="cover">
+  <div class="cover-top">
+    <div class="brand"><span>how_wrong_is_your_mmm</span> &middot; MMM Reliability &amp; Phasing Report</div>
+    <div class="gen-date" id="genDate"></div>
+  </div>
+  <p class="report-title-eyebrow">Prepared for</p>
+  <h1 class="report-title" id="clientName"></h1>
+  <p class="report-sub" id="reportSub"></p>
+
+  <div class="cover-meta">
+    <div class="meta-box"><div class="lbl">Plan year</div><div class="val" id="metaPlanYear"></div></div>
+    <div class="meta-box"><div class="lbl">Channels</div><div class="val" id="metaChannels"></div></div>
+    <div class="meta-box"><div class="lbl">Annual plan</div><div class="val" id="metaAnnualPlan"></div></div>
+    <div class="meta-box"><div class="lbl">Extra spend needed</div><div class="val">&pound;0</div></div>
+  </div>
+</div>
+
+<div class="headline" id="headline"></div>
+
+<main>
+
+<!-- SECTION 1: DIAGNOSE -->
+<section id="diagnose">
+  <p class="s-label">1 &middot; Diagnose</p>
+  <h2>How reliable is your current plan?</h2>
+  <p>Here's why: how correlated your channels have actually been over your supplied spend history. The higher the number, the more two channels move together week to week &mdash; and the harder it is for the model to tell their effects apart.</p>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Historical spend correlation</div>
+      <div class="fig-sub">Pearson correlation, weekly spend by channel</div>
+    </div>
+    <div class="fig-body corr-wrap">
+      <div id="corrMatrix"></div>
+    </div>
+    <p class="fig-cap" id="corrCaption"></p>
+  </div>
+
+  <p>We simulated many equally plausible versions of your spend history consistent with this correlation structure, refitting the model on each one. Here's the honest range of incremental revenue each channel could support as a result.</p>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Today's honest range, before any change</div>
+      <div class="fig-sub">Incremental revenue, 10th&ndash;90th percentile across simulated histories</div>
+    </div>
+    <div class="fig-body">
+      <svg class="chart" id="chartDiagnose" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Each channel's honest range, given how your channels have actually moved together. Wider bars mean less reliable elasticity estimates.</p>
+  </div>
+
+  <table class="rpt">
+    <thead><tr><th>Channel</th><th class="num">Spend</th><th class="num">Central estimate</th><th class="num">Honest range</th><th class="num">CV</th></tr></thead>
+    <tbody id="diagnoseTable"></tbody>
+  </table>
+</section>
+
+<!-- SECTION 2: PHASE -->
+<section id="phase">
+  <p class="s-label">2 &middot; Phase</p>
+  <h2>Recommended weekly schedule</h2>
+  <p>A recommended weekly pacing for your plan, with monthly totals preserved exactly per channel &mdash; only which week the money lands in changes.</p>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Original plan vs. recommended pacing</div>
+      <div class="fig-sub" id="phaseSub"></div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#9ca3af" stroke-width="2.5"/></svg> Original plan</span>
+        <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#111827" stroke-width="2.5"/></svg> Recommended pacing</span>
+        <span class="li"><svg width="10" height="10"><circle cx="5" cy="5" r="3.6" fill="#111827"/></svg> Dark week (&pound;0)</span>
+      </div>
+      <svg class="chart" id="chartPhase" viewBox="0 0 700 700" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Channels on a continuous nudge vary smoothly and never hit &pound;0. Channels on <code>Blackout</code> go fully dark on the weeks marked, with the remaining weeks in that month absorbing the difference so the monthly total is untouched.</p>
+  </div>
+
+  <table class="rpt">
+    <thead><tr><th>Channel</th><th>Lever</th><th class="num">Amplitude</th><th class="num">Max dark weeks / month</th></tr></thead>
+    <tbody id="phaseTable"></tbody>
+  </table>
+</section>
+
+<!-- SECTION 3: RETRAIN / IMPACT -->
+<section id="impact">
+  <p class="s-label">3 &middot; Retrain</p>
+  <h2>What this buys you</h2>
+  <p>Refitting on the phased schedule instead of the original plan, averaged across many equally-valid ways the schedule could land, not just one draw.</p>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title" id="impactFigTitle"></div>
+      <div class="fig-sub">Incremental revenue, honest range</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.4"/></svg> Today</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> <span id="impactAfterLegend">After phasing</span></span>
+      </div>
+      <svg class="chart" id="chartImpact" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Every channel narrows. The channel that was least reliable today typically sees the biggest gain when it's on the stronger <code>Blackout</code> lever.</p>
+  </div>
+
+  <div class="knums" id="impactKnums"></div>
+
+  <div class="caveat">
+    <span class="icon">&#9888;</span>
+    <p><b>These &pound; figures depend on the elasticities you supplied</b> &mdash; plausible, not proven. The reliability gain itself doesn't: breaking the correlation between channels narrows the range regardless of the exact elasticity used. But the specific pound amounts above will move if your assumed elasticities turn out to be off. See <a href="#method">Methodology</a>.</p>
+  </div>
+</section>
+
+<!-- APPENDIX -->
+<section id="method">
+  <p class="s-label">Appendix</p>
+  <h2>Methodology</h2>
+  <p class="appendix" id="methodologyText"></p>
+</section>
+
+</main>
+
+<footer>
+  <p>This report is a simulation-based diagnostic, not a guarantee &mdash; treat the ranges as your model's honest uncertainty, not a forecast. Source: <a href="https://github.com/raz1470/how_wrong_is_your_mmm">github.com/raz1470/how_wrong_is_your_mmm</a></p>
+</footer>
+
+</div>
+
+<div class="page page2">
+
+  <div class="page2-hdr">
+    <h1>Scenario exploration</h1>
+    <div class="page-tag">Page 2 of 2</div>
+  </div>
+  <p class="page2-sub">Supporting detail for the decisions behind page 1's recommendation &mdash; which channels actually need the stronger lever, and how fast it pays off once you've picked one. Background for the DS/marketing conversation, not headline numbers.</p>
+
+<main style="padding: 0;">
+
+<!-- SECTION 4: WHICH CHANNELS NEED MORE RANDOMNESS -->
+<section id="sensitivity" style="margin-top: 2rem;">
+  <p class="s-label">4 &middot; Channel sensitivity</p>
+  <h2>Which channels need more randomness?</h2>
+  <p>This is what decides the lever on page 1. For each channel, how much reliability keeps improving as you widen the amplitude, all the way through to <code>Blackout</code>, with every other channel left untouched. A curve that flattens early means that channel doesn't need much perturbation. A curve still climbing at the far right means the channel is more tightly locked to the planning cycle, and needs the strongest lever available to break it.</p>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">CV reduction vs. phasing amplitude</div>
+      <div class="fig-sub">Continuous nudge 0% &rarr; 100%, then Blackout &mdash; every other channel locked</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend" id="sensitivityLegend"></div>
+      <svg class="chart" id="chartSensitivity" viewBox="0 0 700 260" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Compare the shape of each curve, not just its endpoint: an early plateau means a continuous nudge already captures most of the benefit; a curve still rising at the right needs <code>Blackout</code> to reach its full potential.</p>
+  </div>
+
+  <div class="insight" id="sensitivityInsight"></div>
+</section>
+
+<!-- SECTION 5: TIME TO BENEFIT -->
+<section id="ttb">
+  <p class="s-label">5 &middot; Time to benefit</p>
+  <h2>How fast does each intensity pay off?</h2>
+  <p id="ttbIntro"></p>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title" id="ttbFigTitle"></div>
+      <div class="fig-sub" id="ttbFigSub"></div>
+    </div>
+    <div class="fig-body">
+      <div class="legend" id="ttbLegend"></div>
+      <svg class="chart" id="chartTTB" viewBox="0 0 700 260" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Every intensity keeps improving the longer it runs; the strongest lever gets there both higher and faster. This isolates the channel above from the rest of the schedule &mdash; the joint recommended schedule on page 1 (which phases every channel together) typically pays off faster still.</p>
+  </div>
+
+  <table class="rpt" id="ttbTableWrap">
+    <thead><tr><th>Intensity</th></tr></thead>
+    <tbody id="ttbTable"></tbody>
+  </table>
+</section>
+
+</main>
+
+<footer>
+  <p>Page 2 is exploratory detail generated alongside the main report &mdash; same simulation basis as page 1, run at additional amplitude/horizon settings.</p>
+</footer>
+
+</div>
+
+<script>
+const REPORT = {"meta": {"client_name": "Example Brand", "plan_year": "Next year", "generated_date": "11 Aug 2026", "package_version": "0.1.0", "n_weeks": 52, "fast_mode": false, "auto_lever_applied": true}, "channels": [{"key": "tv", "name": "TV", "hex": "#2563eb", "spend": 5097605.9662214145, "lever": "blackout", "amplitude_pct": null, "dark_cap": 1}, {"key": "meta", "name": "META", "hex": "#d97706", "spend": 4065889.4475514875, "lever": "blackout", "amplitude_pct": null, "dark_cap": 1}, {"key": "search", "name": "Search", "hex": "#059669", "spend": 3100269.1292637996, "lever": "blackout", "amplitude_pct": null, "dark_cap": 1}], "annual_plan_total": 12263764.543036701, "least_reliable_channel": "search", "correlation_matrix": {"tv": {"tv": 1.0, "meta": 0.6954, "search": 0.6883}, "meta": {"tv": 0.6954, "meta": 1.0, "search": 0.699}, "search": {"tv": 0.6883, "meta": 0.699, "search": 1.0}}, "diagnose_today": {"tv": {"spend": 5097605.9662214145, "central": 1502774.2388420731, "p10": 944910.0405, "p90": 2092884.0407, "cv": 0.3216}, "meta": {"spend": 4065889.4475514875, "central": 2020340.4664883341, "p10": 1405798.4999, "p90": 2573666.3146, "cv": 0.2364}, "search": {"spend": 3100269.1292637996, "central": 1317924.4068500411, "p10": 711774.5182, "p90": 1885171.856, "cv": 0.3497}}, "schedule": {"plan": {"tv": [116491.26, 109866.97, 118119.66, 59903.86, 130080.3, 108664.8, 72910.97, 107512.45, 107999.81, 109454.33, 87708.58, 96435.34, 87884.09, 90630.61, 93441.11, 121921.37, 79206.75, 97481.59, 100396.22, 90960.61, 89546.79, 104337.13, 129199.67, 131864.35, 41256.82, 42818.18, 95064.18, 85718.93, 114424.23, 106881.69, 121003.95, 62111.23, 104019.41, 149755.65, 104551.31, 113247.54, 95553.8, 73171.35, 114822.0, 105538.47, 74211.36, 82946.35, 112382.04, 51634.37, 96219.18, 102341.73, 82049.53, 94231.72, 103347.69, 129115.39, 104772.58, 92396.67], "meta": [97152.57, 96084.57, 76357.15, 45582.33, 110798.23, 85602.75, 65184.13, 90133.35, 83588.96, 92779.86, 80759.5, 88335.71, 61936.16, 82167.42, 62615.84, 95521.6, 95560.6, 60641.03, 44053.48, 82199.75, 105141.99, 66037.07, 87129.37, 100884.42, 31076.84, 46695.73, 73959.97, 78891.3, 79224.65, 85988.58, 110034.06, 55025.18, 71195.29, 101308.83, 89764.52, 78909.8, 61557.89, 69585.95, 81989.71, 81105.9, 66612.91, 65618.87, 76675.17, 70003.6, 81299.22, 70048.18, 88717.06, 66607.67, 78535.73, 84525.01, 80977.65, 83706.32], "search": [54912.18, 71116.95, 47170.83, 44349.8, 77931.12, 63497.3, 48612.45, 68792.13, 69875.15, 68743.18, 75836.51, 68203.74, 46508.67, 57055.41, 53645.03, 68040.38, 60240.77, 57857.17, 37491.16, 63431.13, 55582.64, 47476.61, 80538.84, 82429.4, 31339.2, 38597.88, 50579.36, 77492.3, 69478.89, 53657.74, 79289.35, 47339.05, 43255.01, 85837.99, 64154.04, 77590.15, 61390.46, 18923.66, 62337.19, 48601.6, 53988.92, 53121.89, 63443.66, 40295.53, 73184.62, 77015.18, 52062.36, 56853.28, 61835.62, 70508.84, 53907.53, 64849.24]}, "recommended": {"tv": [164558.78, 155201.12, 0.0, 84621.85, 0.0, 157560.43, 105718.54, 155889.56, 138177.67, 140038.61, 0.0, 123381.79, 115217.65, 118818.39, 0.0, 159841.14, 98857.81, 121666.6, 125304.36, 0.0, 111763.19, 152922.17, 0.0, 193267.56, 60468.23, 57643.26, 127978.57, 115397.68, 0.0, 143887.69, 184113.81, 94505.47, 158270.96, 0.0, 128965.21, 139692.1, 117866.68, 0.0, 135320.74, 124379.85, 0.0, 97754.45, 132445.19, 0.0, 113924.21, 121173.36, 97147.24, 123911.84, 0.0, 169782.8, 137772.75, 92396.67], "meta": [128214.92, 126805.44, 0.0, 60156.25, 0.0, 124971.11, 95162.04, 131585.31, 114280.92, 0.0, 110412.55, 120770.57, 85060.85, 0.0, 85994.3, 131185.86, 121281.4, 76962.98, 55910.78, 0.0, 133441.69, 102196.39, 134838.01, 0.0, 48093.31, 0.0, 84818.19, 90473.5, 90855.8, 98612.75, 139444.14, 69732.4, 0.0, 128386.82, 116895.17, 102759.7, 80163.3, 0.0, 104849.55, 0.0, 85185.48, 83914.29, 98053.24, 90433.68, 105025.85, 0.0, 114608.53, 91505.9, 107892.72, 0.0, 111247.44, 83706.32], "search": [0.0, 95128.54, 63097.37, 59323.86, 95952.3, 78180.74, 0.0, 84699.97, 92097.76, 90605.79, 99955.04, 0.0, 0.0, 71901.32, 67603.56, 85744.6, 75528.59, 72540.08, 47005.61, 79528.59, 0.0, 71190.26, 0.0, 123601.28, 46992.52, 46758.57, 0.0, 93876.38, 84168.71, 65002.52, 119352.35, 71258.33, 65110.73, 0.0, 98609.53, 0.0, 94361.7, 29087.08, 80474.8, 62742.71, 69697.52, 68578.23, 0.0, 59042.17, 107232.23, 0.0, 76283.28, 76247.35, 0.0, 94561.17, 72296.74, 64849.24]}, "dark": {"tv": [false, false, true, false, true, false, false, false, false, false, true, false, false, false, true, false, false, false, false, true, false, false, true, false, false, false, false, false, true, false, false, false, false, true, false, false, false, true, false, false, true, false, false, true, false, false, false, false, true, false, false, false], "meta": [false, false, true, false, true, false, false, false, false, true, false, false, false, true, false, false, false, false, false, true, false, false, false, true, false, true, false, false, false, false, false, false, true, false, false, false, false, true, false, true, false, false, false, false, false, true, false, false, false, true, false, false], "search": [true, false, false, false, false, false, true, false, false, false, false, true, true, false, false, false, false, false, false, false, true, false, true, false, false, false, true, false, false, false, false, false, false, true, false, true, false, false, false, false, false, false, true, false, false, true, false, false, true, false, false, false]}}, "primary_horizon_weeks": 52, "impact_horizons": [{"weeks": 13, "label": "3 months", "channels": {"tv": {"cv_today": 0.32, "cv_after": 0.2345, "reduction_pct": 26.72, "revenue_today_p10": 241961.3288, "revenue_today_p90": 538090.3793, "revenue_after_p10": 295426.54327, "revenue_after_p90": 490672.90466}, "meta": {"cv_today": 0.251, "cv_after": 0.1723, "reduction_pct": 31.35, "revenue_today_p10": 380856.1278, "revenue_today_p90": 702187.1345, "revenue_after_p10": 429361.50418, "revenue_after_p90": 646077.5274199999}, "search": {"cv_today": 0.4142, "cv_after": 0.2904, "reduction_pct": 29.88, "revenue_today_p10": 170426.7995, "revenue_today_p90": 536589.3191, "revenue_after_p10": 225193.77429, "revenue_after_p90": 443917.24851}}}, {"weeks": 52, "label": "1 year", "channels": {"tv": {"cv_today": 0.3216, "cv_after": 0.1558, "reduction_pct": 51.55, "revenue_today_p10": 944910.0405, "revenue_today_p90": 2092884.0407, "revenue_after_p10": 1255966.88782, "revenue_after_p90": 1774990.73392}, "meta": {"cv_today": 0.2364, "cv_after": 0.1183, "reduction_pct": 49.96, "revenue_today_p10": 1405798.4999, "revenue_today_p90": 2573666.3146, "revenue_after_p10": 1742351.0005800002, "revenue_after_p90": 2320516.78819}, "search": {"cv_today": 0.3497, "cv_after": 0.1911, "reduction_pct": 45.34, "revenue_today_p10": 711774.5182, "revenue_today_p90": 1885171.856, "revenue_after_p10": 967869.6504200002, "revenue_after_p90": 1549634.57324}}}, {"weeks": 104, "label": "2 years", "channels": {"tv": {"cv_today": 0.3013, "cv_after": 0.1184, "reduction_pct": 60.69, "revenue_today_p10": 2019579.9944, "revenue_today_p90": 3808653.0426, "revenue_after_p10": 2628030.56323, "revenue_after_p90": 3442524.0292500006}, "meta": {"cv_today": 0.2116, "cv_after": 0.0848, "reduction_pct": 59.95, "revenue_today_p10": 3011954.7244, "revenue_today_p90": 5033050.2335, "revenue_after_p10": 3679680.23605, "revenue_after_p90": 4466210.02557}, "search": {"cv_today": 0.31, "cv_after": 0.1399, "reduction_pct": 54.88, "revenue_today_p10": 1635533.1437, "revenue_today_p90": 3578955.3745, "revenue_after_p10": 2113185.0495499996, "revenue_after_p90": 2931578.22617}}}], "sensitivity": {"tv": [{"label": "0%", "magnitude_pct": 0.0, "is_blackout": false, "cv": 0.3216}, {"label": "10%", "magnitude_pct": 10.0, "is_blackout": false, "cv": 0.3186}, {"label": "20%", "magnitude_pct": 20.0, "is_blackout": false, "cv": 0.3092}, {"label": "40%", "magnitude_pct": 40.0, "is_blackout": false, "cv": 0.2748}, {"label": "80%", "magnitude_pct": 80.0, "is_blackout": false, "cv": 0.1834}, {"label": "Blackout", "magnitude_pct": NaN, "is_blackout": true, "cv": 0.14}], "meta": [{"label": "0%", "magnitude_pct": 0.0, "is_blackout": false, "cv": 0.2364}, {"label": "10%", "magnitude_pct": 10.0, "is_blackout": false, "cv": 0.2312}, {"label": "20%", "magnitude_pct": 20.0, "is_blackout": false, "cv": 0.2232}, {"label": "40%", "magnitude_pct": 40.0, "is_blackout": false, "cv": 0.1981}, {"label": "80%", "magnitude_pct": 80.0, "is_blackout": false, "cv": 0.1409}, {"label": "Blackout", "magnitude_pct": NaN, "is_blackout": true, "cv": 0.1102}], "search": [{"label": "0%", "magnitude_pct": 0.0, "is_blackout": false, "cv": 0.3497}, {"label": "10%", "magnitude_pct": 10.0, "is_blackout": false, "cv": 0.3505}, {"label": "20%", "magnitude_pct": 20.0, "is_blackout": false, "cv": 0.334}, {"label": "40%", "magnitude_pct": 40.0, "is_blackout": false, "cv": 0.3034}, {"label": "80%", "magnitude_pct": 80.0, "is_blackout": false, "cv": 0.2196}, {"label": "Blackout", "magnitude_pct": NaN, "is_blackout": true, "cv": 0.1729}]}, "ttb": {"channel": "search", "month_labels": ["Today", "3 months", "6 months", "1 year", "2 years"], "series": {"\u00b120% continuous": [0.0, 1.7, 3.0, 4.1, 4.8], "\u00b140% continuous": [0.0, 6.6, 9.7, 13.8, 19.1], "\u00b180% continuous": [0.0, 22.5, 27.8, 37.3, 46.9], "Blackout": [0.0, 32.3, 42.1, 47.0, 56.8]}}};
+
+function el(tag, attrs, text) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const e = document.createElementNS(ns, tag);
+  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function fmtGBP(v) {
+  const abs = Math.abs(v);
+  if (abs < 1000) return `£${Math.round(v)}`;
+  if (abs < 1e6) return `£${Math.round(v / 1000)}k`;
+  return `£${(v / 1e6).toFixed(2)}m`;
+}
+function fmtPct(v) { return `${Math.round(v * 100)}%`; }
+function chName(ch) {
+  const found = REPORT.channels.find((c) => c.key === ch);
+  return found ? found.name : ch;
+}
+function chColor(ch) {
+  const found = REPORT.channels.find((c) => c.key === ch);
+  return found ? found.hex : '#6b7280';
+}
+
+// -- Cover / static text ------------------------------------------------------
+if (REPORT.meta.fast_mode) {
+  document.getElementById('draftBanner').classList.add('show');
+}
+document.getElementById('genDate').innerHTML = `Generated ${REPORT.meta.generated_date}<br>v${REPORT.meta.package_version}`;
+document.getElementById('clientName').textContent = REPORT.meta.client_name;
+document.getElementById('reportSub').textContent =
+  `A diagnosis of how reliable your ${REPORT.meta.plan_year} marketing mix model elasticities are, and a recommended weekly spend schedule to tighten them — same budget, same monthly totals.`;
+document.getElementById('metaPlanYear').textContent = REPORT.meta.plan_year;
+document.getElementById('metaChannels').textContent = REPORT.channels.length;
+document.getElementById('metaAnnualPlan').textContent = fmtGBP(REPORT.annual_plan_total);
+
+const leastReliable = REPORT.least_reliable_channel;
+const todayCvLeast = REPORT.diagnose_today[leastReliable].cv;
+const primaryImpact = REPORT.impact_horizons.find((h) => h.weeks === REPORT.primary_horizon_weeks);
+const afterCvLeast = primaryImpact.channels[leastReliable].cv_after;
+const reductionLeast = primaryImpact.channels[leastReliable].reduction_pct;
+
+document.getElementById('headline').innerHTML =
+  `Today, your least reliable channel (<b>${chName(leastReliable)}</b>) could be off by <b>±${Math.round(todayCvLeast * 100)}%</b>. ` +
+  `Phasing your ${REPORT.meta.plan_year} schedule as recommended below could narrow that to <b>±${Math.round(afterCvLeast * 100)}%</b> within ${primaryImpact.label} — without changing a single monthly total.`;
+
+document.getElementById('methodologyText').innerHTML =
+  `Generated with <code>how_wrong_is_your_mmm v${REPORT.meta.package_version}</code>. ` +
+  `Diagnostic: OLS refit across simulated sales consistent with your supplied spend history, using elasticities you supplied. ` +
+  `Phasing: grid search over amplitude per lever, minimising the worst-case channel CV, then re-confirmed independently on a larger sample before being recommended, to avoid favouring a setting that only looked best by chance. ` +
+  (REPORT.meta.auto_lever_applied
+    ? `Lever choice: each channel's own lever (continuous range vs. a harder on/off Blackout) was picked automatically from how much that channel individually benefits from each option. `
+    : ``) +
+  `Full method: <a href="https://raz1470.github.io/how_wrong_is_your_mmm/research.html">raz1470.github.io/how_wrong_is_your_mmm/research.html</a>.`;
+
+document.getElementById('phaseSub').textContent =
+  `${REPORT.meta.n_weeks}-week schedule, monthly totals unchanged per channel`;
+
+// -- Correlation matrix -------------------------------------------------------
+function corrColor(v) {
+  const t = Math.max(0, Math.min(1, v));
+  const lo = [249, 250, 251], hi = [17, 24, 39];
+  const mix = lo.map((c, i) => Math.round(c + (hi[i] - c) * (t * 0.92)));
+  return `rgb(${mix.join(',')})`;
+}
+(function drawCorrMatrix() {
+  const target = document.getElementById('corrMatrix');
+  const channels = REPORT.channels;
+  let html = '<table class="corr"><tr><th></th>';
+  for (const ch of channels) html += `<th>${ch.name}</th>`;
+  html += '</tr>';
+  for (const rowCh of channels) {
+    html += `<tr><th class="rh" style="color:${rowCh.hex}">${rowCh.name}</th>`;
+    for (const colCh of channels) {
+      const v = REPORT.correlation_matrix[rowCh.key][colCh.key];
+      if (rowCh.key === colCh.key) {
+        html += `<td class="diag">${v.toFixed(2)}</td>`;
+      } else {
+        const textColor = v >= 0.6 ? '#fff' : '#111827';
+        html += `<td style="background:${corrColor(v)};color:${textColor}">${v.toFixed(2)}</td>`;
+      }
+    }
+    html += '</tr>';
+  }
+  html += '</table>';
+  target.innerHTML = html;
+})();
+
+(function corrCaption() {
+  const entries = [];
+  const channels = REPORT.channels.map((c) => c.key);
+  for (let i = 0; i < channels.length; i++) {
+    for (let j = i + 1; j < channels.length; j++) {
+      entries.push({ pair: [channels[i], channels[j]], v: REPORT.correlation_matrix[channels[i]][channels[j]] });
+    }
+  }
+  entries.sort((a, b) => b.v - a.v);
+  const top = entries[0];
+  document.getElementById('corrCaption').textContent = top
+    ? `${chName(top.pair[0])} and ${chName(top.pair[1])} are the most entangled in your spend history, at ${top.v.toFixed(2)} correlation — the harder that pair is to tell apart, the more phasing helps.`
+    : '';
+})();
+
+// -- Diagnose table + forest chart --------------------------------------------
+const diagBody = document.getElementById('diagnoseTable');
+for (const ch of REPORT.channels) {
+  const d = REPORT.diagnose_today[ch.key];
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><span class="swatch" style="background:${ch.hex}"></span>${ch.name}</td>
+    <td class="num">${fmtGBP(d.spend)}</td>
+    <td class="num">${fmtGBP(d.central)}</td>
+    <td class="num">${fmtGBP(d.p10)} &ndash; ${fmtGBP(d.p90)}</td>
+    <td class="num">${fmtPct(d.cv)}</td>`;
+  diagBody.appendChild(tr);
+}
+
+const phaseBody = document.getElementById('phaseTable');
+for (const ch of REPORT.channels) {
+  const tr = document.createElement('tr');
+  const leverLabel = ch.lever === 'continuous' ? 'Continuous nudge' : 'Blackout';
+  const amp = ch.lever === 'continuous' ? `±${Math.round(ch.amplitude_pct)}%` : '—';
+  const darkCap = ch.lever === 'blackout' ? (ch.dark_cap ?? 'unlimited') : '—';
+  tr.innerHTML = `<td><span class="swatch" style="background:${ch.hex}"></span>${ch.name}</td>
+    <td>${leverLabel}</td>
+    <td class="num">${amp}</td>
+    <td class="num">${darkCap}</td>`;
+  phaseBody.appendChild(tr);
+}
+
+function drawForest(svgId, rows, xMax, twoState) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const W = 700, H = 240;
+  const m = { top: 14, right: 98, bottom: 42, left: 66 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+  const scX = (v) => m.left + (v / xMax) * pw;
+  const rowH = ph / rows.length;
+  const rowCy = (i) => m.top + rowH * i + rowH / 2;
+  const g = el('g', {});
+
+  for (let i = 0; i < rows.length; i++) {
+    if (i % 2 === 1) g.appendChild(el('rect', { x: m.left, y: m.top + rowH * i, width: pw, height: rowH, fill: '#f9fafb' }));
+  }
+
+  const step = xMax <= 1.2 ? xMax / 6 : Math.ceil(xMax / 6 * 2) / 2;
+  for (let v = 0; v <= xMax + 1e-6; v += step) {
+    const x = scX(v);
+    g.appendChild(el('line', { x1: x, y1: m.top, x2: x, y2: m.top + ph, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', { x, y: m.top + ph + 16, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, fmtGBP(v)));
+  }
+  g.appendChild(el('text', { x: m.left + pw / 2, y: m.top + ph + 30, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, 'Incremental revenue'));
+  g.appendChild(el('rect', { x: m.left, y: m.top, width: pw, height: ph, fill: 'none', stroke: '#e5e7eb', 'stroke-width': 1 }));
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const cy = rowCy(i);
+    if (twoState) {
+      const s2 = rowH * 0.22;
+      g.appendChild(el('line', { x1: scX(r.today[0]), y1: cy - s2, x2: scX(r.today[1]), y2: cy - s2, stroke: r.color, 'stroke-width': 6, 'stroke-linecap': 'round', opacity: 0.4 }));
+      g.appendChild(el('line', { x1: scX(r.after[0]), y1: cy + s2, x2: scX(r.after[1]), y2: cy + s2, stroke: r.color, 'stroke-width': 6, 'stroke-linecap': 'round' }));
+      g.appendChild(el('text', { x: scX(r.after[1]) + 8, y: cy + s2 + 3, 'font-size': 9.5, fill: r.color, 'font-weight': '700' }, `${fmtGBP(r.after[0])}–${fmtGBP(r.after[1])}`));
+    } else {
+      g.appendChild(el('line', { x1: scX(r.p10), y1: cy, x2: scX(r.p90), y2: cy, stroke: r.color, 'stroke-width': 7, 'stroke-linecap': 'round' }));
+      g.appendChild(el('text', { x: scX(r.p90) + 8, y: cy + 4, 'font-size': 11.5, fill: r.color, 'font-weight': '700' }, `${fmtGBP(r.p10)} – ${fmtGBP(r.p90)}`));
+    }
+    g.appendChild(el('text', { x: m.left - 10, y: cy - 2, 'text-anchor': 'end', 'font-size': 12.5, 'font-weight': '700', fill: r.color }, r.name));
+    g.appendChild(el('text', { x: m.left - 10, y: cy + 12, 'text-anchor': 'end', 'font-size': 9.5, fill: '#9ca3af' }, `${fmtGBP(r.spend)} spend`));
+  }
+  svg.appendChild(g);
+}
+
+(function () {
+  const rows = REPORT.channels.map((ch) => {
+    const d = REPORT.diagnose_today[ch.key];
+    return { name: ch.name, color: ch.hex, spend: d.spend, p10: d.p10, p90: d.p90 };
+  });
+  const xMax = Math.max(...rows.map((r) => r.p90)) * 1.15;
+  drawForest('chartDiagnose', rows, xMax);
+})();
+
+document.getElementById('impactFigTitle').textContent = `Before vs. after ${primaryImpact.label} of phasing`;
+document.getElementById('impactAfterLegend').textContent = `After ${primaryImpact.label} of phasing`;
+
+(function () {
+  const rows = REPORT.channels.map((ch) => {
+    const d = REPORT.diagnose_today[ch.key];
+    const imp = primaryImpact.channels[ch.key];
+    return {
+      name: ch.name, color: ch.hex, spend: d.spend,
+      today: [imp.revenue_today_p10, imp.revenue_today_p90],
+      after: [imp.revenue_after_p10, imp.revenue_after_p90],
+    };
+  });
+  const xMax = Math.max(...rows.map((r) => Math.max(r.today[1], r.after[1]))) * 1.15;
+  drawForest('chartImpact', rows, xMax, true);
+})();
+
+(function () {
+  const box = document.getElementById('impactKnums');
+  box.innerHTML = `
+    <div class="kbox">
+      <div class="lbl">Annual plan</div>
+      <div class="num">${fmtGBP(REPORT.annual_plan_total)}</div>
+      <div class="lab">Unchanged — same monthly totals throughout</div>
+    </div>
+    <div class="kbox">
+      <div class="lbl">Least reliable channel today</div>
+      <div class="num">±${Math.round(todayCvLeast * 100)}%</div>
+      <div class="lab">${chName(leastReliable)}, 10th&ndash;90th percentile CV</div>
+    </div>
+    <div class="kbox">
+      <div class="lbl">Least reliable channel, after ${primaryImpact.label}</div>
+      <div class="num" style="color:var(--good)">±${Math.round(afterCvLeast * 100)}%</div>
+      <div class="lab">${chName(leastReliable)} again — ${Math.round(reductionLeast)}% narrower</div>
+    </div>`;
+})();
+
+// -- Phase: stacked weekly schedule, one row per channel ----------------------
+(function drawPhase() {
+  const svg = document.getElementById('chartPhase');
+  const channels = REPORT.channels;
+  const nWeeks = REPORT.meta.n_weeks;
+  const W = 700, H = 175 * channels.length;
+  svg.setAttribute('viewBox', `0 0 700 ${H}`);
+  const rowH = H / channels.length;
+  const m = { top: 26, right: 16, bottom: 14, left: 58 };
+  const pw = W - m.left - m.right;
+  const ph = rowH - m.top - m.bottom;
+  const g = el('g', {});
+
+  channels.forEach((ch, idx) => {
+    const offsetY = idx * rowH;
+    const pg = el('g', { transform: `translate(0,${offsetY})` });
+    const plan = REPORT.schedule.plan[ch.key];
+    const rec = REPORT.schedule.recommended[ch.key];
+    const dark = REPORT.schedule.dark[ch.key];
+    const yMax = Math.max(...plan, ...rec) * 1.15;
+    const scX = (i) => m.left + (i / (nWeeks - 1)) * pw;
+    const scY = (v) => m.top + ph - (v / yMax) * ph;
+    const pathD = (data) => data.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
+
+    const leverLabel = ch.lever === 'continuous' ? `continuous ±${Math.round(ch.amplitude_pct)}%` : `Blackout, cap ${ch.dark_cap ?? 'unlimited'}/mo`;
+    pg.appendChild(el('text', { x: m.left, y: 14, 'font-size': 12.5, 'font-weight': '700', fill: ch.hex }, `${ch.name} — ${leverLabel}`));
+
+    [0, yMax].forEach((v) => {
+      const y = scY(v);
+      pg.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
+      pg.appendChild(el('text', { x: m.left - 8, y: y + 3, 'text-anchor': 'end', 'font-size': 9.5, fill: '#9ca3af' }, fmtGBP(v)));
+    });
+    pg.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+    pg.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+    pg.appendChild(el('text', { x: m.left, y: m.top + ph + 13, 'font-size': 9.5, fill: '#9ca3af' }, 'Wk 1'));
+    pg.appendChild(el('text', { x: m.left + pw, y: m.top + ph + 13, 'text-anchor': 'end', 'font-size': 9.5, fill: '#9ca3af' }, `Wk ${nWeeks}`));
+
+    pg.appendChild(el('path', { d: pathD(plan), fill: 'none', stroke: '#9ca3af', 'stroke-width': 1.75, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.9 }));
+    pg.appendChild(el('path', { d: pathD(rec), fill: 'none', stroke: '#111827', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+
+    rec.forEach((v, i) => {
+      if (dark[i]) pg.appendChild(el('circle', { cx: scX(i), cy: scY(0), r: 3, fill: '#111827' }));
+    });
+
+    g.appendChild(pg);
+  });
+
+  svg.appendChild(g);
+})();
+
+// -- Page 2, Section 4: channel sensitivity -----------------------------------
+(function () {
+  const legend = document.getElementById('sensitivityLegend');
+  legend.innerHTML = REPORT.channels.map((ch) =>
+    `<span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="${ch.hex}" stroke-width="2.5"/></svg> ${ch.name}</span>`
+  ).join('');
+})();
+
+(function drawSensitivity() {
+  const svg = document.getElementById('chartSensitivity');
+  const channels = REPORT.channels;
+  const first = REPORT.sensitivity[channels[0].key];
+  const levels = first.map((r) => r.label);
+  const W = 700, H = 260;
+  const m = { top: 16, right: 96, bottom: 34, left: 46 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+  const allCv = channels.flatMap((ch) => REPORT.sensitivity[ch.key].map((r) => r.cv * 100));
+  const yMax = Math.max(...allCv) * 1.15;
+  const scX = (i) => m.left + (i / (levels.length - 1)) * pw;
+  const scY = (v) => m.top + ph - (v / yMax) * ph;
+  const g = el('g', {});
+
+  const yStep = Math.ceil(yMax / 4 / 5) * 5;
+  for (let v = 0; v <= yMax; v += yStep) {
+    const y = scY(v);
+    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', { x: m.left - 8, y: y + 3, 'text-anchor': 'end', 'font-size': 10, fill: '#9ca3af' }, `${Math.round(v)}%`));
+  }
+  levels.forEach((label, i) => {
+    g.appendChild(el('text', { x: scX(i), y: m.top + ph + 18, 'text-anchor': 'middle', 'font-size': 9.5, fill: '#9ca3af' }, label));
+  });
+  const dividerX = scX(levels.length - 1.5);
+  g.appendChild(el('line', { x1: dividerX, y1: m.top, x2: dividerX, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1, 'stroke-dasharray': '3,3' }));
+  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+
+  const endLabels = [];
+  for (const ch of channels) {
+    const rows = REPORT.sensitivity[ch.key];
+    const d = rows.map((r, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(r.cv * 100).toFixed(1)}`).join(' ');
+    g.appendChild(el('path', { d, fill: 'none', stroke: ch.hex, 'stroke-width': 2.25, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    rows.forEach((r, i) => {
+      const isBlackout = r.is_blackout;
+      g.appendChild(el(isBlackout ? 'rect' : 'circle', isBlackout
+        ? { x: scX(i) - 3.2, y: scY(r.cv * 100) - 3.2, width: 6.4, height: 6.4, transform: `rotate(45 ${scX(i)} ${scY(r.cv * 100)})`, fill: ch.hex }
+        : { cx: scX(i), cy: scY(r.cv * 100), r: 2.75, fill: ch.hex }));
+    });
+    const last = rows[rows.length - 1];
+    endLabels.push({ y: scY(last.cv * 100), x: scX(rows.length - 1) + 9, text: `${ch.name} · ${Math.round(last.cv * 100)}%`, color: ch.hex });
+  }
+  endLabels.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < endLabels.length; i++) {
+    if (endLabels[i].y - endLabels[i - 1].y < 13) endLabels[i].y = endLabels[i - 1].y + 13;
+  }
+  endLabels.forEach((l) => g.appendChild(el('text', { x: l.x, y: l.y + 3.5, 'font-size': 10.5, 'font-weight': '700', fill: l.color }, l.text)));
+  svg.appendChild(g);
+})();
+
+(function fillSensitivityInsight() {
+  const box = document.getElementById('sensitivityInsight');
+  for (const ch of REPORT.channels) {
+    const rows = REPORT.sensitivity[ch.key];
+    const continuous = rows.filter((r) => !r.is_blackout);
+    const blackoutRow = rows.find((r) => r.is_blackout);
+    const midIdx = Math.floor(continuous.length / 2);
+    const lateGain = continuous[continuous.length - 1].cv > 0
+      ? (continuous[midIdx].cv - continuous[continuous.length - 1].cv) / continuous[continuous.length - 1].cv
+      : 0;
+    let verdict;
+    if (blackoutRow && blackoutRow.cv < continuous[continuous.length - 1].cv * 0.85) {
+      verdict = `Still improving well past the midpoint of the continuous range — <code>Blackout</code> reaches ${Math.round(blackoutRow.cv * 100)}% CV, clearly lower than the continuous ceiling.`;
+    } else if (Math.abs(lateGain) < 0.1) {
+      verdict = `Plateaus roughly halfway through the continuous range — a moderate nudge captures most of the benefit; the harder lever adds little.`;
+    } else {
+      verdict = `Keeps improving through the continuous range; check whether ${blackoutRow ? 'Blackout adds a further gain worth the disruption' : 'a wider continuous amplitude is worth considering'}.`;
+    }
+    const row = document.createElement('div');
+    row.className = 'insight-row';
+    row.innerHTML = `<span class="swatch" style="background:${ch.hex}"></span><div><b>${ch.name}:</b> <span class="verdict">${verdict}</span></div>`;
+    box.appendChild(row);
+  }
+})();
+
+// -- Page 2, Section 5: time to benefit ---------------------------------------
+const TTB_COLORS = ['#bfdbfe', '#60a5fa', '#1d4ed8', '#111827'];
+
+document.getElementById('ttbIntro').innerHTML =
+  `Once the lever's picked, this is the follow-up question: how long before it shows. Shown for <b>${chName(REPORT.ttb.channel)}</b>, today's least reliable channel, isolated from the other channels.`;
+document.getElementById('ttbFigTitle').textContent = `CV reduction over time, by phasing intensity — ${chName(REPORT.ttb.channel)}`;
+document.getElementById('ttbFigSub').textContent = `${REPORT.ttb.month_labels.join(' vs ')} of phasing`;
+
+(function () {
+  const legend = document.getElementById('ttbLegend');
+  legend.innerHTML = Object.keys(REPORT.ttb.series).map((name, i) =>
+    `<span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="${TTB_COLORS[i % TTB_COLORS.length]}" stroke-width="3"/></svg> ${name}</span>`
+  ).join('');
+})();
+
+(function drawTTB() {
+  const svg = document.getElementById('chartTTB');
+  const months = REPORT.ttb.month_labels;
+  const series = REPORT.ttb.series;
+  const W = 700, H = 260;
+  const m = { top: 16, right: 92, bottom: 34, left: 46 };
+  const pw = W - m.left - m.right;
+  const ph = H - m.top - m.bottom;
+  const allPts = Object.values(series).flat();
+  const yMax = Math.max(...allPts) * 1.15;
+  const scX = (i) => m.left + (i / (months.length - 1)) * pw;
+  const scY = (v) => m.top + ph - (v / yMax) * ph;
+  const g = el('g', {});
+
+  const yStep = Math.ceil(yMax / 4 / 5) * 5;
+  for (let v = 0; v <= yMax; v += yStep) {
+    const y = scY(v);
+    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
+    g.appendChild(el('text', { x: m.left - 8, y: y + 3, 'text-anchor': 'end', 'font-size': 10, fill: '#9ca3af' }, `${Math.round(v)}%`));
+  }
+  months.forEach((label, i) => {
+    g.appendChild(el('text', { x: scX(i), y: m.top + ph + 18, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, label));
+  });
+  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
+
+  const endLabels = [];
+  Object.entries(series).forEach(([name, pts], si) => {
+    const color = TTB_COLORS[si % TTB_COLORS.length];
+    const d = pts.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
+    g.appendChild(el('path', { d, fill: 'none', stroke: color, 'stroke-width': 2.25, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    pts.forEach((v, i) => g.appendChild(el('circle', { cx: scX(i), cy: scY(v), r: 2.75, fill: color })));
+    const lastI = pts.length - 1;
+    endLabels.push({ y: scY(pts[lastI]), x: scX(lastI) + 8, text: `${Math.round(pts[lastI])}%`, color });
+  });
+  endLabels.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < endLabels.length; i++) {
+    if (endLabels[i].y - endLabels[i - 1].y < 13) endLabels[i].y = endLabels[i - 1].y + 13;
+  }
+  endLabels.forEach((l) => g.appendChild(el('text', { x: l.x, y: l.y + 3.5, 'font-size': 10.5, 'font-weight': '700', fill: l.color }, l.text)));
+  svg.appendChild(g);
+})();
+
+(function fillTTBTable() {
+  const thead = document.querySelector('#ttbTableWrap thead tr');
+  const months = REPORT.ttb.month_labels.slice(1); // drop "Today" (always 0%)
+  for (const label of months) thead.innerHTML += `<th class="num">${label}</th>`;
+
+  const body = document.getElementById('ttbTable');
+  Object.entries(REPORT.ttb.series).forEach(([name, pts], si) => {
+    const color = TTB_COLORS[si % TTB_COLORS.length];
+    const tr = document.createElement('tr');
+    const cells = pts.slice(1).map((v) => `<td class="num">${Math.round(v)}%</td>`).join('');
+    tr.innerHTML = `<td><span class="swatch" style="background:${color}"></span>${name}</td>${cells}`;
+    body.appendChild(tr);
+  });
+})();
+</script>
+
+</body>
+</html>

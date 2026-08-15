@@ -31,6 +31,9 @@ How the diagnostic and the phasing algorithm actually work, and the research beh
 [**API Reference**](https://raz1470.github.io/how_wrong_is_your_mmm/api/)
 Full class and function docs for `CollinearityDiagnostic`, `BudgetPhaser`, and `Blackout`.
 
+[**Example report**](https://raz1470.github.io/how_wrong_is_your_mmm/example-report.html)
+A full `ReportBuilder` report on simulated data, end to end — the same output `to_html()` produces for a real client.
+
 ---
 
 ## Quick start
@@ -70,7 +73,17 @@ diag.summary()   # same output, personalised to your correlation structure
 phaser = BudgetPhaser(history_df=history, plan_df=plan)
 phaser.fit()
 phaser.recommended_schedule_   # 52-week DataFrame, monthly totals guaranteed to match
+
+# Report — diagnose + phase, packaged into one client-ready HTML report
+from how_wrong_is_your_mmm import ReportBuilder
+
+rb = ReportBuilder(history_df=history, plan_df=plan, client_name="Acme Co")
+rb.fit()
+rb.to_html("reports/acme_co.html")     # self-contained HTML, open it in a browser
+rb.schedule_csv("reports/acme_co_schedule.csv")   # the recommended weekly schedule as a CSV
 ```
+
+`reports/` is git-ignored by default (see `.gitignore`) — client data has no business in a public repo. Save your own generated reports there, or wherever suits your workflow. See it end to end at the [example report](https://raz1470.github.io/how_wrong_is_your_mmm/example-report.html) above.
 
 ---
 
@@ -92,7 +105,7 @@ phaser.recommended_schedule_   # 52-week DataFrame, monthly totals guaranteed to
 uv run ruff format . && uv run ruff check . && uv run pytest
 ```
 
-132 tests. Python 3.12+. MIT licence.
+222 tests. Python 3.12+. MIT licence.
 
 The [API reference](https://raz1470.github.io/how_wrong_is_your_mmm/api/) is built with `mkdocs` + `mkdocstrings` from the docstrings in `src/`, and the built site is committed under `docs/api/` (this repo has no CI build step for GitHub Pages, so the site has to be built and committed locally, same as the notebooks). To preview changes locally:
 
