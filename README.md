@@ -107,7 +107,7 @@ rb.schedule_csv("reports/acme_co_schedule.csv")   # the recommended weekly sched
 uv run ruff format . && uv run ruff check . && uv run pytest
 ```
 
-222 tests. Python 3.12+. MIT licence.
+224 tests. Python 3.12+. MIT licence.
 
 The [API reference](https://raz1470.github.io/how_wrong_is_your_mmm/api/) is built with `mkdocs` + `mkdocstrings` from the docstrings in `src/`, and the built site is committed under `docs/api/` (this repo has no CI build step for GitHub Pages, so the site has to be built and committed locally, same as the notebooks). To preview changes locally:
 
