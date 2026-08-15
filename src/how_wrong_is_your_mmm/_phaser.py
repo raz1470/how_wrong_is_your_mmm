@@ -887,12 +887,23 @@ class BudgetPhaser:
             If True, uses n_sims=10, n_phasing_seeds=1.
         include_revenue:
             If True, also compute £ incremental-revenue ranges via
-            CollinearityDiagnostic.summary(planned_spend=...), using each
-            horizon's *own* tiled-plan total spend per channel as
-            planned_spend — not a single fixed total shared across
-            horizons, since a 104-week horizon plans roughly double the
-            spend of a 52-week one and the revenue scale must track that.
-            Without this, only CV is returned.
+            CollinearityDiagnostic.summary(planned_spend=...), using
+            plan_df's own total spend per channel as planned_spend at
+            *every* horizon — not each horizon's own tiled-plan total.
+            Session-31 fix: an earlier version priced each horizon against
+            its own tiled spend, so a 104-week horizon (tiled to 2x the
+            weeks) came out at roughly double the £ scale of the 52-week
+            one — read by a client as "phase for longer, get more revenue,"
+            when horizon here means "more experience/history has
+            accumulated," not "more spend." This did not match
+            notebooks/02_phaser_walkthrough.ipynb's own blackout_impact()
+            helper (the source of introduction.html's published £ figures),
+            which always prices against the plan's own fixed annual total
+            regardless of horizon — "same plan, £0 extra spend, just a
+            tighter range" is the intended story throughout this package,
+            and ReportBuilder's Impact section is meant to echo it. Without
+            this parameter, only CV is returned (CV is dimensionless and
+            was never affected by this).
 
         Returns
         -------
@@ -913,10 +924,16 @@ class BudgetPhaser:
         channels = list(self.plan_df.columns)
         rows = []
 
+        # Fixed across every horizon on purpose — see include_revenue's
+        # docstring above. Revenue always prices against the plan's own
+        # annual total; only the CV (and so the honest range's width)
+        # changes with horizon.
+        fixed_planned_spend = self.plan_df.sum().to_dict() if include_revenue else None
+
         for h in horizons_weeks:
             tiled_plan = _tile_plan(self.plan_df, h)
             tiled_labels = _get_month_labels(tiled_plan)
-            planned_spend = tiled_plan.sum().to_dict() if include_revenue else None
+            planned_spend = fixed_planned_spend
 
             today_combined = pd.concat([self.history_df, tiled_plan])
             today_diag = CollinearityDiagnostic(

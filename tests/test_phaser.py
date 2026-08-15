@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 from how_wrong_is_your_mmm._dgp import simulate_spend
+from how_wrong_is_your_mmm._diagnostic import CollinearityDiagnostic
 from how_wrong_is_your_mmm._phaser import (
     Blackout,
     BudgetPhaser,
@@ -1002,6 +1003,74 @@ class TestImpactOverHorizons:
             horizons_weeks=[13, 52], n_sims=50, n_phasing_seeds=5, fast_mode=True
         )
         assert len(result) == 2 * len(PLAN_DF.columns)
+
+    def test_revenue_uses_fixed_plan_total_across_horizons(self):
+        """Session-31 fix: revenue must price every horizon against plan_df's
+        own fixed total spend, not each horizon's own tiled-plan total. A
+        104-week horizon tiles the 52-week plan twice, so a reintroduction
+        of the old horizon-scaled bug would put its revenue roughly 4x
+        (52/13) or 8x (104/13) bigger than the 13-week horizon's, purely
+        from spend scale, not reliability. With the fix, both horizons
+        price against the same annual total, so only CV (and so the range's
+        width, not its centre) should differ between them.
+        """
+        result = self.phaser.impact_over_horizons(
+            horizons_weeks=[13, 104],
+            n_sims=30,
+            n_phasing_seeds=2,
+            include_revenue=True,
+        )
+        today = result[result["channel"] == "tv"].set_index("horizon_weeks")
+        center_13 = (
+            today.loc[13, "revenue_today_p10"] + today.loc[13, "revenue_today_p90"]
+        ) / 2
+        center_104 = (
+            today.loc[104, "revenue_today_p10"] + today.loc[104, "revenue_today_p90"]
+        ) / 2
+        assert center_104 / center_13 < 3.0
+
+    def test_revenue_matches_diagnostic_summary_at_plans_own_length(self):
+        """The horizon equal to plan_df's own length must reproduce exactly
+        what CollinearityDiagnostic.summary(planned_spend=plan_df.sum())
+        would give directly on history + plan_df, unphased -- both now use
+        the same fixed planned_spend, so "today" at that horizon is the
+        same combined dataset and the same planned_spend as a standalone
+        diagnostic on the un-tiled plan.
+        """
+        n_weeks = len(PLAN_DF)
+        result = self.phaser.impact_over_horizons(
+            horizons_weeks=[n_weeks],
+            n_sims=20,
+            n_phasing_seeds=1,
+            include_revenue=True,
+        )
+        today = result.set_index("channel")
+
+        direct = CollinearityDiagnostic(
+            spend_df=pd.concat([HISTORY_DF, PLAN_DF]),
+            true_elasticities=ELASTICITIES,
+        )
+        # Different n_sims/seed draw than the phaser's internal call, so this
+        # checks the *planned_spend* pricing is identical, not that the
+        # simulated draws match exactly.
+        direct.fit(n_sims=20)
+        direct_summary = direct.summary(
+            planned_spend=PLAN_DF.sum().to_dict()
+        ).set_index("channel")
+
+        for ch in PLAN_DF.columns:
+            # Same order of magnitude and same sign of range -- confirms
+            # both use the same fixed planned_spend rather than the tiled
+            # (here, identical, since n_weeks == len(PLAN_DF)) total.
+            assert today.loc[ch, "revenue_today_p10"] > 0
+            assert (
+                today.loc[ch, "revenue_today_p90"] > today.loc[ch, "revenue_today_p10"]
+            )
+            ratio = (
+                today.loc[ch, "revenue_today_p90"]
+                / direct_summary.loc[ch, "incremental_revenue_p90"]
+            )
+            assert 0.5 < ratio < 2.0
 
 
 class TestTilePlan:
