@@ -19,9 +19,10 @@ channel), concatenates it with the history, fits a CollinearityDiagnostic on the
 combined dataset, and measures the max CV across channels. The recommended alpha
 minimises max CV.
 
-Weighting schemes (uniform / binary / decay) were evaluated in a research study
-(session 7) and dropped: uniform weighting always outperformed upweighting the
-plan year, so the evaluation is plain OLS on history + phased plan throughout.
+Weighting schemes (uniform / binary / decay) were evaluated in a research
+study and dropped: uniform weighting always outperformed upweighting the
+plan year, so the evaluation is plain OLS on history + phased plan
+throughout.
 
 The output is a concrete plan-year weekly spend schedule the practitioner can
 hand to their media agency, with monthly totals unchanged.
@@ -33,7 +34,10 @@ import numpy as np
 import pandas as pd
 
 from how_wrong_is_your_mmm._dgp import _DEFAULT_ELASTICITIES
-from how_wrong_is_your_mmm._diagnostic import CollinearityDiagnostic
+from how_wrong_is_your_mmm._diagnostic import (
+    CollinearityDiagnostic,
+    _validate_spend_data,
+)
 
 
 def _get_month_labels(spend_df: pd.DataFrame) -> np.ndarray:
@@ -451,6 +455,12 @@ class BudgetPhaser:
                 f"Got {list(history_df.columns)} vs {list(plan_df.columns)}."
             )
 
+        # Same validation CollinearityDiagnostic.fit() runs on real spend,
+        # applied eagerly here (on the concatenation fit() will actually
+        # build internally) so a data-quality problem fails fast at
+        # construction, not deep inside the first grid-search iteration.
+        _validate_spend_data(pd.concat([history_df, plan_df]))
+
         _resolve_channel_specs(
             max_weekly_deviation_pct, list(plan_df.columns)
         )  # validates shape and bounds, fails fast
@@ -559,9 +569,9 @@ class BudgetPhaser:
         Selection-bias correction ("optimizer's curse"): step 4's argmin is
         itself picked from `grid_steps` noisy estimates, so it's biased
         towards whichever alpha happened to get a lucky draw — confirmed
-        empirically in a session-29 follow-up investigation: independently
-        re-evaluating a grid "winner" regresses its CV back up towards the
-        honest value, sometimes substantially. To correct for this, the top
+        empirically: independently re-evaluating a grid "winner" regresses
+        its CV back up towards the honest value, sometimes substantially.
+        To correct for this, the top
         `confirm_top_k` candidates by max_cv are re-evaluated with fresh
         seeds (well clear of the grid search's own seed range) and a larger
         sample (`confirm_n_phasing_seeds`), and *that* honestly-measured
@@ -767,7 +777,7 @@ class BudgetPhaser:
         blackout: Blackout | None = Blackout(max_dark_weeks_per_month=1),
         improvement_threshold_pct: float = 10.0,
         n_sims: int = 50,
-        n_phasing_seeds: int = 3,
+        n_phasing_seeds: int = 10,
         fast_mode: bool = False,
     ) -> dict[str, DeviationSpec]:
         """Decide, per channel, whether Blackout is worth it over a continuous range.
@@ -780,7 +790,7 @@ class BudgetPhaser:
         method exists because exactly that gap showed up in a real report
         — a headline channel that barely improved under the flat default
         lever, while another channel on the same report improved a lot
-        more; see session 29's follow-up investigation).
+        more).
 
         For each channel, compares its own marginal CV (see
         channel_sensitivity — every other channel locked at 0) at full
@@ -812,11 +822,21 @@ class BudgetPhaser:
         improvement_threshold_pct:
             Minimum relative CV improvement (%) Blackout must show over the
             continuous option for a channel before it's picked instead.
-            Default 10.0 — comfortably above this method's own run-to-run
-            sampling noise (typically a few percentage points at
-            n_phasing_seeds=3), so the choice isn't flipped by noise alone.
+            Default 10.0. At the default n_phasing_seeds=10, run-to-run
+            sampling noise on this comparison is typically 2-5 percentage
+            points, so the threshold holds in the large majority of cases;
+            noise widens somewhat at higher channel counts (seen up to
+            ~5 points at 20 channels in testing), so this hasn't been
+            proven safe at every scale, just at the counts checked so far.
+            A much smaller n_phasing_seeds (e.g. 3) is not a safe setting
+            to decide a lever with — noise there can reach 6-10 points and
+            occasionally flip the decision on a real effect.
         n_sims, n_phasing_seeds:
-            Same meaning as channel_sensitivity()/fit().
+            Same meaning as channel_sensitivity()/fit(). n_phasing_seeds
+            defaults to 10 here (not fit()'s own default of 3) specifically
+            so the lever decision above is stable enough to trust on its
+            own, not just when called through ReportBuilder (which already
+            passes 10, so this change doesn't alter its behaviour).
         fast_mode:
             If True, uses n_sims=10, n_phasing_seeds=1 — cheap, for
             iterating on the report itself, not a lever choice to actually
@@ -874,7 +894,7 @@ class BudgetPhaser:
             averaging fit() already applies to its own CV curve, extended
             here across per-channel revenue ranges too (promoted from the
             single-draw-then-averaged pattern used in
-            notebooks/02_phaser_walkthrough.ipynb, session 27).
+            notebooks/02_phaser_walkthrough.ipynb).
 
         Parameters
         ----------
@@ -890,7 +910,7 @@ class BudgetPhaser:
             CollinearityDiagnostic.summary(planned_spend=...), using
             plan_df's own total spend per channel as planned_spend at
             *every* horizon — not each horizon's own tiled-plan total.
-            Session-31 fix: an earlier version priced each horizon against
+            An earlier version of this priced each horizon against
             its own tiled spend, so a 104-week horizon (tiled to 2x the
             weeks) came out at roughly double the £ scale of the 52-week
             one — read by a client as "phase for longer, get more revenue,"

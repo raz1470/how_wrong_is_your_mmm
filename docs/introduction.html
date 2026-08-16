@@ -211,7 +211,7 @@ footer a { color: var(--muted); }
 <header class="hdr">
   <p class="eyebrow">Marketing Science · Ryan O'Sullivan</p>
   <h1>How Wrong Is Your MMM?</h1>
-  <p class="tagline">How using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.</p>
+  <p class="tagline"><strong>An introduction</strong> to how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.</p>
 </header>
 
 <nav class="snav">
@@ -286,13 +286,13 @@ footer a { color: var(--muted); }
 
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Same monthly totals, different weekly pacing</div>
+      <div class="fig-title">Same monthly totals, different weekly phasing</div>
       <div class="fig-sub">TV: continuous ±40% range &nbsp;·&nbsp; Meta &amp; Search: Blackout (cap 1 dark week/month)</div>
     </div>
     <div class="fig-body">
       <div class="legend">
         <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#9ca3af" stroke-width="2.5"/></svg> Original plan</span>
-        <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#2563eb" stroke-width="2.5"/></svg> Recommended pacing</span>
+        <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#2563eb" stroke-width="2.5"/></svg> Recommended phasing</span>
         <span class="li"><svg width="10" height="10"><circle cx="5" cy="5" r="3.6" fill="#111827"/></svg> Dark week (£0) — Meta &amp; Search only</span>
       </div>
       <svg class="chart" id="chartFix" viewBox="0 0 700 560" preserveAspectRatio="xMinYMin meet"></svg>
@@ -340,7 +340,7 @@ footer a { color: var(--muted); }
       </div>
       <svg class="chart" id="chartImpact" viewBox="0 0 700 230" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Every channel narrows substantially, and keeps narrowing: TV 54% then 58%, Meta 54% then 62%, Search 54% then 61% — off the same £12.3m, no extra spend, just pacing every channel with the on/off lever for longer.</p>
+    <p class="fig-cap">Every channel narrows substantially, and keeps narrowing: TV 54% then 58%, Meta 54% then 62%, Search 54% then 61% — off the same £12.3m, no extra spend, just phasing every channel with the on/off lever for longer.</p>
   </div>
 
   <div class="knums">
@@ -352,7 +352,7 @@ footer a { color: var(--muted); }
     <div class="kbox">
       <div class="lbl">Extra spend needed</div>
       <div class="num">£0</div>
-      <div class="lab">Only the weekly pacing changes</div>
+      <div class="lab">Only the weekly phasing changes</div>
     </div>
     <div class="kbox">
       <div class="lbl">Uncertainty reduction</div>
@@ -387,8 +387,8 @@ footer a { color: var(--muted); }
           <circle cx="103" cy="66" r="11" fill="none" stroke="#2563eb" stroke-width="2.5"/>
           <line x1="111" y1="74" x2="120" y2="83" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"/>
           <text x="115" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="#111827">Diagnose</text>
-          <text x="115" y="120" text-anchor="middle" font-size="10.5" fill="#6b7280">Measure how wide</text>
-          <text x="115" y="134" text-anchor="middle" font-size="10.5" fill="#6b7280">your true range is</text>
+          <text x="115" y="120" text-anchor="middle" font-size="10.5" fill="#6b7280">Simulate plausible histories,</text>
+          <text x="115" y="134" text-anchor="middle" font-size="10.5" fill="#6b7280">measure how wide the range is</text>
         </g>
 
         <g>
@@ -400,8 +400,8 @@ footer a { color: var(--muted); }
           <path d="M332,79 L348,79 L368,61" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M362,79 L368,79 L368,73" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
           <text x="350" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="#111827">Phase</text>
-          <text x="350" y="120" text-anchor="middle" font-size="10.5" fill="#6b7280">Re-pace the weekly split,</text>
-          <text x="350" y="134" text-anchor="middle" font-size="10.5" fill="#6b7280">monthly totals unchanged</text>
+          <text x="350" y="120" text-anchor="middle" font-size="10.5" fill="#6b7280">De-correlate the weekly split,</text>
+          <text x="350" y="134" text-anchor="middle" font-size="10.5" fill="#6b7280">monthly totals stay identical</text>
         </g>
 
         <g>
@@ -411,7 +411,7 @@ footer a { color: var(--muted); }
           <path d="M576,58 A12,12 0 1 1 573,74" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round"/>
           <path d="M573,67 L573,74 L580,74" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
           <text x="585" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="#111827">Retrain</text>
-          <text x="585" y="120" text-anchor="middle" font-size="10.5" fill="#6b7280">Refit on the repaced data,</text>
+          <text x="585" y="120" text-anchor="middle" font-size="10.5" fill="#6b7280">Refit on the phased data,</text>
           <text x="585" y="134" text-anchor="middle" font-size="10.5" fill="#6b7280">get a tighter answer back</text>
         </g>
       </svg>
@@ -552,8 +552,8 @@ function drawForest(svgId, data, xMax) {
 }
 
 drawForest('chartProblem', [
-  { name: 'TV',     color: '#2563eb', spend: 5.098, p10: 0.945, p90: 2.093 },
-  { name: 'Meta',   color: '#d97706', spend: 4.066, p10: 1.406, p90: 2.574 },
+  { name: 'TV',     color: '#2563eb', spend: 5.098, p10: 0.945, p90: 2.094 },
+  { name: 'Meta',   color: '#d97706', spend: 4.066, p10: 1.418, p90: 2.595 },
   { name: 'Search', color: '#059669', spend: 3.100, p10: 0.712, p90: 1.885 },
 ], 2.8);
 

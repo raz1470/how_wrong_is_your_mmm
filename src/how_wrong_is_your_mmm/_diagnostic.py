@@ -15,6 +15,8 @@ and OLS is fit on each. The distribution of estimates is the diagnostic.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 
@@ -25,6 +27,85 @@ from how_wrong_is_your_mmm._dgp import (
     simulate_spend,
 )
 from how_wrong_is_your_mmm._mmm import fit_ols
+
+# Below this many observations per channel, OLS still runs but the estimate
+# is wide enough to be more noise than signal -- worth a warning, not a hard
+# stop (a user exploring a short pilot window is a legitimate use case).
+_MIN_OBS_PER_CHANNEL_WARNING = 10
+
+
+def _validate_spend_data(spend_df: pd.DataFrame) -> None:
+    """Validate a real spend DataFrame before it's fit with OLS.
+
+    Real spend data (unlike this package's own synthetic DGP output) can be
+    missing values, constant for a channel, or too short relative to the
+    number of channels -- all of which either crash `numpy.linalg.lstsq`
+    with a cryptic LAPACK error, or let it return a finite but meaningless
+    number silently. This turns those into one specific, actionable
+    ValueError each, raised before any simulation runs.
+
+    Called from every path that fits real spend: CollinearityDiagnostic's
+    own real-spend entry point, and (via the combined history + phased
+    plan DataFrame it builds internally) BudgetPhaser and ReportBuilder.
+    """
+    channels = list(spend_df.columns)
+
+    non_numeric = [
+        c for c in channels if not pd.api.types.is_numeric_dtype(spend_df[c])
+    ]
+    if non_numeric:
+        raise ValueError(
+            f"spend_df column(s) {non_numeric} are not numeric. "
+            "Every channel column must be a numeric spend series."
+        )
+
+    nan_cols = spend_df.columns[spend_df.isna().any()].tolist()
+    if nan_cols:
+        raise ValueError(
+            f"spend_df has missing (NaN) values in column(s) {nan_cols}. "
+            "OLS cannot fit through missing data -- fill or drop these rows "
+            "before running the diagnostic."
+        )
+
+    if not np.isfinite(spend_df.to_numpy(dtype=float)).all():
+        raise ValueError(
+            "spend_df contains non-finite values (inf or -inf). Check for "
+            "a divide-by-zero or overflow upstream before running the "
+            "diagnostic."
+        )
+
+    zero_variance = [c for c in channels if spend_df[c].std(ddof=0) == 0]
+    if zero_variance:
+        raise ValueError(
+            f"spend_df channel(s) {zero_variance} have zero variance "
+            "(constant spend, often all-zero for the period). An "
+            "elasticity can't be estimated for a channel with no "
+            "week-to-week variation -- exclude it or supply spend that "
+            "actually varies."
+        )
+
+    min_required = len(channels) + 2  # +1 intercept, +1 residual degree of freedom
+    if len(spend_df) < min_required:
+        raise ValueError(
+            f"spend_df has {len(spend_df)} observation(s) for "
+            f"{len(channels)} channel(s), but OLS needs at least "
+            f"{min_required} (one per channel, one for the intercept, and "
+            "one left over so there's a residual to estimate against). "
+            "Results below this are mathematically undefined, not just "
+            "unreliable."
+        )
+
+    obs_per_channel = len(spend_df) / len(channels)
+    if obs_per_channel < _MIN_OBS_PER_CHANNEL_WARNING:
+        warnings.warn(
+            f"spend_df has only {len(spend_df)} observations across "
+            f"{len(channels)} channels ({obs_per_channel:.1f} per channel). "
+            f"Below {_MIN_OBS_PER_CHANNEL_WARNING} observations per channel, "
+            "elasticity estimates tend to be very wide and unstable even "
+            "before collinearity is a factor -- treat results with extra "
+            "caution, and prefer more history if it's available.",
+            stacklevel=3,
+        )
 
 
 class CollinearityDiagnostic:
@@ -96,6 +177,14 @@ class CollinearityDiagnostic:
         fast_mode:
             If True, overrides n_sims=10 for quick notebook iteration.
 
+        Raises
+        ------
+        ValueError
+            If spend_df is supplied and contains non-numeric columns, NaN
+            or non-finite values, a channel with zero spend variance, or
+            fewer observations than OLS needs to fit at all. See
+            _validate_spend_data.
+
         Returns
         -------
         self
@@ -104,6 +193,7 @@ class CollinearityDiagnostic:
             n_sims = 10
 
         if self.spend_df is not None:
+            _validate_spend_data(self.spend_df)
             self.spend_df_ = self.spend_df.copy()
             self.channels_ = list(self.spend_df.columns)
         else:

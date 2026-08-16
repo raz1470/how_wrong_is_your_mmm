@@ -917,8 +917,7 @@ Blackout. A dict must cover every channel in plan_df.</p>
 
                   <details class="mkdocstrings-source">
                     <summary>Source code in <code>src/how_wrong_is_your_mmm/_phaser.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">436</span>
-<span class="normal">437</span>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">437</span>
 <span class="normal">438</span>
 <span class="normal">439</span>
 <span class="normal">440</span>
@@ -953,7 +952,8 @@ Blackout. A dict must cover every channel in plan_df.</p>
 <span class="normal">469</span>
 <span class="normal">470</span>
 <span class="normal">471</span>
-<span class="normal">472</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">472</span>
+<span class="normal">473</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">history_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">plan_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
@@ -1037,9 +1037,9 @@ Blackout. A dict must cover every channel in plan_df.</p>
 <p>Selection-bias correction ("optimizer's curse"): step 4's argmin is
 itself picked from <code>grid_steps</code> noisy estimates, so it's biased
 towards whichever alpha happened to get a lucky draw — confirmed
-empirically in a session-29 follow-up investigation: independently
-re-evaluating a grid "winner" regresses its CV back up towards the
-honest value, sometimes substantially. To correct for this, the top
+empirically: independently re-evaluating a grid "winner" regresses
+its CV back up towards the honest value, sometimes substantially.
+To correct for this, the top
 <code>confirm_top_k</code> candidates by max_cv are re-evaluated with fresh
 seeds (well clear of the grid search's own seed range) and a larger
 sample (<code>confirm_n_phasing_seeds</code>), and <em>that</em> honestly-measured
@@ -1200,8 +1200,7 @@ search that picked it).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_phaser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">540</span>
-<span class="normal">541</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">541</span>
 <span class="normal">542</span>
 <span class="normal">543</span>
 <span class="normal">544</span>
@@ -1320,7 +1319,8 @@ search that picked it).</p>
 <span class="normal">657</span>
 <span class="normal">658</span>
 <span class="normal">659</span>
-<span class="normal">660</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span>
+<span class="normal">660</span>
+<span class="normal">661</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">n_sims</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
     <span class="n">grid_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
@@ -1342,9 +1342,9 @@ search that picked it).</p>
 <span class="sd">    Selection-bias correction (&quot;optimizer&#39;s curse&quot;): step 4&#39;s argmin is</span>
 <span class="sd">    itself picked from `grid_steps` noisy estimates, so it&#39;s biased</span>
 <span class="sd">    towards whichever alpha happened to get a lucky draw — confirmed</span>
-<span class="sd">    empirically in a session-29 follow-up investigation: independently</span>
-<span class="sd">    re-evaluating a grid &quot;winner&quot; regresses its CV back up towards the</span>
-<span class="sd">    honest value, sometimes substantially. To correct for this, the top</span>
+<span class="sd">    empirically: independently re-evaluating a grid &quot;winner&quot; regresses</span>
+<span class="sd">    its CV back up towards the honest value, sometimes substantially.</span>
+<span class="sd">    To correct for this, the top</span>
 <span class="sd">    `confirm_top_k` candidates by max_cv are re-evaluated with fresh</span>
 <span class="sd">    seeds (well clear of the grid search&#39;s own seed range) and a larger</span>
 <span class="sd">    sample (`confirm_n_phasing_seeds`), and *that* honestly-measured</span>
@@ -1662,8 +1662,7 @@ sweep. Omit (None) to skip it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_phaser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">662</span>
-<span class="normal">663</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">663</span>
 <span class="normal">664</span>
 <span class="normal">665</span>
 <span class="normal">666</span>
@@ -1762,7 +1761,8 @@ sweep. Omit (None) to skip it.</p>
 <span class="normal">759</span>
 <span class="normal">760</span>
 <span class="normal">761</span>
-<span class="normal">762</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">channel_sensitivity</span><span class="p">(</span>
+<span class="normal">762</span>
+<span class="normal">763</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">channel_sensitivity</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">channel</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">alphas</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -1900,7 +1900,7 @@ unless someone actually checks each channel in isolation (this
 method exists because exactly that gap showed up in a real report
 — a headline channel that barely improved under the flat default
 lever, while another channel on the same report improved a lot
-more; see session 29's follow-up investigation).</p>
+more).</p>
 <p>For each channel, compares its own marginal CV (see
 channel_sensitivity — every other channel locked at 0) at full
 continuous amplitude (+/-magnitude_pct) against Blackout, and picks
@@ -2074,8 +2074,7 @@ hand a client.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_phaser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">764</span>
-<span class="normal">765</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">765</span>
 <span class="normal">766</span>
 <span class="normal">767</span>
 <span class="normal">768</span>
@@ -2165,7 +2164,8 @@ hand a client.</p>
 <span class="normal">852</span>
 <span class="normal">853</span>
 <span class="normal">854</span>
-<span class="normal">855</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend_levers</span><span class="p">(</span>
+<span class="normal">855</span>
+<span class="normal">856</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend_levers</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">magnitude_pct</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">40.0</span><span class="p">,</span>
     <span class="n">blackout</span><span class="p">:</span> <span class="n">Blackout</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">Blackout</span><span class="p">(</span><span class="n">max_dark_weeks_per_month</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
@@ -2184,7 +2184,7 @@ hand a client.</p>
 <span class="sd">    method exists because exactly that gap showed up in a real report</span>
 <span class="sd">    — a headline channel that barely improved under the flat default</span>
 <span class="sd">    lever, while another channel on the same report improved a lot</span>
-<span class="sd">    more; see session 29&#39;s follow-up investigation).</span>
+<span class="sd">    more).</span>
 
 <span class="sd">    For each channel, compares its own marginal CV (see</span>
 <span class="sd">    channel_sensitivity — every other channel locked at 0) at full</span>
@@ -2293,7 +2293,7 @@ truncate it, longer ones repeat its weekly pattern), then:
     averaging fit() already applies to its own CV curve, extended
     here across per-channel revenue ranges too (promoted from the
     single-draw-then-averaged pattern used in
-    notebooks/02_phaser_walkthrough.ipynb, session 27).</p>
+    notebooks/02_phaser_walkthrough.ipynb).</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -2382,12 +2382,23 @@ truncate it, longer ones repeat its weekly pattern), then:
             <td>
               <div class="doc-md-description">
                 <p>If True, also compute £ incremental-revenue ranges via
-CollinearityDiagnostic.summary(planned_spend=...), using each
-horizon's <em>own</em> tiled-plan total spend per channel as
-planned_spend — not a single fixed total shared across
-horizons, since a 104-week horizon plans roughly double the
-spend of a 52-week one and the revenue scale must track that.
-Without this, only CV is returned.</p>
+CollinearityDiagnostic.summary(planned_spend=...), using
+plan_df's own total spend per channel as planned_spend at
+<em>every</em> horizon — not each horizon's own tiled-plan total.
+An earlier version of this priced each horizon against
+its own tiled spend, so a 104-week horizon (tiled to 2x the
+weeks) came out at roughly double the £ scale of the 52-week
+one — read by a client as "phase for longer, get more revenue,"
+when horizon here means "more experience/history has
+accumulated," not "more spend." This did not match
+notebooks/02_phaser_walkthrough.ipynb's own blackout_impact()
+helper (the source of introduction.html's published £ figures),
+which always prices against the plan's own fixed annual total
+regardless of horizon — "same plan, £0 extra spend, just a
+tighter range" is the intended story throughout this package,
+and ReportBuilder's Impact section is meant to echo it. Without
+this parameter, only CV is returned (CV is dimensionless and
+was never affected by this).</p>
               </div>
             </td>
             <td>
@@ -2443,8 +2454,7 @@ Without this, only CV is returned.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_phaser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">857</span>
-<span class="normal">858</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">858</span>
 <span class="normal">859</span>
 <span class="normal">860</span>
 <span class="normal">861</span>
@@ -2567,7 +2577,25 @@ Without this, only CV is returned.</p>
 <span class="normal">978</span>
 <span class="normal">979</span>
 <span class="normal">980</span>
-<span class="normal">981</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">impact_over_horizons</span><span class="p">(</span>
+<span class="normal">981</span>
+<span class="normal">982</span>
+<span class="normal">983</span>
+<span class="normal">984</span>
+<span class="normal">985</span>
+<span class="normal">986</span>
+<span class="normal">987</span>
+<span class="normal">988</span>
+<span class="normal">989</span>
+<span class="normal">990</span>
+<span class="normal">991</span>
+<span class="normal">992</span>
+<span class="normal">993</span>
+<span class="normal">994</span>
+<span class="normal">995</span>
+<span class="normal">996</span>
+<span class="normal">997</span>
+<span class="normal">998</span>
+<span class="normal">999</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">impact_over_horizons</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">horizons_weeks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">n_sims</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
@@ -2587,7 +2615,7 @@ Without this, only CV is returned.</p>
 <span class="sd">        averaging fit() already applies to its own CV curve, extended</span>
 <span class="sd">        here across per-channel revenue ranges too (promoted from the</span>
 <span class="sd">        single-draw-then-averaged pattern used in</span>
-<span class="sd">        notebooks/02_phaser_walkthrough.ipynb, session 27).</span>
+<span class="sd">        notebooks/02_phaser_walkthrough.ipynb).</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -2600,12 +2628,23 @@ Without this, only CV is returned.</p>
 <span class="sd">        If True, uses n_sims=10, n_phasing_seeds=1.</span>
 <span class="sd">    include_revenue:</span>
 <span class="sd">        If True, also compute £ incremental-revenue ranges via</span>
-<span class="sd">        CollinearityDiagnostic.summary(planned_spend=...), using each</span>
-<span class="sd">        horizon&#39;s *own* tiled-plan total spend per channel as</span>
-<span class="sd">        planned_spend — not a single fixed total shared across</span>
-<span class="sd">        horizons, since a 104-week horizon plans roughly double the</span>
-<span class="sd">        spend of a 52-week one and the revenue scale must track that.</span>
-<span class="sd">        Without this, only CV is returned.</span>
+<span class="sd">        CollinearityDiagnostic.summary(planned_spend=...), using</span>
+<span class="sd">        plan_df&#39;s own total spend per channel as planned_spend at</span>
+<span class="sd">        *every* horizon — not each horizon&#39;s own tiled-plan total.</span>
+<span class="sd">        An earlier version of this priced each horizon against</span>
+<span class="sd">        its own tiled spend, so a 104-week horizon (tiled to 2x the</span>
+<span class="sd">        weeks) came out at roughly double the £ scale of the 52-week</span>
+<span class="sd">        one — read by a client as &quot;phase for longer, get more revenue,&quot;</span>
+<span class="sd">        when horizon here means &quot;more experience/history has</span>
+<span class="sd">        accumulated,&quot; not &quot;more spend.&quot; This did not match</span>
+<span class="sd">        notebooks/02_phaser_walkthrough.ipynb&#39;s own blackout_impact()</span>
+<span class="sd">        helper (the source of introduction.html&#39;s published £ figures),</span>
+<span class="sd">        which always prices against the plan&#39;s own fixed annual total</span>
+<span class="sd">        regardless of horizon — &quot;same plan, £0 extra spend, just a</span>
+<span class="sd">        tighter range&quot; is the intended story throughout this package,</span>
+<span class="sd">        and ReportBuilder&#39;s Impact section is meant to echo it. Without</span>
+<span class="sd">        this parameter, only CV is returned (CV is dimensionless and</span>
+<span class="sd">        was never affected by this).</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -2626,10 +2665,16 @@ Without this, only CV is returned.</p>
     <span class="n">channels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">plan_df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
     <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
 
+    <span class="c1"># Fixed across every horizon on purpose — see include_revenue&#39;s</span>
+    <span class="c1"># docstring above. Revenue always prices against the plan&#39;s own</span>
+    <span class="c1"># annual total; only the CV (and so the honest range&#39;s width)</span>
+    <span class="c1"># changes with horizon.</span>
+    <span class="n">fixed_planned_spend</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan_df</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span> <span class="k">if</span> <span class="n">include_revenue</span> <span class="k">else</span> <span class="kc">None</span>
+
     <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">horizons_weeks</span><span class="p">:</span>
         <span class="n">tiled_plan</span> <span class="o">=</span> <span class="n">_tile_plan</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">plan_df</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
         <span class="n">tiled_labels</span> <span class="o">=</span> <span class="n">_get_month_labels</span><span class="p">(</span><span class="n">tiled_plan</span><span class="p">)</span>
-        <span class="n">planned_spend</span> <span class="o">=</span> <span class="n">tiled_plan</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span> <span class="k">if</span> <span class="n">include_revenue</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">planned_spend</span> <span class="o">=</span> <span class="n">fixed_planned_spend</span>
 
         <span class="n">today_combined</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">history_df</span><span class="p">,</span> <span class="n">tiled_plan</span><span class="p">])</span>
         <span class="n">today_diag</span> <span class="o">=</span> <span class="n">CollinearityDiagnostic</span><span class="p">(</span>
@@ -2746,24 +2791,24 @@ a specific channel's CV at the recommended alpha).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_phaser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 983</span>
-<span class="normal"> 984</span>
-<span class="normal"> 985</span>
-<span class="normal"> 986</span>
-<span class="normal"> 987</span>
-<span class="normal"> 988</span>
-<span class="normal"> 989</span>
-<span class="normal"> 990</span>
-<span class="normal"> 991</span>
-<span class="normal"> 992</span>
-<span class="normal"> 993</span>
-<span class="normal"> 994</span>
-<span class="normal"> 995</span>
-<span class="normal"> 996</span>
-<span class="normal"> 997</span>
-<span class="normal"> 998</span>
-<span class="normal"> 999</span>
-<span class="normal">1000</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1001</span>
+<span class="normal">1002</span>
+<span class="normal">1003</span>
+<span class="normal">1004</span>
+<span class="normal">1005</span>
+<span class="normal">1006</span>
+<span class="normal">1007</span>
+<span class="normal">1008</span>
+<span class="normal">1009</span>
+<span class="normal">1010</span>
+<span class="normal">1011</span>
+<span class="normal">1012</span>
+<span class="normal">1013</span>
+<span class="normal">1014</span>
+<span class="normal">1015</span>
+<span class="normal">1016</span>
+<span class="normal">1017</span>
+<span class="normal">1018</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the recommended alpha and its honestly re-evaluated CV.</span>
 
 <span class="sd">    This is deliberately *not* the grid&#39;s own lowest-max_cv row — see</span>
@@ -2828,16 +2873,16 @@ a specific channel's CV at the recommended alpha).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_phaser.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1002</span>
-<span class="normal">1003</span>
-<span class="normal">1004</span>
-<span class="normal">1005</span>
-<span class="normal">1006</span>
-<span class="normal">1007</span>
-<span class="normal">1008</span>
-<span class="normal">1009</span>
-<span class="normal">1010</span>
-<span class="normal">1011</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1020</span>
+<span class="normal">1021</span>
+<span class="normal">1022</span>
+<span class="normal">1023</span>
+<span class="normal">1024</span>
+<span class="normal">1025</span>
+<span class="normal">1026</span>
+<span class="normal">1027</span>
+<span class="normal">1028</span>
+<span class="normal">1029</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the full grid search results.</span>
 
 <span class="sd">    Returns</span>
@@ -2982,8 +3027,7 @@ one week "on".</p>
 
                   <details class="mkdocstrings-source">
                     <summary>Source code in <code>src/how_wrong_is_your_mmm/_phaser.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">150</span>
-<span class="normal">151</span>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">151</span>
 <span class="normal">152</span>
 <span class="normal">153</span>
 <span class="normal">154</span>
@@ -2995,7 +3039,8 @@ one week "on".</p>
 <span class="normal">160</span>
 <span class="normal">161</span>
 <span class="normal">162</span>
-<span class="normal">163</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">163</span>
+<span class="normal">164</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">prob</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
     <span class="n">max_dark_weeks_per_month</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>

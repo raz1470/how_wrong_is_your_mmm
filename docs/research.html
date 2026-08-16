@@ -227,7 +227,7 @@ svg.chart { display: block; width: 100%; }
   <div class="hdr-text">
     <p class="eyebrow">Marketing Science · Ryan O'Sullivan</p>
     <h1>How Wrong Is Your MMM?</h1>
-    <p class="tagline">A practitioner's guide to collinearity bias in Marketing Mix Models</p>
+    <p class="tagline"><strong>The research</strong> behind how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.</p>
   </div>
 </header>
 
@@ -335,7 +335,7 @@ svg.chart { display: block; width: 100%; }
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Your elasticity uncertainty report</div>
-      <div class="fig-sub">80% interval across 50 noise seeds · based on real spend correlation structure (mean pairwise = 0.65) · diamond = mean estimate</div>
+      <div class="fig-sub">80% interval across 50 noise seeds · same £12.3m plan as <a href="introduction.html">introduction.html</a> (mean pairwise correlation = 0.69) · diamond = mean estimate</div>
     </div>
     <div class="fig-body">
       <svg class="chart" id="chart4" viewBox="0 0 700 200" preserveAspectRatio="xMinYMin meet"></svg>
@@ -347,27 +347,27 @@ svg.chart { display: block; width: 100%; }
 
   <h3>From elasticity to £</h3>
 
-  <p>An elasticity interval is honest, but it isn't what a budget conversation runs on. Pass a <code>planned_spend</code> dict to <code>summary()</code> and the same simulated elasticity distribution rescales into an incremental-revenue range: each draw is multiplied by the planned spend for that channel, then the 10th–90th percentile is reported. On a real £12.3m annual plan (£5.1m TV, £4.1m Meta, £3.1m Search), the same interval above becomes:</p>
+  <p>An elasticity interval is honest, but it isn't what a budget conversation runs on. Pass a <code>planned_spend</code> dict to <code>summary()</code> and the same simulated elasticity distribution rescales into an incremental-revenue range: each draw is multiplied by the planned spend for that channel, then the 10th–90th percentile is reported. On the same £12.3m annual plan as <a href="introduction.html">introduction.html</a> (£5.1m TV, £4.1m Meta, £3.1m Search), the same interval above becomes:</p>
 
   <div class="knums">
     <div class="kbox">
       <div class="corr">TV, £5.1m planned</div>
-      <div class="num">£664k – £2.36m</div>
+      <div class="num">£945k – £2.09m</div>
       <div class="lab">80% incremental-revenue range</div>
     </div>
     <div class="kbox">
       <div class="corr">Meta, £4.1m planned</div>
-      <div class="num">£1.28m – £2.68m</div>
+      <div class="num">£1.42m – £2.60m</div>
       <div class="lab">80% incremental-revenue range</div>
     </div>
     <div class="kbox">
       <div class="corr">Search, £3.1m planned</div>
-      <div class="num">£583k – £2.39m</div>
+      <div class="num">£712k – £1.89m</div>
       <div class="lab">80% incremental-revenue range</div>
     </div>
   </div>
 
-  <p>Same underlying unreliability, expressed in the units a CMO actually budgets in. This assumes sales is already a £ value; for volume targets, a <code>value_per_unit</code> parameter converts to CAC and ROI instead (see the notebooks). For the full case built entirely around this £ framing, see <a href="introduction.html">introduction.html</a>.</p>
+  <p>Same underlying unreliability, expressed in the units a CMO actually budgets in — and the same numbers you'd get running <code>CollinearityDiagnostic.summary(planned_spend=...)</code> on <a href="introduction.html">introduction.html</a>'s dataset directly. This assumes sales is already a £ value; for volume targets, a <code>value_per_unit</code> parameter converts to CAC and ROI instead (see the notebooks).</p>
 
   <div class="up-next">
     <strong>Next:</strong> <a href="#cause" style="color:inherit">Section 2 — The Cause</a> explains why this happens: channels that always move together can't be reliably told apart, however good the estimation method.
@@ -455,6 +455,19 @@ svg.chart { display: block; width: 100%; }
 
   <p>Within each calendar month, redistribute each channel's weekly spend randomly. One month, TV gets more budget in the first two weeks; the next month, the last two. Meta does the same independently. At the end of each month, rescale so the channel's monthly total is exactly preserved.</p>
 
+  <p>Two steps run every month, for every channel: a nudge, then a rescale. Here's exactly what that looks like, with real numbers, the same worked example used in <a href="introduction.html">introduction.html</a>.</p>
+
+  <p><strong>Step 1, nudge:</strong> each week gets a random adjustment, up or down by a set percentage, or all the way down to £0 on a dark week. Say a channel plans to spend £100k a week for four weeks, £400k for the month, and the algorithm lands on £100k, £120k, £0 and £100k, £320k in total.</p>
+
+  <p><strong>Step 2, rescale:</strong> that £320k is £80k short of the original £400k. Multiply every week by 400 ÷ 320 (1.25) and you get £125k, £150k, £0 and £125k, which adds back up to exactly £400k.</p>
+
+  <div class="callout" style="padding: 1.1rem 1.4rem;">
+    <p style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:.92rem; font-weight:600; margin:0 0 .6rem 0;">raw<sub>week</sub> = plan<sub>week</sub> &times; nudge<sub>week</sub></p>
+    <p style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:.92rem; font-weight:600; margin:0;">phased<sub>week</sub> = raw<sub>week</sub> &times; ( &Sigma;plan<sub>month</sub> &divide; &Sigma;raw<sub>month</sub> )</p>
+  </div>
+
+  <p>That arithmetic is the easy part. The harder part happens before any of this runs: for every channel, <code>BudgetPhaser</code> searches the nudge size, from small to the maximum you're willing to tolerate, refitting <code>CollinearityDiagnostic</code> against thousands of simulated alternative histories at each setting via grid search (<code>grid_steps</code>, default 20), and keeps whichever amplitude narrows your least reliable channel the most, the same grid search covered in "How much variation to introduce" below. <code>Blackout()</code> mode runs the identical nudge-then-rescale arithmetic, just with the nudge itself constrained to either 1.0 (full planned spend) or 0.0 (dark week), never anything in between.</p>
+
   <p>The media agency sees the same monthly booking. The annual budget is untouched. The only thing that changes is the within-month timing, which the business already adjusts informally for flights and promotional peaks. What's new is making that adjustment deliberately, independently, and consistently across all channels.</p>
 
   <!-- Chart 5: Before / after weekly spend -->
@@ -505,7 +518,7 @@ svg.chart { display: block; width: 100%; }
 
   <p>The output of the phasing recommendation is a concrete 52-week spend schedule: one number per channel per week, with monthly totals guaranteed to match the original plan exactly. This is what you hand to the media agency, not a strategy document or a framework, but a booking grid.</p>
 
-  <p>In a real dataset (4 years of history, 1 year of plan, correlation 0.68), a ±37% weekly deviation produces a 16% reduction in maximum CV after one year of phasing (8–21% across 10 independent phasing draws). That sounds modest, and it is, because four years of correlated history dilutes one year of de-correlated plan data. The Impact section addresses this directly: how long does phasing need to run before the improvement becomes material?</p>
+  <p>In the same real dataset used throughout <a href="introduction.html">introduction.html</a> (4 years of history, 1 year of plan, correlation 0.68), a ±37% weekly deviation on the standard continuous range produces a 16% reduction in maximum CV after one year of phasing (8–21% across 10 independent phasing draws). That sounds modest, and it is, because four years of correlated history dilutes one year of de-correlated plan data — and because a continuous range is the gentler of the two levers this package supports. Switching every channel to <code>Blackout()</code> on this same dataset does substantially better, see "Channel-specific constraints" below: it's the stronger lever behind <a href="introduction.html">introduction.html</a>'s headline, a 54% narrower incremental-revenue range after one year. The Impact section addresses the time dimension directly: how long does each lever need to run before the improvement becomes material?</p>
 
   <h3>Channel-specific constraints</h3>
 
@@ -778,7 +791,7 @@ svg.chart { display: block; width: 100%; }
         <line x1="111" y1="84" x2="120" y2="93" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"/>
         <text x="115" y="112" text-anchor="middle" font-size="13" font-weight="700" fill="#111827">Diagnose</text>
         <text x="115" y="130" text-anchor="middle" font-size="10.5" fill="#6b7280">Simulate plausible histories,</text>
-        <text x="115" y="144" text-anchor="middle" font-size="10.5" fill="#6b7280">measure the elasticity spread</text>
+        <text x="115" y="144" text-anchor="middle" font-size="10.5" fill="#6b7280">measure how wide the range is</text>
       </g>
 
       <!-- Step 2: Phase -->
@@ -806,7 +819,7 @@ svg.chart { display: block; width: 100%; }
         <path d="M573,77 L573,84 L580,84" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
         <text x="585" y="112" text-anchor="middle" font-size="13" font-weight="700" fill="#111827">Retrain</text>
         <text x="585" y="130" text-anchor="middle" font-size="10.5" fill="#6b7280">Refit on the phased data,</text>
-        <text x="585" y="144" text-anchor="middle" font-size="10.5" fill="#6b7280">get measurably tighter estimates</text>
+        <text x="585" y="144" text-anchor="middle" font-size="10.5" fill="#6b7280">get a tighter answer back</text>
       </g>
     </svg>
   </div>
@@ -1603,11 +1616,18 @@ function el(tag, attrs, text) {
   const pw = W - m.left - m.right;
   const ph = H - m.top - m.bottom;
 
-  // From notebook 01 section 3 (real spend entry point, mean corr=0.65)
+  // Same £12.3m TV/Meta/Search scenario used throughout introduction.html
+  // (notebook 02: history seed=0, plan seed=1, target correlation 0.7,
+  // actual ~0.69 on the combined history+plan). Elasticity p10/p90 derived
+  // from CollinearityDiagnostic.summary(planned_spend=...)'s incremental
+  // revenue columns divided by planned spend -- exact, not approximate,
+  // since a quantile commutes with a positive scalar multiplier. Cross-
+  // checked against introduction.html's own published revenue range before
+  // use here (TV and Search matched to the pound; Meta within ~1%).
   const channels = [
-    { name: 'TV',     color: '#2563eb', mean: 0.303, p10: 0.130, p90: 0.463 },
-    { name: 'Meta',   color: '#d97706', mean: 0.496, p10: 0.311, p90: 0.653 },
-    { name: 'Search', color: '#059669', mean: 0.453, p10: 0.188, p90: 0.769 },
+    { name: 'TV',     color: '#2563eb', mean: 0.295, p10: 0.185, p90: 0.411 },
+    { name: 'Meta',   color: '#d97706', mean: 0.497, p10: 0.346, p90: 0.633 },
+    { name: 'Search', color: '#059669', mean: 0.425, p10: 0.230, p90: 0.608 },
   ];
 
   const xMin = 0, xMax = 0.90;

@@ -687,6 +687,40 @@ class TestBudgetPhaser:
                 HISTORY_DF, plan_2ch, true_elasticities={"tv": 0.3, "meta": 0.5}
             )
 
+    def test_nan_in_history_raises_at_construction(self):
+        bad_history = HISTORY_DF.copy()
+        bad_history.iloc[0, 0] = float("nan")
+        with pytest.raises(ValueError, match="missing"):
+            BudgetPhaser(bad_history, PLAN_DF, true_elasticities=ELASTICITIES)
+
+    def test_nan_in_plan_raises_at_construction(self):
+        bad_plan = PLAN_DF.copy()
+        bad_plan.iloc[0, 0] = float("nan")
+        with pytest.raises(ValueError, match="missing"):
+            BudgetPhaser(HISTORY_DF, bad_plan, true_elasticities=ELASTICITIES)
+
+    def test_zero_variance_channel_raises_at_construction(self):
+        bad_history = HISTORY_DF.copy()
+        zero_col = bad_history.columns[0]
+        bad_history[zero_col] = 0.0
+        bad_plan = PLAN_DF.copy()
+        bad_plan[zero_col] = 0.0
+        with pytest.raises(ValueError, match="zero variance"):
+            BudgetPhaser(bad_history, bad_plan, true_elasticities=ELASTICITIES)
+
+    def test_validation_runs_before_any_simulation(self):
+        # A construction-time failure should never reach fit() -- the
+        # object shouldn't even be usable, let alone run a grid search.
+        bad_history = HISTORY_DF.copy()
+        bad_history.iloc[0, 0] = float("nan")
+        with pytest.raises(ValueError):
+            BudgetPhaser(bad_history, PLAN_DF, true_elasticities=ELASTICITIES)
+
+    def test_valid_data_constructs_without_error(self):
+        # Regression check: the standard fixture data (used by every other
+        # test in this file) must not trip the new validation.
+        BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES)
+
     def test_alpha_starts_at_zero(self):
         phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
             n_sims=5, grid_steps=5, n_phasing_seeds=1
@@ -1005,7 +1039,7 @@ class TestImpactOverHorizons:
         assert len(result) == 2 * len(PLAN_DF.columns)
 
     def test_revenue_uses_fixed_plan_total_across_horizons(self):
-        """Session-31 fix: revenue must price every horizon against plan_df's
+        """Revenue must price every horizon against plan_df's
         own fixed total spend, not each horizon's own tiled-plan total. A
         104-week horizon tiles the 52-week plan twice, so a reintroduction
         of the old horizon-scaled bug would put its revenue roughly 4x
@@ -1109,7 +1143,7 @@ class TestTilePlan:
 
 
 class TestSelectionBiasConfirmation:
-    """fit()'s confirmation pass (session 29 follow-up) — the grid argmin is
+    """fit()'s confirmation pass — the grid argmin is
     a systematically optimistic estimate (picking the min of grid_steps
     noisy points), so fit() re-evaluates the top confirm_top_k candidates
     independently before committing to a recommendation."""

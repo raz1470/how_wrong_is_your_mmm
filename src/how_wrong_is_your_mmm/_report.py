@@ -3,11 +3,10 @@
 Orchestrates CollinearityDiagnostic and BudgetPhaser end to end and renders
 the result as a single self-contained HTML document (two "pages": a
 client-facing headline page, and a "Scenario exploration" supporting-detail
-page), following the two-page design locked in session 28's mockup review
-with Ryan. All the chart-drawing logic lives in client-side JS, ported
-near-verbatim from that approved mockup — this module's job is to compute
-real numbers with CollinearityDiagnostic/BudgetPhaser and hand them to that
-JS as a single JSON blob, not to re-derive the design.
+page). All the chart-drawing logic lives in client-side JS embedded in the
+template — this module's job is to compute real numbers with
+CollinearityDiagnostic/BudgetPhaser and hand them to that JS as a single
+JSON blob, not to re-derive the design.
 
 Report structure (page 1): cover -> headline callout -> Diagnose (spend
 correlation matrix + honest-range forest plot + table) -> Phase (recommended
@@ -37,13 +36,12 @@ from how_wrong_is_your_mmm._phaser import (
 
 # Categorical channel palette. First three slots match the existing
 # introduction.html/research.html brand colours (tv/meta/search); slot 4
-# (violet) was checked against the dataviz skill's CVD validator during the
-# session 28 mockup review (`node scripts/validate_palette.js
-# "#2563eb,#d97706,#059669,#7c3aed" --mode light` -> all checks pass, one
-# WARN band requiring direct labels, which every chart here already has).
-# Slots 5+ are a reasonable extension, not yet run through that validator —
-# fine for now, but if a real report regularly needs more than ~5 channels
-# it's worth re-validating the fuller set rather than assuming it holds.
+# (violet) has been checked for colour-vision-deficiency accessibility and
+# passes, with one WARN band requiring direct labels, which every chart
+# here already has. Slots 5+ are a reasonable extension, not yet checked
+# the same way — fine for now, but if a real report regularly needs more
+# than ~5 channels it's worth re-validating the fuller set rather than
+# assuming it holds.
 _PALETTE = [
     "#2563eb",  # blue
     "#d97706",  # amber
