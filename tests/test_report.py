@@ -148,8 +148,7 @@ class TestReportBuilderFit:
         """Default sensitivity_alphas=[0, .125, .25, .5, 1.0] combined with
         the default sensitivity_magnitude_pct=80.0 should give continuous
         checkpoints at 0/10/20/40/80%, matching the approved report design
-        (session 28) rather than the flat 0-40% sweep this originally
-        shipped with."""
+        rather than the flat 0-40% sweep this originally shipped with."""
         rb = make_builder().fit(**FIT_KWARGS)
         for ch in CHANNELS:
             labels = {
@@ -235,8 +234,8 @@ class TestReportBuilderFit:
 
 
 class TestReportBuilderFastModeWatermark:
-    """fast_mode=True reports must be visibly marked as drafts (session 29
-    follow-up: a fast_mode sample was mistaken for real client numbers)."""
+    """fast_mode=True reports must be visibly marked as drafts (a fast_mode
+    sample was once mistaken for real client numbers)."""
 
     def test_meta_records_fast_mode_true(self):
         rb = make_builder().fit(

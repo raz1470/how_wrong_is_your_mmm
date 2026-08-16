@@ -63,7 +63,7 @@ def simulate_spend(
     start_date:
         If provided (e.g. "2023-01-02"), the DataFrame will have a weekly
         DatetimeIndex anchored on Mondays starting from this date. Required
-        when using the output with BudgetPerturber.
+        when using the output with BudgetPhaser.
 
     Returns
     -------

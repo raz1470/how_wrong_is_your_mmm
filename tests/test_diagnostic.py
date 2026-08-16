@@ -1,5 +1,7 @@
 """Tests for _diagnostic.py — CollinearityDiagnostic."""
 
+import warnings
+
 import pandas as pd
 import pytest
 
@@ -115,6 +117,108 @@ class TestRealSpendPath:
             spend_df=self.spend_df, true_elasticities=ELASTICITIES, correlation=0.9
         ).fit(n_sims=5)
         assert abs(diag_low.actual_correlation - diag_high.actual_correlation) < 1e-10
+
+
+class TestValidateSpendData:
+    """Real client spend is never as clean as the synthetic DGP output --
+    NaN gaps, a paused (zero-spend) channel, or too little history are all
+    realistic. fit() must fail with a clear, specific message rather than a
+    raw LAPACK error or a silently meaningless result."""
+
+    def setup_method(self):
+        self.spend_df = simulate_spend(n_obs=104, correlation=0.6, seed=99)
+
+    def test_nan_raises_value_error(self):
+        bad = self.spend_df.copy()
+        bad.iloc[10, 0] = float("nan")
+        with pytest.raises(ValueError, match="missing"):
+            CollinearityDiagnostic(spend_df=bad, true_elasticities=ELASTICITIES).fit(
+                n_sims=5
+            )
+
+    def test_nan_error_names_the_column(self):
+        bad = self.spend_df.copy()
+        bad_col = bad.columns[1]
+        bad.loc[bad.index[0], bad_col] = float("nan")
+        with pytest.raises(ValueError, match=bad_col):
+            CollinearityDiagnostic(spend_df=bad, true_elasticities=ELASTICITIES).fit(
+                n_sims=5
+            )
+
+    def test_inf_raises_value_error(self):
+        bad = self.spend_df.copy()
+        bad.iloc[0, 0] = float("inf")
+        with pytest.raises(ValueError, match="non-finite"):
+            CollinearityDiagnostic(spend_df=bad, true_elasticities=ELASTICITIES).fit(
+                n_sims=5
+            )
+
+    def test_zero_variance_channel_raises_value_error(self):
+        bad = self.spend_df.copy()
+        zero_col = bad.columns[-1]
+        bad[zero_col] = 0.0
+        with pytest.raises(ValueError, match="zero variance"):
+            CollinearityDiagnostic(spend_df=bad, true_elasticities=ELASTICITIES).fit(
+                n_sims=5
+            )
+
+    def test_zero_variance_error_names_the_column(self):
+        bad = self.spend_df.copy()
+        zero_col = bad.columns[-1]
+        bad[zero_col] = 12_345.0  # constant, non-zero -- still zero variance
+        with pytest.raises(ValueError, match=zero_col):
+            CollinearityDiagnostic(spend_df=bad, true_elasticities=ELASTICITIES).fit(
+                n_sims=5
+            )
+
+    def test_non_numeric_column_raises_value_error(self):
+        bad = self.spend_df.copy()
+        bad[bad.columns[0]] = "not a number"
+        with pytest.raises(ValueError, match="numeric"):
+            CollinearityDiagnostic(spend_df=bad, true_elasticities=ELASTICITIES).fit(
+                n_sims=5
+            )
+
+    def test_too_few_observations_raises_value_error(self):
+        # 3 channels: need len(channels) + 2 = 5 rows minimum.
+        tiny = self.spend_df.iloc[:4]
+        with pytest.raises(ValueError, match="observation"):
+            CollinearityDiagnostic(spend_df=tiny, true_elasticities=ELASTICITIES).fit(
+                n_sims=5
+            )
+
+    def test_minimum_valid_length_does_not_raise(self):
+        minimal = self.spend_df.iloc[:5]  # exactly len(channels) + 2
+        # Also below the per-channel warning floor -- expected here, not a
+        # stray warning, so capture it explicitly rather than let it float.
+        with pytest.warns(UserWarning, match="observations"):
+            diag = CollinearityDiagnostic(
+                spend_df=minimal, true_elasticities=ELASTICITIES
+            ).fit(n_sims=5)
+        assert diag.results_ is not None
+
+    def test_low_obs_per_channel_warns_but_does_not_raise(self):
+        # 3 channels x 10 = 30 is the warning floor; below it should warn.
+        short = self.spend_df.iloc[:20]
+        with pytest.warns(UserWarning, match="observations"):
+            diag = CollinearityDiagnostic(
+                spend_df=short, true_elasticities=ELASTICITIES
+            ).fit(n_sims=5)
+        assert diag.results_ is not None
+
+    def test_ample_data_does_not_warn(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            CollinearityDiagnostic(
+                spend_df=self.spend_df, true_elasticities=ELASTICITIES
+            ).fit(n_sims=5)
+
+    def test_synthetic_path_is_never_validated(self):
+        # Synthetic spend is generated internally and always well-formed --
+        # validation only applies to the real spend_df= path.
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            CollinearityDiagnostic(correlation=0.9, n_obs=6).fit(n_sims=5)
 
 
 class TestPlannedSpend:
