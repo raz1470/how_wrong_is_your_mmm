@@ -1,5 +1,7 @@
 # How Wrong Is Your MMM?
 
+[![CI](https://github.com/raz1470/how_wrong_is_your_mmm/actions/workflows/ci.yml/badge.svg)](https://github.com/raz1470/how_wrong_is_your_mmm/actions/workflows/ci.yml)
+
 **How using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.**
 
 Take the marketing mix model (MMM) you use to allocate your marketing budget across channels. Run it again on a slightly different slice of history, same channels, same market. Would it give you the same answer?
@@ -8,13 +10,15 @@ For most brands, no. TV, Meta, and Search budgets move together because the same
 
 This package quantifies that problem and recommends a fix.
 
+![The ranges tighten, and keep tightening — incremental revenue honest range today vs after 1 year vs after 2 years of budget phasing, every channel narrowing 54-62% off the same £12.3m plan, no extra spend](assets/readme-honest-ranges.png)
+
 ---
 
 ## The three-part solution
 
-**Part 1 — Diagnose.** Simulate many plausible histories of your market and measure how much your elasticity estimates swing. The coefficient of variation (CV) is your "how wrong" number: at mean channel correlation 0.7, TV's CV is ~36%.
+**Part 1 — Diagnose.** Simulate many plausible histories of your market and measure how much your elasticity estimates swing. On a typical £12.3m plan at correlation 0.7, that's the difference between TV earning £945k and £2.09m off the same spend — the model being honest about what it doesn't know, not a rounding error.
 
-**Part 2 — Phase.** Recommend a weekly spend schedule that breaks the correlation between channels while keeping monthly totals exactly the same, either a continuous nudge to each week's split, or `Blackout`, a harder on/off switch that takes a channel fully dark some weeks and makes it up on the weeks it stays on. At the package default (±40% continuous), one year of phasing cuts CV by ~30%. `Blackout` alone reaches 47–59%, using no more than one dark week a month.
+**Part 2 — Phase.** Recommend a weekly spend schedule that breaks the correlation between channels while keeping monthly totals exactly the same, either a continuous nudge to each week's split, or Blackout, a harder on/off switch that takes a channel fully dark some weeks and makes it up on the weeks it stays on. Pacing every channel with Blackout for a year cuts that uncertainty by 54%, two years gets you to 61% — same budget, no extra spend.
 
 **Part 3 — Retrain.** Refit your MMM on the phased data. The de-correlated spend does the work: elasticity estimates come back measurably tighter, without waiting years for it to accumulate.
 
@@ -23,16 +27,16 @@ This package quantifies that problem and recommends a fix.
 ## Guides
 
 [**Introduction**](https://raz1470.github.io/how_wrong_is_your_mmm/introduction.html)
-An introduction to the problem and the fix.
+An introduction to how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.
 
 [**Research**](https://raz1470.github.io/how_wrong_is_your_mmm/research.html)
-How the diagnostic and the phasing algorithm actually work, and the research behind every number.
+The research behind how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.
 
 [**API Reference**](https://raz1470.github.io/how_wrong_is_your_mmm/api/)
 Full class and function docs for `CollinearityDiagnostic`, `BudgetPhaser`, and `Blackout`.
 
 [**Example report**](https://raz1470.github.io/how_wrong_is_your_mmm/example-report.html)
-A full `ReportBuilder` report on simulated data, end to end — the same output `to_html()` produces for a real client.
+A real example report, viewable end to end — built on simulated data, but the exact HTML `to_html()` produces for a client.
 
 ---
 
