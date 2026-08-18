@@ -36,7 +36,7 @@ The research behind how using a budget phasing algorithm can dramatically tighte
 Full class and function docs for `CollinearityDiagnostic`, `BudgetPhaser`, and `Blackout`.
 
 [**Example report**](https://raz1470.github.io/how_wrong_is_your_mmm/example-report.html)
-A full `ReportBuilder` report on simulated data, end to end — the same output `to_html()` produces for a real client.
+A real example report, viewable end to end — built on simulated data, but the exact HTML `to_html()` produces for a client.
 
 ---
 
