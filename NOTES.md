@@ -1296,3 +1296,68 @@ Small copy request from Ryan: `introduction.html`'s header tagline ("How using a
 - `research.html`: tagline replaced with `The research behind how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.`, "The research" wrapped in `<strong>`. This is a bigger change on the research side since it swaps out the old, unrelated tagline sentence entirely — flagging that explicitly in case Ryan wants the old "practitioner's guide to collinearity bias" framing kept somewhere else on the page (it wasn't repeated elsewhere, checked via grep).
 - Verified: div tag balance on both (`introduction.html` 40/40, `research.html` 168/168), Playwright render clean on both (zero console errors, zero `NaN` SVG coordinates), and confirmed via DOM extraction (`innerHTML` of `.tagline`) that the bold wrapping actually rendered, not just present in source.
 - Written back to Ryan's machine via the device bridge (`docs/introduction.html`, `docs/research.html`). **Not committed** — part of the same batch Ryan's committing himself next.
+
+## Same day, continued: batch merged to main, plan for PyPI publish
+
+The `feat/report-builder` batch (docs reconciliation, housekeeping/validation fixes, rebuilt API site) is merged to `main` and pulled locally — verified directly by reading `.git/HEAD`, `.git/refs/heads/main`, and `.git/refs/remotes/origin/main` via the device bridge (both refs point at the same commit, `ee08a07`), and confirmed the on-disk `research.html`/`introduction.html` are byte-identical to what was written back pre-merge, so nothing was lost or reverted.
+
+Ryan's plan from here: **not doing another `research.html` pass yet.** Instead — publish to PyPI (needed so `pip install` works for the next step), then stress-test the package against real Monzo data, then come back with feedback on `research.html` informed by that. Documenting the PyPI plan now per Ryan's request, not executing any of it yet.
+
+**Plan for PyPI publish (nothing done yet, Ryan hasn't got an account/token):**
+1. **Account + 2FA** (Ryan, in browser): create a pypi.org account if none exists; PyPI requires 2FA on every account now. Optionally also a separate test.pypi.org account (fully independent instance) for a dry run before the real upload.
+2. **API token** (Ryan, in browser): project doesn't exist on PyPI yet, so the first upload needs an account-scoped token (Account settings → API tokens → scope "Entire account"). After the first successful upload, swap it for a project-scoped token and delete the account-wide one.
+3. **Build + validate** (sandbox, not yet run): `uv build` → `dist/*.whl` + `dist/*.tar.gz`; `twine check dist/*` to catch metadata/README rendering issues before upload; a clean-venv sanity install (`pip install dist/*.whl` in a scratch venv, `import how_wrong_is_your_mmm`) to confirm it actually works standalone, not just via `PYTHONPATH=src`.
+4. **Upload** (Ryan's terminal, needs his token — not something to hand to this session): TestPyPI first if doing the dry run (`twine upload --repository testpypi dist/*`, then install from `test.pypi.org` in a scratch venv), then the real one (`twine upload dist/*`).
+- **Confirmed available:** checked `pypi.org/project/how-wrong-is-your-mmm/` directly (the exact name in `pyproject.toml`, version `0.1.0`) — 404, name is free.
+- **Not yet confirmed with Ryan:** whether he wants the TestPyPI dry-run step or to go straight to the real index; whether he wants this session to run the build/check step ahead of time or wait until he has a token in hand.
+
+## Same day, continued: no CI set up — flagged as its own open item
+
+Ryan asked whether this had been noted anywhere. It hadn't — checked and there's no `.github/workflows` directory in the repo at all, confirmed directly rather than assumed. Concretely, nothing is automated right now:
+- **No test run on push/PR.** The 240 tests only ever run manually (in this session's sandbox, or Ryan's own machine) — nothing stops a broken PR from merging.
+- **No lint check on push/PR.** `ruff format --check`/`ruff check` are likewise manual-only.
+- **No automated docs build.** `docs/api` is rebuilt by Ryan running `uv run mkdocs build --strict` locally and committing the generated output directly — consistent with everything else in this log, but worth stating plainly: a docstring change that isn't followed by a manual rebuild silently goes stale on the published site, with nothing to catch it.
+- **No automated PyPI publish.** Once the PyPI plan above is executed the first time, every future version bump will again be a fully manual `uv build` + `twine upload` unless a release workflow gets added.
+
+**Not planned or scoped yet** — Ryan flagged this exists as a gap, hasn't asked for a CI setup plan. Worth a dedicated pass (likely a single `.github/workflows/ci.yml` for test+lint on push/PR, possibly a second workflow for docs/PyPI on tag/release) whenever it's prioritized.
+
+## Status as of session 34 (2026-08-17, CI workflow built and verified — test+lint on push/PR)
+
+Ryan asked whether CI should happen before the PyPI publish. Reasoned through it rather than just picking one: the publish is blocked on Ryan creating a pypi.org account/token (browser-only, can't be done from here), while CI setup has no such dependency — so did CI now, in parallel, rather than as a prerequisite. Ryan agreed.
+
+**Built `.github/workflows/ci.yml`:** two jobs on push/PR to `main` — `test` (matrix Python 3.12 + 3.13, `uv sync` + `uv run pytest`) and `lint` (`ruff format --check .` + `ruff check .`). Uses `astral-sh/setup-uv` with cache enabled.
+
+**Added a lean `test` dependency group**, separate from `dev`, so CI doesn't install PyMC/Jupyter/mkdocs/arviz just to run pytest and ruff. `dev` now includes `test` via `{include-group = "test"}` (PEP 735 syntax) rather than repeating pytest/pytest-cov/ruff — Ryan's local `uv sync` still installs everything exactly as before, nothing changes for him. Confirmed the right sync flags for CI: `--group test` alone doesn't work as expected — uv still pulls in the default `dev` group alongside it (163 packages). The correct combination is `--no-default-groups --group test`, which installs only the project's own deps (numpy, pandas) plus the `test` group (13 packages total, vs 153+ for the full `dev` set).
+
+**Verified for real, not just written and assumed correct** — cloned `raz1470/how_wrong_is_your_mmm` fresh from GitHub in the sandbox (confirmed HEAD `ee08a07`, matching the merge Ryan pulled locally), applied the same pyproject.toml/workflow changes there, and actually ran the CI commands: `uv sync --no-default-groups --group test` (13 packages, ~1s), `uv run --no-default-groups --group test pytest` — **240/240 passed** on both Python 3.12 and 3.13, and `ruff format --check .` / `ruff check .` both clean. Confirmed Ryan's real on-machine `uv.lock` was byte-identical to the commit before editing, so the lockfile diff generated in the sandbox clone applies to his machine unchanged.
+
+**Lockfile diff kept minimal on purpose.** First attempt deleted `uv.lock` and let `uv lock` fully re-resolve, which silently bumped ~30 unrelated transitive dependency versions (packages had moved on since the lock was last generated) — a much bigger diff than intended and not this session's call to make. Restored the original lock and re-ran `uv lock` in place instead: 10-line diff, only the new `test` group's membership/specifiers added, no version churn.
+
+**Delivery hit a wall `.github/workflows/` is a protected path for the device bridge** — `pyproject.toml` and `uv.lock` wrote to Ryan's machine fine via `device_commit_files` (diffed byte-identical after write), but `ci.yml` was rejected: "protected file, cannot be written via remote tools." This is a deliberate guardrail (stops a remote session from silently planting CI-affecting files) and wasn't worked around — `ci.yml` was sent to Ryan directly instead, for him to place at `.github/workflows/ci.yml` himself.
+
+**Not committed** — `pyproject.toml`/`uv.lock` are sitting on Ryan's machine as uncommitted changes; `ci.yml` isn't on his machine yet at all, pending Ryan placing it. Per the standing rule, Ryan commits and pushes himself once `ci.yml` is in place — that push is also what will trigger the first real run of this workflow, which hasn't been observed executing on actual GitHub Actions infrastructure yet (only the equivalent commands run directly in the sandbox).
+
+## Next slice (updated session 34 — supersedes the session-33 CI item, which is now in progress not just flagged)
+
+1. **Ryan places `ci.yml`** at `.github/workflows/ci.yml` (delivered as a file this session, blocked from the automatic write), then commits all three files (`pyproject.toml`, `uv.lock`, `ci.yml`) and pushes — first real GitHub Actions run happens then, worth checking it's actually green.
+2. **PyPI publish** — Ryan needs a pypi.org account + 2FA + API token (browser, his own). Still open: TestPyPI dry run first, or straight to the real index; whether this session should run `uv build` + `twine check dist/*` + clean-venv install ahead of time.
+3. **Monzo stress-test** — Ryan's stated next step after publish, informs a future `research.html` feedback pass. Not started.
+4. **Docs/PyPI CI automation** — explicitly out of scope for this session's workflow (test+lint only). A second workflow (docs build on push, PyPI publish on tag/release) is a separate future pass, not scoped yet.
+
+## Same day, continued: paused mid-merge — resume point for next session
+
+Working through getting `ci.yml` in place turned out to be its own saga: the device bridge refuses to write into `.github/workflows/` (protected path, by design), and a `mkdir` run through the device-bridge shell to "pre-create" the folder silently created it inside that tool's own sandboxed VM rather than on Ryan's real disk — so the folder looked like it existed when it didn't. Once Ryan created the folder and moved the file himself, directly in his own terminal, it worked. Lesson for next time: don't rely on the device-bridge shell's view of directory existence for anything under a protected path — verify from Ryan's real terminal instead.
+
+**Where things actually stand right now:**
+- `main` is protected — can't push directly (matches how `feat/report-builder` etc. went).
+- Branch `feat/add-ci` created, carrying two commits: CI workflow + lean `test` dependency group (`ci.yml`, `pyproject.toml`, `uv.lock`), and a second commit adding this session's NOTES.md log. Both pushed to `origin/feat/add-ci`.
+- **Not yet confirmed:** whether the PR is actually open on GitHub, and — the one thing this whole session hasn't been able to verify — whether the `test`/`lint` jobs actually pass when GitHub Actions runs them for real (everything so far only ran in a sandbox clone, not on GitHub's own runners).
+- Ryan's plan: pick this up tomorrow — open the PR if not already open, watch the checks (`test` on 3.12, `test` on 3.13, `lint`) go green, merge, then `git checkout main && git pull` locally.
+
+**Next session should start by asking:** did the PR checks pass? If yes, confirm merged and move to the PyPI publish prep (account/token, TestPyPI-or-not decision, `uv build`/`twine check` dry run). If the checks failed, that's priority one — the workflow's never been proven on real GitHub infrastructure yet, so a first-run failure wouldn't be shocking and shouldn't be treated as alarming, just debugged.
+
+## Same day, continued: PR #32 opened and merged — CI verified on real GitHub Actions
+
+Ryan opened the PR from the draft title/description prepared this session and merged it. All three checks passed for real this time — `test (3.12)`, `test (3.13)`, `lint` — merge commit `47fc5e5` on `main`. This is the first time the workflow has actually run on GitHub's own infrastructure (everything before was sandbox-clone verification only), and it came back clean.
+
+**Next up:** PyPI publish prep (Ryan needs a pypi.org account + 2FA + API token first — browser, his own), then the Monzo real-data stress test.
