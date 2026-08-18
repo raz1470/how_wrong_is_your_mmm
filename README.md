@@ -10,7 +10,7 @@ For most brands, no. TV, Meta, and Search budgets move together because the same
 
 This package quantifies that problem and recommends a fix.
 
-![One plan, three honest ranges — TV could be earning anywhere from £945k to £2.09m off the same spend, more than double](assets/readme-honest-ranges.png)
+![The ranges tighten, and keep tightening — incremental revenue honest range today vs after 1 year vs after 2 years of budget phasing, every channel narrowing 54-62% off the same £12.3m plan, no extra spend](assets/readme-honest-ranges.png)
 
 ---
 
