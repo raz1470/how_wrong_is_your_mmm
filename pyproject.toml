@@ -42,6 +42,15 @@ Documentation = "https://raz1470.github.io/how_wrong_is_your_mmm/api/"
 Research = "https://raz1470.github.io/how_wrong_is_your_mmm/research.html"
 
 [dependency-groups]
+# `test` is the lean slice CI installs: package deps (numpy, pandas) + pytest/ruff,
+# no PyMC/Jupyter/mkdocs. `dev` still pulls in everything for local work via
+# `uv sync` (dev is uv's default group), it just includes `test` rather than
+# repeating pytest/pytest-cov/ruff directly.
+test = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+]
 dev = [
     "arviz>=0.18,<0.24",
     "ipykernel>=6.0",
@@ -53,9 +62,7 @@ dev = [
     "pre-commit>=3.0",
     "pymc>=5.16,<5.26",
     "pytensor>=2.22",
-    "pytest>=8.0",
-    "pytest-cov>=5.0",
-    "ruff>=0.4",
+    { include-group = "test" },
 ]
 
 [tool.hatch.build.targets.wheel]
