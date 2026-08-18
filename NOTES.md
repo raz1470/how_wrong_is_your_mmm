@@ -1343,21 +1343,3 @@ Ryan asked whether CI should happen before the PyPI publish. Reasoned through it
 2. **PyPI publish** — Ryan needs a pypi.org account + 2FA + API token (browser, his own). Still open: TestPyPI dry run first, or straight to the real index; whether this session should run `uv build` + `twine check dist/*` + clean-venv install ahead of time.
 3. **Monzo stress-test** — Ryan's stated next step after publish, informs a future `research.html` feedback pass. Not started.
 4. **Docs/PyPI CI automation** — explicitly out of scope for this session's workflow (test+lint only). A second workflow (docs build on push, PyPI publish on tag/release) is a separate future pass, not scoped yet.
-
-## Same day, continued: paused mid-merge — resume point for next session
-
-Working through getting `ci.yml` in place turned out to be its own saga: the device bridge refuses to write into `.github/workflows/` (protected path, by design), and a `mkdir` run through the device-bridge shell to "pre-create" the folder silently created it inside that tool's own sandboxed VM rather than on Ryan's real disk — so the folder looked like it existed when it didn't. Once Ryan created the folder and moved the file himself, directly in his own terminal, it worked. Lesson for next time: don't rely on the device-bridge shell's view of directory existence for anything under a protected path — verify from Ryan's real terminal instead.
-
-**Where things actually stand right now:**
-- `main` is protected — can't push directly (matches how `feat/report-builder` etc. went).
-- Branch `feat/add-ci` created, carrying two commits: CI workflow + lean `test` dependency group (`ci.yml`, `pyproject.toml`, `uv.lock`), and a second commit adding this session's NOTES.md log. Both pushed to `origin/feat/add-ci`.
-- **Not yet confirmed:** whether the PR is actually open on GitHub, and — the one thing this whole session hasn't been able to verify — whether the `test`/`lint` jobs actually pass when GitHub Actions runs them for real (everything so far only ran in a sandbox clone, not on GitHub's own runners).
-- Ryan's plan: pick this up tomorrow — open the PR if not already open, watch the checks (`test` on 3.12, `test` on 3.13, `lint`) go green, merge, then `git checkout main && git pull` locally.
-
-**Next session should start by asking:** did the PR checks pass? If yes, confirm merged and move to the PyPI publish prep (account/token, TestPyPI-or-not decision, `uv build`/`twine check` dry run). If the checks failed, that's priority one — the workflow's never been proven on real GitHub infrastructure yet, so a first-run failure wouldn't be shocking and shouldn't be treated as alarming, just debugged.
-
-## Same day, continued: PR #32 opened and merged — CI verified on real GitHub Actions
-
-Ryan opened the PR from the draft title/description prepared this session and merged it. All three checks passed for real this time — `test (3.12)`, `test (3.13)`, `lint` — merge commit `47fc5e5` on `main`. This is the first time the workflow has actually run on GitHub's own infrastructure (everything before was sandbox-clone verification only), and it came back clean.
-
-**Next up:** PyPI publish prep (Ryan needs a pypi.org account + 2FA + API token first — browser, his own), then the Monzo real-data stress test.
