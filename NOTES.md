@@ -1343,3 +1343,60 @@ Ryan asked whether CI should happen before the PyPI publish. Reasoned through it
 2. **PyPI publish** — Ryan needs a pypi.org account + 2FA + API token (browser, his own). Still open: TestPyPI dry run first, or straight to the real index; whether this session should run `uv build` + `twine check dist/*` + clean-venv install ahead of time.
 3. **Monzo stress-test** — Ryan's stated next step after publish, informs a future `research.html` feedback pass. Not started.
 4. **Docs/PyPI CI automation** — explicitly out of scope for this session's workflow (test+lint only). A second workflow (docs build on push, PyPI publish on tag/release) is a separate future pass, not scoped yet.
+
+## Same day, continued: paused mid-merge — resume point for next session
+
+Working through getting `ci.yml` in place turned out to be its own saga: the device bridge refuses to write into `.github/workflows/` (protected path, by design), and a `mkdir` run through the device-bridge shell to "pre-create" the folder silently created it inside that tool's own sandboxed VM rather than on Ryan's real disk — so the folder looked like it existed when it didn't. Once Ryan created the folder and moved the file himself, directly in his own terminal, it worked. Lesson for next time: don't rely on the device-bridge shell's view of directory existence for anything under a protected path — verify from Ryan's real terminal instead.
+
+**Where things actually stand right now:**
+- `main` is protected — can't push directly (matches how `feat/report-builder` etc. went).
+- Branch `feat/add-ci` created, carrying two commits: CI workflow + lean `test` dependency group (`ci.yml`, `pyproject.toml`, `uv.lock`), and a second commit adding this session's NOTES.md log. Both pushed to `origin/feat/add-ci`.
+- **Not yet confirmed:** whether the PR is actually open on GitHub, and — the one thing this whole session hasn't been able to verify — whether the `test`/`lint` jobs actually pass when GitHub Actions runs them for real (everything so far only ran in a sandbox clone, not on GitHub's own runners).
+- Ryan's plan: pick this up tomorrow — open the PR if not already open, watch the checks (`test` on 3.12, `test` on 3.13, `lint`) go green, merge, then `git checkout main && git pull` locally.
+
+**Next session should start by asking:** did the PR checks pass? If yes, confirm merged and move to the PyPI publish prep (account/token, TestPyPI-or-not decision, `uv build`/`twine check` dry run). If the checks failed, that's priority one — the workflow's never been proven on real GitHub infrastructure yet, so a first-run failure wouldn't be shocking and shouldn't be treated as alarming, just debugged.
+
+## Same day, continued: PR #32 opened and merged — CI verified on real GitHub Actions
+
+Ryan opened the PR from the draft title/description prepared this session and merged it. All three checks passed for real this time — `test (3.12)`, `test (3.13)`, `lint` — merge commit `47fc5e5` on `main`. This is the first time the workflow has actually run on GitHub's own infrastructure (everything before was sandbox-clone verification only), and it came back clean.
+
+**Next up:** PyPI publish prep (Ryan needs a pypi.org account + 2FA + API token first — browser, his own), then the Monzo real-data stress test.
+
+## Session 35 (2026-08-19): full `research.html`/`overview.html` rewrite from Ryan's line-by-line critique, plus GitHub Actions docs deploy
+
+Ryan opened with a long, terse list of complaints against `research.html` and `README.md` and asked to go through them one by one before touching anything. Went through all of it point by point (README's stale "no CI" claim, the TL;DR box, several individual charts, the Questions section, page naming, two new FAQ ideas) across many rounds, agreeing scope on each before writing anything. Final instruction: **"scope it then do it including the readme dropping ci comment. after your done I can sort the docs in git hub"** — implement everything, no git/GitHub actions from this session, Ryan handles commit/PR/Pages settings himself.
+
+**README.md.** Dropped the "no CI build step for GitHub Pages, build/commit locally" line, which was already false by session 34 (CI existed, just for test+lint, not docs) — replaced with a description of the new `docs-deploy.yml` workflow (below), and reworded "rebuild the committed site before a release" to "catch doc errors before pushing, rather than waiting on CI". Guides section link/label changed `introduction.html`/"Introduction" → `overview.html`/"Overview" to match the rename below.
+
+**GitHub Pages moved to GitHub Actions.** New `.github/workflows/docs-deploy.yml`: on push to `main`, builds the API reference (`uv run mkdocs build --strict`) and deploys the whole `docs/` folder via `actions/upload-pages-artifact` + `actions/deploy-pages`. This replaces the old flow where the built API docs were committed to git by hand. **Ryan still needs to flip GitHub Settings → Pages → Source to "GitHub Actions"** (one-time, manual, browser-only) before this actually takes over from whatever's serving Pages now. Same protected-path issue as `ci.yml` in session 34 — delivered as a file for Ryan to place at `.github/workflows/docs-deploy.yml` himself, not written automatically.
+
+**`introduction.html` renamed to `overview.html`** (copied then edited, old file left in place since device tools can't delete — Ryan should `git rm docs/introduction.html` once he's checked `overview.html` over). `pyproject.toml`'s `Homepage` URL updated to match. Ryan confirmed he hasn't shared the old link anywhere, so no redirect concerns.
+
+**`research.html`, the bulk of the session:**
+- TL;DR box replaced with a single unboxed lede paragraph, no bullets — went through several drafts on Ryan's feedback ("wording is rubbish", too many commas, an em dash slipped in despite the standing rule, don't reference `introduction.html` by filename).
+- 8 "see introduction.html" cross-references removed page-wide, reworded as self-contained "this page's..." phrasing — Ryan's point was that naming another file means nothing to a reader landing directly on this page.
+- chart1 (spend forest): swapped from RNG-generated synthetic demand to the real `PLAN` array already used on `overview.html`, so both pages show the identical planning-cycle example instead of two different fake datasets.
+- chart4 (elasticity forest): rebuilt in £ instead of standardised elasticity units, matching the report's own convention — real numbers (TV £945k–£2.09m/£5.1m spend, Meta £1.42m–£2.60m/£4.1m spend, Search £712k–£1.89m/£3.1m spend), redundant prose/kboxes folded into the chart.
+- chart10 (OLS vs Bayes): the old dual-bar-width chart was, in Ryan's words, "horrendous" — considered a dumbbell/zoomed-axis redesign first, then rejected it (would visually exaggerate a genuinely modest 5–9% effect) in favour of a plain honest 0-based bar chart of the narrowing percentage itself (TV 6.5%, Meta 5.2%, Search 9.1%). The adjacent "risky" kbox (no real data behind it) was dropped.
+- New `chartGeoLift` figure added (Meta GeoLift detect 4–11%/false-alarm 3–5% vs Google Causal Impact detect 52–66%/false-alarm ~30%), replacing a block of dense inline prose numbers with a chart.
+- Duplicate "why not just run a geo-lift test" section (it appeared twice) de-duped to one, kept in the order `introduction.html`/`overview.html` used, since Ryan preferred that flow.
+- chart8+chart9 merged into one two-panel chart (`chart89`) — band width and % reduction stacked in a single figure rather than two separate ones telling the same "more channels doesn't hurt" story.
+- chart12 (Blackout comparison) recoloured from an arbitrary grey/blue/green scheme to a grey→black progression that actually reads as intensity.
+- "What this isn't" section (felt oddly small and disconnected) folded into the opening of the geo-lift FAQ answer instead of standing alone.
+- "Bringing it together" promoted from an unlabelled closing `<section>` to a full numbered Section 7 with its own nav entry, and already linked back to the repo.
+- Dropped the standalone "±40% deviation · 2.5 years" kbox and the "Blackout's edge holds at scale" sub-heading (folded into surrounding prose) — both were minor redundant restatements Ryan flagged.
+- **Two new FAQs, both discussed at length before writing:**
+  - *"How do I phase a plan I haven't finalised yet?"* — Ryan's scenario was the general case of someone with an MMM and a separate budget optimiser asking how phasing fits in, not a specific named tool. Verified against `BudgetPhaser.__init__`'s real signature that it needs pre-shaped `history_df`+`plan_df` and doesn't invent a weekly shape from an annual total on its own, and wrote the answer around that constraint.
+  - *"Does this help with adstock and saturation too?"* — prompted by a 2024 paper Ryan recalled on elasticity/adstock/carryover being hard to separate from spend data alone. Framed honestly as a different problem that the same underlying idea (deliberately varying spend) probably also helps with, not a confident "yes it fixes this too" claim. Short version added to `overview.html` per Ryan's steer ("i bet i get much more reads on the overview"), full version stayed on `research.html`.
+- Comma discipline enforced throughout the new copy (Ryan flagged overuse twice) and a full page-wide em-dash sweep — 11 reader-facing instances found via grep and replaced with periods/commas/colons, per the standing style rule from sessions 11/16. Title tags and JS code comments left alone (established exemptions).
+- **Deliberately left unimplemented, not faked:** a Blackout line on chart 7 (the page only has three discrete weeks-to-reduction stat points for Blackout, not the continuous curve a fourth line needs) and a chart for the elasticity-robustness FAQ (no real backing numbers exist anywhere in the page or notebooks for that claim). Both flagged inline as open gaps rather than invented.
+- Verified before delivery: HTML tag balance, `node --check` on every extracted `<script>` block, Playwright headless render of both `research.html` and `overview.html` with zero console errors and zero empty SVGs, and manual screenshot review of every changed chart region.
+
+**Delivered:** `README.md`, `pyproject.toml`, `docs/overview.html`, `docs/research.html` written directly to Ryan's machine via the device bridge. `docs-deploy.yml` delivered as a file (protected path, same as `ci.yml` in session 34) for Ryan to place at `.github/workflows/docs-deploy.yml` himself. **Nothing committed** — per Ryan's explicit instruction, no git or GitHub actions taken this session; he's sorting commit/PR/Pages settings himself.
+
+## Next slice (updated session 35)
+
+1. **Ryan places `docs-deploy.yml`**, deletes/`git rm`s the now-superseded `docs/introduction.html`, commits everything (README, pyproject.toml, overview.html, research.html, docs-deploy.yml), pushes, then flips GitHub Settings → Pages → Source to "GitHub Actions" — first real docs deploy happens after that, worth checking it's green same as the CI workflow was in session 34.
+2. **Two research.html gaps flagged this session, not yet scoped:** a real Blackout CV-reduction-vs-phased-period-length dataset (would need new simulation runs, not just doc edits) to complete chart 7's fourth line; and whatever data would support an elasticity-robustness chart for that FAQ, if Ryan decides it's worth generating.
+3. **PyPI publish prep** — still open from session 34, Ryan needs a pypi.org account + 2FA + API token (browser, his own) before this can move.
+4. **Monzo stress-test** — still the stated next step after publish, informs a future `research.html` feedback pass.

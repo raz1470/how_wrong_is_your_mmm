@@ -211,7 +211,7 @@ footer a { color: var(--muted); }
 <header class="hdr">
   <p class="eyebrow">Marketing Science · Ryan O'Sullivan</p>
   <h1>How Wrong Is Your MMM?</h1>
-  <p class="tagline"><strong>An introduction</strong> to how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.</p>
+  <p class="tagline"><strong>An overview</strong> of how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.</p>
 </header>
 
 <nav class="snav">
@@ -434,6 +434,9 @@ footer a { color: var(--muted); }
 
   <p style="font-weight:700; margin-bottom: .3rem;">Doesn't a Bayesian model already fix this?</p>
   <p>Not on its own. Priors are genuinely useful, they stabilise noisy estimates and help capture things like how spend decays or saturates over time. But they can't invent information that was never in the data: if TV and Meta always moved together, no prior tells you which one actually drove sales. We tested it directly, and switching to a Bayesian fit only narrowed the uncertainty by 5 to 9%.</p>
+
+  <p style="font-weight:700; margin-bottom: .3rem;">Does this help with adstock and saturation too?</p>
+  <p>Different problem, and a real one. A 2024 study found decay, saturation and time-varying effectiveness are often impossible to tell apart from ordinary spend data either. Phasing wasn't built to fix that, but it runs on the same idea: deliberately varying spend. That probably helps here too.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Does it scale to all of my channels?</p>
   <p>Yes. Everything on this page uses three channels for clarity, but we reran the same diagnostic and phasing fix at 5, 10, 15 and 20 channels. Reliability barely moves as you add more, what matters is how correlated your channels are with each other, not how many you have. Phasing delivers roughly the same improvement the whole way, from 5 channels to 20.</p>
