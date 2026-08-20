@@ -26,8 +26,8 @@ This package quantifies that problem and recommends a fix.
 
 ## Guides
 
-[**Introduction**](https://raz1470.github.io/how_wrong_is_your_mmm/introduction.html)
-An introduction to how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.
+[**Overview**](https://raz1470.github.io/how_wrong_is_your_mmm/overview.html)
+An overview of how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.
 
 [**Research**](https://raz1470.github.io/how_wrong_is_your_mmm/research.html)
 The research behind how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.
@@ -113,13 +113,13 @@ uv run ruff format . && uv run ruff check . && uv run pytest
 
 224 tests. Python 3.12+. MIT licence.
 
-The [API reference](https://raz1470.github.io/how_wrong_is_your_mmm/api/) is built with `mkdocs` + `mkdocstrings` from the docstrings in `src/`, and the built site is committed under `docs/api/` (this repo has no CI build step for GitHub Pages, so the site has to be built and committed locally, same as the notebooks). To preview changes locally:
+The [API reference](https://raz1470.github.io/how_wrong_is_your_mmm/api/) is built with `mkdocs` + `mkdocstrings` from the docstrings in `src/`. A GitHub Actions workflow (`docs-deploy.yml`) rebuilds it and deploys the whole `docs/` site on every push to `main`, so there's nothing to build or commit locally for a release. To preview changes locally:
 
 ```bash
 uv run mkdocs serve
 ```
 
-To rebuild the committed site before a release:
+To catch doc errors before pushing, rather than waiting on CI:
 
 ```bash
 uv run mkdocs build --strict
