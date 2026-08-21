@@ -69,14 +69,14 @@ diag.summary()
 # Diagnose — your own spend data
 diag = CollinearityDiagnostic(spend_df=my_spend_df)
 diag.fit()
-diag.summary()   # same output, personalised to your correlation structure
+diag.summary()  # same output, personalised to your correlation structure
 
 # Phase — recommend a de-correlated spend schedule
 # history: your multi-year spend history (DatetimeIndex)
 # plan:    the upcoming year's spend plan (DatetimeIndex, same channels)
 phaser = BudgetPhaser(history_df=history, plan_df=plan)
 phaser.fit()
-phaser.recommended_schedule_   # 52-week DataFrame, monthly totals guaranteed to match
+phaser.recommended_schedule_  # 52-week DataFrame, monthly totals guaranteed to match
 ```
 
 ```python
@@ -85,8 +85,10 @@ from how_wrong_is_your_mmm import ReportBuilder
 
 rb = ReportBuilder(history_df=history, plan_df=plan, client_name="Acme Co")
 rb.fit()
-rb.to_html("reports/acme_co.html")     # self-contained HTML, open it in a browser
-rb.schedule_csv("reports/acme_co_schedule.csv")   # the recommended weekly schedule as a CSV
+rb.to_html("reports/acme_co.html")  # self-contained HTML, open it in a browser
+rb.schedule_csv(
+    "reports/acme_co_schedule.csv"
+)  # the recommended weekly schedule as a CSV
 ```
 
 `reports/` is git-ignored by default (see `.gitignore`) — client data has no business in a public repo. Save your own generated reports there, or wherever suits your workflow. See it end to end at the [example report](https://raz1470.github.io/how_wrong_is_your_mmm/example-report.html) above.
