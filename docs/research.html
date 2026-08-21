@@ -297,7 +297,7 @@ svg.chart { display: block; width: 100%; }
   <!-- Chart 4: Personalised interval chart, in £ -->
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Your honest range, in the units you budget in</div>
+      <div class="fig-title">Your model-estimated range, in the units you budget in</div>
       <div class="fig-sub">Incremental revenue, 10th–90th percentile across 50 noise seeds · this page's £12.3m example plan (mean pairwise correlation = 0.69)</div>
     </div>
     <div class="fig-body">
@@ -747,7 +747,7 @@ svg.chart { display: block; width: 100%; }
     <p class="fig-cap">Meta's curve is the steepest and flattens earliest: by ±80% continuous it's already at 13.8% CV, close to its own Blackout floor of 11.0%: a continuous nudge alone captures most of Meta's available benefit. TV and Search are still falling fast at ±80% (20.1% and 22.2% CV) and drop substantially further under Blackout (13.9% and 17.0%). The reliability case for the stronger lever is clearest for these two, operational constraints permitting. Same real dataset as throughout this guide (history seed=0, plan seed=1, correlation 0.7).</p>
   </div>
 
-  <p>Run all three steps against your own spend and <code>ReportBuilder</code> packages the result into a single client-ready HTML report: today's honest range, the recommended weekly schedule, and how much it narrows things, no code required to read it. <a href="example-report.html">See a full example report →</a></p>
+  <p>Run all three steps against your own spend and <code>ReportBuilder</code> packages the result into a single client-ready HTML report: today's model-estimated range, the recommended weekly schedule, and how much it narrows things, no code required to read it. <a href="example-report.html">See a full example report →</a></p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════
@@ -831,7 +831,7 @@ svg.chart { display: block; width: 100%; }
 
   <p>That's the same idea phasing already uses, just aimed at a different symptom. Blackout creates on-off cycling, which reveals decay directly. The continuous lever widens the spend range a channel gets observed at, which is what you need to trace out a saturation curve properly. So there's a real reason to think phasing might help here too.</p>
 
-  <p>But it's untested. Nothing in this package's simulations models adstock or saturation, so treat this as a hypothesis, not a finding.</p>
+  <p>But it's untested. Nothing in this package's simulations models adstock or saturation, so treat this as a hypothesis, not a finding — it's on the roadmap to investigate properly, not a claim being made here.</p>
 
   <h3>Does it scale to all of my channels?</h3>
 
