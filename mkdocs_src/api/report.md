@@ -1,7 +1,7 @@
 # ReportBuilder
 
 Packages `CollinearityDiagnostic` and `BudgetPhaser` output into a single,
-client-ready HTML report — today's honest range, the recommended weekly
+client-ready HTML report — today's model-estimated range, the recommended weekly
 schedule, and how much it narrows the elasticity uncertainty. No code
 required to read it.
 

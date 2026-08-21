@@ -35,7 +35,7 @@ from how_wrong_is_your_mmm._phaser import (
 )
 
 # Categorical channel palette. First three slots match the existing
-# introduction.html/research.html brand colours (tv/meta/search); slot 4
+# overview.html/research.html brand colours (tv/meta/search); slot 4
 # (violet) has been checked for colour-vision-deficiency accessibility and
 # passes, with one WARN band requiring direct labels, which every chart
 # here already has. Slots 5+ are a reasonable extension, not yet checked
@@ -93,7 +93,7 @@ def _resolve_channel_lever(
 class ReportBuilder:
     """Build a client-facing HTML report from a history + plan spend dataset.
 
-    Runs CollinearityDiagnostic (today's honest range + spend correlation)
+    Runs CollinearityDiagnostic (today's model-estimated range + spend correlation)
     and BudgetPhaser (the recommended schedule, its per-channel sensitivity,
     and the before/after impact over several horizons), then renders the
     result as a single self-contained HTML file.
@@ -240,7 +240,7 @@ class ReportBuilder:
                 {max(1, n_weeks // 4), max(1, n_weeks // 2), n_weeks, n_weeks * 2}
             )
 
-        # --- Today: correlation + honest range, unphased -------------------
+        # --- Today: correlation + model-estimated range, unphased -----------
         today_combined = pd.concat([self.history_df, self.plan_df])
         diag_today = CollinearityDiagnostic(
             spend_df=today_combined, true_elasticities=self.true_elasticities
@@ -783,21 +783,21 @@ footer { margin-top: 2.5rem; padding: 1.5rem 2rem 2rem; border-top: 1px solid va
     <p class="fig-cap" id="corrCaption"></p>
   </div>
 
-  <p>We simulated many equally plausible versions of your spend history consistent with this correlation structure, refitting the model on each one. Here's the honest range of incremental revenue each channel could support as a result.</p>
+  <p>We simulated many equally plausible versions of your spend history consistent with this correlation structure, refitting the model on each one. Here's the model-estimated range of incremental revenue each channel could support as a result.</p>
 
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Today's honest range, before any change</div>
+      <div class="fig-title">Today's model-estimated range, before any change</div>
       <div class="fig-sub">Incremental revenue, 10th&ndash;90th percentile across simulated histories</div>
     </div>
     <div class="fig-body">
       <svg class="chart" id="chartDiagnose" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Each channel's honest range, given how your channels have actually moved together. Wider bars mean less reliable elasticity estimates.</p>
+    <p class="fig-cap">Each channel's model-estimated range, given how your channels have actually moved together. Wider bars mean less reliable elasticity estimates.</p>
   </div>
 
   <table class="rpt">
-    <thead><tr><th>Channel</th><th class="num">Spend</th><th class="num">Central estimate</th><th class="num">Honest range</th><th class="num">CV</th></tr></thead>
+    <thead><tr><th>Channel</th><th class="num">Spend</th><th class="num">Central estimate</th><th class="num">Model-estimated range</th><th class="num">CV</th></tr></thead>
     <tbody id="diagnoseTable"></tbody>
   </table>
 </section>
@@ -839,7 +839,7 @@ footer { margin-top: 2.5rem; padding: 1.5rem 2rem 2rem; border-top: 1px solid va
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title" id="impactFigTitle"></div>
-      <div class="fig-sub">Incremental revenue, honest range</div>
+      <div class="fig-sub">Incremental revenue, model-estimated range</div>
     </div>
     <div class="fig-body">
       <div class="legend">

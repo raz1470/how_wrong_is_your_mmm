@@ -10,7 +10,7 @@ For most brands, no. TV, Meta, and Search budgets move together because the same
 
 This package quantifies that problem and recommends a fix.
 
-![The ranges tighten, and keep tightening toward the true answer — incremental revenue model-estimated range today vs after 1 year vs after 2 years of budget phasing, every channel narrowing 54-62% off the same £12.3m plan, no extra spend. Dashed line marks the true elasticity's implied revenue on this demo scenario.](https://raw.githubusercontent.com/raz1470/how_wrong_is_your_mmm/main/assets/readme-honest-ranges.png)
+![The ranges tighten, and keep tightening toward the true answer — incremental revenue model-estimated range today vs after 1 year vs after 2 years of budget phasing, every channel narrowing 54-67% off the same £12.3m plan, no extra spend. Dashed line marks the true elasticity's implied revenue on this demo scenario.](https://raw.githubusercontent.com/raz1470/how_wrong_is_your_mmm/main/assets/readme-honest-ranges.png)
 
 ---
 
@@ -18,7 +18,7 @@ This package quantifies that problem and recommends a fix.
 
 **Part 1 — Diagnose.** Simulate many plausible histories of your market and measure how much your elasticity estimates swing. On a typical £12.3m plan at correlation 0.7, that's the difference between TV earning £945k and £2.09m off the same spend — the model being honest about what it doesn't know, not a rounding error.
 
-**Part 2 — Phase.** Recommend a weekly spend schedule that breaks the correlation between channels while keeping monthly totals exactly the same, either a continuous nudge to each week's split, or Blackout, a harder on/off switch that takes a channel fully dark some weeks and makes it up on the weeks it stays on. Pacing every channel with Blackout for a year cuts that uncertainty by 54%, two years gets you to 61% — same budget, no extra spend.
+**Part 2 — Phase.** Recommend a weekly spend schedule that breaks the correlation between channels while keeping monthly totals exactly the same, either a continuous nudge to each week's split, or Blackout, a harder on/off switch that takes a channel fully dark some weeks and makes it up on the weeks it stays on. Pacing every channel with Blackout for a year cuts that uncertainty by 54%, two years gets you to 65-67% depending on the channel — same budget, no extra spend.
 
 **Part 3 — Retrain.** Refit your MMM on the phased data. The de-correlated spend does the work: elasticity estimates come back measurably tighter, without waiting years for it to accumulate.
 

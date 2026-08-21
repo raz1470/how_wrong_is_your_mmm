@@ -6,7 +6,7 @@ This is the API reference, generated from the package's own docstrings. If
 you're looking for the narrative version of what this package does and why,
 start with one of these instead:
 
-- [**Introduction**](https://raz1470.github.io/how_wrong_is_your_mmm/introduction.html) —
+- [**Overview**](https://raz1470.github.io/how_wrong_is_your_mmm/overview.html) —
   a two-minute read: the headline numbers and the fix, no maths.
 - [**Research**](https://raz1470.github.io/how_wrong_is_your_mmm/research.html) —
   the full method and the research behind it.
@@ -45,9 +45,9 @@ phaser = BudgetPhaser(history_df=history, plan_df=plan)
 phaser.fit()
 phaser.recommended_schedule_
 
-report = ReportBuilder(history_df=history, plan_df=plan, client_name="Acme Co")
+report = ReportBuilder(history_df=history, plan_df=plan, client_name="Example Brand")
 report.fit()
-report.to_html("reports/acme_co.html")
+report.to_html("reports/example_brand.html")
 ```
 
 Source: [github.com/raz1470/how_wrong_is_your_mmm](https://github.com/raz1470/how_wrong_is_your_mmm)

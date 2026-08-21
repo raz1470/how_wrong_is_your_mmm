@@ -917,7 +917,7 @@ class BudgetPhaser:
             when horizon here means "more experience/history has
             accumulated," not "more spend." This did not match
             notebooks/02_phaser_walkthrough.ipynb's own blackout_impact()
-            helper (the source of introduction.html's published £ figures),
+            helper (the source of overview.html's published £ figures),
             which always prices against the plan's own fixed annual total
             regardless of horizon — "same plan, £0 extra spend, just a
             tighter range" is the intended story throughout this package,
@@ -946,8 +946,8 @@ class BudgetPhaser:
 
         # Fixed across every horizon on purpose — see include_revenue's
         # docstring above. Revenue always prices against the plan's own
-        # annual total; only the CV (and so the honest range's width)
-        # changes with horizon.
+        # annual total; only the CV (and so the model-estimated range's
+        # width) changes with horizon.
         fixed_planned_spend = self.plan_df.sum().to_dict() if include_revenue else None
 
         for h in horizons_weeks:
