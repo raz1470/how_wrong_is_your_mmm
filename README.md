@@ -10,7 +10,7 @@ For most brands, no. TV, Meta, and Search budgets move together because the same
 
 This package quantifies that problem and recommends a fix.
 
-![The ranges tighten, and keep tightening toward the true answer — incremental revenue honest range today vs after 1 year vs after 2 years of budget phasing, every channel narrowing 54-62% off the same £12.3m plan, no extra spend. Dashed line marks the true elasticity's implied revenue on this demo scenario.](https://raw.githubusercontent.com/raz1470/how_wrong_is_your_mmm/main/assets/readme-honest-ranges.png)
+![The ranges tighten, and keep tightening toward the true answer — incremental revenue model-estimated range today vs after 1 year vs after 2 years of budget phasing, every channel narrowing 54-62% off the same £12.3m plan, no extra spend. Dashed line marks the true elasticity's implied revenue on this demo scenario.](https://raw.githubusercontent.com/raz1470/how_wrong_is_your_mmm/main/assets/readme-honest-ranges.png)
 
 ---
 
