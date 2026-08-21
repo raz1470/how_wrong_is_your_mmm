@@ -69,7 +69,9 @@ h1 {
   color: var(--muted);
   border-bottom: 2px solid transparent;
   white-space: nowrap;
+  transition: color .15s, border-color .15s;
 }
+.snav a:hover { color: var(--text); border-bottom-color: var(--light); }
 .snav a.active { color: var(--text); border-bottom-color: var(--text); }
 
 /* ── Main ── */
@@ -237,9 +239,13 @@ footer a { color: var(--muted); }
       <div class="fig-sub">Incremental revenue, the honest range, before any fix</div>
     </div>
     <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> Honest range</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> True elasticity's revenue</span>
+      </div>
       <svg class="chart" id="chartProblem" viewBox="0 0 700 200" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Same spend, same market, same true effect. This is the honest range once you account for how much the answer can genuinely move given how these channels were planned.</p>
+    <p class="fig-cap">Same spend, same market, same true effect (dashed line — known here because it's a demo scenario; a real plan of your own won't have one). This is the honest range once you account for how much the answer can genuinely move given how these channels were planned.</p>
   </div>
 
   <p>Look closely and none of these ranges are tight. TV could be earning anywhere from £945k to £2.09m off the same spend, more than double. Search's range is almost as wide in absolute terms, on barely a third of the budget. That's not a rounding error. That's the model telling you it genuinely doesn't know which channel is really carrying the plan.</p>
@@ -331,10 +337,11 @@ footer a { color: var(--muted); }
         <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Today</span>
         <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.75"/></svg> After 1 year</span>
         <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> After 2 years</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> True elasticity's revenue</span>
       </div>
       <svg class="chart" id="chartImpact" viewBox="0 0 700 230" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Every channel narrows substantially, and keeps narrowing: TV 54% then 58%, Meta 54% then 62%, Search 54% then 61% — off the same £12.3m, no extra spend, just phasing every channel with the on/off lever for longer.</p>
+    <p class="fig-cap">Every channel narrows substantially, and keeps narrowing: TV 54% then 58%, Meta 54% then 62%, Search 54% then 61% — off the same £12.3m, no extra spend, just phasing every channel with the on/off lever for longer. The dashed line marks the true elasticity's implied revenue (known here because it's a demo scenario): the ranges don't just tighten, they close in on it.</p>
   </div>
 
   <div class="knums">
@@ -540,6 +547,11 @@ function drawForest(svgId, data, xMax) {
 
     g.appendChild(el('line', { x1: scX(ch.p10), y1: cy, x2: scX(ch.p90), y2: cy, stroke: ch.color, 'stroke-width': 7, 'stroke-linecap': 'round' }));
 
+    if (ch.truth !== undefined) {
+      const tx = scX(ch.truth);
+      g.appendChild(el('line', { x1: tx, y1: cy - rowH * 0.32, x2: tx, y2: cy + rowH * 0.32, stroke: '#111827', 'stroke-width': 1.6, 'stroke-dasharray': '3,2' }));
+    }
+
     g.appendChild(el('text', { x: scX(ch.p90) + 8, y: cy + 4, 'font-size': 11.5, fill: ch.color, 'font-weight': '700' }, `${fmtGBP(ch.p10)} – ${fmtGBP(ch.p90)}`));
     g.appendChild(el('text', { x: m.left - 10, y: cy - 2, 'text-anchor': 'end', 'font-size': 12.5, 'font-weight': '700', fill: ch.color }, ch.name));
     g.appendChild(el('text', { x: m.left - 10, y: cy + 12, 'text-anchor': 'end', 'font-size': 9.5, fill: '#9ca3af' }, `£${ch.spend.toFixed(1)}m spend`));
@@ -549,9 +561,9 @@ function drawForest(svgId, data, xMax) {
 }
 
 drawForest('chartProblem', [
-  { name: 'TV',     color: '#2563eb', spend: 5.098, p10: 0.945, p90: 2.094 },
-  { name: 'Meta',   color: '#d97706', spend: 4.066, p10: 1.418, p90: 2.595 },
-  { name: 'Search', color: '#059669', spend: 3.100, p10: 0.712, p90: 1.885 },
+  { name: 'TV',     color: '#2563eb', spend: 5.098, p10: 0.945, p90: 2.094, truth: 1.529 },
+  { name: 'Meta',   color: '#d97706', spend: 4.066, p10: 1.418, p90: 2.595, truth: 2.033 },
+  { name: 'Search', color: '#059669', spend: 3.100, p10: 0.712, p90: 1.885, truth: 1.240 },
 ], 2.8);
 
 // ── Chart: Cause (correlated spend time series) ─────────────────────────────
@@ -680,9 +692,9 @@ drawForest('chartProblem', [
   const ph = H - m.top - m.bottom;
 
   const data = [
-    { name: 'TV',     color: '#2563eb', today: [0.945, 2.094], y1: [1.260, 1.785], y2: [1.343, 1.738] },
-    { name: 'Meta',   color: '#d97706', today: [1.418, 2.595], y1: [1.774, 2.322], y2: [1.855, 2.267] },
-    { name: 'Search', color: '#059669', today: [0.712, 1.885], y1: [0.994, 1.531], y2: [1.055, 1.446] },
+    { name: 'TV',     color: '#2563eb', today: [0.945, 2.094], y1: [1.260, 1.785], y2: [1.343, 1.738], truth: 1.529 },
+    { name: 'Meta',   color: '#d97706', today: [1.418, 2.595], y1: [1.774, 2.322], y2: [1.855, 2.267], truth: 2.033 },
+    { name: 'Search', color: '#059669', today: [0.712, 1.885], y1: [0.994, 1.531], y2: [1.055, 1.446], truth: 1.240 },
   ];
 
   const xMax = 2.8;
@@ -725,6 +737,12 @@ drawForest('chartProblem', [
     // After 2 years (solid, bottom sub-row)
     const cyY2 = cy + step;
     g.appendChild(el('line', { x1: scX(ch.y2[0]), y1: cyY2, x2: scX(ch.y2[1]), y2: cyY2, stroke: ch.color, 'stroke-width': 5.5, 'stroke-linecap': 'round' }));
+
+    // True elasticity's implied revenue, spanning all three sub-rows
+    if (ch.truth !== undefined) {
+      const tx = scX(ch.truth);
+      g.appendChild(el('line', { x1: tx, y1: cyToday - 5, x2: tx, y2: cyY2 + 5, stroke: '#111827', 'stroke-width': 1.6, 'stroke-dasharray': '3,2' }));
+    }
 
     g.appendChild(el('text', { x: scX(ch.y2[1]) + 8, y: cyY2 + 3, 'font-size': 9.5, fill: ch.color, 'font-weight': '700' }, `${fmtGBP(ch.y2[0])} – ${fmtGBP(ch.y2[1])}`));
 

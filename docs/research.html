@@ -69,7 +69,9 @@ h1 {
   color: var(--muted);
   border-bottom: 2px solid transparent;
   white-space: nowrap;
+  transition: color .15s, border-color .15s;
 }
+.snav a:hover { color: var(--text); border-bottom-color: var(--light); }
 .snav a.active { color: var(--text); border-bottom-color: var(--text); }
 .snav a.dim    { color: var(--light); pointer-events: none; }
 
@@ -79,6 +81,7 @@ main {
   margin: 0 auto;
   padding: 2.5rem 1.5rem 5rem;
 }
+section { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); }
 
 .s-label {
   font-size: .7rem;
@@ -309,7 +312,7 @@ svg.chart { display: block; width: 100%; }
 <!-- ═══════════════════════════════════════════════════
      SECTION 2 — THE CAUSE
 ═══════════════════════════════════════════════════ -->
-<section id="cause" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+<section id="cause">
   <p class="s-label">Section 2</p>
   <h2>The Cause</h2>
 
@@ -371,7 +374,7 @@ svg.chart { display: block; width: 100%; }
 </section>
 
 
-<section id="fix" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+<section id="fix">
   <p class="s-label">Section 3</p>
   <h2>The Fix</h2>
 
@@ -492,7 +495,7 @@ svg.chart { display: block; width: 100%; }
 <!-- ═══════════════════════════════════════════════════
      SECTION 4 — THE IMPACT
 ═══════════════════════════════════════════════════ -->
-<section id="impact" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+<section id="impact">
   <p class="s-label">Section 4</p>
   <h2>The Impact</h2>
 
@@ -655,7 +658,7 @@ svg.chart { display: block; width: 100%; }
 <!-- ═══════════════════════════════════════════════════
      SECTION 5 — HOW IT WORKS
 ═══════════════════════════════════════════════════ -->
-<section id="how" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+<section id="how">
   <p class="s-label">Section 5</p>
   <h2>How It Works</h2>
 
@@ -750,7 +753,7 @@ svg.chart { display: block; width: 100%; }
 <!-- ═══════════════════════════════════════════════════
      SECTION 6 — QUESTIONS
 ═══════════════════════════════════════════════════ -->
-<section id="questions" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+<section id="questions">
   <p class="s-label">Section 6</p>
   <h2>Questions</h2>
 
@@ -855,7 +858,7 @@ svg.chart { display: block; width: 100%; }
 <!-- ═══════════════════════════════════════════════════
      SECTION 7 — BRINGING IT TOGETHER
 ═══════════════════════════════════════════════════ -->
-<section id="together" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+<section id="together">
   <p class="s-label">Section 7</p>
   <h2>Bringing It Together</h2>
 
