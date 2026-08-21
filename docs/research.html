@@ -771,23 +771,7 @@ svg.chart { display: block; width: 100%; }
 
   <p>Geo-experiments (holding out matched control markets to measure incremental lift) are a genuine gold standard where feasible. But "just run a geo-test" undersells the practical cost: running every channel's test simultaneously risks confounding, each test yields one incrementality estimate for one period rather than the ongoing elasticities a budget allocator needs, and holding spend back in control markets is a real cost most teams' media buying and measurement infrastructure isn't set up to absorb continuously.</p>
 
-  <!-- Chart: geo-lift tool trade-off -->
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Every geo-lift tool trades detection power for false alarms</div>
-      <div class="fig-sub">Recast's June 2026 benchmark, 32,000 simulated experiments, real 7.5% lift</div>
-    </div>
-    <div class="fig-body">
-      <div class="legend">
-        <span class="li"><svg width="10" height="10" style="display:inline;vertical-align:middle"><rect width="10" height="10" fill="#111827"/></svg> Detects the real effect</span>
-        <span class="li"><svg width="10" height="10" style="display:inline;vertical-align:middle"><rect width="10" height="10" fill="#dc2626"/></svg> False-alarms on no effect</span>
-      </div>
-      <svg class="chart" id="chartGeoLift" viewBox="0 0 700 190" preserveAspectRatio="xMinYMin meet"></svg>
-    </div>
-    <p class="fig-cap">Meta GeoLift: detects a real 7.5% lift only 4–11% of the time, but false-alarms just 3–5% of the time, wide, cautious intervals that mostly come back inconclusive. Google Causal Impact: detects it 52–66% of the time, but false-alarms nearly 30% of the time. CausalPy and Google Matched Markets land in between on both counts, under-covering (76–86% actual vs. 95% nominal). Under a 30-day rather than 90-day pre-treatment window, CausalPy and Causal Impact's false-positive rates both climb above 24%.</p>
-  </div>
-
-  <p>None of this means these tools are broken: they're doing exactly what their designers intended, and each is defensible depending on which mistake costs your business more. The point is narrower — "just geo-test it" swaps one uncertainty problem (MMM collinearity) for another (geo-tool calibration trade-offs), and doesn't scale to every channel in the plan. It's a useful complementary check, not a clean substitute.</p>
+  <p>None of this is a knock on geo-experiments themselves: where they're feasible, they're a genuine complement. The point is narrower — "just geo-test it" swaps one uncertainty problem (MMM collinearity) for another (the practical costs above), and doesn't scale to every channel in the plan. It's a useful complementary check, not a clean substitute.</p>
 
   <h3>Doesn't a Bayesian model already fix this?</h3>
 
@@ -1647,83 +1631,6 @@ const PLAN = {
     g.appendChild(el('text', { x: scX(ch.p90) + 8, y: cy + 4, 'font-size': 11.5, fill: ch.color, 'font-weight': '700' }, `${fmtGBP(ch.p10)} – ${fmtGBP(ch.p90)}`));
     g.appendChild(el('text', { x: m.left - 10, y: cy - 2, 'text-anchor': 'end', 'font-size': 12.5, 'font-weight': '700', fill: ch.color }, ch.name));
     g.appendChild(el('text', { x: m.left - 10, y: cy + 12, 'text-anchor': 'end', 'font-size': 9.5, fill: '#9ca3af' }, `£${ch.spend.toFixed(1)}m spend`));
-  }
-
-  svg.appendChild(g);
-})();
-
-
-// ── Chart: geo-lift tool trade-off (detection power vs false alarms) ───────
-// Recast's June 2026 benchmark, real 7.5% lift. Only the two tools with
-// exact ranges quoted in the fig-cap get a whisker; Causal Impact's false-
-// alarm rate is only ever given as "nearly 30%" in the source, so it's
-// drawn as a single bar rather than inventing a range that isn't there.
-(function drawGeoLiftTradeoff() {
-  const svg = document.getElementById('chartGeoLift');
-  if (!svg) return;
-
-  const W = 700, H = 190;
-  const m = { top: 20, right: 30, bottom: 42, left: 58 };
-  const pw = W - m.left - m.right;
-  const ph = H - m.top - m.bottom;
-
-  const groups = [
-    {
-      name: 'Meta GeoLift',
-      detect: { lo: 4, hi: 11 },
-      falseAlarm: { lo: 3, hi: 5 },
-    },
-    {
-      name: 'Google Causal Impact',
-      detect: { lo: 52, hi: 66 },
-      falseAlarm: { lo: 30, hi: 30 },
-    },
-  ];
-
-  const maxY = 70;
-  const scY = v => m.top + ph - (v / maxY) * ph;
-
-  const n = groups.length;
-  const groupW = pw / n;
-  const barW = groupW * 0.26;
-  const gap = groupW * 0.12;
-
-  const g = el('g', {});
-
-  const yTicks = [0, 10, 20, 30, 40, 50, 60, 70];
-  for (const v of yTicks) {
-    const y = scY(v);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
-    g.appendChild(el('text', { x: m.left - 8, y: y + 4, 'text-anchor': 'end', 'font-size': 10, fill: '#9ca3af' }, `${v}%`));
-  }
-  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-
-  function drawBar(cx, range, color) {
-    const mid = (range.lo + range.hi) / 2;
-    const barTop = scY(mid);
-    g.appendChild(el('rect', { x: cx - barW / 2, y: barTop, width: barW, height: m.top + ph - barTop, fill: color, rx: 2 }));
-    if (range.hi > range.lo) {
-      const yLo = scY(range.lo), yHi = scY(range.hi);
-      g.appendChild(el('line', { x1: cx, y1: yLo, x2: cx, y2: yHi, stroke: color, 'stroke-width': 2 }));
-      g.appendChild(el('line', { x1: cx - 7, y1: yLo, x2: cx + 7, y2: yLo, stroke: color, 'stroke-width': 2 }));
-      g.appendChild(el('line', { x1: cx - 7, y1: yHi, x2: cx + 7, y2: yHi, stroke: color, 'stroke-width': 2 }));
-      g.appendChild(el('text', { x: cx, y: yHi - 8, 'text-anchor': 'middle', 'font-size': 9.5, fill: '#111827', 'font-weight': '600' }, `${range.lo}–${range.hi}%`));
-    } else {
-      g.appendChild(el('text', { x: cx, y: barTop - 8, 'text-anchor': 'middle', 'font-size': 9.5, fill: '#111827', 'font-weight': '600' }, `~${range.lo}%`));
-    }
-  }
-
-  for (let i = 0; i < groups.length; i++) {
-    const gdata = groups[i];
-    const groupX = m.left + i * groupW;
-    const detectX = groupX + groupW / 2 - barW / 2 - gap / 2;
-    const falseX = groupX + groupW / 2 + barW / 2 + gap / 2;
-
-    drawBar(detectX, gdata.detect, '#111827');
-    drawBar(falseX, gdata.falseAlarm, '#dc2626');
-
-    g.appendChild(el('text', { x: groupX + groupW / 2, y: m.top + ph + 16, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, gdata.name));
   }
 
   svg.appendChild(g);
