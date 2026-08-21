@@ -29,17 +29,10 @@ body {
 
 /* ── Header ── */
 .hdr {
-  padding: 3rem 1.5rem 2rem;
-  max-width: var(--w);
-  margin: 0 auto;
-  border-bottom: 2px solid var(--text);
-}
-.eyebrow {
-  font-size: .75rem;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: .7rem;
+  background: var(--text);
+  color: #fff;
+  padding: 3.5rem 1.5rem 3rem;
+  text-align: center;
 }
 h1 {
   font-size: clamp(1.8rem, 5.5vw, 2.5rem);
@@ -48,7 +41,9 @@ h1 {
   letter-spacing: -.025em;
   margin-bottom: .8rem;
 }
+.hdr h1 { color: #fff; }
 .tagline { color: var(--muted); font-size: 1.1rem; }
+.hdr .tagline { color: #cbd5e1; max-width: 560px; margin: 0 auto; }
 
 /* ── Section nav ── */
 .snav {
@@ -209,7 +204,6 @@ footer a { color: var(--muted); }
 <body>
 
 <header class="hdr">
-  <p class="eyebrow">Marketing Science · Ryan O'Sullivan</p>
   <h1>How Wrong Is Your MMM?</h1>
   <p class="tagline"><strong>An overview</strong> of how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.</p>
 </header>

@@ -29,17 +29,10 @@ body {
 
 /* ── Header ── */
 .hdr {
-  padding: 3rem 1.5rem 2rem;
-  max-width: var(--w);
-  margin: 0 auto;
-  border-bottom: 2px solid var(--text);
-}
-.eyebrow {
-  font-size: .7rem;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: .6rem;
+  background: var(--text);
+  color: #fff;
+  padding: 3.5rem 1.5rem 3rem;
+  text-align: center;
 }
 h1 {
   font-size: clamp(1.75rem, 5vw, 2.6rem);
@@ -48,7 +41,9 @@ h1 {
   letter-spacing: -.025em;
   margin-bottom: .65rem;
 }
+.hdr h1 { color: #fff; }
 .tagline { color: var(--muted); font-size: 1rem; }
+.hdr .tagline { color: #cbd5e1; max-width: 560px; margin: 0 auto; }
 
 /* ── Section nav ── */
 .snav {
@@ -199,11 +194,8 @@ svg.chart { display: block; width: 100%; }
 <body>
 
 <header class="hdr">
-  <div class="hdr-text">
-    <p class="eyebrow">Marketing Science · Ryan O'Sullivan</p>
-    <h1>How Wrong Is Your MMM?</h1>
-    <p class="tagline"><strong>The research</strong> behind how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.</p>
-  </div>
+  <h1>How Wrong Is Your MMM?</h1>
+  <p class="tagline"><strong>The research</strong> behind how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.</p>
 </header>
 
 <nav class="snav">
@@ -312,8 +304,6 @@ svg.chart { display: block; width: 100%; }
   </div>
 
   <p><strong>Reading the output:</strong> if the range is narrower than 50% of the point estimate, the model is reasonably informative. Wider than the estimate itself, treat it as directional at best. A very wide Search range especially is a rough order-of-magnitude indicator, not a number to optimise against. Run the diagnostic quarterly: widening ranges mean your spend has become more correlated over time, narrowing means the data design is improving.</p>
-
-  <p>Same underlying unreliability, expressed in the units a CMO actually budgets in: this is what the diagnostic returns directly on this example's spend data. This assumes sales is already a £ value; for volume targets, a per-unit value parameter converts to CAC and ROI instead (see the notebooks).</p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════
@@ -449,7 +439,7 @@ svg.chart { display: block; width: 100%; }
     <div class="fig-body">
       <svg class="chart" id="chart6" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">At ±40% weekly deviation (a moderate level that most agencies can accommodate), phasing reduces maximum elasticity uncertainty by ~30% after one year (27–35% across 5 independent phasing draws). At ±80%, the reduction reaches ~53% (49–60% across the same 5 draws). The payoff is roughly linear, there is no magic threshold, just more de-correlation for more variation. The range reflects that "phasing" means one specific random reshuffle of the week-to-week mix; a different draw of the same amplitude gives a slightly different result, which is itself worth remembering before treating any single reduction number as exact.</p>
+    <p class="fig-cap">At ±40% weekly deviation (a moderate level that most agencies can accommodate), phasing reduces maximum elasticity uncertainty by ~30% after one year (27–35% across 5 independent phasing draws). At ±80%, the reduction reaches ~53% (49–60% across the same 5 draws). The payoff is roughly linear — there is no magic threshold, just more de-correlation for more variation. The range reflects that "phasing" means one specific random reshuffle of the week-to-week mix; a different draw of the same amplitude gives a slightly different result, which is itself worth remembering before treating any single reduction number as exact.</p>
   </div>
 
   <h3>What you get</h3>
@@ -464,7 +454,7 @@ svg.chart { display: block; width: 100%; }
 
   <p>Locking a channel costs more than it looks like. If TV can't move at all, phasing still helps, Meta and Search de-correlate from each other and, to a lesser extent, from the now-fixed TV, but most of TV's own reliability gain disappears. In a worked example (three channels, correlation 0.7, ±40% deviation where allowed): phasing all three channels normally reduces worst-case CV by 16%; locking TV and phasing only Meta and Search reduces it by 12%, with TV's own CV barely moving. A channel only gets more reliable if it's actually allowed to vary.</p>
 
-  <p>Sometimes the honest constraint from an agency isn't "vary it a bit", it's "it's either running or it's off." Blackout models that directly: instead of a continuous ± range, each week is either spent at the full planned amount or at exactly zero, nothing in between. Left uncapped, a bad month could land several dark weeks at once, forcing the few surviving weeks to carry an implausible multiple of the original budget, so a cap bounds how many dark weeks a month are allowed: one, by default, so at most one week's spend ever needs a new home.</p>
+  <p>Sometimes the honest constraint from an agency isn't "vary it a bit" — it's "it's either running or it's off." Blackout models that directly: instead of a continuous ± range, each week is either spent at the full planned amount or at exactly zero, nothing in between. Left uncapped, a bad month could land several dark weeks at once, forcing the few surviving weeks to carry an implausible multiple of the original budget, so a cap bounds how many dark weeks a month are allowed: one, by default, so at most one week's spend ever needs a new home.</p>
 
   <p>Because it concentrates variation into a genuine on/off switch rather than spreading it thinly, Blackout buys more reliability per unit of disruption than a continuous range at the same nominal deviation budget. Checked across three independent data draws (same 3-channel, correlation-0.7 scenario used throughout this guide):</p>
 
@@ -480,7 +470,7 @@ svg.chart { display: block; width: 100%; }
     <p class="fig-cap">Baseline (every channel on a symmetric ±40% range): 16–24% reduction. Search alone switched to Blackout, TV and Meta left on the normal ±40% range: 17–49%. Every channel switched to Blackout: 47–59%, with a consistent, modest cost across draws, around 12 of 52 weeks dark per channel (one a month, as designed) and surviving weeks spending roughly 1.2–1.4x the original weekly maximum, no worse than the single-channel case.</p>
   </div>
 
-  <p>It's not just more efficient at the same nominal budget, it beats even the most aggressive continuous range outright: doubling the continuous range to ±80% still falls short of what Blackout achieves at its default one-dark-week-a-month cap, shown per channel below.</p>
+  <p>It's not just more efficient at the same nominal budget — it beats even the most aggressive continuous range outright: doubling the continuous range to ±80% still falls short of what Blackout achieves at its default one-dark-week-a-month cap, shown per channel below.</p>
 
   <!-- Chart 13: per-channel comparison, dev=80 vs Blackout -->
   <div class="fig">
@@ -591,7 +581,7 @@ svg.chart { display: block; width: 100%; }
     </div>
   </div>
 
-  <p>A 3–5x speed-up depending on the target. Blackout doesn't just raise the eventual ceiling, it front-loads the benefit: if years of correlated history have already accumulated, a channel that can go fully dark for one week a month gets a de-correlated MMM meaningfully sooner than one merely nudged ±40% either way.</p>
+  <p>A 3–5x speed-up depending on the target. Blackout doesn't just raise the eventual ceiling — it front-loads the benefit: if years of correlated history have already accumulated, a channel that can go fully dark for one week a month gets a de-correlated MMM meaningfully sooner than one merely nudged ±40% either way.</p>
 
   <h3>Does it scale?</h3>
 
@@ -774,13 +764,9 @@ svg.chart { display: block; width: 100%; }
 
   <h3>Why not just run a geo-lift test instead?</h3>
 
-  <p>Budget phasing isn't A/B testing, and it isn't a geo-experiment either. There's no control group, and no efficiency sacrificed in some markets to learn in others: the spend still goes where it was always going, only the timing varies more. It's a by-product of normal media operations, not a separate experiment running alongside them.</p>
+  <p>Budget phasing isn't A/B testing, and it isn't a geo-experiment either: there's no control group, and no efficiency sacrificed in some markets to learn in others, since spend still goes where it was always going, only the timing varies. It's a by-product of normal media operations, not a separate experiment running alongside them.</p>
 
-  <p>Geo-experiments (holding out matched control markets to measure incremental lift) are a genuine gold standard for causal identification, and where they're feasible, they should usually be preferred to any observational fix. But "just run a geo-test" undersells the practical cost, on four counts. It's impractical to run one for every channel simultaneously, TV, Meta and Search all at once, without the tests confounding each other. Each test produces one incrementality estimate for one channel in one period, not the ongoing, time-varying elasticities a budget allocator needs across the whole plan. Running one means genuinely holding spend back in control markets for the test window, a real, deliberate cost, not a hypothetical one. And it requires media buying and measurement infrastructure most teams don't have set up for continuous use.</p>
-
-  <p>Even where a geo-test is run, it isn't the clean fallback it's often presented as. Recast's June 2026 open-source benchmark study ran 32,000 simulated experiments across four widely-used geo-lift tools, CausalPy, Google Matched Markets, Meta GeoLift, and Google Causal Impact, under conditions practitioners actually encounter: an outlier test market, a small donor pool, and a short pre-treatment calibration window.</p>
-
-  <p>The headline finding: every tool trades off two failure modes, and none escapes the trade-off. Meta GeoLift keeps its coverage promise and rarely false-alarms, but its intervals are wide enough that most tests simply come back inconclusive. Google Causal Impact sits at the other end: it actually detects real effects, but false-alarms far more often and carries a consistent positive bias. CausalPy and Google Matched Markets land in between, under-covering relative to their nominal 95%. And the conditions that make this worse, a short pre-treatment window, a small donor pool, an unusually large test market, are common, not edge cases.</p>
+  <p>Geo-experiments (holding out matched control markets to measure incremental lift) are a genuine gold standard where feasible. But "just run a geo-test" undersells the practical cost: running every channel's test simultaneously risks confounding, each test yields one incrementality estimate for one period rather than the ongoing elasticities a budget allocator needs, and holding spend back in control markets is a real cost most teams' media buying and measurement infrastructure isn't set up to absorb continuously.</p>
 
   <!-- Chart: geo-lift tool trade-off -->
   <div class="fig">
@@ -798,11 +784,11 @@ svg.chart { display: block; width: 100%; }
     <p class="fig-cap">Meta GeoLift: detects a real 7.5% lift only 4–11% of the time, but false-alarms just 3–5% of the time, wide, cautious intervals that mostly come back inconclusive. Google Causal Impact: detects it 52–66% of the time, but false-alarms nearly 30% of the time. CausalPy and Google Matched Markets land in between on both counts, under-covering (76–86% actual vs. 95% nominal). Under a 30-day rather than 90-day pre-treatment window, CausalPy and Causal Impact's false-positive rates both climb above 24%.</p>
   </div>
 
-  <p>None of this means these tools are broken, they're doing exactly what their designers intended, and each is defensible depending on which mistake is more expensive for your business. The point is narrower: "just geo-test it" swaps one uncertainty problem (channel collinearity in an MMM) for another (calibration trade-offs in a geo-experiment tool), and doesn't scale to covering every channel in the plan. It's a genuinely useful complementary check, not a clean substitute.</p>
+  <p>None of this means these tools are broken: they're doing exactly what their designers intended, and each is defensible depending on which mistake costs your business more. The point is narrower — "just geo-test it" swaps one uncertainty problem (MMM collinearity) for another (geo-tool calibration trade-offs), and doesn't scale to every channel in the plan. It's a useful complementary check, not a clean substitute.</p>
 
   <h3>Doesn't a Bayesian model already fix this?</h3>
 
-  <p>A common reaction: "we don't use plain OLS, we use a Bayesian MMM, priors regularise the estimates, so surely this isn't our problem." A prior is a statement about what you believed before seeing the data. In a Bayesian regression, it shrinks noisy estimates toward a plausible range and stabilises models that would otherwise overfit thin or noisy data, that's genuinely useful. But collinearity isn't a noisy-estimation problem in that sense: when TV and Meta spend move almost together, the likelihood is nearly flat along a ridge, dozens of very different (TV effect, Meta effect) pairs explain the data almost equally well, because the data never showed the model TV moving without Meta.</p>
+  <p>A common reaction: "we use a Bayesian MMM with regularising priors, so surely this isn't our problem." A prior is a statement about what you believed before seeing the data — in a Bayesian regression it shrinks noisy estimates toward a plausible range, which is genuinely useful for models that would otherwise overfit thin or noisy data. But collinearity isn't a noisy-estimation problem in that sense: when TV and Meta spend move almost together, the likelihood is nearly flat along a ridge — dozens of very different (TV effect, Meta effect) pairs explain the data almost equally well, because the data never showed the model TV moving without Meta.</p>
 
   <div class="callout">
     <p>Priors regularise noise. They can't manufacture the independent variation that was never in the data to begin with.</p>
@@ -858,7 +844,7 @@ svg.chart { display: block; width: 100%; }
 
   <h3>Won't this put my channels into learning mode?</h3>
 
-  <p>Possibly, and that's a real short-term trade-off, not a hypothetical one: most paid social and search platforms' delivery algorithms recalibrate when a campaign's budget or pacing changes materially, and a full Blackout week is about as material a change as exists. This isn't a decision the model makes alone, it's a compromise between data science and media buying, and <a href="#fix">Section 3</a> covers making it channel by channel: the weekly deviation allowance ranges from 0% (untouched) through a gentle continuous nudge up to Blackout, so a channel that can't tolerate any disruption can simply be locked at 0% while the others still de-correlate around it.</p>
+  <p>Possibly, and that's a real short-term trade-off, not a hypothetical one: most paid social and search platforms' delivery algorithms recalibrate when a campaign's budget or pacing changes materially, and a full Blackout week is about as material a change as exists. This isn't a decision the model makes alone — it's a compromise between data science and media buying, and <a href="#fix">Section 3</a> covers making it channel by channel: the weekly deviation allowance ranges from 0% (untouched) through a gentle continuous nudge up to Blackout, so a channel that can't tolerate any disruption can simply be locked at 0% while the others still de-correlate around it.</p>
 
   <h3>What do I actually hand my media agency?</h3>
 
