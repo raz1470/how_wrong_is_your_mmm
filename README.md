@@ -107,13 +107,21 @@ rb.schedule_csv(
 
 ---
 
+## What's next
+
+**Bring-your-own-estimator.** `ReportBuilder` currently fits with OLS internally. Next up is a hook to swap in your own estimator (Bayesian, regularised, whatever your team already trusts) and still get the same diagnostics and phased schedule.
+
+**Does phasing help adstock and saturation too?** This package targets cross-channel collinearity in elasticities. There's a live question of whether the same idea, Blackout's on/off cycling, the continuous lever's wider spend range, also helps identify adstock decay and saturation curvature. Untested for now, and worth investigating, not a promised feature; see the ["Does this help with adstock and saturation too?"](https://raz1470.github.io/how_wrong_is_your_mmm/research.html#questions) FAQ on the research page for the reasoning so far.
+
+---
+
 ## Development
 
 ```bash
 uv run ruff format . && uv run ruff check . && uv run pytest
 ```
 
-224 tests. Python 3.12+. MIT licence.
+240 tests. Python 3.12+. MIT licence.
 
 The [API reference](https://raz1470.github.io/how_wrong_is_your_mmm/api/) is built with `mkdocs` + `mkdocstrings` from the docstrings in `src/`. A GitHub Actions workflow (`docs-deploy.yml`) rebuilds it and deploys the whole `docs/` site on every push to `main`, so there's nothing to build or commit locally for a release. To preview changes locally:
 
