@@ -29,17 +29,10 @@ body {
 
 /* ── Header ── */
 .hdr {
-  padding: 3rem 1.5rem 2rem;
-  max-width: var(--w);
-  margin: 0 auto;
-  border-bottom: 2px solid var(--text);
-}
-.eyebrow {
-  font-size: .7rem;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: .6rem;
+  background: var(--text);
+  color: #fff;
+  padding: 3.5rem 1.5rem 3rem;
+  text-align: center;
 }
 h1 {
   font-size: clamp(1.75rem, 5vw, 2.6rem);
@@ -48,7 +41,9 @@ h1 {
   letter-spacing: -.025em;
   margin-bottom: .65rem;
 }
+.hdr h1 { color: #fff; }
 .tagline { color: var(--muted); font-size: 1rem; }
+.hdr .tagline { color: #cbd5e1; max-width: 560px; margin: 0 auto; }
 
 /* ── Section nav ── */
 .snav {
@@ -74,7 +69,9 @@ h1 {
   color: var(--muted);
   border-bottom: 2px solid transparent;
   white-space: nowrap;
+  transition: color .15s, border-color .15s;
 }
+.snav a:hover { color: var(--text); border-bottom-color: var(--light); }
 .snav a.active { color: var(--text); border-bottom-color: var(--text); }
 .snav a.dim    { color: var(--light); pointer-events: none; }
 
@@ -84,6 +81,7 @@ main {
   margin: 0 auto;
   padding: 2.5rem 1.5rem 5rem;
 }
+section { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); }
 
 .s-label {
   font-size: .7rem;
@@ -199,11 +197,8 @@ svg.chart { display: block; width: 100%; }
 <body>
 
 <header class="hdr">
-  <div class="hdr-text">
-    <p class="eyebrow">Marketing Science · Ryan O'Sullivan</p>
-    <h1>How Wrong Is Your MMM?</h1>
-    <p class="tagline"><strong>The research</strong> behind how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.</p>
-  </div>
+  <h1>How Wrong Is Your MMM?</h1>
+  <p class="tagline"><strong>The research</strong> behind how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.</p>
 </header>
 
 <nav class="snav">
@@ -302,7 +297,7 @@ svg.chart { display: block; width: 100%; }
   <!-- Chart 4: Personalised interval chart, in £ -->
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Your honest range, in the units you budget in</div>
+      <div class="fig-title">Your model-estimated range, in the units you budget in</div>
       <div class="fig-sub">Incremental revenue, 10th–90th percentile across 50 noise seeds · this page's £12.3m example plan (mean pairwise correlation = 0.69)</div>
     </div>
     <div class="fig-body">
@@ -312,14 +307,12 @@ svg.chart { display: block; width: 100%; }
   </div>
 
   <p><strong>Reading the output:</strong> if the range is narrower than 50% of the point estimate, the model is reasonably informative. Wider than the estimate itself, treat it as directional at best. A very wide Search range especially is a rough order-of-magnitude indicator, not a number to optimise against. Run the diagnostic quarterly: widening ranges mean your spend has become more correlated over time, narrowing means the data design is improving.</p>
-
-  <p>Same underlying unreliability, expressed in the units a CMO actually budgets in: this is what the diagnostic returns directly on this example's spend data. This assumes sales is already a £ value; for volume targets, a per-unit value parameter converts to CAC and ROI instead (see the notebooks).</p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════
      SECTION 2 — THE CAUSE
 ═══════════════════════════════════════════════════ -->
-<section id="cause" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+<section id="cause">
   <p class="s-label">Section 2</p>
   <h2>The Cause</h2>
 
@@ -381,7 +374,7 @@ svg.chart { display: block; width: 100%; }
 </section>
 
 
-<section id="fix" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+<section id="fix">
   <p class="s-label">Section 3</p>
   <h2>The Fix</h2>
 
@@ -449,7 +442,7 @@ svg.chart { display: block; width: 100%; }
     <div class="fig-body">
       <svg class="chart" id="chart6" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">At ±40% weekly deviation (a moderate level that most agencies can accommodate), phasing reduces maximum elasticity uncertainty by ~30% after one year (27–35% across 5 independent phasing draws). At ±80%, the reduction reaches ~53% (49–60% across the same 5 draws). The payoff is roughly linear, there is no magic threshold, just more de-correlation for more variation. The range reflects that "phasing" means one specific random reshuffle of the week-to-week mix; a different draw of the same amplitude gives a slightly different result, which is itself worth remembering before treating any single reduction number as exact.</p>
+    <p class="fig-cap">At ±40% weekly deviation (a moderate level that most agencies can accommodate), phasing reduces maximum elasticity uncertainty by ~30% after one year (27–35% across 5 independent phasing draws). At ±80%, the reduction reaches ~53% (49–60% across the same 5 draws). The payoff is roughly linear — there is no magic threshold, just more de-correlation for more variation. The range reflects that "phasing" means one specific random reshuffle of the week-to-week mix; a different draw of the same amplitude gives a slightly different result, which is itself worth remembering before treating any single reduction number as exact.</p>
   </div>
 
   <h3>What you get</h3>
@@ -464,7 +457,7 @@ svg.chart { display: block; width: 100%; }
 
   <p>Locking a channel costs more than it looks like. If TV can't move at all, phasing still helps, Meta and Search de-correlate from each other and, to a lesser extent, from the now-fixed TV, but most of TV's own reliability gain disappears. In a worked example (three channels, correlation 0.7, ±40% deviation where allowed): phasing all three channels normally reduces worst-case CV by 16%; locking TV and phasing only Meta and Search reduces it by 12%, with TV's own CV barely moving. A channel only gets more reliable if it's actually allowed to vary.</p>
 
-  <p>Sometimes the honest constraint from an agency isn't "vary it a bit", it's "it's either running or it's off." Blackout models that directly: instead of a continuous ± range, each week is either spent at the full planned amount or at exactly zero, nothing in between. Left uncapped, a bad month could land several dark weeks at once, forcing the few surviving weeks to carry an implausible multiple of the original budget, so a cap bounds how many dark weeks a month are allowed: one, by default, so at most one week's spend ever needs a new home.</p>
+  <p>Sometimes the honest constraint from an agency isn't "vary it a bit" — it's "it's either running or it's off." Blackout models that directly: instead of a continuous ± range, each week is either spent at the full planned amount or at exactly zero, nothing in between. Left uncapped, a bad month could land several dark weeks at once, forcing the few surviving weeks to carry an implausible multiple of the original budget, so a cap bounds how many dark weeks a month are allowed: one, by default, so at most one week's spend ever needs a new home.</p>
 
   <p>Because it concentrates variation into a genuine on/off switch rather than spreading it thinly, Blackout buys more reliability per unit of disruption than a continuous range at the same nominal deviation budget. Checked across three independent data draws (same 3-channel, correlation-0.7 scenario used throughout this guide):</p>
 
@@ -480,7 +473,7 @@ svg.chart { display: block; width: 100%; }
     <p class="fig-cap">Baseline (every channel on a symmetric ±40% range): 16–24% reduction. Search alone switched to Blackout, TV and Meta left on the normal ±40% range: 17–49%. Every channel switched to Blackout: 47–59%, with a consistent, modest cost across draws, around 12 of 52 weeks dark per channel (one a month, as designed) and surviving weeks spending roughly 1.2–1.4x the original weekly maximum, no worse than the single-channel case.</p>
   </div>
 
-  <p>It's not just more efficient at the same nominal budget, it beats even the most aggressive continuous range outright: doubling the continuous range to ±80% still falls short of what Blackout achieves at its default one-dark-week-a-month cap, shown per channel below.</p>
+  <p>It's not just more efficient at the same nominal budget — it beats even the most aggressive continuous range outright: doubling the continuous range to ±80% still falls short of what Blackout achieves at its default one-dark-week-a-month cap, shown per channel below.</p>
 
   <!-- Chart 13: per-channel comparison, dev=80 vs Blackout -->
   <div class="fig">
@@ -502,7 +495,7 @@ svg.chart { display: block; width: 100%; }
 <!-- ═══════════════════════════════════════════════════
      SECTION 4 — THE IMPACT
 ═══════════════════════════════════════════════════ -->
-<section id="impact" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+<section id="impact">
   <p class="s-label">Section 4</p>
   <h2>The Impact</h2>
 
@@ -591,7 +584,7 @@ svg.chart { display: block; width: 100%; }
     </div>
   </div>
 
-  <p>A 3–5x speed-up depending on the target. Blackout doesn't just raise the eventual ceiling, it front-loads the benefit: if years of correlated history have already accumulated, a channel that can go fully dark for one week a month gets a de-correlated MMM meaningfully sooner than one merely nudged ±40% either way.</p>
+  <p>A 3–5x speed-up depending on the target. Blackout doesn't just raise the eventual ceiling — it front-loads the benefit: if years of correlated history have already accumulated, a channel that can go fully dark for one week a month gets a de-correlated MMM meaningfully sooner than one merely nudged ±40% either way.</p>
 
   <h3>Does it scale?</h3>
 
@@ -665,7 +658,7 @@ svg.chart { display: block; width: 100%; }
 <!-- ═══════════════════════════════════════════════════
      SECTION 5 — HOW IT WORKS
 ═══════════════════════════════════════════════════ -->
-<section id="how" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+<section id="how">
   <p class="s-label">Section 5</p>
   <h2>How It Works</h2>
 
@@ -754,13 +747,13 @@ svg.chart { display: block; width: 100%; }
     <p class="fig-cap">Meta's curve is the steepest and flattens earliest: by ±80% continuous it's already at 13.8% CV, close to its own Blackout floor of 11.0%: a continuous nudge alone captures most of Meta's available benefit. TV and Search are still falling fast at ±80% (20.1% and 22.2% CV) and drop substantially further under Blackout (13.9% and 17.0%). The reliability case for the stronger lever is clearest for these two, operational constraints permitting. Same real dataset as throughout this guide (history seed=0, plan seed=1, correlation 0.7).</p>
   </div>
 
-  <p>Run all three steps against your own spend and <code>ReportBuilder</code> packages the result into a single client-ready HTML report: today's honest range, the recommended weekly schedule, and how much it narrows things, no code required to read it. <a href="example-report.html">See a full example report →</a></p>
+  <p>Run all three steps against your own spend and <code>ReportBuilder</code> packages the result into a single client-ready HTML report: today's model-estimated range, the recommended weekly schedule, and how much it narrows things, no code required to read it. <a href="example-report.html">See a full example report →</a></p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════
      SECTION 6 — QUESTIONS
 ═══════════════════════════════════════════════════ -->
-<section id="questions" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+<section id="questions">
   <p class="s-label">Section 6</p>
   <h2>Questions</h2>
 
@@ -774,35 +767,15 @@ svg.chart { display: block; width: 100%; }
 
   <h3>Why not just run a geo-lift test instead?</h3>
 
-  <p>Budget phasing isn't A/B testing, and it isn't a geo-experiment either. There's no control group, and no efficiency sacrificed in some markets to learn in others: the spend still goes where it was always going, only the timing varies more. It's a by-product of normal media operations, not a separate experiment running alongside them.</p>
+  <p>Budget phasing isn't A/B testing, and it isn't a geo-experiment either: there's no control group, and no efficiency sacrificed in some markets to learn in others, since spend still goes where it was always going, only the timing varies. It's a by-product of normal media operations, not a separate experiment running alongside them.</p>
 
-  <p>Geo-experiments (holding out matched control markets to measure incremental lift) are a genuine gold standard for causal identification, and where they're feasible, they should usually be preferred to any observational fix. But "just run a geo-test" undersells the practical cost, on four counts. It's impractical to run one for every channel simultaneously, TV, Meta and Search all at once, without the tests confounding each other. Each test produces one incrementality estimate for one channel in one period, not the ongoing, time-varying elasticities a budget allocator needs across the whole plan. Running one means genuinely holding spend back in control markets for the test window, a real, deliberate cost, not a hypothetical one. And it requires media buying and measurement infrastructure most teams don't have set up for continuous use.</p>
+  <p>Geo-experiments (holding out matched control markets to measure incremental lift) are a genuine gold standard where feasible. But "just run a geo-test" undersells the practical cost: running every channel's test simultaneously risks confounding, each test yields one incrementality estimate for one period rather than the ongoing elasticities a budget allocator needs, and holding spend back in control markets is a real cost most teams' media buying and measurement infrastructure isn't set up to absorb continuously.</p>
 
-  <p>Even where a geo-test is run, it isn't the clean fallback it's often presented as. Recast's June 2026 open-source benchmark study ran 32,000 simulated experiments across four widely-used geo-lift tools, CausalPy, Google Matched Markets, Meta GeoLift, and Google Causal Impact, under conditions practitioners actually encounter: an outlier test market, a small donor pool, and a short pre-treatment calibration window.</p>
-
-  <p>The headline finding: every tool trades off two failure modes, and none escapes the trade-off. Meta GeoLift keeps its coverage promise and rarely false-alarms, but its intervals are wide enough that most tests simply come back inconclusive. Google Causal Impact sits at the other end: it actually detects real effects, but false-alarms far more often and carries a consistent positive bias. CausalPy and Google Matched Markets land in between, under-covering relative to their nominal 95%. And the conditions that make this worse, a short pre-treatment window, a small donor pool, an unusually large test market, are common, not edge cases.</p>
-
-  <!-- Chart: geo-lift tool trade-off -->
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Every geo-lift tool trades detection power for false alarms</div>
-      <div class="fig-sub">Recast's June 2026 benchmark, 32,000 simulated experiments, real 7.5% lift</div>
-    </div>
-    <div class="fig-body">
-      <div class="legend">
-        <span class="li"><svg width="10" height="10" style="display:inline;vertical-align:middle"><rect width="10" height="10" fill="#111827"/></svg> Detects the real effect</span>
-        <span class="li"><svg width="10" height="10" style="display:inline;vertical-align:middle"><rect width="10" height="10" fill="#dc2626"/></svg> False-alarms on no effect</span>
-      </div>
-      <svg class="chart" id="chartGeoLift" viewBox="0 0 700 190" preserveAspectRatio="xMinYMin meet"></svg>
-    </div>
-    <p class="fig-cap">Meta GeoLift: detects a real 7.5% lift only 4–11% of the time, but false-alarms just 3–5% of the time, wide, cautious intervals that mostly come back inconclusive. Google Causal Impact: detects it 52–66% of the time, but false-alarms nearly 30% of the time. CausalPy and Google Matched Markets land in between on both counts, under-covering (76–86% actual vs. 95% nominal). Under a 30-day rather than 90-day pre-treatment window, CausalPy and Causal Impact's false-positive rates both climb above 24%.</p>
-  </div>
-
-  <p>None of this means these tools are broken, they're doing exactly what their designers intended, and each is defensible depending on which mistake is more expensive for your business. The point is narrower: "just geo-test it" swaps one uncertainty problem (channel collinearity in an MMM) for another (calibration trade-offs in a geo-experiment tool), and doesn't scale to covering every channel in the plan. It's a genuinely useful complementary check, not a clean substitute.</p>
+  <p>None of this is a knock on geo-experiments themselves: where they're feasible, they're a genuine complement. The point is narrower — "just geo-test it" swaps one uncertainty problem (MMM collinearity) for another (the practical costs above), and doesn't scale to every channel in the plan. It's a useful complementary check, not a clean substitute.</p>
 
   <h3>Doesn't a Bayesian model already fix this?</h3>
 
-  <p>A common reaction: "we don't use plain OLS, we use a Bayesian MMM, priors regularise the estimates, so surely this isn't our problem." A prior is a statement about what you believed before seeing the data. In a Bayesian regression, it shrinks noisy estimates toward a plausible range and stabilises models that would otherwise overfit thin or noisy data, that's genuinely useful. But collinearity isn't a noisy-estimation problem in that sense: when TV and Meta spend move almost together, the likelihood is nearly flat along a ridge, dozens of very different (TV effect, Meta effect) pairs explain the data almost equally well, because the data never showed the model TV moving without Meta.</p>
+  <p>A common reaction: "we use a Bayesian MMM with regularising priors, so surely this isn't our problem." A prior is a statement about what you believed before seeing the data — in a Bayesian regression it shrinks noisy estimates toward a plausible range, which is genuinely useful for models that would otherwise overfit thin or noisy data. But collinearity isn't a noisy-estimation problem in that sense: when TV and Meta spend move almost together, the likelihood is nearly flat along a ridge — dozens of very different (TV effect, Meta effect) pairs explain the data almost equally well, because the data never showed the model TV moving without Meta.</p>
 
   <div class="callout">
     <p>Priors regularise noise. They can't manufacture the independent variation that was never in the data to begin with.</p>
@@ -842,7 +815,7 @@ svg.chart { display: block; width: 100%; }
 
   <p>That's the same idea phasing already uses, just aimed at a different symptom. Blackout creates on-off cycling, which reveals decay directly. The continuous lever widens the spend range a channel gets observed at, which is what you need to trace out a saturation curve properly. So there's a real reason to think phasing might help here too.</p>
 
-  <p>But it's untested. Nothing in this package's simulations models adstock or saturation, so treat this as a hypothesis, not a finding.</p>
+  <p>But it's untested. Nothing in this package's simulations models adstock or saturation, so treat this as a hypothesis, not a finding — it's on the roadmap to investigate properly, not a claim being made here.</p>
 
   <h3>Does it scale to all of my channels?</h3>
 
@@ -858,7 +831,7 @@ svg.chart { display: block; width: 100%; }
 
   <h3>Won't this put my channels into learning mode?</h3>
 
-  <p>Possibly, and that's a real short-term trade-off, not a hypothetical one: most paid social and search platforms' delivery algorithms recalibrate when a campaign's budget or pacing changes materially, and a full Blackout week is about as material a change as exists. This isn't a decision the model makes alone, it's a compromise between data science and media buying, and <a href="#fix">Section 3</a> covers making it channel by channel: the weekly deviation allowance ranges from 0% (untouched) through a gentle continuous nudge up to Blackout, so a channel that can't tolerate any disruption can simply be locked at 0% while the others still de-correlate around it.</p>
+  <p>Possibly, and that's a real short-term trade-off, not a hypothetical one: most paid social and search platforms' delivery algorithms recalibrate when a campaign's budget or pacing changes materially, and a full Blackout week is about as material a change as exists. This isn't a decision the model makes alone — it's a compromise between data science and media buying, and <a href="#fix">Section 3</a> covers making it channel by channel: the weekly deviation allowance ranges from 0% (untouched) through a gentle continuous nudge up to Blackout, so a channel that can't tolerate any disruption can simply be locked at 0% while the others still de-correlate around it.</p>
 
   <h3>What do I actually hand my media agency?</h3>
 
@@ -869,7 +842,7 @@ svg.chart { display: block; width: 100%; }
 <!-- ═══════════════════════════════════════════════════
      SECTION 7 — BRINGING IT TOGETHER
 ═══════════════════════════════════════════════════ -->
-<section id="together" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)">
+<section id="together">
   <p class="s-label">Section 7</p>
   <h2>Bringing It Together</h2>
 
@@ -1658,83 +1631,6 @@ const PLAN = {
     g.appendChild(el('text', { x: scX(ch.p90) + 8, y: cy + 4, 'font-size': 11.5, fill: ch.color, 'font-weight': '700' }, `${fmtGBP(ch.p10)} – ${fmtGBP(ch.p90)}`));
     g.appendChild(el('text', { x: m.left - 10, y: cy - 2, 'text-anchor': 'end', 'font-size': 12.5, 'font-weight': '700', fill: ch.color }, ch.name));
     g.appendChild(el('text', { x: m.left - 10, y: cy + 12, 'text-anchor': 'end', 'font-size': 9.5, fill: '#9ca3af' }, `£${ch.spend.toFixed(1)}m spend`));
-  }
-
-  svg.appendChild(g);
-})();
-
-
-// ── Chart: geo-lift tool trade-off (detection power vs false alarms) ───────
-// Recast's June 2026 benchmark, real 7.5% lift. Only the two tools with
-// exact ranges quoted in the fig-cap get a whisker; Causal Impact's false-
-// alarm rate is only ever given as "nearly 30%" in the source, so it's
-// drawn as a single bar rather than inventing a range that isn't there.
-(function drawGeoLiftTradeoff() {
-  const svg = document.getElementById('chartGeoLift');
-  if (!svg) return;
-
-  const W = 700, H = 190;
-  const m = { top: 20, right: 30, bottom: 42, left: 58 };
-  const pw = W - m.left - m.right;
-  const ph = H - m.top - m.bottom;
-
-  const groups = [
-    {
-      name: 'Meta GeoLift',
-      detect: { lo: 4, hi: 11 },
-      falseAlarm: { lo: 3, hi: 5 },
-    },
-    {
-      name: 'Google Causal Impact',
-      detect: { lo: 52, hi: 66 },
-      falseAlarm: { lo: 30, hi: 30 },
-    },
-  ];
-
-  const maxY = 70;
-  const scY = v => m.top + ph - (v / maxY) * ph;
-
-  const n = groups.length;
-  const groupW = pw / n;
-  const barW = groupW * 0.26;
-  const gap = groupW * 0.12;
-
-  const g = el('g', {});
-
-  const yTicks = [0, 10, 20, 30, 40, 50, 60, 70];
-  for (const v of yTicks) {
-    const y = scY(v);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
-    g.appendChild(el('text', { x: m.left - 8, y: y + 4, 'text-anchor': 'end', 'font-size': 10, fill: '#9ca3af' }, `${v}%`));
-  }
-  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-
-  function drawBar(cx, range, color) {
-    const mid = (range.lo + range.hi) / 2;
-    const barTop = scY(mid);
-    g.appendChild(el('rect', { x: cx - barW / 2, y: barTop, width: barW, height: m.top + ph - barTop, fill: color, rx: 2 }));
-    if (range.hi > range.lo) {
-      const yLo = scY(range.lo), yHi = scY(range.hi);
-      g.appendChild(el('line', { x1: cx, y1: yLo, x2: cx, y2: yHi, stroke: color, 'stroke-width': 2 }));
-      g.appendChild(el('line', { x1: cx - 7, y1: yLo, x2: cx + 7, y2: yLo, stroke: color, 'stroke-width': 2 }));
-      g.appendChild(el('line', { x1: cx - 7, y1: yHi, x2: cx + 7, y2: yHi, stroke: color, 'stroke-width': 2 }));
-      g.appendChild(el('text', { x: cx, y: yHi - 8, 'text-anchor': 'middle', 'font-size': 9.5, fill: '#111827', 'font-weight': '600' }, `${range.lo}–${range.hi}%`));
-    } else {
-      g.appendChild(el('text', { x: cx, y: barTop - 8, 'text-anchor': 'middle', 'font-size': 9.5, fill: '#111827', 'font-weight': '600' }, `~${range.lo}%`));
-    }
-  }
-
-  for (let i = 0; i < groups.length; i++) {
-    const gdata = groups[i];
-    const groupX = m.left + i * groupW;
-    const detectX = groupX + groupW / 2 - barW / 2 - gap / 2;
-    const falseX = groupX + groupW / 2 + barW / 2 + gap / 2;
-
-    drawBar(detectX, gdata.detect, '#111827');
-    drawBar(falseX, gdata.falseAlarm, '#dc2626');
-
-    g.appendChild(el('text', { x: groupX + groupW / 2, y: m.top + ph + 16, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, gdata.name));
   }
 
   svg.appendChild(g);

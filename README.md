@@ -10,7 +10,7 @@ For most brands, no. TV, Meta, and Search budgets move together because the same
 
 This package quantifies that problem and recommends a fix.
 
-![The ranges tighten, and keep tightening — incremental revenue honest range today vs after 1 year vs after 2 years of budget phasing, every channel narrowing 54-62% off the same £12.3m plan, no extra spend](assets/readme-honest-ranges.png)
+![The ranges tighten, and keep tightening toward the true answer — incremental revenue honest range today vs after 1 year vs after 2 years of budget phasing, every channel narrowing 54-62% off the same £12.3m plan, no extra spend. Dashed line marks the true elasticity's implied revenue on this demo scenario.](https://raw.githubusercontent.com/raz1470/how_wrong_is_your_mmm/main/assets/readme-honest-ranges.png)
 
 ---
 
@@ -54,10 +54,13 @@ cd how_wrong_is_your_mmm
 uv venv --python 3.12 && uv sync
 ```
 
-```python
-from how_wrong_is_your_mmm import CollinearityDiagnostic, BudgetPhaser
+### 1. Diagnose your collinearity risk
 
-# Diagnose — synthetic spend
+Simulate synthetic spend at whatever channel correlation you want to stress-test, and see how much your elasticity estimates swing:
+
+```python
+from how_wrong_is_your_mmm import CollinearityDiagnostic
+
 diag = CollinearityDiagnostic(correlation=0.7, spend_seed=0)
 diag.fit()
 diag.summary()
@@ -65,31 +68,46 @@ diag.summary()
 #      tv             0.30           0.329              0.357
 #    meta             0.50           0.503              0.288
 #  search             0.40           0.357              0.623
+```
 
-# Diagnose — your own spend data
+Or run the same check on your own spend history:
+
+```python
 diag = CollinearityDiagnostic(spend_df=my_spend_df)
 diag.fit()
-diag.summary()   # same output, personalised to your correlation structure
+diag.summary()  # same output, personalised to your correlation structure
+```
 
-# Phase — recommend a de-correlated spend schedule
+### 2. Phase your budget
+
+Recommend a de-correlated spend schedule that keeps your monthly totals exactly the same:
+
+```python
+from how_wrong_is_your_mmm import BudgetPhaser
+
 # history: your multi-year spend history (DatetimeIndex)
 # plan:    the upcoming year's spend plan (DatetimeIndex, same channels)
 phaser = BudgetPhaser(history_df=history, plan_df=plan)
 phaser.fit()
-phaser.recommended_schedule_   # 52-week DataFrame, monthly totals guaranteed to match
+phaser.recommended_schedule_  # 52-week DataFrame, monthly totals guaranteed to match
 ```
+
+### 3. Build a client-ready report
+
+Package the diagnosis and the phased schedule into one self-contained HTML report:
 
 ```python
-# Report — diagnose + phase, packaged into one client-ready HTML report
 from how_wrong_is_your_mmm import ReportBuilder
 
-rb = ReportBuilder(history_df=history, plan_df=plan, client_name="Acme Co")
+rb = ReportBuilder(history_df=history, plan_df=plan, client_name="Example Brand")
 rb.fit()
-rb.to_html("reports/acme_co.html")     # self-contained HTML, open it in a browser
-rb.schedule_csv("reports/acme_co_schedule.csv")   # the recommended weekly schedule as a CSV
+rb.to_html("reports/example_brand.html")  # self-contained HTML, open it in a browser
+rb.schedule_csv(
+    "reports/example_brand_schedule.csv"
+)  # the recommended weekly schedule as a CSV
 ```
 
-`reports/` is git-ignored by default (see `.gitignore`) — client data has no business in a public repo. Save your own generated reports there, or wherever suits your workflow. See it end to end at the [example report](https://raz1470.github.io/how_wrong_is_your_mmm/example-report.html) above.
+`reports/` is git-ignored by default (see `.gitignore`). Save your own generated reports there, or wherever suits your workflow. See it end to end at the [example report](https://raz1470.github.io/how_wrong_is_your_mmm/example-report.html) above.
 
 ---
 
@@ -105,13 +123,21 @@ rb.schedule_csv("reports/acme_co_schedule.csv")   # the recommended weekly sched
 
 ---
 
+## Future advancements
+
+**Bring-your-own-estimator.** `ReportBuilder` currently fits with OLS internally. A hook to swap in your own estimator instead (Bayesian, regularised, whatever your team already trusts) while still returning the same diagnostics and phased schedule is on the list.
+
+**Does phasing help adstock and saturation too?** This package targets cross-channel collinearity in elasticities. There's planned research into whether phasing also helps identify adstock decay and saturation curvature. See the ["Does this help with adstock and saturation too?"](https://raz1470.github.io/how_wrong_is_your_mmm/research.html#questions) FAQ on the research page for the reasoning so far.
+
+---
+
 ## Development
 
 ```bash
 uv run ruff format . && uv run ruff check . && uv run pytest
 ```
 
-224 tests. Python 3.12+. MIT licence.
+240 tests. Python 3.12+. MIT licence.
 
 The [API reference](https://raz1470.github.io/how_wrong_is_your_mmm/api/) is built with `mkdocs` + `mkdocstrings` from the docstrings in `src/`. A GitHub Actions workflow (`docs-deploy.yml`) rebuilds it and deploys the whole `docs/` site on every push to `main`, so there's nothing to build or commit locally for a release. To preview changes locally:
 
