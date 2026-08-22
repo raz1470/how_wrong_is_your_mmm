@@ -12,13 +12,15 @@ This package quantifies that problem and recommends a fix.
 
 ![The ranges tighten, and keep tightening toward the true answer — incremental revenue model-estimated range today vs after 1 year vs after 2 years of budget phasing, every channel narrowing 54-67% off the same £12.3m plan, no extra spend. Dashed line marks the true elasticity's implied revenue on this demo scenario.](https://raw.githubusercontent.com/raz1470/how_wrong_is_your_mmm/main/assets/readme-honest-ranges.png)
 
+This chart shows the impact of the phasing algorithm: the estimated revenue range for each channel gets tighter the longer you phase, 54-67% tighter after 2 years, off the same budget.
+
 ---
 
 ## The three-part solution
 
-**Part 1 — Diagnose.** Simulate many plausible histories of your market and measure how much your elasticity estimates swing. On a typical £12.3m plan at correlation 0.7, that's the difference between TV earning £945k and £2.09m off the same spend — the model being honest about what it doesn't know, not a rounding error.
+**Part 1 — Diagnose.** Simulate many plausible histories of your market and measure how much your elasticity estimates swing — exposing uncertainty the model has been hiding, not a rounding error.
 
-**Part 2 — Phase.** Recommend a weekly spend schedule that breaks the correlation between channels while keeping monthly totals exactly the same, either a continuous nudge to each week's split, or Blackout, a harder on/off switch that takes a channel fully dark some weeks and makes it up on the weeks it stays on. Pacing every channel with Blackout for a year cuts that uncertainty by 54%, two years gets you to 65-67% depending on the channel — same budget, no extra spend.
+**Part 2 — Phase.** Recommend a weekly spend schedule that breaks the correlation between channels while keeping monthly totals exactly the same. Choose a continuous nudge to each week's split, or Blackout: a harder on/off switch that takes a channel fully dark some weeks and makes it up on the weeks it stays on.
 
 **Part 3 — Retrain.** Refit your MMM on the phased data. The de-correlated spend does the work: elasticity estimates come back measurably tighter, without waiting years for it to accumulate.
 
@@ -29,8 +31,8 @@ This package quantifies that problem and recommends a fix.
 [**Overview**](https://raz1470.github.io/how_wrong_is_your_mmm/overview.html)
 An overview of how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.
 
-[**Research**](https://raz1470.github.io/how_wrong_is_your_mmm/research.html)
-The research behind how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.
+[**Multicollinearity Research**](https://raz1470.github.io/how_wrong_is_your_mmm/collinearity_research.html)
+The multicollinearity research behind how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.
 
 [**API Reference**](https://raz1470.github.io/how_wrong_is_your_mmm/api/)
 Full class and function docs for `CollinearityDiagnostic`, `BudgetPhaser`, and `Blackout`.
@@ -127,7 +129,7 @@ rb.schedule_csv(
 
 **Bring-your-own-estimator.** `ReportBuilder` currently fits with OLS internally. A hook to swap in your own estimator instead (Bayesian, regularised, whatever your team already trusts) while still returning the same diagnostics and phased schedule is on the list.
 
-**Does phasing help adstock and saturation too?** This package targets cross-channel collinearity in elasticities. There's planned research into whether phasing also helps identify adstock decay and saturation curvature. See the ["Does this help with adstock and saturation too?"](https://raz1470.github.io/how_wrong_is_your_mmm/research.html#questions) FAQ on the research page for the reasoning so far.
+**Does phasing help adstock and saturation too?** This package targets cross-channel collinearity in elasticities. There's planned research into whether phasing also helps identify adstock decay and saturation curvature. See the ["Does this help with adstock and saturation too?"](https://raz1470.github.io/how_wrong_is_your_mmm/overview.html#faq) FAQ on the overview page for the reasoning so far.
 
 ---
 
