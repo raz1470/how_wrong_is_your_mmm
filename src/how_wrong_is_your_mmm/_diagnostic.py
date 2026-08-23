@@ -11,8 +11,8 @@ linear functional form). It is silent on misspecification -- an omitted
 driver (seasonality, a competitor event, adstock, saturation) can leave this
 diagnostic looking healthy while the point estimate itself is badly biased.
 Read the coefficient of variation (CV) below as "how identifiable is this
-design", not "how correct is this model." See docs/research.html for the
-full scope discussion.
+design", not "how correct is this model." See docs/collinearity_research.html
+for the full scope discussion.
 
 One pipeline, two entry points:
   - Synthetic spend: pass correlation, spend is generated internally for N channels.

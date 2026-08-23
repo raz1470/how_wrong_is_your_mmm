@@ -616,9 +616,9 @@
 you're looking for the narrative version of what this package does and why,
 start with one of these instead:</p>
 <ul>
-<li><a href="https://raz1470.github.io/how_wrong_is_your_mmm/introduction.html"><strong>Introduction</strong></a> —
+<li><a href="https://raz1470.github.io/how_wrong_is_your_mmm/overview.html"><strong>Overview</strong></a> —
   a two-minute read: the headline numbers and the fix, no maths.</li>
-<li><a href="https://raz1470.github.io/how_wrong_is_your_mmm/research.html"><strong>Research</strong></a> —
+<li><a href="https://raz1470.github.io/how_wrong_is_your_mmm/collinearity_research.html"><strong>Multicollinearity Research</strong></a> —
   the full method and the research behind it.</li>
 <li><a href="https://github.com/raz1470/how_wrong_is_your_mmm/tree/main/notebooks"><strong>Notebooks</strong></a> —
   hands-on walkthroughs with real output.</li>
@@ -637,7 +637,7 @@ start with one of these instead:</p>
 <tbody>
 <tr>
 <td><a href="api/diagnostic/"><code>CollinearityDiagnostic</code></a></td>
-<td>Quantifies how unreliable OLS elasticities are, given your spend data.</td>
+<td>Quantifies how identifiable OLS marginal returns are, given your spend data.</td>
 </tr>
 <tr>
 <td><a href="api/phaser/"><code>BudgetPhaser</code></a></td>
@@ -667,9 +667,9 @@ extending the package rather than just using it.</p>
 <span class="n">phaser</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
 <span class="n">phaser</span><span class="o">.</span><span class="n">recommended_schedule_</span>
 
-<span class="n">report</span> <span class="o">=</span> <span class="n">ReportBuilder</span><span class="p">(</span><span class="n">history_df</span><span class="o">=</span><span class="n">history</span><span class="p">,</span> <span class="n">plan_df</span><span class="o">=</span><span class="n">plan</span><span class="p">,</span> <span class="n">client_name</span><span class="o">=</span><span class="s2">&quot;Acme Co&quot;</span><span class="p">)</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">ReportBuilder</span><span class="p">(</span><span class="n">history_df</span><span class="o">=</span><span class="n">history</span><span class="p">,</span> <span class="n">plan_df</span><span class="o">=</span><span class="n">plan</span><span class="p">,</span> <span class="n">client_name</span><span class="o">=</span><span class="s2">&quot;Example Brand&quot;</span><span class="p">)</span>
 <span class="n">report</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
-<span class="n">report</span><span class="o">.</span><span class="n">to_html</span><span class="p">(</span><span class="s2">&quot;reports/acme_co.html&quot;</span><span class="p">)</span>
+<span class="n">report</span><span class="o">.</span><span class="n">to_html</span><span class="p">(</span><span class="s2">&quot;reports/example_brand.html&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p>Source: <a href="https://github.com/raz1470/how_wrong_is_your_mmm">github.com/raz1470/how_wrong_is_your_mmm</a></p>
 
