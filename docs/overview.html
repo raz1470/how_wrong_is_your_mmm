@@ -224,14 +224,14 @@ footer a { color: var(--muted); }
 
 <p class="lede">Here's an uncomfortable question. Take the marketing mix model (MMM) you use to allocate your marketing budget across channels. Now run it again: same channels, same market, just a slightly different slice of history. Would it give you the same answer?</p>
 
-<p>For most brands, no. Here's why, and what to do about it.</p>
+<p class="lede">For most brands, no. Here's why, and what to do about it.</p>
 
 <!-- SECTION 1: THE PROBLEM -->
 <section id="problem">
   <p class="s-label">1 · The problem</p>
   <h2>Your model is more unsure than it lets on</h2>
 
-  <p>Take an example £12.3m annual plan: £5.1m on TV, £4.1m on Meta, £3.1m on Search. Ask the model for a single number and you'll get one. Refit it on many plausible versions of the same history instead, and see how much that number actually moves, and the picture changes.</p>
+  <p>Take an example £12.3m annual plan: £5.1m on TV, £4.1m on Meta, £3.1m on Search. Ask the model for a single number and you'll get one. Refit it on many plausible versions of the same history instead — watch how much that number actually moves. The picture changes.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -245,10 +245,10 @@ footer a { color: var(--muted); }
       </div>
       <svg class="chart" id="chartProblem" viewBox="0 0 700 200" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Same spend, same market, same true effect (dashed line — known here because it's a demo scenario; a real plan of your own won't have one). This is the range the model itself produces once you refit it across many plausible versions of the same history — not an empirical range of outcomes, an estimated one.</p>
+    <p class="fig-cap">Same spend, same market, same true effect (dashed line — known here because it's a demo scenario; on your own plan you'd supply a plausible elasticity as an input, not a proven true one to check against). This is the range the model itself produces once you refit it across many plausible versions of the same history — not an empirical range of outcomes, an estimated one.</p>
   </div>
 
-  <p>Look closely and none of these ranges are tight. TV could be earning anywhere from £945k to £2.09m off the same spend, more than double. Search's range is almost as wide in absolute terms, on barely a third of the budget. That's not a rounding error. That's the model telling you it genuinely doesn't know which channel is really carrying the plan.</p>
+  <p>Look closely and none of these ranges are tight. TV could be earning anywhere from £945k to £2.09m off the same spend — more than double. The ranges overlap so much that any of the three channels could turn out to be the best-performing one on this plan, or the worst. That's not a rounding error. That's the model telling you it genuinely doesn't know which channel is really carrying the plan.</p>
 </section>
 
 <!-- SECTION 2: THE CAUSE -->
@@ -297,7 +297,7 @@ footer a { color: var(--muted); }
       </div>
       <svg class="chart" id="chartFix" viewBox="0 0 700 560" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">TV never goes fully dark here, it just runs up to 40% above or below its usual week, still landing on the same monthly total. Meta and Search use the harder on/off lever: some weeks nothing at all, the weeks that stay on absorbing that spend on top of their own. Same guarantee either way, just applied differently per channel.</p>
+    <p class="fig-cap">TV never goes fully dark here — it just runs up to 40% above or below its usual week, still landing on the same monthly total. Meta and Search use the harder on/off lever instead: some weeks nothing at all, with the weeks that stay on absorbing that spend. Same guarantee either way, just applied differently per channel.</p>
   </div>
 </section>
 
@@ -306,7 +306,7 @@ footer a { color: var(--muted); }
   <p class="s-label">4 · The algorithm</p>
   <h2>What the algorithm actually does</h2>
 
-  <p>Two steps run every month, for every channel: a nudge, then a rescale. Here's exactly what that looks like, with real numbers, and what's actually driving the choice underneath it.</p>
+  <p>For every channel, these two steps repeat across each month of the plan: a nudge, then a rescale. Here's exactly what that looks like, with real numbers — and what's actually driving the choice underneath it.</p>
 
   <p><strong>Step 1, nudge:</strong> each week gets a random adjustment, up or down by a set percentage, or all the way down to £0 on a dark week. Say a channel plans to spend £100k a week for four weeks, £400k for the month, and the algorithm lands on £100k, £120k, £0 and £100k, £320k in total.</p>
 
@@ -317,7 +317,7 @@ footer a { color: var(--muted); }
     <p style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:.92rem; font-weight:600; margin:0;">phased<sub>week</sub> = raw<sub>week</sub> &times; ( &Sigma;plan<sub>month</sub> &divide; &Sigma;raw<sub>month</sub> )</p>
   </div>
 
-  <p>That arithmetic is the easy part. The harder part happens before any of this runs. For every channel, the algorithm searches the nudge size, from small to the maximum you're willing to tolerate, refitting the model against thousands of simulated alternative histories at each setting, and keeps whichever one narrows your least reliable channel the most.</p>
+  <p>That arithmetic is the easy part. The harder part happens before any of this runs. For every channel, the algorithm searches the nudge size from small up to the maximum you're willing to tolerate. At each setting it refits the model against thousands of simulated alternative histories, then keeps whichever size narrows your least reliable channel the most.</p>
 </section>
 
 <!-- SECTION 5: THE IMPACT -->
@@ -325,7 +325,7 @@ footer a { color: var(--muted); }
   <p class="s-label">5 · The impact</p>
   <h2>What the phasing algorithm buys you</h2>
 
-  <p>The example above shows you can mix levers per channel. To see the ceiling, we simulated what happens when every channel uses the harder on/off lever: pace the budget, refit the model on the result, and check how much tighter the confidence gets, averaged across many equally-valid ways the schedule could land, not just one. Here's what moved — after one year, and after two.</p>
+  <p>The example above shows you can mix levers per channel. To see the ceiling, we simulated every channel on the harder on/off lever instead: pace the budget, refit the model, and check how much tighter the confidence gets. That figure is averaged across many equally-valid ways the schedule could land, not just one. Here's what moved, after one year and after two.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -420,7 +420,7 @@ footer a { color: var(--muted); }
     <p class="fig-cap">The diagnostic tells you how wide your true range is. Phasing gives you a spend schedule that narrows it, same budget, same totals. Retraining is where the payoff lands.</p>
   </div>
 
-  <p>Run all three steps against your own spend and <code>ReportBuilder</code> packages the result into a single client-ready HTML report: today's model-estimated range, the recommended weekly schedule, and how much it narrows things, no code required to read it. <a href="example-report.html">See a full example report →</a></p>
+  <p>Run all three steps against your own spend and ReportBuilder packages the result into a single client-ready HTML report: today's model-estimated range, the recommended weekly schedule, and how much it narrows things, no code required to read it. <a href="example-report.html">See a full example report →</a></p>
 </section>
 
 <section id="faq">
@@ -428,36 +428,39 @@ footer a { color: var(--muted); }
   <h2>Frequently asked questions</h2>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Doesn't this need me to already know my elasticity?</p>
-  <p>You supply a plausible one, not a proven one, that's the whole trick. The model simulates what your sales would look like if that number were true, then checks how reliably it can recover it from your actual spend pattern. The unreliability it finds comes from your channels moving together in real life, not from the number you picked. Pick a different plausible number and the diagnosis barely changes, your spend pattern is doing the work.</p>
+  <p>You supply a plausible one, not a proven one — that's the whole trick. The model simulates what your sales would look like if that number were true, then checks how reliably it can recover it from your actual spend pattern. The unreliability it finds comes from your channels moving together in real life, not from the number you picked. Pick a different plausible number and the diagnosis barely changes: your spend pattern is doing the work.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Why not just run a geo-lift test instead?</p>
   <p>Geo-experiments are the academic gold standard, but they test one channel at a time, need a real blackout region, and take months to read. You can't run one for TV, Meta and Search simultaneously. This works with the spend and channel mix you already have.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Doesn't a Bayesian model already fix this?</p>
-  <p>Not on its own. Priors are genuinely useful, they stabilise noisy estimates and help capture things like how spend decays or saturates over time. But they can't invent information that was never in the data: if TV and Meta always moved together, no prior tells you which one actually drove sales. We tested it directly, and switching to a Bayesian fit only narrowed the uncertainty by 5 to 9%.</p>
+  <p>Not on its own. Priors are genuinely useful: they stabilise noisy estimates and help capture things like how spend decays or saturates over time. But they can't invent information that was never in the data — if TV and Meta always moved together, no prior tells you which one actually drove sales. We tested it directly: switching to a Bayesian fit only narrowed the uncertainty by less than 10%.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Does this help with adstock and saturation too?</p>
-  <p>Different problem, and a real one. A 2024 study found decay, saturation and time-varying effectiveness are often impossible to tell apart from ordinary spend data either. Phasing wasn't built to fix that, but it runs on the same idea: deliberately varying spend. Whether that same trick helps here too is on the roadmap to investigate, not yet proven.</p>
+  <p>Different problem, and a real one. A 2024 study found decay, saturation and time-varying effectiveness are often impossible to tell apart from ordinary spend data either. Phasing wasn't built to fix that, but it runs on the same idea: deliberately varying spend. Whether that same trick helps here too is on the roadmap to investigate.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Does it scale to all of my channels?</p>
-  <p>Yes. Everything on this page uses three channels for clarity, but we reran the same diagnostic and phasing fix at 5, 10, 15 and 20 channels. Reliability barely moves as you add more, what matters is how correlated your channels are with each other, not how many you have. Phasing delivers roughly the same improvement the whole way, from 5 channels to 20.</p>
+  <p>Yes. Everything on this page uses three channels for clarity, but we reran the same diagnostic and phasing fix at 5, 10, 15 and 20 channels. Reliability barely moves as you add more — what matters is how correlated your channels are with each other, not how many you have. Phasing delivers roughly the same improvement the whole way, from 5 channels to 20.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">How long until I see the benefit?</p>
-  <p>This isn't a multi-year commitment. Year one alone gets Search to 54% narrower, not a promise for week one, but not three years away either. Stick with it and it keeps compounding: 67% by year two. You don't need to wait to see a real difference, and it gets better if you do.</p>
+  <p>This isn't a multi-year commitment. Year one alone gets Search to 54% narrower — not a promise for week one, but not three years away either. Stick with it and it keeps compounding: 67% by year two. You don't need to wait to see a real difference. It only gets better if you do.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Isn't 12 months a long time to wait for this to pay off?</p>
-  <p>No, it moves faster than that. Run the same on/off lever for just one quarter on this page's own scenario, and Search is already about 40% narrower, roughly three-quarters of the way to the 54% you get after a full year. Compare that to the common cycle: two years bedding in a new MMM partner, deciding it isn't working, then starting over with someone else, without ever building on what you learned. This runs on the model and spend data you already have, so the first real signal lands this quarter, not after another vendor switch.</p>
+  <p>No, it moves faster than that. Run the same on/off lever for just one quarter on this page's own scenario and Search is already about 40% narrower — roughly three-quarters of the way to the 54% you get after a full year. Compare that to the common cycle: two years bedding in a new MMM partner, deciding it isn't working, then starting over with someone else, without ever building on what you learned. This runs on the model and spend data you already have. The first real signal lands this quarter, not after another vendor switch.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Won't this put my channels into learning mode?</p>
-  <p>Possibly, in the short term, and that's the real trade-off: how much tighter do you want your results? A channel's reliability gain compounds over a year or two, usually worth more than what a learning-phase reset costs today. This isn't a call the model makes alone, it's a compromise between data science and marketing. Each channel's setting is flexible, from 0% (untouched) through a gentle nudge up to 80%, or a full on/off switch, so you can dial each one to wherever that compromise lands.</p>
+  <p>Possibly, in the short term — and that's the real trade-off: how much tighter do you want your results? A channel's reliability gain compounds over a year or two, usually worth more than what a learning-phase reset costs today. This isn't a call the model makes alone: it's a compromise between data science and marketing. Each channel's setting is flexible, from 0% (untouched), through a gentle nudge up to 80%, to a full on/off switch — dial each one to wherever that compromise lands.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">What do I actually hand my media agency?</p>
   <p>A weekly spend number per channel, covering the same plan year. Every month still totals exactly what it does today. Nothing about the buy itself changes, only which week the money lands in.</p>
+
+  <p style="font-weight:700; margin-bottom: .3rem;">How do I phase a plan I haven't finalised yet?</p>
+  <p>BudgetPhaser needs a starting weekly shape to work with, so build one the normal way: take your annual per-channel budget from your MMM and optimiser, and spread it across the year using whatever seasonality or demand pattern you'd use anyway. That first pass doesn't need to be right, phasing is about to rework it regardless. Feed it in alongside your spend history, and the output is your real weekly booking plan, decorrelated from day one instead of retrofitted onto something the agency's already committed to.</p>
 </section>
 
 <div class="cta">
   <p>Want a deeper understanding of the research behind this?</p>
-  <a class="cta-btn" href="research.html">Read the research →</a>
+  <a class="cta-btn" href="collinearity_research.html">Read the multicollinearity research →</a>
 </div>
 
 <footer>

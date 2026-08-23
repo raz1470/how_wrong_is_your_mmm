@@ -39,7 +39,7 @@ dependencies = [
 Homepage = "https://raz1470.github.io/how_wrong_is_your_mmm/overview.html"
 Repository = "https://github.com/raz1470/how_wrong_is_your_mmm"
 Documentation = "https://raz1470.github.io/how_wrong_is_your_mmm/api/"
-Research = "https://raz1470.github.io/how_wrong_is_your_mmm/research.html"
+Research = "https://raz1470.github.io/how_wrong_is_your_mmm/collinearity_research.html"
 
 [dependency-groups]
 # `test` is the lean slice CI installs: package deps (numpy, pandas) + pytest/ruff,

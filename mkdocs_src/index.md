@@ -8,7 +8,7 @@ start with one of these instead:
 
 - [**Overview**](https://raz1470.github.io/how_wrong_is_your_mmm/overview.html) —
   a two-minute read: the headline numbers and the fix, no maths.
-- [**Research**](https://raz1470.github.io/how_wrong_is_your_mmm/research.html) —
+- [**Multicollinearity Research**](https://raz1470.github.io/how_wrong_is_your_mmm/collinearity_research.html) —
   the full method and the research behind it.
 - [**Notebooks**](https://github.com/raz1470/how_wrong_is_your_mmm/tree/main/notebooks) —
   hands-on walkthroughs with real output.

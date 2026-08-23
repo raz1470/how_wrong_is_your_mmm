@@ -126,6 +126,27 @@ p {
   max-width: none;
 }
 
+/* ── CTA ── */
+.cta {
+  margin: 2.75rem 0 1rem;
+  padding: 1.75rem;
+  background: var(--text);
+  border-radius: 10px;
+  text-align: center;
+}
+.cta p { color: #f3f4f6; max-width: none; margin-bottom: 1.1rem; font-size: 1.05rem; }
+.cta-btn {
+  display: inline-block;
+  background: #fff;
+  color: var(--text);
+  font-weight: 700;
+  font-size: .95rem;
+  padding: .8rem 1.6rem;
+  border-radius: 7px;
+  text-decoration: none;
+}
+.cta-btn:hover { background: #f3f4f6; }
+
 /* ── Figure ── */
 .fig {
   margin: 2rem 0;
@@ -198,7 +219,7 @@ svg.chart { display: block; width: 100%; }
 
 <header class="hdr">
   <h1>How Wrong Is Your MMM?</h1>
-  <p class="tagline"><strong>The research</strong> behind how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.</p>
+  <p class="tagline"><strong>The multicollinearity research</strong> behind how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.</p>
 </header>
 
 <nav class="snav">
@@ -207,13 +228,12 @@ svg.chart { display: block; width: 100%; }
   <a href="#fix">3 · The Fix</a>
   <a href="#impact">4 · The Impact</a>
   <a href="#how">5 · How It Works</a>
-  <a href="#questions">6 · Questions</a>
-  <a href="#together">7 · Bringing It Together</a>
+  <a href="#together">6 · Bringing It Together</a>
 </nav>
 
 <main>
 
-<p class="lede">The research behind <code>how_wrong_is_your_mmm</code>, the open-source package we built to measure and fix a hidden flaw in MMM elasticity estimates: the numbers usually swing wildly between refits, not because the model is wrong, but because the data was never designed to pin them down.</p>
+<p class="lede">The research behind <code>how_wrong_is_your_mmm</code>, the open-source package we built to measure and fix a well-known but often-ignored flaw in MMM elasticity estimates: the numbers usually swing wildly between refits, not because the model is wrong, but because the data was never designed to pin them down.</p>
 
 <!-- ═══════════════════════════════════════════════════
      SECTION 1 — THE PROBLEM
@@ -222,7 +242,7 @@ svg.chart { display: block; width: 100%; }
   <p class="s-label">Section 1</p>
   <h2>The Problem</h2>
 
-  <p>Every MMM produces numbers: TV elasticity 0.42, Meta elasticity 0.28, Search elasticity 0.51. These numbers feed into budget recommendations, agency briefs, and board decks. The question most practitioners don't ask often enough is: <em>how much should we trust them?</em></p>
+  <p>Run an MMM and it hands you numbers: TV elasticity 0.42, Meta elasticity 0.28, Search elasticity 0.51. Those numbers feed into budget recommendations, agency briefs, and board decks. The question most practitioners don't ask often enough: <em>how much should we trust them?</em></p>
 
   <p>For most marketing datasets, the honest answer is less than you think, not because the model is broken, but because the data was never designed to answer the question.</p>
 
@@ -230,7 +250,7 @@ svg.chart { display: block; width: 100%; }
 
   <p>This is the key technical point, and it matters for how you think about the problem. OLS (ordinary least squares, the standard regression method behind most MMMs) is still <em>unbiased</em> with correlated predictors. Given enough independent data, the average estimate would converge on the truth. The problem is that you don't have enough independent data, and you never will: 2–5 years of weekly observations, trying to identify 10–20 parameters in a world where channels have barely moved independently.</p>
 
-  <p>What you get instead is high variance: estimates that are centred near the truth on average, but swing widely in practice. Your specific TV elasticity (the number in your budget model) is one draw from a wide distribution. A company in the same market, with the same true elasticities, but a slightly different observation window, would get a different number.</p>
+  <p>What you get instead is high variance: estimates that are centred near the truth on average, but swing widely in practice. Your specific TV elasticity is one draw from a wide distribution. A company in the same market, with the same true elasticities, but a slightly different observation window, would get a different number.</p>
 
   <p>Below: three channels, known true elasticities (TV 0.30, Meta 0.50, Search 0.40), mean pairwise correlation (the average correlation across every pair of channels) of 0.70. We simulate 50 plausible histories of the same market (same truth, different noise draws) and fit OLS to each one.</p>
 
@@ -292,7 +312,7 @@ svg.chart { display: block; width: 100%; }
 
   <p>The approach sidesteps the obvious problem: you don't know the true elasticities. It assigns plausible ones, simulates what sales would look like if they were true, then measures how consistently OLS recovers them from your actual spend data. The collinearity driving the unreliability comes entirely from your real spend history: the sales simulation is just scaffolding to measure it.</p>
 
-  <p>The output is an elasticity interval per channel: not a point estimate, but a range. An elasticity interval is honest, but it isn't what a budget conversation runs on, so supply your planned spend per channel and the same simulated distribution rescales into an incremental-revenue range: each draw is multiplied by the planned spend for that channel, then the 10th–90th percentile is reported. That's the number a CMO actually reads.</p>
+  <p>The output is an elasticity interval per channel: not a point estimate, but a range. That's the honest answer, but it isn't the number a budget conversation actually runs on. Supply your planned spend per channel, and the same simulated distribution rescales into an incremental-revenue range instead: each draw is multiplied by the planned spend for that channel, then the 10th–90th percentile is reported.</p>
 
   <!-- Chart 4: Personalised interval chart, in £ -->
   <div class="fig">
@@ -371,6 +391,26 @@ svg.chart { display: block; width: 100%; }
   <p>Most teams respond by investigating the model: different priors, different transformations, different baseline specifications. This rarely helps, because the problem isn't the model. The problem is the data design. Channels that always moved together can't be reliably distinguished by any estimation method, however sophisticated.</p>
 
   <p>The question isn't whether your MMM is biased. It probably isn't. The question is whether the data you gave it contained enough independent variation to pin down the channel effects, or whether the number it produced is just one of many equally plausible answers.</p>
+
+  <h3>Why a Bayesian model doesn't fix this</h3>
+
+  <p>A common reaction: "we use a Bayesian MMM with regularising priors, so surely this isn't our problem." A prior shrinks noisy estimates toward a plausible range — genuinely useful when data is thin or noisy. But collinearity isn't a noisy-estimation problem: when TV and Meta spend move almost together, the likelihood is nearly flat along a ridge — dozens of very different (TV effect, Meta effect) pairs explain the data almost equally well, because the data never showed the model TV moving without Meta.</p>
+
+  <div class="callout">
+    <p>Priors regularise noise. They can't manufacture the independent variation that was never in the data to begin with.</p>
+  </div>
+
+  <!-- Chart 10: interval narrowing from weakly-informative priors -->
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Weakly-informative priors narrow the interval a little, not a lot</div>
+      <div class="fig-sub">Interval narrowing vs plain OLS · correlation = 0.9 · averaged over 10 noise draws</div>
+    </div>
+    <div class="fig-body">
+      <svg class="chart" id="chart10" viewBox="0 0 700 190" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">The highest-collinearity scenario from Section 1 (correlation 0.9, OLS CV 60%), fit both as plain OLS and as a Bayesian model with deliberately weak, untuned priors: TV 6.5% narrower, Meta 5.2%, Search 9.1% — real, but nowhere close to fixing a problem this size. Not an argument against Bayesian MMMs generally: tools like Meridian and Robyn earn their keep on a genuinely different problem, where the data does contain information a prior can usefully encode.</p>
+  </div>
 </section>
 
 
@@ -386,7 +426,7 @@ svg.chart { display: block; width: 100%; }
 
   <p>Within each calendar month, redistribute each channel's weekly spend randomly. One month, TV gets more budget in the first two weeks; the next month, the last two. Meta does the same independently. At the end of each month, rescale so the channel's monthly total is exactly preserved.</p>
 
-  <p>Two steps run every month, for every channel: a nudge, then a rescale. Here's exactly what that looks like, with the real numbers from this page's worked example.</p>
+  <p>For every channel, these two steps repeat across each month of the plan: a nudge, then a rescale. Here's exactly what that looks like, with the real numbers from this page's worked example.</p>
 
   <p><strong>Step 1, nudge:</strong> each week gets a random adjustment, up or down by a set percentage, or all the way down to £0 on a dark week. Say a channel plans to spend £100k a week for four weeks, £400k for the month, and the algorithm lands on £100k, £120k, £0 and £100k, £320k in total.</p>
 
@@ -427,6 +467,18 @@ svg.chart { display: block; width: 100%; }
     <p class="fig-cap">Left: original plan, TV and Meta follow the same weekly rhythm (channel correlation 0.69). Right: phased plan, weekly split varies independently per channel, monthly totals unchanged (correlation drops to ~0.2). The MMM can now observe TV-high / Meta-low weeks alongside TV-low / Meta-high weeks.</p>
   </div>
 
+  <!-- Chart 15: Correlation matrix, before vs after phasing -->
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">The correlation actually breaks</div>
+      <div class="fig-sub">Pairwise channel correlation matrix, before vs after phasing · same real scenario used throughout this guide (history seed=0, plan seed=1, correlation=0.7)</div>
+    </div>
+    <div class="fig-body">
+      <svg class="chart" id="chartCorr" viewBox="0 0 700 220" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Before phasing: TV&ndash;Meta 0.68, TV&ndash;Search 0.68, Meta&ndash;Search 0.67, mean pairwise 0.68. After phasing (TV on a continuous &plusmn;40% range, Meta and Search on Blackout &mdash; the mixed-lever schedule from the overview page's own worked example): TV&ndash;Meta 0.10, TV&ndash;Search &minus;0.06, Meta&ndash;Search 0.31, mean pairwise 0.12. Monthly totals behind both matrices are identical; only the weekly timing changed.</p>
+  </div>
+
   <h3>How much variation to introduce, and how we pick it</h3>
 
   <p>The amplitude of the phasing (how aggressively the weekly split is reshuffled) is the main dial. We choose it by grid search: testing a default of 20 amplitude levels between none and the maximum allowed, measuring the resulting CV at each, and recommending whichever minimises the <em>worst-case</em> CV across channels, not the average, so no single channel is left unreliable. More variation de-correlates channels faster and produces greater CV reduction; less variation is operationally easier but takes longer to show up in the model.</p>
@@ -454,8 +506,6 @@ svg.chart { display: block; width: 100%; }
   <h3>Channel-specific constraints</h3>
 
   <p>Every result so far assumed every channel could move by the same amount. Real media plans rarely work that way: TV is often booked and contracted well ahead of time and simply can't be reshuffled week to week, while a channel like Search or paid social can flex much more freely. The package supports this directly: the weekly deviation allowance can be set per channel, a single number for a symmetric range, or, for a channel that genuinely can be turned off, Blackout: a setting that switches it fully on or fully off rather than nudging it up and down.</p>
-
-  <p>Locking a channel costs more than it looks like. If TV can't move at all, phasing still helps, Meta and Search de-correlate from each other and, to a lesser extent, from the now-fixed TV, but most of TV's own reliability gain disappears. In a worked example (three channels, correlation 0.7, ±40% deviation where allowed): phasing all three channels normally reduces worst-case CV by 16%; locking TV and phasing only Meta and Search reduces it by 12%, with TV's own CV barely moving. A channel only gets more reliable if it's actually allowed to vary.</p>
 
   <p>Sometimes the honest constraint from an agency isn't "vary it a bit" — it's "it's either running or it's off." Blackout models that directly: instead of a continuous ± range, each week is either spent at the full planned amount or at exactly zero, nothing in between. Left uncapped, a bad month could land several dark weeks at once, forcing the few surviving weeks to carry an implausible multiple of the original budget, so a cap bounds how many dark weeks a month are allowed: one, by default, so at most one week's spend ever needs a new home.</p>
 
@@ -490,6 +540,27 @@ svg.chart { display: block; width: 100%; }
     </div>
     <p class="fig-cap">±80% continuous range: TV 46.8%, Meta 54.2%, Search 53.4%. Blackout (cap = 1): TV 64.5%, Meta 61.5%, Search 64.6%, higher for every channel, despite ±80% already being twice the package's own default weekly allowance. Each channel goes dark 12 of 52 weeks, with surviving weeks spending 1.2–1.3x their original maximum.</p>
   </div>
+
+  <h3>Which channels need the stronger lever?</h3>
+
+  <p>Reliability aside, channels don't respond to a given lever identically: some get most of the available benefit from a modest continuous nudge, others keep improving all the way through to a full on/off switch. Run per channel on the same real dataset used throughout this guide, with every other channel left unphased to isolate each channel's own response:</p>
+
+  <!-- Chart 14: per-channel sensitivity, continuous through Blackout -->
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Which channels need the stronger lever?</div>
+      <div class="fig-sub">Elasticity CV vs phasing amplitude, per channel, other channels left unphased · continuous 0→80%, then Blackout</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="20" height="3" style="display:inline;vertical-align:middle"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#2563eb" stroke-width="2.5"/></svg> TV</span>
+        <span class="li"><svg width="20" height="3" style="display:inline;vertical-align:middle"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#d97706" stroke-width="2.5"/></svg> Meta</span>
+        <span class="li"><svg width="20" height="3" style="display:inline;vertical-align:middle"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#059669" stroke-width="2.5"/></svg> Search</span>
+      </div>
+      <svg class="chart" id="chart14" viewBox="0 0 700 260" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Meta's curve is the steepest and flattens earliest: by ±80% continuous it's already at 13.8% CV, close to its own Blackout floor of 11.0%: a continuous nudge alone captures most of Meta's available benefit. TV and Search are still falling fast at ±80% (20.1% and 22.2% CV) and drop substantially further under Blackout (13.9% and 17.0%). The reliability case for the stronger lever is clearest for these two, operational constraints permitting. Same real dataset as throughout this guide (history seed=0, plan seed=1, correlation 0.7).</p>
+  </div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════
@@ -499,7 +570,7 @@ svg.chart { display: block; width: 100%; }
   <p class="s-label">Section 4</p>
   <h2>The Impact</h2>
 
-  <p>Section 3 showed what to do. This section answers how big the benefit is, how long it takes, and whether it holds up at realistic channel counts.</p>
+  <p>Section 3 showed what to do. This section covers three questions in turn: how big the benefit is and how long it takes to show up, how much faster Blackout gets you there than a continuous range, and whether any of this holds up once you're past three channels.</p>
 
   <p>The short answer: one year of phasing against four years of correlated history produces a real improvement — roughly 16–30% CV reduction at moderate deviation levels, reaching as high as ~53% at the most aggressive setting covered below, with some spread depending on which specific de-correlated schedule you happen to run. The benefit is real, but it takes time to compound. As phased periods accumulate, they displace correlated history and the model becomes progressively more reliable.</p>
 
@@ -726,124 +797,14 @@ svg.chart { display: block; width: 100%; }
   <p class="fig-cap">One pipeline, three steps. The diagnostic quantifies how unreliable your elasticities are today. Phasing recommends a de-correlated spend schedule that preserves monthly totals exactly. Retraining on that new data is where the payoff lands, tighter elasticity estimates without waiting years for it to happen naturally.</p>
 </div>
 
-  <h3>Which channels need the stronger lever?</h3>
-
-  <p>Section 3 covered the two levers, a continuous nudge and the harder on/off Blackout switch, and the operational constraints (TV's contracts, an agency's tolerance for dark weeks) that decide which one a channel can actually use. Reliability aside, channels don't respond to a given lever identically: some get most of the available benefit from a modest continuous nudge, others keep improving all the way through to a full on/off switch. Run per channel on the same real dataset used throughout this guide, with every other channel left unphased to isolate each channel's own response:</p>
-
-  <!-- Chart 14: per-channel sensitivity, continuous through Blackout -->
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Which channels need the stronger lever?</div>
-      <div class="fig-sub">Elasticity CV vs phasing amplitude, per channel, other channels left unphased · continuous 0→80%, then Blackout</div>
-    </div>
-    <div class="fig-body">
-      <div class="legend">
-        <span class="li"><svg width="20" height="3" style="display:inline;vertical-align:middle"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#2563eb" stroke-width="2.5"/></svg> TV</span>
-        <span class="li"><svg width="20" height="3" style="display:inline;vertical-align:middle"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#d97706" stroke-width="2.5"/></svg> Meta</span>
-        <span class="li"><svg width="20" height="3" style="display:inline;vertical-align:middle"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#059669" stroke-width="2.5"/></svg> Search</span>
-      </div>
-      <svg class="chart" id="chart14" viewBox="0 0 700 260" preserveAspectRatio="xMinYMin meet"></svg>
-    </div>
-    <p class="fig-cap">Meta's curve is the steepest and flattens earliest: by ±80% continuous it's already at 13.8% CV, close to its own Blackout floor of 11.0%: a continuous nudge alone captures most of Meta's available benefit. TV and Search are still falling fast at ±80% (20.1% and 22.2% CV) and drop substantially further under Blackout (13.9% and 17.0%). The reliability case for the stronger lever is clearest for these two, operational constraints permitting. Same real dataset as throughout this guide (history seed=0, plan seed=1, correlation 0.7).</p>
-  </div>
-
   <p>Run all three steps against your own spend and <code>ReportBuilder</code> packages the result into a single client-ready HTML report: today's model-estimated range, the recommended weekly schedule, and how much it narrows things, no code required to read it. <a href="example-report.html">See a full example report →</a></p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════
-     SECTION 6 — QUESTIONS
-═══════════════════════════════════════════════════ -->
-<section id="questions">
-  <p class="s-label">Section 6</p>
-  <h2>Questions</h2>
-
-  <h3>Doesn't this need me to already know my elasticity?</h3>
-
-  <p>You supply a plausible elasticity, not a proven one. Section 1 has the full mechanics. The diagnostic simulates sales as if that number were true, then checks how reliably OLS recovers it from your actual spend pattern. The unreliability it finds comes from your spend history, not your choice of elasticity, and that's a checkable claim, not an assertion: rerun the diagnostic with a meaningfully different elasticity and the CV barely moves, because it's the channels' correlation doing the work, not the number you picked.</p>
-
-  <h3>How do I phase a plan I haven't finalised yet?</h3>
-
-  <p><code>BudgetPhaser</code> needs a starting weekly shape to work with, so build one the normal way: take your annual per-channel budget from your MMM and optimiser, and spread it across the year using whatever seasonality or demand pattern you'd use anyway. That first pass doesn't need to be right, phasing is about to rework it regardless. Feed it in alongside your spend history, and the output is your real weekly booking plan, decorrelated from day one instead of retrofitted onto something the agency's already committed to.</p>
-
-  <h3>Why not just run a geo-lift test instead?</h3>
-
-  <p>Budget phasing isn't A/B testing, and it isn't a geo-experiment either: there's no control group, and no efficiency sacrificed in some markets to learn in others, since spend still goes where it was always going, only the timing varies. It's a by-product of normal media operations, not a separate experiment running alongside them.</p>
-
-  <p>Geo-experiments (holding out matched control markets to measure incremental lift) are a genuine gold standard where feasible. But "just run a geo-test" undersells the practical cost: running every channel's test simultaneously risks confounding, each test yields one incrementality estimate for one period rather than the ongoing elasticities a budget allocator needs, and holding spend back in control markets is a real cost most teams' media buying and measurement infrastructure isn't set up to absorb continuously.</p>
-
-  <p>None of this is a knock on geo-experiments themselves: where they're feasible, they're a genuine complement. The point is narrower — "just geo-test it" swaps one uncertainty problem (MMM collinearity) for another (the practical costs above), and doesn't scale to every channel in the plan. It's a useful complementary check, not a clean substitute.</p>
-
-  <h3>Doesn't a Bayesian model already fix this?</h3>
-
-  <p>A common reaction: "we use a Bayesian MMM with regularising priors, so surely this isn't our problem." A prior is a statement about what you believed before seeing the data — in a Bayesian regression it shrinks noisy estimates toward a plausible range, which is genuinely useful for models that would otherwise overfit thin or noisy data. But collinearity isn't a noisy-estimation problem in that sense: when TV and Meta spend move almost together, the likelihood is nearly flat along a ridge — dozens of very different (TV effect, Meta effect) pairs explain the data almost equally well, because the data never showed the model TV moving without Meta.</p>
-
-  <div class="callout">
-    <p>Priors regularise noise. They can't manufacture the independent variation that was never in the data to begin with.</p>
-  </div>
-
-  <p>We checked this directly: the highest-collinearity scenario from Section 1 (three channels, correlation 0.9, where OLS elasticity CV hits 60%), fit two ways, classical OLS with an analytic 95% confidence interval, and a Bayesian linear model in PyMC with deliberately weak, untuned priors. Averaged across ten independent noise draws (a single draw can itself be a lucky or unlucky one, the same phenomenon this guide is about, one level down):</p>
-
-  <!-- Chart 10: interval narrowing from weakly-informative priors -->
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Weakly-informative priors narrow the interval a little, not a lot</div>
-      <div class="fig-sub">Interval narrowing vs plain OLS · same data, correlation = 0.9 · averaged over 10 noise draws</div>
-    </div>
-    <div class="fig-body">
-      <svg class="chart" id="chart10" viewBox="0 0 700 190" preserveAspectRatio="xMinYMin meet"></svg>
-    </div>
-    <p class="fig-cap">Mean interval width across 10 noise draws. TV: OLS 0.929 vs Bayes 0.862 (6.5% narrower). Meta: 0.984 vs 0.926 (5.2% narrower). Search: 1.639 vs 1.473 (9.1% narrower). Individual draws varied more, per-draw narrowing ranged from around 14% narrower to a slight ~3% widening in a few isolated draws for TV and Meta, a reminder that any single comparison is noisy; the mean across draws is the stable number. A real, modest regularisation effect, not a resolution of the underlying identification problem.</p>
-  </div>
-
-  <p>Roughly 5–9% tighter intervals is what weakly-informative priors bought here, not nothing, but nowhere close to fixing a problem that leaves OLS's own interval spanning most of the plausible range. This isn't an argument against Bayesian MMMs generally: tools like Meridian and Robyn earn their keep on a genuinely different problem, where the data does contain information the prior can usefully encode. Channel-level collinearity is a different failure mode entirely.</p>
-
-  <p>A strongly informative prior can produce a tight interval, but only if the prior itself is right, and the external knowledge to justify one (category benchmarks, a validated rate card) is exactly what's missing here. A confidently narrow interval built on an uncalibrated prior is worse than an honestly wide one: it looks precise enough to act on, and the budget decision built on it fails silently.</p>
-
-  <div class="knums">
-    <div class="kbox">
-      <div class="corr">Weakly-informative priors</div>
-      <div class="num" style="color:#7c3aed">5–9%</div>
-      <div class="lab">Interval narrowing vs OLS, averaged across channels and noise draws: real, but modest</div>
-    </div>
-  </div>
-
-  <h3>Does this help with adstock and saturation too?</h3>
-
-  <p>That's a different problem. This package is about cross-channel collinearity: can the model tell TV's contribution from Meta's when their spend moves together. Adstock and saturation are about a single channel's own functional form: how spend today carries over, and how quickly returns diminish as spend rises.</p>
-
-  <p>A 2024 paper by Dew, Padilla and Shchetkina, "Your MMM is Broken," found that decay, saturation curvature and time-varying effectiveness are often not identifiable either. Different explanations can produce the same observed pattern from typical autocorrelated spend data. Their fix: spend patterns designed to pin down which explanation is right.</p>
-
-  <p>That's the same idea phasing already uses, just aimed at a different symptom. Blackout creates on-off cycling, which reveals decay directly. The continuous lever widens the spend range a channel gets observed at, which is what you need to trace out a saturation curve properly. So there's a real reason to think phasing might help here too.</p>
-
-  <p>But it's untested. Nothing in this package's simulations models adstock or saturation, so treat this as a hypothesis, not a finding — it's on the roadmap to investigate properly, not a claim being made here.</p>
-
-  <h3>Does it scale to all of my channels?</h3>
-
-  <p>Yes. Section 4 has the full channel-count sweep: band-width reduction from phasing holds flat at 15–18% from 5 to 20 channels tested, because what drives unreliability is correlation between channels, not how many of them there are.</p>
-
-  <h3>How long until I see the benefit?</h3>
-
-  <p>Not a multi-year commitment. <a href="#impact">Section 4</a> has the full time-to-benefit curve. In this page's example scenario, one year of Blackout gets the least reliable channel 54% narrower, two years compounds that to 67%. The generic sweep in Section 4 shows the same shape holds across amplitudes and channel counts: the biggest gains land in year one, further years add diminishing but real improvement.</p>
-
-  <h3>Isn't 12 months a long time to wait for this to pay off?</h3>
-
-  <p>No. Run the same lever for one quarter on this page's example scenario and Search is already about 40% narrower, roughly three-quarters of the way to the one-year figure. That's faster than the usual cycle of bedding in a new MMM partner for two years, deciding it isn't working, then switching to someone else. This runs on the spend data you already have, so the first real signal lands this quarter.</p>
-
-  <h3>Won't this put my channels into learning mode?</h3>
-
-  <p>Possibly, and that's a real short-term trade-off, not a hypothetical one: most paid social and search platforms' delivery algorithms recalibrate when a campaign's budget or pacing changes materially, and a full Blackout week is about as material a change as exists. This isn't a decision the model makes alone — it's a compromise between data science and media buying, and <a href="#fix">Section 3</a> covers making it channel by channel: the weekly deviation allowance ranges from 0% (untouched) through a gentle continuous nudge up to Blackout, so a channel that can't tolerate any disruption can simply be locked at 0% while the others still de-correlate around it.</p>
-
-  <h3>What do I actually hand my media agency?</h3>
-
-  <p>A concrete 52-week spend schedule, one number per channel per week, covered in full in <a href="#fix">Section 3</a>. Every month still totals exactly what it does today; nothing about the buy itself changes, only which week the money lands in.</p>
-</section>
-
-
-<!-- ═══════════════════════════════════════════════════
-     SECTION 7 — BRINGING IT TOGETHER
+     SECTION 6 — BRINGING IT TOGETHER
 ═══════════════════════════════════════════════════ -->
 <section id="together">
-  <p class="s-label">Section 7</p>
+  <p class="s-label">Section 6</p>
   <h2>Bringing It Together</h2>
 
   <p>Marketing channels move together because business decisions are coordinated. That makes elasticity estimates unreliable, not biased: your model's number is one draw from a wide distribution, and the CV measures how wide it is for your own spend history. Budget phasing fixes this directly: vary the weekly channel split within each month, keep monthly totals exactly the same, and it works whether your MMM has three channels or twenty. Blackout buys more reliability per week of disruption than a continuous swing. And switching to a Bayesian model doesn't sidestep any of this: priors regularise noise, they don't manufacture variation the data never had.</p>
@@ -857,6 +818,11 @@ svg.chart { display: block; width: 100%; }
     Source and notebooks: <a href="https://github.com/raz1470/how_wrong_is_your_mmm" style="color:var(--muted)">github.com/raz1470/how_wrong_is_your_mmm</a>
   </p>
 </section>
+
+<div class="cta">
+  <p>Want to find out how wrong your MMM is?</p>
+  <a class="cta-btn" href="https://github.com/raz1470/how_wrong_is_your_mmm#quick-start">Try the package →</a>
+</div>
 
 </main>
 
@@ -1368,6 +1334,106 @@ const PLAN = {
   svg.appendChild(g);
 })();
 
+
+// MIXED_RECOMMENDED: same real scenario as PLAN above (history seed=0, plan
+// seed=1, correlation=0.7), phased with the mixed-lever schedule from the
+// overview page's own worked example — TV on a continuous ±40% range, Meta
+// and Search on Blackout(max_dark_weeks_per_month=1). Reproduced verbatim
+// from overview.html so both pages show the exact same real phased data.
+const MIXED_RECOMMENDED = {
+  tv:     [106592,148102,93569,56119,137195,140280,49829,91864,120520,119847,59943,101287,53397,80908,106907,152666,48247,125203,83777,103384,96981,84201,141150,143423,37884,56482,117167,53903,116645,100709,96832,57504,95994,186560,84760,130236,79566,91962,111122,135396,70768,79572,93042,46114,103985,116053,66092,110141,81956,124248,115122,92397],
+  meta:   [139760,0,109844,65573,148976,115099,87644,0,109091,121086,0,115286,90556,120136,91550,0,107815,68417,0,92740,118625,0,113391,131292,40444,59652,94481,100780,0,109847,157218,78621,101725,0,116895,102760,80163,0,99550,98477,80880,0,93097,0,105006,90474,114587,89145,0,113124,108377,83706],
+  search: [68973,89327,59249,0,0,90851,69554,98427,95497,93950,0,93212,66638,81749,76863,0,75529,72540,47006,79529,0,71190,0,123601,46993,46759,0,93876,84169,65003,119352,71258,65111,0,70131,84818,67109,0,0,62426,69346,68232,81490,59042,107232,0,76283,76247,0,94561,72297,64849],
+};
+
+function pearson(a, b) {
+  const n = a.length;
+  const meanA = a.reduce((s, v) => s + v, 0) / n;
+  const meanB = b.reduce((s, v) => s + v, 0) / n;
+  let num = 0, denA = 0, denB = 0;
+  for (let i = 0; i < n; i++) {
+    const da = a[i] - meanA, db = b[i] - meanB;
+    num += da * db; denA += da * da; denB += db * db;
+  }
+  return num / Math.sqrt(denA * denB);
+}
+
+// ── Chart: Correlation matrix, before vs after phasing ──────────────────────
+(function drawCorrMatrix() {
+  const svg = document.getElementById('chartCorr');
+  if (!svg) return;
+
+  const names = ['tv', 'meta', 'search'];
+  const labels = ['TV', 'Meta', 'Search'];
+
+  function matrixOf(d) {
+    return names.map(r => names.map(c => (r === c ? 1 : pearson(d[r], d[c]))));
+  }
+
+  const before = matrixOf(PLAN);
+  const after = matrixOf(MIXED_RECOMMENDED);
+
+  function meanPairwise(m) {
+    const vals = [m[0][1], m[0][2], m[1][2]];
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  }
+
+  const cellSize = 40;
+  const gridDim = cellSize * 3;
+  const labelGutter = 38;
+  const panelW = labelGutter + gridDim;
+  const gap = 46;
+  const totalW = panelW * 2 + gap;
+  const startX = (700 - totalW) / 2;
+
+  const titleY = 12;
+  const subY = 25;
+  const colLabelY = 40;
+  const gridTop = 46;
+
+  function colorFor(v) {
+    const t = Math.max(0, Math.min(1, v));
+    const light = [249, 250, 251];
+    const dark = [17, 24, 39];
+    const rgb = light.map((c, i) => Math.round(c + (dark[i] - c) * t));
+    return `rgb(${rgb.join(',')})`;
+  }
+
+  function drawGrid(offsetX, matrix, title, sub) {
+    const g = el('g', { transform: `translate(${offsetX}, 0)` });
+
+    g.appendChild(el('text', { x: panelW / 2, y: titleY, 'text-anchor': 'middle', 'font-size': 11, 'font-weight': '700', fill: '#374151' }, title));
+    g.appendChild(el('text', { x: panelW / 2, y: subY, 'text-anchor': 'middle', 'font-size': 9.5, fill: '#9ca3af' }, sub));
+
+    for (let j = 0; j < 3; j++) {
+      const cx = labelGutter + cellSize * j + cellSize / 2;
+      g.appendChild(el('text', { x: cx, y: colLabelY, 'text-anchor': 'middle', 'font-size': 9.5, 'font-weight': '700', fill: '#6b7280' }, labels[j]));
+    }
+
+    for (let i = 0; i < 3; i++) {
+      const cy = gridTop + cellSize * i + cellSize / 2;
+      g.appendChild(el('text', { x: labelGutter - 6, y: cy + 3.5, 'text-anchor': 'end', 'font-size': 9.5, 'font-weight': '700', fill: '#6b7280' }, labels[i]));
+    }
+
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 3; j++) {
+        const v = matrix[i][j];
+        const x = labelGutter + cellSize * j;
+        const y = gridTop + cellSize * i;
+        g.appendChild(el('rect', { x: x + 1, y: y + 1, width: cellSize - 2, height: cellSize - 2, fill: colorFor(v), stroke: '#e5e7eb', 'stroke-width': 1, rx: 3 }));
+        const textFill = v > 0.55 ? '#f9fafb' : '#111827';
+        g.appendChild(el('text', { x: x + cellSize / 2, y: y + cellSize / 2 + 4, 'text-anchor': 'middle', 'font-size': 10.5, 'font-weight': '700', fill: textFill }, v.toFixed(2)));
+      }
+    }
+
+    return g;
+  }
+
+  const g = el('g', {});
+  g.appendChild(drawGrid(startX, before, 'Before phasing', `mean pairwise: ${meanPairwise(before).toFixed(2)}`));
+  g.appendChild(drawGrid(startX + panelW + gap, after, 'After phasing', `mean pairwise: ${meanPairwise(after).toFixed(2)}`));
+  svg.appendChild(g);
+})();
 
 // ── Chart 6: CV reduction vs deviation amplitude ───────────────────────────
 (function drawAmplitude() {

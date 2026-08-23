@@ -10,8 +10,9 @@ JSON blob, not to re-derive the design.
 
 Report structure (page 1): cover -> headline callout -> Diagnose (spend
 correlation matrix + honest-range forest plot + table) -> Phase (recommended
-weekly schedule + lever table) -> Retrain/Impact (before/after forest plot +
-kbox summary + elasticity caveat) -> Methodology appendix.
+weekly schedule + before/after correlation + lever table) -> Retrain/Impact
+(before/after forest plot + kbox summary + elasticity caveat) -> Methodology
+appendix.
 
 Report structure (page 2, "Scenario exploration"): channel sensitivity
 (CV-vs-amplitude per channel, via BudgetPhaser.channel_sensitivity — decides
@@ -35,7 +36,7 @@ from how_wrong_is_your_mmm._phaser import (
 )
 
 # Categorical channel palette. First three slots match the existing
-# overview.html/research.html brand colours (tv/meta/search); slot 4
+# overview.html/collinearity_research.html brand colours (tv/meta/search); slot 4
 # (violet) has been checked for colour-vision-deficiency accessibility and
 # passes, with one WARN band requiring direct labels, which every chart
 # here already has. Slots 5+ are a reasonable extension, not yet checked
@@ -413,6 +414,14 @@ class ReportBuilder:
             }
 
         recommended = phaser.recommended_schedule_
+
+        # Before/after correlation, same plan-year weeks in both -- unlike
+        # correlation_matrix above (today's full history + plan), this pair
+        # isolates the effect of phasing itself: same weeks, same monthly
+        # totals, only the within-month timing differs.
+        plan_corr = self.plan_df.corr().round(4)
+        after_corr = recommended.corr().round(4)
+
         schedule = {
             "plan": {ch: self.plan_df[ch].round(2).tolist() for ch in channels},
             "recommended": {ch: recommended[ch].round(2).tolist() for ch in channels},
@@ -477,6 +486,16 @@ class ReportBuilder:
             "correlation_matrix": {
                 a: {b: float(correlation_matrix.loc[a, b]) for b in channels}
                 for a in channels
+            },
+            "correlation_before_after": {
+                "before": {
+                    a: {b: float(plan_corr.loc[a, b]) for b in channels}
+                    for a in channels
+                },
+                "after": {
+                    a: {b: float(after_corr.loc[a, b]) for b in channels}
+                    for a in channels
+                },
             },
             "diagnose_today": diagnose_today,
             "schedule": schedule,
@@ -824,6 +843,24 @@ footer { margin-top: 2.5rem; padding: 1.5rem 2rem 2rem; border-top: 1px solid va
     <p class="fig-cap">Channels on a continuous nudge vary smoothly and never hit &pound;0. Channels on <code>Blackout</code> go fully dark on the weeks marked, with the remaining weeks in that month absorbing the difference so the monthly total is untouched.</p>
   </div>
 
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Channel correlation, before vs. after</div>
+      <div class="fig-sub">Pearson correlation, weekly spend by channel &middot; plan year only, monthly totals identical in both</div>
+    </div>
+    <div class="fig-body corr-wrap" style="gap:2.5rem;">
+      <div>
+        <div style="text-align:center;font-size:.78rem;font-weight:700;color:var(--muted);margin-bottom:.5rem;">Before phasing</div>
+        <div id="corrBeforeMatrix"></div>
+      </div>
+      <div>
+        <div style="text-align:center;font-size:.78rem;font-weight:700;color:var(--muted);margin-bottom:.5rem;">After phasing</div>
+        <div id="corrAfterMatrix"></div>
+      </div>
+    </div>
+    <p class="fig-cap" id="corrBeforeAfterCaption"></p>
+  </div>
+
   <table class="rpt">
     <thead><tr><th>Channel</th><th>Lever</th><th class="num">Amplitude</th><th class="num">Max dark weeks / month</th></tr></thead>
     <tbody id="phaseTable"></tbody>
@@ -992,7 +1029,7 @@ document.getElementById('methodologyText').innerHTML =
   (REPORT.meta.auto_lever_applied
     ? `Lever choice: each channel's own lever (continuous range vs. a harder on/off Blackout) was picked automatically from how much that channel individually benefits from each option. `
     : ``) +
-  `Full method: <a href="https://raz1470.github.io/how_wrong_is_your_mmm/research.html">raz1470.github.io/how_wrong_is_your_mmm/research.html</a>.`;
+  `Full method: <a href="https://raz1470.github.io/how_wrong_is_your_mmm/collinearity_research.html">raz1470.github.io/how_wrong_is_your_mmm/collinearity_research.html</a>.`;
 
 document.getElementById('phaseSub').textContent =
   `${REPORT.meta.n_weeks}-week schedule, monthly totals unchanged per channel`;
@@ -1004,16 +1041,14 @@ function corrColor(v) {
   const mix = lo.map((c, i) => Math.round(c + (hi[i] - c) * (t * 0.92)));
   return `rgb(${mix.join(',')})`;
 }
-(function drawCorrMatrix() {
-  const target = document.getElementById('corrMatrix');
-  const channels = REPORT.channels;
+function renderCorrTable(targetId, matrix, channels) {
   let html = '<table class="corr"><tr><th></th>';
   for (const ch of channels) html += `<th>${ch.name}</th>`;
   html += '</tr>';
   for (const rowCh of channels) {
     html += `<tr><th class="rh" style="color:${rowCh.hex}">${rowCh.name}</th>`;
     for (const colCh of channels) {
-      const v = REPORT.correlation_matrix[rowCh.key][colCh.key];
+      const v = matrix[rowCh.key][colCh.key];
       if (rowCh.key === colCh.key) {
         html += `<td class="diag">${v.toFixed(2)}</td>`;
       } else {
@@ -1024,7 +1059,33 @@ function corrColor(v) {
     html += '</tr>';
   }
   html += '</table>';
-  target.innerHTML = html;
+  document.getElementById(targetId).innerHTML = html;
+}
+
+(function drawCorrMatrix() {
+  renderCorrTable('corrMatrix', REPORT.correlation_matrix, REPORT.channels);
+})();
+
+(function drawCorrBeforeAfter() {
+  if (!REPORT.correlation_before_after) return;
+  const channels = REPORT.channels;
+  renderCorrTable('corrBeforeMatrix', REPORT.correlation_before_after.before, channels);
+  renderCorrTable('corrAfterMatrix', REPORT.correlation_before_after.after, channels);
+
+  function meanPairwise(m) {
+    let sum = 0, n = 0;
+    for (let i = 0; i < channels.length; i++) {
+      for (let j = i + 1; j < channels.length; j++) {
+        sum += m[channels[i].key][channels[j].key];
+        n++;
+      }
+    }
+    return n ? sum / n : 0;
+  }
+  const beforeMean = meanPairwise(REPORT.correlation_before_after.before);
+  const afterMean = meanPairwise(REPORT.correlation_before_after.after);
+  document.getElementById('corrBeforeAfterCaption').textContent =
+    `Mean pairwise correlation drops from ${beforeMean.toFixed(2)} to ${afterMean.toFixed(2)} once the recommended schedule replaces the original plan, across the ${REPORT.meta.n_weeks}-week plan year — monthly totals are identical in both.`;
 })();
 
 (function corrCaption() {
