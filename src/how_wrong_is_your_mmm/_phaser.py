@@ -30,10 +30,12 @@ hand to their media agency, with monthly totals unchanged.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 
-from how_wrong_is_your_mmm._dgp import _DEFAULT_ELASTICITIES
+from how_wrong_is_your_mmm._dgp import _DEFAULT_MARGINAL_RETURNS
 from how_wrong_is_your_mmm._diagnostic import (
     CollinearityDiagnostic,
     _validate_spend_data,
@@ -390,7 +392,7 @@ def _max_monthly_deviation(
 
 
 class BudgetPhaser:
-    """Recommend the weekly spend phasing needed to reduce elasticity uncertainty.
+    """Recommend the weekly spend phasing needed to reduce marginal-return uncertainty.
 
     Takes a multi-year spend history and a plan-year budget. Grid-searches over
     phasing amplitude to find the plan-year schedule that minimises max CV across
@@ -405,12 +407,12 @@ class BudgetPhaser:
     plan_df:
         One-year spend plan (e.g. 52 weeks) with a weekly DatetimeIndex.
         Same columns as history_df. This is the data that gets phased.
-    true_elasticities:
-        Dict mapping channel name to true elasticity. Defaults to
-        {"tv": 0.3, "meta": 0.5, "search": 0.4}.
-    max_monthly_deviation_pct:
-        Maximum allowed fractional deviation in monthly totals per channel (%).
-        Default 1.0. Enforced by construction (rescaling).
+    true_marginal_returns:
+        Dict mapping channel name to true marginal return (£ revenue per
+        £ spend, a.k.a. mROAS — not an economic elasticity, see _dgp.py).
+        Defaults to {"tv": 2.0, "meta": 3.5, "search": 6.0}. As with
+        CollinearityDiagnostic, there is no safe universal default here —
+        prefer supplying your own per-channel values.
     max_weekly_deviation_pct:
         Maximum per-channel weekly deviation from original plan spend at
         alpha=1 (%). Default 40.0 (symmetric +/-40%). A channel's allowed
@@ -435,16 +437,47 @@ class BudgetPhaser:
         Blackout. A dict must cover every channel in plan_df.
     seed:
         Base random seed.
+    base_sales:
+        Base sales intercept forwarded to every internal
+        CollinearityDiagnostic. Default 1_000.0, matching
+        CollinearityDiagnostic's own default.
+    revenue_noise_std:
+        Standard deviation of sales noise (£), forwarded to every internal
+        CollinearityDiagnostic used to score a candidate schedule. Default
+        20_000.0. As with CollinearityDiagnostic, there is no universal
+        default that's right for your data — set this from your own
+        model's residual std (e.g. the residual std of a simple OLS fit
+        on your actual sales/spend history), not the package default.
+        Every CV this class reports scales ~linearly with this value, so
+        an unexamined default here silently determines how alarming (or
+        how reassuring) every downstream number looks.
+    true_elasticities:
+        Deprecated alias for `true_marginal_returns`, kept for backward
+        compatibility. Raises ValueError if both are supplied. Emits a
+        FutureWarning -- migrate to `true_marginal_returns`.
+
+    Notes
+    -----
+    An earlier version also accepted `max_monthly_deviation_pct`, a
+    "maximum allowed deviation" input that was stored but never actually
+    enforced or read anywhere (the identically-named `max_monthly_deviation_pct`
+    column in `results_`/`summary()` is a *measured* quantity from
+    `_max_monthly_deviation`, not this parameter — monthly totals are
+    preserved exactly by construction regardless, see
+    `_generate_phased_schedule`). It has been removed rather than wired up,
+    since there was nothing for it to constrain that isn't already exact.
     """
 
     def __init__(
         self,
         history_df: pd.DataFrame,
         plan_df: pd.DataFrame,
-        true_elasticities: dict[str, float] | None = None,
-        max_monthly_deviation_pct: float = 1.0,
+        true_marginal_returns: dict[str, float] | None = None,
         max_weekly_deviation_pct: DeviationSpec | dict[str, DeviationSpec] = 40.0,
         seed: int = 0,
+        base_sales: float = 1_000.0,
+        revenue_noise_std: float = 20_000.0,
+        true_elasticities: dict[str, float] | None = None,
     ) -> None:
         _get_month_labels(history_df)  # validates DatetimeIndex
         _get_month_labels(plan_df)  # validates DatetimeIndex
@@ -465,21 +498,51 @@ class BudgetPhaser:
             max_weekly_deviation_pct, list(plan_df.columns)
         )  # validates shape and bounds, fails fast
 
+        if true_elasticities is not None:
+            if true_marginal_returns is not None:
+                raise ValueError(
+                    "Pass only one of true_marginal_returns or the "
+                    "deprecated true_elasticities, not both."
+                )
+            warnings.warn(
+                "true_elasticities is deprecated and will be removed in a "
+                "future release -- these are marginal returns (£ revenue "
+                "per £ spend), not elasticities. Use true_marginal_returns "
+                "instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            true_marginal_returns = true_elasticities
+
         self.history_df = history_df
         self.plan_df = plan_df
-        self.true_elasticities = (
-            true_elasticities
-            if true_elasticities is not None
-            else _DEFAULT_ELASTICITIES
+        self.true_marginal_returns = (
+            true_marginal_returns
+            if true_marginal_returns is not None
+            else _DEFAULT_MARGINAL_RETURNS
         )
-        self.max_monthly_deviation_pct = max_monthly_deviation_pct
         self.max_weekly_deviation_pct = max_weekly_deviation_pct
         self.seed = seed
+        self.base_sales = base_sales
+        self.revenue_noise_std = revenue_noise_std
 
         self._plan_month_labels = _get_month_labels(plan_df)
         self.results_: pd.DataFrame | None = None
         self.confirmation_: pd.DataFrame | None = None
         self.recommended_schedule_: pd.DataFrame | None = None
+        self.recommended_draws_: pd.DataFrame | None = None
+        self.recommended_schedule_median_cv_: float | None = None
+
+    @property
+    def true_elasticities(self) -> dict[str, float]:
+        """Deprecated alias for `true_marginal_returns`. See __init__."""
+        warnings.warn(
+            "BudgetPhaser.true_elasticities is deprecated, use "
+            "true_marginal_returns instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.true_marginal_returns
 
     def _evaluate_spec_at_alpha(
         self,
@@ -488,6 +551,7 @@ class BudgetPhaser:
         n_sims: int,
         n_phasing_seeds: int,
         seed_offset: int,
+        noise_seed_offset: int = 0,
     ) -> dict:
         """Run n_phasing_seeds phased-schedule draws at one (spec, alpha)
         setting, average the resulting per-channel CVs, and return one row.
@@ -498,6 +562,14 @@ class BudgetPhaser:
         channel but one locked at 0) — both go through identical simulation
         machinery, only the spec being evaluated differs. Keeping this in
         one place means the two can't quietly drift out of sync.
+
+        noise_seed_offset is forwarded to CollinearityDiagnostic.fit(). It
+        defaults to 0, which reproduces the original always-seed-0..n_sims-1
+        noise behaviour at every phasing seed. fit()'s confirmation pass
+        (see its own docstring) passes a distinct, non-zero offset so its
+        "honest" re-evaluation of the grid's candidates draws genuinely
+        fresh noise, not just fresh phasing seeds over the same n_sims
+        noise draws the grid search itself could have overfit to.
         """
         channels = list(self.plan_df.columns)
         seed_results = []
@@ -519,9 +591,11 @@ class BudgetPhaser:
 
             diag = CollinearityDiagnostic(
                 spend_df=combined,
-                true_elasticities=self.true_elasticities,
+                true_marginal_returns=self.true_marginal_returns,
+                base_sales=self.base_sales,
+                revenue_noise_std=self.revenue_noise_std,
             )
-            diag.fit(n_sims=n_sims)
+            diag.fit(n_sims=n_sims, noise_seed_offset=noise_seed_offset)
             summ = diag.summary().set_index("channel")
 
             seed_results.append(
@@ -555,6 +629,7 @@ class BudgetPhaser:
         fast_mode: bool = False,
         confirm_top_k: int = 3,
         confirm_n_phasing_seeds: int | None = None,
+        n_recommended_draws: int = 10,
     ) -> BudgetPhaser:
         """Grid-search over phasing amplitude and store results.
 
@@ -573,13 +648,33 @@ class BudgetPhaser:
         its CV back up towards the honest value, sometimes substantially.
         To correct for this, the top
         `confirm_top_k` candidates by max_cv are re-evaluated with fresh
-        seeds (well clear of the grid search's own seed range) and a larger
-        sample (`confirm_n_phasing_seeds`), and *that* honestly-measured
-        winner becomes the actual recommendation used for
-        recommended_schedule_ and recommend() — not the raw grid argmin.
-        Both the raw grid (`results_`) and the confirmation pass
-        (`confirmation_`) are kept, so the size of the correction stays
+        phasing seeds *and* fresh noise seeds (both well clear of the grid
+        search's own ranges -- see noise_seed_offset on
+        CollinearityDiagnostic.fit; without this, the confirmation pass
+        would re-use the same n_sims noise draws at every phasing seed and
+        grid point, so an alpha that happened to fit those particular noise
+        draws well would still look artificially good even after
+        "confirmation") and a larger sample (`confirm_n_phasing_seeds`), and
+        *that* honestly-measured winner's alpha becomes the actual
+        recommendation. Both the raw grid (`results_`) and the confirmation
+        pass (`confirmation_`) are kept, so the size of the correction stays
         inspectable rather than silently overwritten.
+
+        recommended_schedule_ itself goes through a further, separate
+        evaluation: draw-to-draw spread at a fixed alpha is real (a single
+        phased-schedule draw's own max CV can swing 25-35% from the best to
+        the worst of 20 otherwise-identical draws), so handing over the
+        very first schedule generated at the recommended alpha -- with no
+        evaluation at all -- would silently ship whichever draw got lucky
+        or unlucky. Instead, `n_recommended_draws` independent schedules are
+        generated at the recommended alpha, each is evaluated the same way
+        the grid search evaluates a candidate, and the best-evaluated one
+        (lowest max CV) becomes `recommended_schedule_`. Because "best of N
+        evaluated draws" is itself a mild form of the same selection bias
+        the grid-search confirmation exists to correct, the max CV actually
+        printed in any report is the *median* max CV across those N draws
+        (`recommended_schedule_median_cv_`), not the shipped draw's own
+        (optimistic) evaluation -- see `recommended_draws_`.
 
         Parameters
         ----------
@@ -593,9 +688,9 @@ class BudgetPhaser:
             Default 3. Set to 1 to match the single-seed behaviour of v2.
         fast_mode:
             If True, uses n_sims=10, grid_steps=10, n_phasing_seeds=1,
-            confirm_top_k=1 (skips the extra confirmation cost — this mode
-            is for iterating on report layout, not for numbers to hand a
-            client).
+            confirm_top_k=1, n_recommended_draws=1 (skips the extra
+            confirmation cost — this mode is for iterating on report
+            layout, not for numbers to hand a client).
         confirm_top_k:
             Number of the grid's lowest-max_cv candidates to re-evaluate
             independently before picking the final recommendation. Default
@@ -609,6 +704,11 @@ class BudgetPhaser:
             optimizer's-curse-style selection bias (evaluate the winner on
             a fresh, larger sample rather than trust the value that won the
             search that picked it).
+        n_recommended_draws:
+            Number of independent phased-schedule draws generated and
+            evaluated at the recommended alpha before picking the one
+            shipped as `recommended_schedule_`. Default 10. See docstring
+            above.
 
         Returns
         -------
@@ -619,9 +719,18 @@ class BudgetPhaser:
             grid_steps = 10
             n_phasing_seeds = 1
             confirm_top_k = 1
+            n_recommended_draws = 1
 
         if confirm_n_phasing_seeds is None:
             confirm_n_phasing_seeds = n_phasing_seeds * 3
+
+        # Distinct noise-seed ranges for grid search vs. confirmation, so
+        # the confirmation pass can't just be re-confirming a fit to the
+        # same n_sims noise draws the grid search already saw. See
+        # noise_seed_offset on CollinearityDiagnostic.fit and the P1.7 note
+        # in this method's docstring.
+        grid_noise_offset = 0
+        confirm_noise_offset = 500_000
 
         alphas = np.linspace(0, 1, grid_steps)
         rows = [
@@ -631,6 +740,7 @@ class BudgetPhaser:
                 n_sims,
                 n_phasing_seeds,
                 seed_offset=i * n_phasing_seeds,
+                noise_seed_offset=grid_noise_offset,
             )
             for i, alpha in enumerate(alphas)
         ]
@@ -651,6 +761,7 @@ class BudgetPhaser:
                 n_sims,
                 confirm_n_phasing_seeds,
                 seed_offset=100_000 + i * confirm_n_phasing_seeds,
+                noise_seed_offset=confirm_noise_offset,
             )
             for i, (_, cand) in enumerate(candidates.iterrows())
         ]
@@ -659,12 +770,45 @@ class BudgetPhaser:
         best_alpha = float(
             self.confirmation_.loc[self.confirmation_["max_cv"].idxmin(), "alpha"]
         )
-        self.recommended_schedule_ = _generate_phased_schedule(
-            self.plan_df,
-            self._plan_month_labels,
-            alpha=best_alpha,
-            max_weekly_deviation_pct=self.max_weekly_deviation_pct,
-            seed=self.seed + grid_steps * n_phasing_seeds,  # distinct from grid search
+
+        # Evaluate n_recommended_draws independent schedules at best_alpha
+        # and ship the best-evaluated one, rather than one arbitrary,
+        # never-evaluated draw. See docstring above.
+        draw_records = []
+        draw_schedules = []
+        for m in range(n_recommended_draws):
+            draw_seed = self.seed + 900_000 + m * 7919  # distinct, well-spaced
+            schedule_m = _generate_phased_schedule(
+                self.plan_df,
+                self._plan_month_labels,
+                alpha=best_alpha,
+                max_weekly_deviation_pct=self.max_weekly_deviation_pct,
+                seed=draw_seed,
+            )
+            combined_m = pd.concat([self.history_df, schedule_m])
+            diag_m = CollinearityDiagnostic(
+                spend_df=combined_m,
+                true_marginal_returns=self.true_marginal_returns,
+                base_sales=self.base_sales,
+                revenue_noise_std=self.revenue_noise_std,
+            )
+            diag_m.fit(n_sims=n_sims, noise_seed_offset=confirm_noise_offset + 1)
+            summ_m = diag_m.summary().set_index("channel")["coef_of_variation"]
+            draw_schedules.append(schedule_m)
+            record = {"draw": m, "seed": draw_seed, "max_cv": float(summ_m.max())}
+            for ch in summ_m.index:
+                record[f"cv_{ch}"] = float(summ_m[ch])
+            draw_records.append(record)
+
+        self.recommended_draws_ = pd.DataFrame(draw_records)
+        best_draw_idx = int(self.recommended_draws_["max_cv"].idxmin())
+        self.recommended_schedule_ = draw_schedules[best_draw_idx]
+        # The shipped draw is the best of n_recommended_draws -- itself a
+        # mild selection effect -- so the number reported alongside it is
+        # the MEDIAN max CV across all evaluated draws, not the shipped
+        # draw's own (optimistic) evaluation.
+        self.recommended_schedule_median_cv_ = float(
+            self.recommended_draws_["max_cv"].median()
         )
 
         return self
@@ -779,6 +923,7 @@ class BudgetPhaser:
         n_sims: int = 50,
         n_phasing_seeds: int = 10,
         fast_mode: bool = False,
+        channel_constraints: dict[str, DeviationSpec] | None = None,
     ) -> dict[str, DeviationSpec]:
         """Decide, per channel, whether Blackout is worth it over a continuous range.
 
@@ -795,13 +940,25 @@ class BudgetPhaser:
         For each channel, compares its own marginal CV (see
         channel_sensitivity — every other channel locked at 0) at full
         continuous amplitude (+/-magnitude_pct) against Blackout, and picks
-        Blackout only when it's a *meaningfully* better result for that
-        channel — at least improvement_threshold_pct relative CV
-        improvement, not just a noisier-looking single draw. This avoids
-        reaching for the operationally harder lever (locking a channel to
-        hard on/off weeks, which a media agency has to actually plan
-        around) on a difference that's within this method's own sampling
-        noise.
+        Blackout when it's at least improvement_threshold_pct relatively
+        better for that channel.
+
+        IMPORTANT — `improvement_threshold_pct` is a *policy* dial, not a
+        noise filter, and it does not reliably distinguish "this channel
+        needs Blackout" from "this channel can operationally tolerate
+        Blackout." In practice Blackout tends to beat a +/-40% continuous
+        range by 40%+ relative CV improvement for most channels (the two
+        levers are different sampling mechanisms, not points on the same
+        curve), so a default threshold of 10.0 rarely binds -- it will
+        recommend Blackout for every channel that has *any* headroom left
+        under a continuous range, including channels a media buyer
+        considers operationally impossible to black out (a "must always be
+        on" channel like a brand-safety or always-on search line). Do not
+        treat this method's output as safe to apply unchanged: at minimum,
+        review the returned dict before using it, and prefer passing
+        `channel_constraints` below for any channel with a hard
+        operational rule, rather than relying on the threshold to protect
+        it.
 
         This is a one-shot, per-channel *marginal* decision, same caveat as
         channel_sensitivity(): it doesn't capture interaction effects from
@@ -821,16 +978,20 @@ class BudgetPhaser:
             nothing to decide.
         improvement_threshold_pct:
             Minimum relative CV improvement (%) Blackout must show over the
-            continuous option for a channel before it's picked instead.
-            Default 10.0. At the default n_phasing_seeds=10, run-to-run
-            sampling noise on this comparison is typically 2-5 percentage
-            points, so the threshold holds in the large majority of cases;
-            noise widens somewhat at higher channel counts (seen up to
-            ~5 points at 20 channels in testing), so this hasn't been
-            proven safe at every scale, just at the counts checked so far.
-            A much smaller n_phasing_seeds (e.g. 3) is not a safe setting
-            to decide a lever with — noise there can reach 6-10 points and
-            occasionally flip the decision on a real effect.
+            continuous option for a channel before it's picked instead. See
+            the IMPORTANT note above — this rarely binds in practice, so
+            don't rely on it alone to protect a channel that must never be
+            blacked out; use `channel_constraints` for that. Default 10.0.
+            At the default n_phasing_seeds=10, run-to-run sampling noise on
+            this comparison is typically 2-5 percentage points, so a
+            threshold decision (when it does bind) holds in the large
+            majority of cases; noise widens somewhat at higher channel
+            counts (seen up to ~5 points at 20 channels in testing), so
+            this hasn't been proven safe at every scale, just at the
+            counts checked so far. A much smaller n_phasing_seeds (e.g. 3)
+            is not a safe setting to decide a lever with — noise there can
+            reach 6-10 points and occasionally flip the decision on a real
+            effect.
         n_sims, n_phasing_seeds:
             Same meaning as channel_sensitivity()/fit(). n_phasing_seeds
             defaults to 10 here (not fit()'s own default of 3) specifically
@@ -841,6 +1002,16 @@ class BudgetPhaser:
             If True, uses n_sims=10, n_phasing_seeds=1 — cheap, for
             iterating on the report itself, not a lever choice to actually
             hand a client.
+        channel_constraints:
+            Optional dict mapping channel name to a hard-pinned
+            float | Blackout spec for that channel. Any channel listed
+            here skips the CV comparison entirely and is returned with
+            exactly this spec — e.g. {"tv": 0} to guarantee TV is never
+            touched regardless of what the CV comparison would otherwise
+            recommend, or {"brand_search": 20.0} to cap a channel to a
+            gentler continuous range than `magnitude_pct` even if Blackout
+            would score better. Channels not listed here are still decided
+            by the usual CV comparison.
 
         Returns
         -------
@@ -851,9 +1022,13 @@ class BudgetPhaser:
         if fast_mode:
             n_sims = 10
             n_phasing_seeds = 1
+        channel_constraints = channel_constraints or {}
 
         spec: dict[str, DeviationSpec] = {}
         for ch in channels:
+            if ch in channel_constraints:
+                spec[ch] = channel_constraints[ch]
+                continue
             if blackout is None:
                 spec[ch] = magnitude_pct
                 continue
@@ -957,7 +1132,10 @@ class BudgetPhaser:
 
             today_combined = pd.concat([self.history_df, tiled_plan])
             today_diag = CollinearityDiagnostic(
-                spend_df=today_combined, true_elasticities=self.true_elasticities
+                spend_df=today_combined,
+                true_marginal_returns=self.true_marginal_returns,
+                base_sales=self.base_sales,
+                revenue_noise_std=self.revenue_noise_std,
             )
             today_diag.fit(n_sims=n_sims)
             today_summ = today_diag.summary(planned_spend=planned_spend).set_index(
@@ -978,7 +1156,10 @@ class BudgetPhaser:
                 )
                 combined = pd.concat([self.history_df, phased])
                 diag = CollinearityDiagnostic(
-                    spend_df=combined, true_elasticities=self.true_elasticities
+                    spend_df=combined,
+                    true_marginal_returns=self.true_marginal_returns,
+                    base_sales=self.base_sales,
+                    revenue_noise_std=self.revenue_noise_std,
                 )
                 diag.fit(n_sims=n_sims)
                 summ = diag.summary(planned_spend=planned_spend).set_index("channel")
@@ -1023,10 +1204,17 @@ class BudgetPhaser:
         This is deliberately *not* the grid's own lowest-max_cv row — see
         fit()'s docstring on selection-bias correction. It's the best of
         the top confirm_top_k candidates after independent re-evaluation on
-        a larger sample, which is what recommended_schedule_ is actually
-        built from. Use summary()/results_ to see the raw, noisier grid
-        instead (useful for plotting the CV-vs-alpha curve, not for citing
-        a specific channel's CV at the recommended alpha).
+        a larger sample, and its alpha is what recommended_schedule_ is
+        generated at. Note this row's own max_cv is a separate estimate
+        from `recommended_schedule_median_cv_` (the median max CV across
+        the n_recommended_draws schedules evaluated at this alpha before
+        picking the one actually shipped) — the two should agree
+        approximately but not exactly, since they come from independent
+        simulation batches. Prefer `recommended_schedule_median_cv_` when
+        describing the CV of the schedule actually being handed over. Use
+        summary()/results_ to see the raw, noisier grid instead (useful for
+        plotting the CV-vs-alpha curve, not for citing a specific channel's
+        CV at the recommended alpha).
 
         Returns
         -------

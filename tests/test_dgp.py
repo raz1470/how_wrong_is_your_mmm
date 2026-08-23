@@ -7,7 +7,7 @@ import pytest
 from how_wrong_is_your_mmm._dgp import simulate_sales, simulate_spend
 
 CHANNELS = ["tv", "meta", "search"]
-ELASTICITIES = {"tv": 0.3, "meta": 0.5, "search": 0.4}
+MARGINAL_RETURNS = {"tv": 0.3, "meta": 0.5, "search": 0.4}
 
 
 class TestSimulateSpend:
@@ -63,23 +63,25 @@ class TestSimulateSales:
         self.spend_df = simulate_spend(n_obs=104, correlation=0.5, seed=0)
 
     def test_output_length(self):
-        assert len(simulate_sales(self.spend_df, ELASTICITIES)) == len(self.spend_df)
+        assert len(simulate_sales(self.spend_df, MARGINAL_RETURNS)) == len(
+            self.spend_df
+        )
 
     def test_output_name(self):
-        assert simulate_sales(self.spend_df, ELASTICITIES).name == "sales"
+        assert simulate_sales(self.spend_df, MARGINAL_RETURNS).name == "sales"
 
     def test_reproducibility(self):
-        s1 = simulate_sales(self.spend_df, ELASTICITIES, seed=7)
-        s2 = simulate_sales(self.spend_df, ELASTICITIES, seed=7)
+        s1 = simulate_sales(self.spend_df, MARGINAL_RETURNS, seed=7)
+        s2 = simulate_sales(self.spend_df, MARGINAL_RETURNS, seed=7)
         pd.testing.assert_series_equal(s1, s2)
 
     def test_different_seeds_differ(self):
-        s1 = simulate_sales(self.spend_df, ELASTICITIES, seed=0)
-        s2 = simulate_sales(self.spend_df, ELASTICITIES, seed=1)
+        s1 = simulate_sales(self.spend_df, MARGINAL_RETURNS, seed=0)
+        s2 = simulate_sales(self.spend_df, MARGINAL_RETURNS, seed=1)
         assert not s1.equals(s2)
 
-    def test_elasticity_direction(self):
-        """Higher elasticity should produce higher mean sales."""
+    def test_marginal_return_direction(self):
+        """Higher marginal return should produce higher mean sales."""
         low = simulate_sales(
             self.spend_df, {"tv": 0.1, "meta": 0.1, "search": 0.1}, revenue_noise_std=0
         ).mean()
@@ -92,7 +94,45 @@ class TestSimulateSales:
         with pytest.raises(ValueError, match="has no entry"):
             simulate_sales(self.spend_df, {"tv": 0.3})
 
-    def test_default_elasticities(self):
-        # should not raise when using default elasticities on default channels
+    def test_default_marginal_returns(self):
+        # should not raise when using default marginal returns on default channels
         sales = simulate_sales(self.spend_df)
         assert len(sales) == len(self.spend_df)
+
+    def test_default_marginal_returns_are_not_stale_elasticity_values(self):
+        # P0.1: the illustrative defaults were reset from the original
+        # elasticity-scale numbers (0.3/0.5/0.4) to defensible marginal
+        # returns -- guard against a silent regression back to those.
+        from how_wrong_is_your_mmm._dgp import _DEFAULT_MARGINAL_RETURNS
+
+        assert _DEFAULT_MARGINAL_RETURNS == {"tv": 2.0, "meta": 3.5, "search": 6.0}
+
+
+class TestDeprecatedTrueElasticitiesAlias:
+    """true_elasticities is a deprecated alias for true_marginal_returns --
+    kept working (with a FutureWarning) for backward compatibility."""
+
+    def setup_method(self):
+        self.spend_df = simulate_spend(n_obs=104, correlation=0.5, seed=0)
+
+    def test_warns(self):
+        with pytest.warns(FutureWarning, match="true_elasticities is deprecated"):
+            simulate_sales(self.spend_df, true_elasticities=MARGINAL_RETURNS)
+
+    def test_still_works(self):
+        with pytest.warns(FutureWarning):
+            s1 = simulate_sales(
+                self.spend_df, true_elasticities=MARGINAL_RETURNS, seed=3
+            )
+        s2 = simulate_sales(
+            self.spend_df, true_marginal_returns=MARGINAL_RETURNS, seed=3
+        )
+        pd.testing.assert_series_equal(s1, s2)
+
+    def test_both_given_raises(self):
+        with pytest.raises(ValueError, match="only one of"):
+            simulate_sales(
+                self.spend_df,
+                true_marginal_returns=MARGINAL_RETURNS,
+                true_elasticities=MARGINAL_RETURNS,
+            )

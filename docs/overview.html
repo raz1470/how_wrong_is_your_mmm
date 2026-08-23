@@ -241,14 +241,14 @@ footer a { color: var(--muted); }
     <div class="fig-body">
       <div class="legend">
         <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> Model-estimated range</span>
-        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> True elasticity's revenue</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> True marginal return's revenue</span>
       </div>
       <svg class="chart" id="chartProblem" viewBox="0 0 700 200" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Same spend, same market, same true effect (dashed line — known here because it's a demo scenario; on your own plan you'd supply a plausible elasticity as an input, not a proven true one to check against). This is the range the model itself produces once you refit it across many plausible versions of the same history — not an empirical range of outcomes, an estimated one.</p>
+    <p class="fig-cap">Same spend, same market, same true effect (dashed line — known here because it's a demo scenario; on your own plan you'd supply a plausible marginal return as an input, not a proven true one to check against). This is the range the model itself produces once you refit it across many plausible versions of the same history — not an empirical range of outcomes, an estimated one.</p>
   </div>
 
-  <p>Look closely and none of these ranges are tight. TV could be earning anywhere from £945k to £2.09m off the same spend — more than double. The ranges overlap so much that any of the three channels could turn out to be the best-performing one on this plan, or the worst. That's not a rounding error. That's the model telling you it genuinely doesn't know which channel is really carrying the plan.</p>
+  <p>Look closely and none of these ranges are tight. TV could be earning anywhere from £9.6m to £10.8m off the same spend — over a million pounds of daylight, and Search's range is nearly as wide in absolute terms on barely a third of the budget. That's not a rounding error. That's the model telling you it genuinely doesn't know which channel is really carrying the plan.</p>
 </section>
 
 <!-- SECTION 2: THE CAUSE -->
@@ -337,11 +337,11 @@ footer a { color: var(--muted); }
         <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Today</span>
         <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.75"/></svg> After 1 year</span>
         <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> After 2 years</span>
-        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> True elasticity's revenue</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> True marginal return's revenue</span>
       </div>
       <svg class="chart" id="chartImpact" viewBox="0 0 700 230" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Every channel narrows substantially, and keeps narrowing: TV 54% then 66%, Meta 54% then 65%, Search 54% then 67% — off the same £12.3m, no extra spend, just phasing every channel with the on/off lever for longer. The dashed line marks the true elasticity's implied revenue (known here because it's a demo scenario): the ranges don't just tighten, they close in on it.</p>
+    <p class="fig-cap">Every channel narrows substantially, and keeps narrowing: TV 54% then 65%, Meta 53% then 65%, Search 50% then 65% — off the same £12.3m, no extra spend, just phasing every channel with the on/off lever for longer. The dashed line marks the true marginal return's implied revenue (known here because it's a demo scenario): the ranges don't just tighten, they close in on it.</p>
   </div>
 
   <div class="knums">
@@ -357,8 +357,8 @@ footer a { color: var(--muted); }
     </div>
     <div class="kbox">
       <div class="lbl">Uncertainty reduction</div>
-      <div class="num" style="color:#059669">67%</div>
-      <div class="lab">This plan's least reliable channel, after two years (54% within year one alone)</div>
+      <div class="num" style="color:#059669">65%</div>
+      <div class="lab">This plan's least reliable channel, after two years (50% within year one alone)</div>
     </div>
   </div>
 </section>
@@ -427,8 +427,8 @@ footer a { color: var(--muted); }
   <p class="s-label">7 · Questions</p>
   <h2>Frequently asked questions</h2>
 
-  <p style="font-weight:700; margin-bottom: .3rem;">Doesn't this need me to already know my elasticity?</p>
-  <p>You supply a plausible one, not a proven one — that's the whole trick. The model simulates what your sales would look like if that number were true, then checks how reliably it can recover it from your actual spend pattern. The unreliability it finds comes from your channels moving together in real life, not from the number you picked. Pick a different plausible number and the diagnosis barely changes: your spend pattern is doing the work.</p>
+  <p style="font-weight:700; margin-bottom: .3rem;">Doesn't this need me to already know my marginal return?</p>
+  <p>You supply a plausible one, not a proven one, and less rides on getting it exactly right than you'd think. The estimator's sampling noise comes from your spend pattern and residual variance, not from the marginal return you assumed, so the absolute £ width of the range stays the same whichever plausible number you plug in — pick a different one and the range just recentres around it, it doesn't get any tighter or wider. The percentage narrowing phasing buys you is invariant the same way: TV's range still comes in 54% narrower after a year of phasing, regardless of which marginal return you assumed going in. What actually drives the width is how correlated your channels are in real life, and that's exactly what phasing fixes.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Why not just run a geo-lift test instead?</p>
   <p>Geo-experiments are the academic gold standard, but they test one channel at a time, need a real blackout region, and take months to read. You can't run one for TV, Meta and Search simultaneously. This works with the spend and channel mix you already have.</p>
@@ -443,13 +443,13 @@ footer a { color: var(--muted); }
   <p>Yes. Everything on this page uses three channels for clarity, but we reran the same diagnostic and phasing fix at 5, 10, 15 and 20 channels. Reliability barely moves as you add more — what matters is how correlated your channels are with each other, not how many you have. Phasing delivers roughly the same improvement the whole way, from 5 channels to 20.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">How long until I see the benefit?</p>
-  <p>This isn't a multi-year commitment. Year one alone gets Search to 54% narrower — not a promise for week one, but not three years away either. Stick with it and it keeps compounding: 67% by year two. You don't need to wait to see a real difference. It only gets better if you do.</p>
+  <p>This isn't a multi-year commitment. Year one alone gets TV to 54% narrower — not a promise for week one, but not three years away either. Stick with it and it keeps compounding: 65% by year two, and every channel converges toward roughly the same ceiling. You don't need to wait to see a real difference. It only gets better if you do.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Isn't 12 months a long time to wait for this to pay off?</p>
-  <p>No, it moves faster than that. Run the same on/off lever for just one quarter on this page's own scenario and Search is already about 40% narrower — roughly three-quarters of the way to the 54% you get after a full year. Compare that to the common cycle: two years bedding in a new MMM partner, deciding it isn't working, then starting over with someone else, without ever building on what you learned. This runs on the model and spend data you already have. The first real signal lands this quarter, not after another vendor switch.</p>
+  <p>No, it moves faster than that. Run the same on/off lever for just one quarter on this page's own scenario and Search is already about 40% narrower — four-fifths of the way to the 50% you get after a full year. Compare that to the common cycle: two years bedding in a new MMM partner, deciding it isn't working, then starting over with someone else, without ever building on what you learned. This runs on the model and spend data you already have. The first real signal lands this quarter, not after another vendor switch.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Won't this put my channels into learning mode?</p>
-  <p>Possibly, in the short term — and that's the real trade-off: how much tighter do you want your results? A channel's reliability gain compounds over a year or two, usually worth more than what a learning-phase reset costs today. This isn't a call the model makes alone: it's a compromise between data science and marketing. Each channel's setting is flexible, from 0% (untouched), through a gentle nudge up to 80%, to a full on/off switch — dial each one to wherever that compromise lands.</p>
+  <p>Possibly, in the short term — and that's the real trade-off: how much tighter do you want your results? A channel's reliability gain compounds over a year or two, usually worth more than what a learning-phase reset costs today. This isn't a call the model makes alone: it's a compromise between data science and marketing. Each channel's setting is flexible, from 0% (untouched), through a gentle nudge, all the way up to 100%, to a full on/off switch — dial each one to wherever that compromise lands.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">What do I actually hand my media agency?</p>
   <p>A weekly spend number per channel, covering the same plan year. Every month still totals exactly what it does today. Nothing about the buy itself changes, only which week the money lands in.</p>
@@ -510,7 +510,7 @@ const MIXED_RECOMMENDED = {
 };
 
 // ── Chart: Problem (forest plot, before phasing) ────────────────────────────
-// From the same reproduction: revenue = elasticity draw x planned spend,
+// From the same reproduction: revenue = marginal-return draw x planned spend,
 // no-phasing scenario, p10/p90 of the resulting distribution.
 function drawForest(svgId, data, xMax) {
   const svg = document.getElementById(svgId);
@@ -533,7 +533,7 @@ function drawForest(svgId, data, xMax) {
     }
   }
 
-  const xTicks = [0, 0.5, 1.0, 1.5, 2.0, 2.5];
+  const xTicks = [0, 5, 10, 15, 20];
   for (const v of xTicks) {
     const x = scX(v);
     g.appendChild(el('line', { x1: x, y1: m.top, x2: x, y2: m.top + ph, stroke: '#e5e7eb', 'stroke-width': 1 }));
@@ -564,10 +564,10 @@ function drawForest(svgId, data, xMax) {
 }
 
 drawForest('chartProblem', [
-  { name: 'TV',     color: '#2563eb', spend: 5.098, p10: 0.945, p90: 2.094, truth: 1.529 },
-  { name: 'Meta',   color: '#d97706', spend: 4.066, p10: 1.418, p90: 2.595, truth: 2.033 },
-  { name: 'Search', color: '#059669', spend: 3.100, p10: 0.712, p90: 1.885, truth: 1.240 },
-], 2.8);
+  { name: 'TV',     color: '#2563eb', spend: 5.098, p10: 9.615, p90: 10.764, truth: 10.201 },
+  { name: 'Meta',   color: '#d97706', spend: 4.066, p10: 13.718, p90: 14.895, truth: 14.351 },
+  { name: 'Search', color: '#059669', spend: 3.100, p10: 18.072, p90: 19.245, truth: 18.601 },
+], 20);
 
 // ── Chart: Cause (correlated spend time series) ─────────────────────────────
 (function drawCause() {
@@ -695,12 +695,12 @@ drawForest('chartProblem', [
   const ph = H - m.top - m.bottom;
 
   const data = [
-    { name: 'TV',     color: '#2563eb', today: [0.945, 2.094], y1: [1.260, 1.785], y2: [1.343, 1.738], truth: 1.529 },
-    { name: 'Meta',   color: '#d97706', today: [1.418, 2.595], y1: [1.774, 2.322], y2: [1.855, 2.267], truth: 2.033 },
-    { name: 'Search', color: '#059669', today: [0.712, 1.885], y1: [0.994, 1.531], y2: [1.055, 1.446], truth: 1.240 },
+    { name: 'TV',     color: '#2563eb', today: [9.615, 10.764], y1: [9.932, 10.459], y2: [9.992, 10.390], truth: 10.201 },
+    { name: 'Meta',   color: '#d97706', today: [13.718, 14.895], y1: [14.067, 14.623], y2: [14.160, 14.568], truth: 14.351 },
+    { name: 'Search', color: '#059669', today: [18.072, 19.245], y1: [18.324, 18.904], y2: [18.398, 18.803], truth: 18.601 },
   ];
 
-  const xMax = 2.8;
+  const xMax = 20;
   const scX = v => m.left + (v / xMax) * pw;
   const rowH = ph / data.length;
   const rowCy = i => m.top + rowH * i + rowH / 2;
@@ -713,7 +713,7 @@ drawForest('chartProblem', [
     }
   }
 
-  const xTicks = [0, 0.5, 1.0, 1.5, 2.0, 2.5];
+  const xTicks = [0, 5, 10, 15, 20];
   for (const v of xTicks) {
     const x = scX(v);
     g.appendChild(el('line', { x1: x, y1: m.top, x2: x, y2: m.top + ph, stroke: '#e5e7eb', 'stroke-width': 1 }));
@@ -741,7 +741,7 @@ drawForest('chartProblem', [
     const cyY2 = cy + step;
     g.appendChild(el('line', { x1: scX(ch.y2[0]), y1: cyY2, x2: scX(ch.y2[1]), y2: cyY2, stroke: ch.color, 'stroke-width': 5.5, 'stroke-linecap': 'round' }));
 
-    // True elasticity's implied revenue, spanning all three sub-rows
+    // True marginal return's implied revenue, spanning all three sub-rows
     if (ch.truth !== undefined) {
       const tx = scX(ch.truth);
       g.appendChild(el('line', { x1: tx, y1: cyToday - 5, x2: tx, y2: cyY2 + 5, stroke: '#111827', 'stroke-width': 1.6, 'stroke-dasharray': '3,2' }));

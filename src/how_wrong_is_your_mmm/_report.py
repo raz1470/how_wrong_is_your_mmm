@@ -11,8 +11,8 @@ JSON blob, not to re-derive the design.
 Report structure (page 1): cover -> headline callout -> Diagnose (spend
 correlation matrix + honest-range forest plot + table) -> Phase (recommended
 weekly schedule + before/after correlation + lever table) -> Retrain/Impact
-(before/after forest plot + kbox summary + elasticity caveat) -> Methodology
-appendix.
+(before/after forest plot + kbox summary + marginal-return caveat) ->
+Methodology appendix.
 
 Report structure (page 2, "Scenario exploration"): channel sensitivity
 (CV-vs-amplitude per channel, via BudgetPhaser.channel_sensitivity — decides
@@ -23,6 +23,7 @@ by phasing intensity, for the least reliable channel).
 from __future__ import annotations
 
 import json
+import warnings
 from datetime import date
 
 import pandas as pd
@@ -106,10 +107,31 @@ class ReportBuilder:
         modified by phasing. Same shape BudgetPhaser expects.
     plan_df:
         The upcoming plan-year spend, same columns as history_df.
-    true_elasticities:
-        Dict mapping channel to a plausible (not proven) elasticity, used to
-        simulate the sales column the diagnostic reasons about. Defaults to
-        CollinearityDiagnostic's own default if not supplied.
+    true_marginal_returns:
+        Dict mapping channel to a plausible (not proven) marginal return —
+        £ revenue per £ spend, a.k.a. mROAS, NOT an economic elasticity
+        (see _dgp.py) — used to simulate the sales column the diagnostic
+        reasons about. Defaults to {"tv": 2.0, "meta": 3.5, "search": 6.0}
+        ONLY when history_df/plan_df use exactly those three channel names;
+        for any other channel naming you must supply this yourself, or
+        CollinearityDiagnostic raises ValueError deep inside fit(). There
+        is no safe universal default — for your own data, supply your own
+        per-channel values (from a prior model, a plausible ROI range from
+        finance, or a held-out incrementality test). This is the single
+        most important input to get right: every CV and every £ range in
+        the report is anchored to it, and CV is exactly inversely
+        proportional to whatever value you supply here (see
+        CollinearityDiagnostic.summary).
+    base_sales, revenue_noise_std:
+        Forwarded to every internal CollinearityDiagnostic/BudgetPhaser.
+        revenue_noise_std (£) is the second most important input to get
+        right — CV scales ~linearly with it. Set it from your own model's
+        residual standard deviation (e.g. the residual std of a simple OLS
+        fit of your actual sales on your actual spend history), not from
+        this package's default of 20,000, which is an arbitrary
+        placeholder with no relationship to your business. Defaults:
+        base_sales=1_000.0, revenue_noise_std=20_000.0, matching
+        CollinearityDiagnostic's own defaults.
     max_weekly_deviation_pct:
         Per-channel phasing lever, same shape BudgetPhaser accepts: a single
         float (symmetric +/-X% for every channel), a single Blackout, or a
@@ -126,30 +148,66 @@ class ReportBuilder:
         blank.
     seed:
         Base random seed, forwarded to BudgetPhaser.
+    true_elasticities:
+        Deprecated alias for `true_marginal_returns`, kept for backward
+        compatibility. Raises ValueError if both are supplied. Emits a
+        FutureWarning -- migrate to `true_marginal_returns`.
     """
 
     def __init__(
         self,
         history_df: pd.DataFrame,
         plan_df: pd.DataFrame,
-        true_elasticities: dict[str, float] | None = None,
+        true_marginal_returns: dict[str, float] | None = None,
         max_weekly_deviation_pct: DeviationSpec
         | dict[str, DeviationSpec] = _DEFAULT_LEVER,
         client_name: str = "",
         plan_year: str = "",
         seed: int = 0,
+        base_sales: float = 1_000.0,
+        revenue_noise_std: float = 20_000.0,
+        true_elasticities: dict[str, float] | None = None,
     ) -> None:
+        if true_elasticities is not None:
+            if true_marginal_returns is not None:
+                raise ValueError(
+                    "Pass only one of true_marginal_returns or the "
+                    "deprecated true_elasticities, not both."
+                )
+            warnings.warn(
+                "true_elasticities is deprecated and will be removed in a "
+                "future release -- these are marginal returns (£ revenue "
+                "per £ spend), not elasticities. Use true_marginal_returns "
+                "instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            true_marginal_returns = true_elasticities
+
         self.history_df = history_df
         self.plan_df = plan_df
-        self.true_elasticities = true_elasticities
+        self.true_marginal_returns = true_marginal_returns
         self.max_weekly_deviation_pct = max_weekly_deviation_pct
         self.client_name = client_name
         self.plan_year = plan_year
         self.seed = seed
+        self.base_sales = base_sales
+        self.revenue_noise_std = revenue_noise_std
 
         self.phaser_: BudgetPhaser | None = None
         self.diagnostic_today_: CollinearityDiagnostic | None = None
         self.report_data_: dict | None = None
+
+    @property
+    def true_elasticities(self) -> dict[str, float] | None:
+        """Deprecated alias for `true_marginal_returns`. See __init__."""
+        warnings.warn(
+            "ReportBuilder.true_elasticities is deprecated, use "
+            "true_marginal_returns instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.true_marginal_returns
 
     def fit(
         self,
@@ -244,7 +302,10 @@ class ReportBuilder:
         # --- Today: correlation + model-estimated range, unphased -----------
         today_combined = pd.concat([self.history_df, self.plan_df])
         diag_today = CollinearityDiagnostic(
-            spend_df=today_combined, true_elasticities=self.true_elasticities
+            spend_df=today_combined,
+            true_marginal_returns=self.true_marginal_returns,
+            base_sales=self.base_sales,
+            revenue_noise_std=self.revenue_noise_std,
         )
         diag_today.fit(n_sims=10 if fast_mode else n_sims)
         planned_spend = self.plan_df.sum().to_dict()
@@ -253,7 +314,7 @@ class ReportBuilder:
         )
         self.diagnostic_today_ = diag_today
 
-        resolved_elasticities = diag_today.true_elasticities
+        resolved_marginal_returns = diag_today.true_marginal_returns
         correlation_matrix = diag_today.correlation_matrix.round(4)
 
         least_reliable = str(today_summary["coef_of_variation"].idxmax())
@@ -272,8 +333,10 @@ class ReportBuilder:
             lever_scout = BudgetPhaser(
                 history_df=self.history_df,
                 plan_df=self.plan_df,
-                true_elasticities=resolved_elasticities,
+                true_marginal_returns=resolved_marginal_returns,
                 seed=self.seed,
+                base_sales=self.base_sales,
+                revenue_noise_std=self.revenue_noise_std,
             )
             resolved_lever_spec = lever_scout.recommend_levers(
                 magnitude_pct=sensitivity_magnitude_pct,
@@ -290,9 +353,11 @@ class ReportBuilder:
         phaser = BudgetPhaser(
             history_df=self.history_df,
             plan_df=self.plan_df,
-            true_elasticities=resolved_elasticities,
+            true_marginal_returns=resolved_marginal_returns,
             max_weekly_deviation_pct=resolved_lever_spec,
             seed=self.seed,
+            base_sales=self.base_sales,
+            revenue_noise_std=self.revenue_noise_std,
         )
         phaser.fit(
             n_sims=n_sims,
@@ -339,7 +404,10 @@ class ReportBuilder:
             tiled = _tile_plan(self.plan_df, h)
             combined = pd.concat([self.history_df, tiled])
             d = CollinearityDiagnostic(
-                spend_df=combined, true_elasticities=resolved_elasticities
+                spend_df=combined,
+                true_marginal_returns=resolved_marginal_returns,
+                base_sales=self.base_sales,
+                revenue_noise_std=self.revenue_noise_std,
             )
             d.fit(n_sims=10 if fast_mode else n_sims)
             ttb_today_cv[h] = float(
@@ -365,8 +433,10 @@ class ReportBuilder:
                 tmp = BudgetPhaser(
                     history_df=self.history_df,
                     plan_df=tiled,
-                    true_elasticities=resolved_elasticities,
+                    true_marginal_returns=resolved_marginal_returns,
                     seed=self.seed,
+                    base_sales=self.base_sales,
+                    revenue_noise_std=self.revenue_noise_std,
                 )
                 full_spec = {**locked, least_reliable: spec}
                 # Private helper, same package -- reused deliberately rather
@@ -721,7 +791,7 @@ table.corr td.diag { background: repeating-linear-gradient(45deg, #f3f4f6, #f3f4
    fast_mode=True, so a quick preview run can never be mistaken for a real
    one further down the line (this is what happened before this banner
    existed — see fit()'s fast_mode docstring). Deliberately alarming (red,
-   not the amber used for the elasticity caveat above) and kept visible in
+   not the amber used for the marginal-return caveat above) and kept visible in
    print, since the whole point is that it must survive a PDF export too. */
 .draft-banner { display: none; }
 .draft-banner.show {
@@ -812,7 +882,7 @@ footer { margin-top: 2.5rem; padding: 1.5rem 2rem 2rem; border-top: 1px solid va
     <div class="fig-body">
       <svg class="chart" id="chartDiagnose" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Each channel's model-estimated range, given how your channels have actually moved together. Wider bars mean less reliable elasticity estimates.</p>
+    <p class="fig-cap">Each channel's model-estimated range, given how your channels have actually moved together. Wider bars mean a less identifiable marginal-return estimate for that channel &mdash; not necessarily a less accurate one; see the Methodology note on scope.</p>
   </div>
 
   <table class="rpt">
@@ -892,7 +962,7 @@ footer { margin-top: 2.5rem; padding: 1.5rem 2rem 2rem; border-top: 1px solid va
 
   <div class="caveat">
     <span class="icon">&#9888;</span>
-    <p><b>These &pound; figures depend on the elasticities you supplied</b> &mdash; plausible, not proven. The reliability gain itself doesn't: breaking the correlation between channels narrows the range regardless of the exact elasticity used. But the specific pound amounts above will move if your assumed elasticities turn out to be off. See <a href="#method">Methodology</a>.</p>
+    <p><b>These &pound; figures depend on the marginal returns you supplied</b> &mdash; plausible, not proven. The <i>relative</i> reliability gain doesn't: the percentage CV reduction from phasing is the same regardless of the marginal-return value used, because CV is inversely proportional to that value on both sides of the before/after comparison. But the specific pound amounts above, and where the range sits, will move if your assumed marginal returns turn out to be off &mdash; and this diagnostic can't tell you whether they're right, only how precisely they'd be estimated if they are. See <a href="#method">Methodology</a>.</p>
   </div>
 </section>
 
@@ -1007,7 +1077,7 @@ if (REPORT.meta.fast_mode) {
 document.getElementById('genDate').innerHTML = `Generated ${REPORT.meta.generated_date}<br>v${REPORT.meta.package_version}`;
 document.getElementById('clientName').textContent = REPORT.meta.client_name;
 document.getElementById('reportSub').textContent =
-  `A diagnosis of how reliable your ${REPORT.meta.plan_year} marketing mix model elasticities are, and a recommended weekly spend schedule to tighten them — same budget, same monthly totals.`;
+  `A diagnosis of how precisely your ${REPORT.meta.plan_year} marketing mix model can identify each channel's marginal return, and a recommended weekly spend schedule to tighten that — same budget, same monthly totals.`;
 document.getElementById('metaPlanYear').textContent = REPORT.meta.plan_year;
 document.getElementById('metaChannels').textContent = REPORT.channels.length;
 document.getElementById('metaAnnualPlan').textContent = fmtGBP(REPORT.annual_plan_total);
@@ -1024,11 +1094,12 @@ document.getElementById('headline').innerHTML =
 
 document.getElementById('methodologyText').innerHTML =
   `Generated with <code>how_wrong_is_your_mmm v${REPORT.meta.package_version}</code>. ` +
-  `Diagnostic: OLS refit across simulated sales consistent with your supplied spend history, using elasticities you supplied. ` +
+  `Diagnostic: OLS refit across simulated sales consistent with your supplied spend history, using marginal returns (£ revenue per £ spend) you supplied. ` +
   `Phasing: grid search over amplitude per lever, minimising the worst-case channel CV, then re-confirmed independently on a larger sample before being recommended, to avoid favouring a setting that only looked best by chance. ` +
   (REPORT.meta.auto_lever_applied
     ? `Lever choice: each channel's own lever (continuous range vs. a harder on/off Blackout) was picked automatically from how much that channel individually benefits from each option. `
     : ``) +
+  `<br><br><b>Scope:</b> the ranges above measure how precisely your spend design can identify each channel's marginal return under a model that is correctly specified by construction &mdash; sampling variance, not model error. They are silent on misspecification: an omitted driver (seasonality, adstock, saturation, a competitor event) can leave this diagnostic looking healthy while the underlying point estimate is badly biased, because the same omission that inflates the estimate typically inflates it more than it widens the range. Read a narrow range as "well-identified by this design," not as "correct." ` +
   `Full method: <a href="https://raz1470.github.io/how_wrong_is_your_mmm/collinearity_research.html">raz1470.github.io/how_wrong_is_your_mmm/collinearity_research.html</a>.`;
 
 document.getElementById('phaseSub').textContent =
