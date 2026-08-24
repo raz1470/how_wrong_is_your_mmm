@@ -10,9 +10,9 @@ For most brands, no. TV, Meta, and Search budgets move together because the same
 
 This package quantifies that problem and recommends a fix. **Important scope note:** it measures whether your spend design can identify each channel's effect precisely — sampling variance under a model that's correctly specified by construction. It does not check whether your model *is* correctly specified: an omitted driver (seasonality, adstock, saturation, a competitor event) can leave this diagnostic looking healthy while the underlying estimate is badly biased. See the [research page](https://raz1470.github.io/how_wrong_is_your_mmm/collinearity_research.html) for the full scope discussion.
 
-![The ranges tighten, and keep tightening toward the true answer — incremental revenue model-estimated range today vs after 1 year vs after 2 years of budget phasing, every channel narrowing roughly 50-65% off the same £12.3m plan, no extra spend. Dashed line marks the true marginal return's implied revenue on this demo scenario.](https://raw.githubusercontent.com/raz1470/how_wrong_is_your_mmm/main/assets/readme-honest-ranges.png)
+![The ranges tighten, and keep tightening toward the true answer — incremental revenue model-estimated range today vs after 1 year vs after 2 years of budget phasing, every channel narrowing roughly 55-60% off the same £12.3m plan, no extra spend. Dashed line marks the true marginal return's implied revenue on this demo scenario.](https://raw.githubusercontent.com/raz1470/how_wrong_is_your_mmm/main/assets/readme-honest-ranges.png)
 
-This chart shows the impact of the phasing algorithm: the estimated revenue range for each channel gets tighter the longer you phase, roughly 65% tighter after 2 years, off the same budget.
+This chart shows the impact of the phasing algorithm: the estimated revenue range for each channel gets tighter the longer you phase, roughly 60% tighter after 2 years, off the same budget. On this scenario, the ranges for TV, Meta, and Search actually overlap today — you can't confidently say which channel is doing best — and phasing is what pulls them apart into a clear order.
 
 ---
 
@@ -20,7 +20,7 @@ This chart shows the impact of the phasing algorithm: the estimated revenue rang
 
 **Part 1 — Diagnose.** Simulate many plausible histories of your market and measure how much your marginal-return estimates swing — exposing uncertainty the model has been hiding, not a rounding error. (The width of that range is what matters; where it's centred depends entirely on the marginal return you assume, and there's no universal default — see Quick start below.)
 
-**Part 2 — Phase.** Recommend a weekly spend schedule that breaks the correlation between channels while keeping monthly totals exactly the same. Choose a continuous nudge to each week's split, or Blackout: a harder on/off switch that takes a channel fully dark some weeks and makes it up on the weeks it stays on. The percentage reduction that phasing buys you is itself stable regardless of the marginal return you assumed; only the absolute £ figures above depend on it.
+**Part 2 — Phase.** Recommend a weekly spend schedule that breaks the correlation between channels while keeping monthly totals exactly the same. Choose a continuous nudge to each week's split, or Blackout: a harder on/off switch that takes a channel fully dark some weeks and makes it up on the weeks it stays on. Get the overall scale of your marginal returns wrong but the channels' proportions right, and the percentage reduction phasing buys you barely moves — only the absolute £ figures above shift. Get the *proportions between channels* wrong, though, and the reduction can move too: it changes which channel looks least identified, which changes which phasing intensity gets recommended for it.
 
 **Part 3 — Retrain.** Refit your MMM on the phased data. The de-correlated spend does the work: marginal-return estimates come back measurably tighter, without waiting years for it to accumulate.
 
@@ -67,13 +67,13 @@ diag = CollinearityDiagnostic(correlation=0.7, spend_seed=0)
 diag.fit()
 diag.summary()
 # channel  true_marginal_return  mean_estimated  coef_of_variation
-#      tv                  2.00           2.029              0.058
-#    meta                  3.50           3.503              0.041
-#  search                  6.00           5.957              0.037
+#      tv                  0.50           0.538              0.284
+#    meta                  1.00           1.003              0.188
+#  search                  1.50           1.445              0.200
 ```
 
-The defaults above (`true_marginal_returns={"tv": 2.0, "meta": 3.5, "search": 6.0}`,
-`revenue_noise_std=20_000`) are illustrative only, and only apply when your channels
+The defaults above (`true_marginal_returns={"tv": 0.5, "meta": 1.0, "search": 1.5}`,
+`revenue_noise_std=26_000`) are illustrative only, and only apply when your channels
 are literally named `tv`/`meta`/`search` — any other channel naming raises a clear
 `ValueError` telling you to supply your own. There is no universal default for
 either: run the same check on your own spend history and your own assumptions

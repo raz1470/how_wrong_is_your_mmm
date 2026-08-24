@@ -410,7 +410,7 @@ class BudgetPhaser:
     true_marginal_returns:
         Dict mapping channel name to true marginal return (£ revenue per
         £ spend, a.k.a. mROAS — not an economic elasticity, see _dgp.py).
-        Defaults to {"tv": 2.0, "meta": 3.5, "search": 6.0}. As with
+        Defaults to {"tv": 0.5, "meta": 1.0, "search": 1.5}. As with
         CollinearityDiagnostic, there is no safe universal default here —
         prefer supplying your own per-channel values.
     max_weekly_deviation_pct:
@@ -444,7 +444,7 @@ class BudgetPhaser:
     revenue_noise_std:
         Standard deviation of sales noise (£), forwarded to every internal
         CollinearityDiagnostic used to score a candidate schedule. Default
-        20_000.0. As with CollinearityDiagnostic, there is no universal
+        26_000.0. As with CollinearityDiagnostic, there is no universal
         default that's right for your data — set this from your own
         model's residual std (e.g. the residual std of a simple OLS fit
         on your actual sales/spend history), not the package default.
@@ -476,7 +476,7 @@ class BudgetPhaser:
         max_weekly_deviation_pct: DeviationSpec | dict[str, DeviationSpec] = 40.0,
         seed: int = 0,
         base_sales: float = 1_000.0,
-        revenue_noise_std: float = 20_000.0,
+        revenue_noise_std: float = 26_000.0,
         true_elasticities: dict[str, float] | None = None,
     ) -> None:
         _get_month_labels(history_df)  # validates DatetimeIndex

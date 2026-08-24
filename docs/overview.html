@@ -248,7 +248,7 @@ footer a { color: var(--muted); }
     <p class="fig-cap">Same spend, same market, same true effect (dashed line — known here because it's a demo scenario; on your own plan you'd supply a plausible marginal return as an input, not a proven true one to check against). This is the range the model itself produces once you refit it across many plausible versions of the same history — not an empirical range of outcomes, an estimated one.</p>
   </div>
 
-  <p>Look closely and none of these ranges are tight. TV could be earning anywhere from £9.6m to £10.8m off the same spend — over a million pounds of daylight, and Search's range is nearly as wide in absolute terms on barely a third of the budget. That's not a rounding error. That's the model telling you it genuinely doesn't know which channel is really carrying the plan.</p>
+  <p>Look closely and these ranges don't just overlap a little — TV (£1.8m–£3.3m), Meta (£3.3m–£4.8m) and Search (£4.0m–£5.5m) all overlap each other. Ask this model which channel is carrying the plan today and it genuinely can't give you a confident answer: TV could be doing better than Meta, or Search could be doing worse than both, and the data wouldn't tell the difference. That's not a rounding error. That's the model telling you it doesn't know.</p>
 </section>
 
 <!-- SECTION 2: THE CAUSE -->
@@ -341,7 +341,7 @@ footer a { color: var(--muted); }
       </div>
       <svg class="chart" id="chartImpact" viewBox="0 0 700 230" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Every channel narrows substantially, and keeps narrowing: TV 54% then 65%, Meta 53% then 65%, Search 50% then 65% — off the same £12.3m, no extra spend, just phasing every channel with the on/off lever for longer. The dashed line marks the true marginal return's implied revenue (known here because it's a demo scenario): the ranges don't just tighten, they close in on it.</p>
+    <p class="fig-cap">Every channel narrows substantially, and keeps narrowing: TV 49% then 58%, Meta 49% then 61%, Search 46% then 55% — off the same £12.3m, no extra spend, just phasing every channel with the on/off lever for longer. The dashed line marks the true marginal return's implied revenue (known here because it's a demo scenario): the ranges don't just tighten, they close in on it — and stop overlapping.</p>
   </div>
 
   <div class="knums">
@@ -357,8 +357,8 @@ footer a { color: var(--muted); }
     </div>
     <div class="kbox">
       <div class="lbl">Uncertainty reduction</div>
-      <div class="num" style="color:#059669">65%</div>
-      <div class="lab">This plan's least reliable channel, after two years (50% within year one alone)</div>
+      <div class="num" style="color:#059669">58%</div>
+      <div class="lab">This plan's least reliable channel (TV), after two years (49% within year one alone)</div>
     </div>
   </div>
 </section>
@@ -428,7 +428,7 @@ footer a { color: var(--muted); }
   <h2>Frequently asked questions</h2>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Doesn't this need me to already know my marginal return?</p>
-  <p>You supply a plausible one, not a proven one, and less rides on getting it exactly right than you'd think. The estimator's sampling noise comes from your spend pattern and residual variance, not from the marginal return you assumed, so the absolute £ width of the range stays the same whichever plausible number you plug in — pick a different one and the range just recentres around it, it doesn't get any tighter or wider. The percentage narrowing phasing buys you is invariant the same way: TV's range still comes in 54% narrower after a year of phasing, regardless of which marginal return you assumed going in. What actually drives the width is how correlated your channels are in real life, and that's exactly what phasing fixes.</p>
+  <p>You supply a plausible one, not a proven one, and less rides on getting it exactly right than you'd think. The estimator's sampling noise comes from your spend pattern and residual variance, not from the marginal return you assumed, so the absolute £ width of the range stays the same whichever plausible number you plug in — pick a different one and the range just recentres around it, it doesn't get any tighter or wider. Get the overall scale wrong but the channels' proportions right (say, you're unsure whether returns are running high or low this year, but confident TV earns roughly half what Search does either way) and the percentage phasing narrows things by barely moves either. Where it can move is if the proportions <i>between</i> channels are what's off — that changes which channel looks least identified today, which changes how hard this tool recommends phasing it. What drives the width in the first place is how correlated your channels are in real life, and that's exactly what phasing fixes.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Why not just run a geo-lift test instead?</p>
   <p>Geo-experiments are the academic gold standard, but they test one channel at a time, need a real blackout region, and take months to read. You can't run one for TV, Meta and Search simultaneously. This works with the spend and channel mix you already have.</p>
@@ -443,10 +443,10 @@ footer a { color: var(--muted); }
   <p>Yes. Everything on this page uses three channels for clarity, but we reran the same diagnostic and phasing fix at 5, 10, 15 and 20 channels. Reliability barely moves as you add more — what matters is how correlated your channels are with each other, not how many you have. Phasing delivers roughly the same improvement the whole way, from 5 channels to 20.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">How long until I see the benefit?</p>
-  <p>This isn't a multi-year commitment. Year one alone gets TV to 54% narrower — not a promise for week one, but not three years away either. Stick with it and it keeps compounding: 65% by year two, and every channel converges toward roughly the same ceiling. You don't need to wait to see a real difference. It only gets better if you do.</p>
+  <p>This isn't a multi-year commitment. Year one alone gets TV to 49% narrower — not a promise for week one, but not three years away either. Stick with it and it keeps compounding: 58% by year two, and every channel converges toward roughly the same ceiling. You don't need to wait to see a real difference. It only gets better if you do.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Isn't 12 months a long time to wait for this to pay off?</p>
-  <p>No, it moves faster than that. Run the same on/off lever for just one quarter on this page's own scenario and Search is already about 40% narrower — four-fifths of the way to the 50% you get after a full year. Compare that to the common cycle: two years bedding in a new MMM partner, deciding it isn't working, then starting over with someone else, without ever building on what you learned. This runs on the model and spend data you already have. The first real signal lands this quarter, not after another vendor switch.</p>
+  <p>No, it moves faster than that. Run the same on/off lever for just one quarter on this page's own scenario and Search is already about 28% narrower — three-fifths of the way to the 46% you get after a full year. Compare that to the common cycle: two years bedding in a new MMM partner, deciding it isn't working, then starting over with someone else, without ever building on what you learned. This runs on the model and spend data you already have. The first real signal lands this quarter, not after another vendor switch.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Won't this put my channels into learning mode?</p>
   <p>Possibly, in the short term — and that's the real trade-off: how much tighter do you want your results? A channel's reliability gain compounds over a year or two, usually worth more than what a learning-phase reset costs today. This isn't a call the model makes alone: it's a compromise between data science and marketing. Each channel's setting is flexible, from 0% (untouched), through a gentle nudge, all the way up to 100%, to a full on/off switch — dial each one to wherever that compromise lands.</p>
@@ -533,7 +533,7 @@ function drawForest(svgId, data, xMax) {
     }
   }
 
-  const xTicks = [0, 5, 10, 15, 20];
+  const xTicks = Array.from({ length: Math.round(xMax) + 1 }, (_, i) => i);
   for (const v of xTicks) {
     const x = scX(v);
     g.appendChild(el('line', { x1: x, y1: m.top, x2: x, y2: m.top + ph, stroke: '#e5e7eb', 'stroke-width': 1 }));
@@ -564,10 +564,10 @@ function drawForest(svgId, data, xMax) {
 }
 
 drawForest('chartProblem', [
-  { name: 'TV',     color: '#2563eb', spend: 5.098, p10: 9.615, p90: 10.764, truth: 10.201 },
-  { name: 'Meta',   color: '#d97706', spend: 4.066, p10: 13.718, p90: 14.895, truth: 14.351 },
-  { name: 'Search', color: '#059669', spend: 3.100, p10: 18.072, p90: 19.245, truth: 18.601 },
-], 20);
+  { name: 'TV',     color: '#2563eb', spend: 5.098, p10: 1.789, p90: 3.281, truth: 2.549 },
+  { name: 'Meta',   color: '#d97706', spend: 4.066, p10: 3.251, p90: 4.769, truth: 4.066 },
+  { name: 'Search', color: '#059669', spend: 3.100, p10: 3.964, p90: 5.489, truth: 4.650 },
+], 6);
 
 // ── Chart: Cause (correlated spend time series) ─────────────────────────────
 (function drawCause() {
@@ -695,12 +695,12 @@ drawForest('chartProblem', [
   const ph = H - m.top - m.bottom;
 
   const data = [
-    { name: 'TV',     color: '#2563eb', today: [9.615, 10.764], y1: [9.932, 10.459], y2: [9.992, 10.390], truth: 10.201 },
-    { name: 'Meta',   color: '#d97706', today: [13.718, 14.895], y1: [14.067, 14.623], y2: [14.160, 14.568], truth: 14.351 },
-    { name: 'Search', color: '#059669', today: [18.072, 19.245], y1: [18.324, 18.904], y2: [18.398, 18.803], truth: 18.601 },
+    { name: 'TV',     color: '#2563eb', today: [1.789, 3.281], y1: [2.194, 2.919], y2: [2.261, 2.806], truth: 2.549 },
+    { name: 'Meta',   color: '#d97706', today: [3.251, 4.769], y1: [3.674, 4.416], y2: [3.833, 4.367], truth: 4.066 },
+    { name: 'Search', color: '#059669', today: [3.964, 5.489], y1: [4.324, 5.043], y2: [4.382, 4.939], truth: 4.650 },
   ];
 
-  const xMax = 20;
+  const xMax = 6;
   const scX = v => m.left + (v / xMax) * pw;
   const rowH = ph / data.length;
   const rowCy = i => m.top + rowH * i + rowH / 2;
@@ -713,7 +713,7 @@ drawForest('chartProblem', [
     }
   }
 
-  const xTicks = [0, 5, 10, 15, 20];
+  const xTicks = Array.from({ length: Math.round(xMax) + 1 }, (_, i) => i);
   for (const v of xTicks) {
     const x = scX(v);
     g.appendChild(el('line', { x1: x, y1: m.top, x2: x, y2: m.top + ph, stroke: '#e5e7eb', 'stroke-width': 1 }));

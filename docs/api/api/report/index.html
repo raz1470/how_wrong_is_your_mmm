@@ -696,7 +696,7 @@ required to read it.</p>
     <span class="n">plan_year</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="n">base_sales</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="p">,</span>
-    <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20000.0</span><span class="p">,</span>
+    <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">26000.0</span><span class="p">,</span>
     <span class="n">true_elasticities</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span>
 </code></pre></div>
@@ -768,7 +768,7 @@ modified by phasing. Same shape BudgetPhaser expects.</p>
                 <p>Dict mapping channel to a plausible (not proven) marginal return —
 £ revenue per £ spend, a.k.a. mROAS, NOT an economic elasticity
 (see _dgp.py) — used to simulate the sales column the diagnostic
-reasons about. Defaults to {"tv": 2.0, "meta": 3.5, "search": 6.0}
+reasons about. Defaults to {"tv": 0.5, "meta": 1.0, "search": 1.5}
 ONLY when history_df/plan_df use exactly those three channel names;
 for any other channel naming you must supply this yourself, or
 CollinearityDiagnostic raises ValueError deep inside fit(). There
@@ -799,9 +799,9 @@ revenue_noise_std (£) is the second most important input to get
 right — CV scales ~linearly with it. Set it from your own model's
 residual standard deviation (e.g. the residual std of a simple OLS
 fit of your actual sales on your actual spend history), not from
-this package's default of 20,000, which is an arbitrary
+this package's default of 26,000, which is an arbitrary
 placeholder with no relationship to your business. Defaults:
-base_sales=1_000.0, revenue_noise_std=20_000.0, matching
+base_sales=1_000.0, revenue_noise_std=26_000.0, matching
 CollinearityDiagnostic's own defaults.</p>
               </div>
             </td>
@@ -823,9 +823,9 @@ revenue_noise_std (£) is the second most important input to get
 right — CV scales ~linearly with it. Set it from your own model's
 residual standard deviation (e.g. the residual std of a simple OLS
 fit of your actual sales on your actual spend history), not from
-this package's default of 20,000, which is an arbitrary
+this package's default of 26,000, which is an arbitrary
 placeholder with no relationship to your business. Defaults:
-base_sales=1_000.0, revenue_noise_std=20_000.0, matching
+base_sales=1_000.0, revenue_noise_std=26_000.0, matching
 CollinearityDiagnostic's own defaults.</p>
               </div>
             </td>
@@ -993,7 +993,7 @@ FutureWarning -- migrate to <code>true_marginal_returns</code>.</p>
     <span class="n">plan_year</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="n">base_sales</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1_000.0</span><span class="p">,</span>
-    <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20_000.0</span><span class="p">,</span>
+    <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">26_000.0</span><span class="p">,</span>
     <span class="n">true_elasticities</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">true_elasticities</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>

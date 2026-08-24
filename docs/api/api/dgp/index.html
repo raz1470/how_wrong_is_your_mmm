@@ -754,9 +754,7 @@ when using the output with BudgetPhaser.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_dgp.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 53</span>
-<span class="normal"> 54</span>
-<span class="normal"> 55</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 55</span>
 <span class="normal"> 56</span>
 <span class="normal"> 57</span>
 <span class="normal"> 58</span>
@@ -802,7 +800,9 @@ when using the output with BudgetPhaser.</p>
 <span class="normal"> 98</span>
 <span class="normal"> 99</span>
 <span class="normal">100</span>
-<span class="normal">101</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">simulate_spend</span><span class="p">(</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">simulate_spend</span><span class="p">(</span>
     <span class="n">n_obs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">104</span><span class="p">,</span>
     <span class="n">correlation</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span>
     <span class="n">channels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -869,7 +869,7 @@ when using the output with BudgetPhaser.</p>
     <span class="n">spend_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">true_marginal_returns</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">base_sales</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="p">,</span>
-    <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20000.0</span><span class="p">,</span>
+    <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">26000.0</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="n">true_elasticities</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span>
@@ -927,7 +927,7 @@ look catastrophic.</p>
             <td>
               <div class="doc-md-description">
                 <p>Dict mapping channel name to true marginal return (£ revenue per
-£ spend). Defaults to {"tv": 2.0, "meta": 3.5, "search": 6.0}.
+£ spend). Defaults to {"tv": 0.5, "meta": 1.0, "search": 1.5}.
 All columns in spend_df must have an entry.</p>
               </div>
             </td>
@@ -964,7 +964,7 @@ All columns in spend_df must have an entry.</p>
               </div>
             </td>
             <td>
-                  <code>20000.0</code>
+                  <code>26000.0</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -1030,9 +1030,7 @@ FutureWarning -- migrate to <code>true_marginal_returns</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_dgp.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">106</span>
 <span class="normal">107</span>
 <span class="normal">108</span>
 <span class="normal">109</span>
@@ -1105,11 +1103,13 @@ FutureWarning -- migrate to <code>true_marginal_returns</code>.</p>
 <span class="normal">176</span>
 <span class="normal">177</span>
 <span class="normal">178</span>
-<span class="normal">179</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">simulate_sales</span><span class="p">(</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">simulate_sales</span><span class="p">(</span>
     <span class="n">spend_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">true_marginal_returns</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">base_sales</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1_000.0</span><span class="p">,</span>
-    <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20_000.0</span><span class="p">,</span>
+    <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">26_000.0</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="n">true_elasticities</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
@@ -1134,7 +1134,7 @@ FutureWarning -- migrate to <code>true_marginal_returns</code>.</p>
 <span class="sd">        DataFrame with one column per channel. Can be synthetic or real.</span>
 <span class="sd">    true_marginal_returns:</span>
 <span class="sd">        Dict mapping channel name to true marginal return (£ revenue per</span>
-<span class="sd">        £ spend). Defaults to {&quot;tv&quot;: 2.0, &quot;meta&quot;: 3.5, &quot;search&quot;: 6.0}.</span>
+<span class="sd">        £ spend). Defaults to {&quot;tv&quot;: 0.5, &quot;meta&quot;: 1.0, &quot;search&quot;: 1.5}.</span>
 <span class="sd">        All columns in spend_df must have an entry.</span>
 <span class="sd">    base_sales:</span>
 <span class="sd">        Base sales intercept.</span>

@@ -105,7 +105,7 @@ class TestSimulateSales:
         # returns -- guard against a silent regression back to those.
         from how_wrong_is_your_mmm._dgp import _DEFAULT_MARGINAL_RETURNS
 
-        assert _DEFAULT_MARGINAL_RETURNS == {"tv": 2.0, "meta": 3.5, "search": 6.0}
+        assert _DEFAULT_MARGINAL_RETURNS == {"tv": 0.5, "meta": 1.0, "search": 1.5}
 
 
 class TestDeprecatedTrueElasticitiesAlias:

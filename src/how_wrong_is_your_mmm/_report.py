@@ -111,7 +111,7 @@ class ReportBuilder:
         Dict mapping channel to a plausible (not proven) marginal return —
         £ revenue per £ spend, a.k.a. mROAS, NOT an economic elasticity
         (see _dgp.py) — used to simulate the sales column the diagnostic
-        reasons about. Defaults to {"tv": 2.0, "meta": 3.5, "search": 6.0}
+        reasons about. Defaults to {"tv": 0.5, "meta": 1.0, "search": 1.5}
         ONLY when history_df/plan_df use exactly those three channel names;
         for any other channel naming you must supply this yourself, or
         CollinearityDiagnostic raises ValueError deep inside fit(). There
@@ -128,9 +128,9 @@ class ReportBuilder:
         right — CV scales ~linearly with it. Set it from your own model's
         residual standard deviation (e.g. the residual std of a simple OLS
         fit of your actual sales on your actual spend history), not from
-        this package's default of 20,000, which is an arbitrary
+        this package's default of 26,000, which is an arbitrary
         placeholder with no relationship to your business. Defaults:
-        base_sales=1_000.0, revenue_noise_std=20_000.0, matching
+        base_sales=1_000.0, revenue_noise_std=26_000.0, matching
         CollinearityDiagnostic's own defaults.
     max_weekly_deviation_pct:
         Per-channel phasing lever, same shape BudgetPhaser accepts: a single
@@ -165,7 +165,7 @@ class ReportBuilder:
         plan_year: str = "",
         seed: int = 0,
         base_sales: float = 1_000.0,
-        revenue_noise_std: float = 20_000.0,
+        revenue_noise_std: float = 26_000.0,
         true_elasticities: dict[str, float] | None = None,
     ) -> None:
         if true_elasticities is not None:
@@ -962,7 +962,7 @@ footer { margin-top: 2.5rem; padding: 1.5rem 2rem 2rem; border-top: 1px solid va
 
   <div class="caveat">
     <span class="icon">&#9888;</span>
-    <p><b>These &pound; figures depend on the marginal returns you supplied</b> &mdash; plausible, not proven. The <i>relative</i> reliability gain doesn't: the percentage CV reduction from phasing is the same regardless of the marginal-return value used, because CV is inversely proportional to that value on both sides of the before/after comparison. But the specific pound amounts above, and where the range sits, will move if your assumed marginal returns turn out to be off &mdash; and this diagnostic can't tell you whether they're right, only how precisely they'd be estimated if they are. See <a href="#method">Methodology</a>.</p>
+    <p><b>These &pound; figures depend on the marginal returns you supplied</b> &mdash; plausible, not proven. The specific pound amounts above, and where the range sits, will move if your assumed marginal returns turn out to be off &mdash; and this diagnostic can't tell you whether they're right, only how precisely they'd be estimated if they are. The percentage CV reduction from phasing is unaffected by an across-the-board misjudgement of scale (say, if every channel's true return is actually double what you assumed) &mdash; but it can shift if what's off is the returns' proportions <i>relative to each other</i>, since that changes which channel looks least identified and therefore which phasing intensity gets recommended for it. See <a href="#method">Methodology</a>.</p>
   </div>
 </section>
 

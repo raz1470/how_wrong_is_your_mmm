@@ -29,8 +29,10 @@ _DEFAULT_CHANNELS = ["tv", "meta", "search"]
 # These are NOT elasticities (a unitless %-response-to-%-spend measure) --
 # the DGP is linear in raw spend, so the DGP/estimator coefficient is a
 # marginal £-per-£ return. Values below are a defensible illustrative
-# starting point, not a claim about any real market.
-_DEFAULT_MARGINAL_RETURNS: dict[str, float] = {"tv": 2.0, "meta": 3.5, "search": 6.0}
+# starting point, not a claim about any real market -- chosen to land in
+# the range practitioners usually mean by "ROI" (revenue / spend) rather
+# than an inflated mROAS, so the illustrative CVs stay honestly wide.
+_DEFAULT_MARGINAL_RETURNS: dict[str, float] = {"tv": 0.5, "meta": 1.0, "search": 1.5}
 # Deprecated alias -- kept only so old code importing the private name
 # doesn't hard-crash. Prefer _DEFAULT_MARGINAL_RETURNS.
 _DEFAULT_ELASTICITIES = _DEFAULT_MARGINAL_RETURNS
@@ -105,7 +107,7 @@ def simulate_sales(
     spend_df: pd.DataFrame,
     true_marginal_returns: dict[str, float] | None = None,
     base_sales: float = 1_000.0,
-    revenue_noise_std: float = 20_000.0,
+    revenue_noise_std: float = 26_000.0,
     seed: int = 0,
     true_elasticities: dict[str, float] | None = None,
 ) -> pd.Series:
@@ -130,7 +132,7 @@ def simulate_sales(
         DataFrame with one column per channel. Can be synthetic or real.
     true_marginal_returns:
         Dict mapping channel name to true marginal return (£ revenue per
-        £ spend). Defaults to {"tv": 2.0, "meta": 3.5, "search": 6.0}.
+        £ spend). Defaults to {"tv": 0.5, "meta": 1.0, "search": 1.5}.
         All columns in spend_df must have an entry.
     base_sales:
         Base sales intercept.

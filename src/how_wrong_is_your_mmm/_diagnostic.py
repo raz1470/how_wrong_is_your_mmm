@@ -136,15 +136,22 @@ class CollinearityDiagnostic:
         Dict mapping channel name to true marginal return (£ revenue per
         £ spend, a.k.a. mROAS -- NOT an economic elasticity, see _dgp.py).
         Used to simulate sales. Must cover all channels in the spend data.
-        Defaults to {"tv": 2.0, "meta": 3.5, "search": 6.0}. These are a
+        Defaults to {"tv": 0.5, "meta": 1.0, "search": 1.5}. These are a
         defensible illustrative starting point, not a claim about any real
         market -- for your own data, supply your own per-channel values
         (e.g. from a prior model, a plausible ROI range from finance, or a
         held-out incrementality test). There is no safe universal default:
         CV below is exactly inversely proportional to whatever value you
         supply (see coef_of_variation), so an unrealistic value shifts
-        where the model-estimated range sits, even though it doesn't
-        change how much phasing narrows it in relative terms.
+        where the model-estimated range sits. A *uniform* rescaling of
+        every channel's value (unsure of the overall scale, confident in
+        the channels' proportions to each other) leaves BudgetPhaser's
+        percentage CV reduction unchanged too -- but changing the
+        *relative* proportions between channels can shift which channel
+        looks least identified, which can change the phasing intensity
+        BudgetPhaser's auto_lever recommends for it, and so the reduction
+        percentage it actually delivers. Only the absolute £ width of the
+        range here is unconditionally invariant to your assumption.
     n_obs:
         Number of observations for synthetic spend. Ignored when spend_df
         is supplied.
@@ -174,7 +181,7 @@ class CollinearityDiagnostic:
         n_obs: int = 104,
         spend_seed: int = 0,
         base_sales: float = 1_000.0,
-        revenue_noise_std: float = 20_000.0,
+        revenue_noise_std: float = 26_000.0,
         true_elasticities: dict[str, float] | None = None,
     ) -> None:
         if true_elasticities is not None:

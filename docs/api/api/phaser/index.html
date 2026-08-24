@@ -782,7 +782,7 @@ on/off switch instead of a continuous weekly range.</p>
     <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">DeviationSpec</span><span class="p">]</span> <span class="o">=</span> <span class="mf">40.0</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="n">base_sales</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="p">,</span>
-    <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20000.0</span><span class="p">,</span>
+    <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">26000.0</span><span class="p">,</span>
     <span class="n">true_elasticities</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span>
 </code></pre></div>
@@ -854,7 +854,7 @@ Same columns as history_df. This is the data that gets phased.</p>
               <div class="doc-md-description">
                 <p>Dict mapping channel name to true marginal return (£ revenue per
 £ spend, a.k.a. mROAS — not an economic elasticity, see _dgp.py).
-Defaults to {"tv": 2.0, "meta": 3.5, "search": 6.0}. As with
+Defaults to {"tv": 0.5, "meta": 1.0, "search": 1.5}. As with
 CollinearityDiagnostic, there is no safe universal default here —
 prefer supplying your own per-channel values.</p>
               </div>
@@ -944,7 +944,7 @@ CollinearityDiagnostic's own default.</p>
               <div class="doc-md-description">
                 <p>Standard deviation of sales noise (£), forwarded to every internal
 CollinearityDiagnostic used to score a candidate schedule. Default
-20_000.0. As with CollinearityDiagnostic, there is no universal
+26_000.0. As with CollinearityDiagnostic, there is no universal
 default that's right for your data — set this from your own
 model's residual std (e.g. the residual std of a simple OLS fit
 on your actual sales/spend history), not the package default.
@@ -954,7 +954,7 @@ how reassuring) every downstream number looks.</p>
               </div>
             </td>
             <td>
-                  <code>20000.0</code>
+                  <code>26000.0</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -1070,7 +1070,7 @@ since there was nothing for it to constrain that isn't already exact.</p>
     <span class="n">max_weekly_deviation_pct</span><span class="p">:</span> <span class="n">DeviationSpec</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">DeviationSpec</span><span class="p">]</span> <span class="o">=</span> <span class="mf">40.0</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="n">base_sales</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1_000.0</span><span class="p">,</span>
-    <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20_000.0</span><span class="p">,</span>
+    <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">26_000.0</span><span class="p">,</span>
     <span class="n">true_elasticities</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="n">_get_month_labels</span><span class="p">(</span><span class="n">history_df</span><span class="p">)</span>  <span class="c1"># validates DatetimeIndex</span>

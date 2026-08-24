@@ -239,7 +239,7 @@ svg.chart { display: block; width: 100%; }
     <p><strong>Scope of this page:</strong> everything below measures whether your spend design contains enough independent variation to identify each channel's marginal return precisely — sampling variance under a model assumed to be correctly specified. It is silent on whether that assumption holds. An omitted driver (seasonality, adstock, saturation, a competitor's move) can leave every diagnostic on this page looking healthy while the underlying point estimate is badly biased, because the same omission that inflates an estimate typically inflates it more than it widens the sampling range around it. Read a narrow range as "well-identified by this design, given correct specification," not as "correct."</p>
   </div>
 
-  <p>Below: three channels, known true marginal returns (TV 0.30, Meta 0.50, Search 0.40 — illustrative units for this section's worked demo, not the package's own defaults, which are considerably larger; the shape of the correlation → CV relationship is what matters here, not the absolute scale, since CV is exactly inversely proportional to whichever marginal return you assume), mean pairwise correlation (the average correlation across every pair of channels) of 0.70. We simulate 50 plausible histories of the same market (same truth, different noise draws) and fit OLS to each one.</p>
+  <p>Below: three channels, known true marginal returns (TV 0.30, Meta 0.50, Search 0.40 — illustrative units chosen for this section's worked demo, not the package's own defaults (tv=0.5, meta=1.0, search=1.5); the shape of the correlation → CV relationship is what matters here, not the absolute scale, since CV is exactly inversely proportional to whichever marginal return you assume), mean pairwise correlation (the average correlation across every pair of channels) of 0.70. We simulate 50 plausible histories of the same market (same truth, different noise draws) and fit OLS to each one.</p>
 
   <!-- Figure 2: Marginal-return estimate distribution -->
   <div class="fig">
@@ -293,7 +293,7 @@ svg.chart { display: block; width: 100%; }
     </div>
   </div>
 
-  <p style="font-size:.9rem;color:var(--muted);">These percentages are conditional on the illustrative marginal return assumed above (0.30) — CV is exactly inversely proportional to whatever value you assume, so the same design would show a much smaller CV at the package's own defaults, and a much larger one at a smaller assumed marginal return. Read the 18%/36%/60% figures as "how design-informativeness changes with correlation, at a fixed assumed marginal return," not as portable severity thresholds you can apply to a different marginal return without rescaling.</p>
+  <p style="font-size:.9rem;color:var(--muted);">These percentages are conditional on the illustrative marginal return assumed above (0.30) — CV is exactly inversely proportional to whatever value you assume, so the same design would show a smaller CV at the package's own defaults (tv=0.5, meta=1.0, search=1.5), and a larger one at a smaller assumed marginal return. Read the 18%/36%/60% figures as "how design-informativeness changes with correlation, at a fixed assumed marginal return," not as portable severity thresholds you can apply to a different marginal return without rescaling.</p>
 
   <h3>Getting a personalised number</h3>
 

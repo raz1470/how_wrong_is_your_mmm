@@ -438,7 +438,7 @@ class TestReportBuilderNoiseAssumptionsForwarded:
 
     def test_default_matches_collinearity_diagnostic_default(self):
         rb = make_builder().fit(**FIT_KWARGS)
-        assert rb.revenue_noise_std == 20_000.0
+        assert rb.revenue_noise_std == 26_000.0
         assert rb.base_sales == 1_000.0
 
 
