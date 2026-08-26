@@ -73,7 +73,6 @@ h1 {
 }
 .snav a:hover { color: var(--text); border-bottom-color: var(--light); }
 .snav a.active { color: var(--text); border-bottom-color: var(--text); }
-.snav a.dim    { color: var(--light); pointer-events: none; }
 
 /* ── Main ── */
 main {
@@ -197,22 +196,6 @@ svg.chart { display: block; width: 100%; }
 
 /* ── Lede ── */
 .lede { font-size: 1.15rem; color: #1f2937; margin-bottom: 2.75rem; max-width: none; }
-
-/* ── Stub sections ── */
-.stub {
-  margin-top: 3rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--border);
-}
-.stub h2 { color: var(--light); margin-bottom: .6rem; }
-.stub-inner {
-  padding: 1.1rem 1.25rem;
-  background: var(--bg);
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-  font-size: .85rem;
-  color: var(--light);
-}
 </style>
 </head>
 <body>
@@ -233,7 +216,7 @@ svg.chart { display: block; width: 100%; }
 
 <main>
 
-<p class="lede">The research behind <code>how_wrong_is_your_mmm</code>, the open-source package we built to measure and fix a well-known but often-ignored flaw in MMM elasticity estimates: the numbers usually swing wildly between refits, not because the model is wrong, but because the data was never designed to pin them down.</p>
+<p class="lede">The research behind <code>how_wrong_is_your_mmm</code>, the open-source package we built to measure and fix a well-known but often-ignored flaw in MMM marginal-return estimates: the numbers usually swing wildly between refits, not because the model is wrong, but because the data was never designed to pin them down.</p>
 
 <!-- ═══════════════════════════════════════════════════
      SECTION 1 — THE PROBLEM
@@ -242,7 +225,7 @@ svg.chart { display: block; width: 100%; }
   <p class="s-label">Section 1</p>
   <h2>The Problem</h2>
 
-  <p>Run an MMM and it hands you numbers: TV elasticity 0.42, Meta elasticity 0.28, Search elasticity 0.51. Those numbers feed into budget recommendations, agency briefs, and board decks. The question most practitioners don't ask often enough: <em>how much should we trust them?</em></p>
+  <p>Run an MMM and it hands you numbers: TV marginal return 1.8, Meta marginal return 2.6, Search marginal return 4.1. Those numbers feed into budget recommendations, agency briefs, and board decks. The question most practitioners don't ask often enough: <em>how much should we trust them?</em></p>
 
   <p>For most marketing datasets, the honest answer is less than you think, not because the model is broken, but because the data was never designed to answer the question.</p>
 
@@ -250,37 +233,41 @@ svg.chart { display: block; width: 100%; }
 
   <p>This is the key technical point, and it matters for how you think about the problem. OLS (ordinary least squares, the standard regression method behind most MMMs) is still <em>unbiased</em> with correlated predictors. Given enough independent data, the average estimate would converge on the truth. The problem is that you don't have enough independent data, and you never will: 2–5 years of weekly observations, trying to identify 10–20 parameters in a world where channels have barely moved independently.</p>
 
-  <p>What you get instead is high variance: estimates that are centred near the truth on average, but swing widely in practice. Your specific TV elasticity is one draw from a wide distribution. A company in the same market, with the same true elasticities, but a slightly different observation window, would get a different number.</p>
+  <p>What you get instead is high variance: estimates that are centred near the truth on average, but swing widely in practice. Your specific TV marginal-return estimate is one draw from a wide distribution. A company in the same market, with the same true marginal returns, but a slightly different observation window, would get a different number.</p>
 
-  <p>Below: three channels, known true elasticities (TV 0.30, Meta 0.50, Search 0.40), mean pairwise correlation (the average correlation across every pair of channels) of 0.70. We simulate 50 plausible histories of the same market (same truth, different noise draws) and fit OLS to each one.</p>
+  <div class="callout">
+    <p><strong>Scope of this page:</strong> everything below measures whether your spend design contains enough independent variation to identify each channel's marginal return precisely — sampling variance under a model assumed to be correctly specified. It is silent on whether that assumption holds. An omitted driver (seasonality, adstock, saturation, a competitor's move) can leave every diagnostic on this page looking healthy while the underlying point estimate is badly biased, because the same omission that inflates an estimate typically inflates it more than it widens the sampling range around it. Read a narrow range as "well-identified by this design, given correct specification," not as "correct."</p>
+  </div>
 
-  <!-- Figure 2: Elasticity estimate distribution -->
+  <p>Below: three channels, known true marginal returns (TV 0.30, Meta 0.50, Search 0.40 — illustrative units chosen for this section's worked demo, not the package's own defaults (tv=0.5, meta=1.0, search=1.5); the shape of the correlation → CV relationship is what matters here, not the absolute scale, since CV is exactly inversely proportional to whichever marginal return you assume), mean pairwise correlation (the average correlation across every pair of channels) of 0.70. We simulate 50 plausible histories of the same market (same truth, different noise draws) and fit OLS to each one.</p>
+
+  <!-- Figure 2: Marginal-return estimate distribution -->
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">50 plausible histories, 50 different answers</div>
-      <div class="fig-sub">OLS elasticity estimates across 50 noise seeds · mean pairwise correlation = 0.70 · vertical line = true value · shaded = 80% range</div>
+      <div class="fig-sub">OLS marginal-return estimates across 50 noise seeds · mean pairwise correlation = 0.70 · vertical line = true value · shaded = 80% range</div>
     </div>
     <div class="fig-body">
       <svg class="chart" id="chart2" viewBox="0 0 700 210" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Each dot is one OLS estimate from a plausible realisation of the same market. Vertical lines mark the true elasticity for each channel. The shaded band is the 80% interval across seeds. TV: true 0.30, 80% range [0.20, 0.46]. Meta: true 0.50, 80% range [0.34, 0.66]. Search: true 0.40, 80% range [0.11, 0.62], note the span is wider than the true value itself.</p>
+    <p class="fig-cap">Each dot is a synthetic draw from a normal distribution matched to the real mean/SD this scenario produced across 50 actual OLS refits (illustrative dots for a smoother strip chart, not 50 literal individual fits) — vertical lines mark the true marginal return for each channel, and the shaded band is the real 80% interval. TV: true 0.30, 80% range [0.20, 0.46]. Meta: true 0.50, 80% range [0.34, 0.66]. Search: true 0.40, 80% range [0.11, 0.62], note the span is wider than the true value itself.</p>
   </div>
 
-  <p>The coefficient of variation (standard deviation divided by mean estimate) measures how unstable the estimates are relative to their magnitude. In the simulation above (mean pairwise correlation 0.70), TV elasticity has a CV of 36%. That means if you refitted the same model on a slightly different data window, your number could shift by a third in either direction, not because the market changed, but because the data was never informative enough to pin it down.</p>
+  <p>The coefficient of variation (standard deviation divided by mean estimate) measures how unstable the estimates are relative to their magnitude. In the simulation above (mean pairwise correlation 0.70), TV marginal-return estimate has a CV of 36%. That means if you refitted the same model on a slightly different data window, your number could shift by a third in either direction, not because the market changed, but because the data was never informative enough to pin it down.</p>
 
   <h3>The coefficient of variation, and how it scales with correlation</h3>
 
-  <p>CV is a simple ratio: standard deviation of the estimated elasticity divided by its mean. A CV of 10% means estimates cluster tightly around their average: the model gives consistent answers across different data realisations. A CV of 40% means estimates swing wildly; the answer your specific dataset produced could easily be half or double the truth.</p>
+  <p>CV is a simple ratio: standard deviation of the estimated marginal return divided by its mean. A CV of 10% means estimates cluster tightly around their average: the model gives consistent answers across different data realisations. A CV of 40% means estimates swing wildly; the answer your specific dataset produced could easily be half or double the truth.</p>
 
-  <p>CV is more useful here than a raw standard error, because it's relative to the estimate's own magnitude: a standard error of 0.05 means something very different at an elasticity of 0.10 versus 0.50, while CV normalises for that, making channels and models directly comparable.</p>
+  <p>CV is more useful here than a raw standard error, because it's relative to the estimate's own magnitude: a standard error of 0.05 means something very different at a marginal return of 0.10 versus 0.50, while CV normalises for that, making channels and models directly comparable.</p>
 
-  <p>Our simulations show this relationship between channel correlation and CV is not linear, it accelerates. Moving from correlation 0.3 to 0.5 roughly doubles TV elasticity CV. Moving from 0.5 to 0.9 more than doubles it again. At 0.9, the CV exceeds 50% for every channel, the model is producing more noise than signal.</p>
+  <p>Our simulations show this relationship between channel correlation and CV is not linear, it accelerates. Moving from correlation 0.3 to 0.5 increases TV marginal-return CV by roughly 1.4x (18% → 26%). Moving from 0.5 to 0.9 more than doubles it again. At 0.9, the CV exceeds 50% for every channel, the model is producing more noise than signal.</p>
 
   <!-- Chart 3: CV vs correlation -->
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Elasticity unreliability rises sharply with correlation</div>
-      <div class="fig-sub">TV elasticity coefficient of variation (CV) by mean pairwise channel correlation · 50 seeds per level</div>
+      <div class="fig-title">Marginal-return unreliability rises sharply with correlation</div>
+      <div class="fig-sub">TV marginal-return coefficient of variation (CV) by mean pairwise channel correlation · 50 seeds per level</div>
     </div>
     <div class="fig-body">
       <svg class="chart" id="chart3" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
@@ -292,27 +279,29 @@ svg.chart { display: block; width: 100%; }
     <div class="kbox">
       <div class="corr">Channel correlation 0.3</div>
       <div class="num" style="color:#059669">18%</div>
-      <div class="lab">TV elasticity CV: estimates are stable and broadly trustworthy</div>
+      <div class="lab">TV marginal-return CV: estimates are well-identified by this design, at this assumed marginal return</div>
     </div>
     <div class="kbox">
       <div class="corr">Channel correlation 0.7</div>
       <div class="num" style="color:#d97706">36%</div>
-      <div class="lab">TV elasticity CV: meaningful uncertainty; treat estimates with caution</div>
+      <div class="lab">TV marginal-return CV: borderline identifiability; treat estimates with caution</div>
     </div>
     <div class="kbox">
       <div class="corr">Channel correlation 0.9</div>
       <div class="num" style="color:#dc2626">60%</div>
-      <div class="lab">TV elasticity CV: estimates are largely noise; the model can say almost anything</div>
+      <div class="lab">TV marginal-return CV: estimates are poorly identified by this design; the model can say almost anything</div>
     </div>
   </div>
+
+  <p style="font-size:.9rem;color:var(--muted);">These percentages are conditional on the illustrative marginal return assumed above (0.30) — CV is exactly inversely proportional to whatever value you assume, so the same design would show a smaller CV at the package's own defaults (tv=0.5, meta=1.0, search=1.5), and a larger one at a smaller assumed marginal return. Read the 18%/36%/60% figures as "how design-informativeness changes with correlation, at a fixed assumed marginal return," not as portable severity thresholds you can apply to a different marginal return without rescaling.</p>
 
   <h3>Getting a personalised number</h3>
 
   <p>Generic thresholds are useful benchmarks, but the most informative diagnostic uses your own spend data (your actual channel correlation structure) rather than a synthetic example.</p>
 
-  <p>The approach sidesteps the obvious problem: you don't know the true elasticities. It assigns plausible ones, simulates what sales would look like if they were true, then measures how consistently OLS recovers them from your actual spend data. The collinearity driving the unreliability comes entirely from your real spend history: the sales simulation is just scaffolding to measure it.</p>
+  <p>The approach sidesteps the obvious problem: you don't know the true marginal returns. It assigns plausible ones, simulates what sales would look like if they were true, then measures how consistently OLS recovers them from your actual spend data. The collinearity driving the unreliability comes entirely from your real spend history: the sales simulation is just scaffolding to measure it.</p>
 
-  <p>The output is an elasticity interval per channel: not a point estimate, but a range. That's the honest answer, but it isn't the number a budget conversation actually runs on. Supply your planned spend per channel, and the same simulated distribution rescales into an incremental-revenue range instead: each draw is multiplied by the planned spend for that channel, then the 10th–90th percentile is reported.</p>
+  <p>The output is a marginal-return interval per channel: not a point estimate, but a range. That's the honest answer, but it isn't the number a budget conversation actually runs on. Supply your planned spend per channel, and the same simulated distribution rescales into an incremental-revenue range instead: each draw is multiplied by the planned spend for that channel, then the 10th–90th percentile is reported.</p>
 
   <!-- Chart 4: Personalised interval chart, in £ -->
   <div class="fig">
@@ -323,7 +312,7 @@ svg.chart { display: block; width: 100%; }
     <div class="fig-body">
       <svg class="chart" id="chart4" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">A narrow range means the channels varied independently enough for the model to distinguish their effects. A wide range (especially one spanning more than the estimate itself) means the data design has failed: the number in your budget model is one of many equally plausible answers. Search typically shows the widest range because it correlates most tightly with overall business activity. This assumes sales is already a £ value; for volume targets, a per-unit value parameter converts to CAC and ROI instead (see the notebooks).</p>
+    <p class="fig-cap">A narrow range means the channels varied independently enough for the model to distinguish their effects. A wide range (especially one spanning more than the estimate itself) means the data design has failed: the number in your budget model is one of many equally plausible answers. Search typically shows the widest range on this page's demo data — not because it correlates more tightly with business activity than the other channels (all three share the same collinearity structure by construction here), but because it's assigned the smallest baseline spend of the three example channels, so the same absolute sampling noise in its estimate translates into a larger range relative to its own spend. This assumes sales is already a £ value; for volume targets, a per-unit value parameter converts to CAC and ROI instead (see the notebooks).</p>
   </div>
 
   <p><strong>Reading the output:</strong> if the range is narrower than 50% of the point estimate, the model is reasonably informative. Wider than the estimate itself, treat it as directional at best. A very wide Search range especially is a rough order-of-magnitude indicator, not a number to optimise against. Run the diagnostic quarterly: widening ranges mean your spend has become more correlated over time, narrowing means the data design is improving.</p>
@@ -386,11 +375,11 @@ svg.chart { display: block; width: 100%; }
 
   <h3>Why this matters more than you might think</h3>
 
-  <p>Practitioners see this every time they refit. TV elasticity was 0.42 last quarter; now it's 0.31. The market hasn't changed. The model hasn't changed. Three more months of correlated data shifted the answer by 26%. That's high-variance estimation in practice, not a sign of a broken model, but a sign that the data never gave the model enough to work with.</p>
+  <p>Practitioners see this every time they refit. TV marginal return was 1.8 last quarter; now it's 1.3. The market hasn't changed. The model hasn't changed. Three more months of correlated data shifted the answer by 26%. That's high-variance estimation in practice, not a sign of a broken model, but a sign that the data never gave the model enough to work with.</p>
 
   <p>Most teams respond by investigating the model: different priors, different transformations, different baseline specifications. This rarely helps, because the problem isn't the model. The problem is the data design. Channels that always moved together can't be reliably distinguished by any estimation method, however sophisticated.</p>
 
-  <p>The question isn't whether your MMM is biased. It probably isn't. The question is whether the data you gave it contained enough independent variation to pin down the channel effects, or whether the number it produced is just one of many equally plausible answers.</p>
+  <p>It isn't only whether your MMM is biased. Under the assumption everyone quietly makes when they run this kind of check — that the model itself is correctly specified — OLS is unbiased, and this page's entire analysis takes that assumption as given. That assumption is doing real work: an omitted driver (seasonality, adstock, saturation, a competitor's move) biases the estimate in a way none of the diagnostics on this page can see, because they measure sampling variance under correct specification, not correctness of the specification itself. Even setting that aside, there's still the question this page is built to answer: whether the data you gave a correctly-specified model contained enough independent variation to pin down the channel effects, or whether the number it produced is just one of many equally plausible answers.</p>
 
   <h3>Why a Bayesian model doesn't fix this</h3>
 
@@ -418,7 +407,7 @@ svg.chart { display: block; width: 100%; }
   <p class="s-label">Section 3</p>
   <h2>The Fix</h2>
 
-  <p>The diagnostic tells you how unreliable your elasticities are. The fix reduces that unreliability, and it doesn't require changing your annual budget, your channel mix, or your campaign strategy.</p>
+  <p>The diagnostic tells you how identifiable your marginal returns are. The fix reduces that unreliability, and it doesn't require changing your annual budget, your channel mix, or your campaign strategy.</p>
 
   <p>The idea is simple: vary the <em>weekly split</em> between channels independently, while keeping monthly totals exactly the same. If TV is heavier in week one, let Meta be lighter, and vice versa the following week. Over time, the channels stop moving in lockstep. The MMM starts to see TV-high / Meta-low periods alongside TV-low / Meta-high periods, and can begin to distinguish their effects.</p>
 
@@ -440,6 +429,8 @@ svg.chart { display: block; width: 100%; }
   <p>That arithmetic is the easy part. The harder part happens before any of this runs: the algorithm searches the nudge size, from small to the maximum you're willing to tolerate, refitting the diagnostic against thousands of simulated alternative histories at each setting, and keeps whichever amplitude narrows your least reliable channel the most (more on how that search works below). Blackout mode runs the identical nudge-then-rescale arithmetic, just with the nudge itself constrained to either 1.0 (full planned spend) or 0.0 (dark week), never anything in between.</p>
 
   <p>The media agency sees the same monthly booking. The annual budget is untouched. The only thing that changes is the within-month timing, which the business already adjusts informally for flights and promotional peaks. What's new is making that adjustment deliberately, independently, and consistently across all channels.</p>
+
+  <p>It's tempting to describe all of this as purely "de-correlating" the channels, but that undersells half of what's actually driving the CV reduction. OLS identifies a channel's effect from how much that channel's spend varies independently of the others — and phasing doesn't just break the correlation between channels, it also injects spend variance that plan simply didn't have before, since a flat or slowly-drifting weekly plan gives a regression very little to work with regardless of correlation. Both effects point the same direction and both matter: less correlation lets the model tell channels apart, and more variance gives it something to tell apart in the first place. This is a large part of why Blackout consistently outperforms a continuous range at the same nominal deviation budget (see the comparison below): a hard on/off swing injects far more variance into a channel's weekly spend than a gentle symmetric nudge of the same percentage size, on top of whatever de-correlation it also buys.</p>
 
   <!-- Chart 5: Before / after weekly spend -->
   <div class="fig">
@@ -481,7 +472,9 @@ svg.chart { display: block; width: 100%; }
 
   <h3>How much variation to introduce, and how we pick it</h3>
 
-  <p>The amplitude of the phasing (how aggressively the weekly split is reshuffled) is the main dial. We choose it by grid search: testing a default of 20 amplitude levels between none and the maximum allowed, measuring the resulting CV at each, and recommending whichever minimises the <em>worst-case</em> CV across channels, not the average, so no single channel is left unreliable. More variation de-correlates channels faster and produces greater CV reduction; less variation is operationally easier but takes longer to show up in the model.</p>
+  <p>The amplitude of the phasing (how aggressively the weekly split is reshuffled) is the main dial. We choose it by grid search: testing a default of 25 amplitude levels between none and the maximum allowed, measuring the resulting CV at each, and recommending whichever minimises the <em>worst-case</em> CV across channels, not the average, so no single channel is left unreliable. More variation de-correlates channels faster and produces greater CV reduction; less variation is operationally easier but takes longer to show up in the model.</p>
+
+  <p>A grid search like this has a known failure mode: with enough candidates evaluated on noisy simulated data, the winner is disproportionately likely to be a candidate that got a lucky noise draw, not necessarily the amplitude that's genuinely best — the "optimizer's curse." <code>BudgetPhaser</code> corrects for it directly: rather than trusting the grid-search winner's own optimistic score, it re-evaluates the top few candidates independently on fresh noise seeds and a larger sample, and reports the confirmed result, not the original (upward-biased) one. Every CV reduction figure on this page that comes from a recommended schedule, rather than a raw parameter sweep, already has this correction applied — it's the reason those numbers are trustworthy on their own, not just directionally suggestive.</p>
 
   <p>Our research shows this relationship is roughly linear: each additional 10 percentage points of weekly deviation produces approximately the same incremental improvement. There's no cliff edge or discontinuity, just a smooth trade-off between aggressiveness and benefit.</p>
 
@@ -489,12 +482,12 @@ svg.chart { display: block; width: 100%; }
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">More weekly variation → greater CV reduction</div>
-      <div class="fig-sub">Max elasticity band-width reduction (%) vs max weekly deviation from original plan · 52-week phased plan</div>
+      <div class="fig-sub">Max marginal-return band-width reduction (%) vs max weekly deviation from original plan · 52-week phased plan</div>
     </div>
     <div class="fig-body">
       <svg class="chart" id="chart6" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">At ±40% weekly deviation (a moderate level that most agencies can accommodate), phasing reduces maximum elasticity uncertainty by ~30% after one year (27–35% across 5 independent phasing draws). At ±80%, the reduction reaches ~53% (49–60% across the same 5 draws). The payoff is roughly linear — there is no magic threshold, just more de-correlation for more variation. The range reflects that "phasing" means one specific random reshuffle of the week-to-week mix; a different draw of the same amplitude gives a slightly different result, which is itself worth remembering before treating any single reduction number as exact.</p>
+    <p class="fig-cap">At ±40% weekly deviation (a moderate level that most agencies can accommodate), phasing reduces maximum marginal-return uncertainty by ~30% after one year (27–35% across 5 independent phasing draws). At ±80%, the reduction reaches ~53% (49–60% across the same 5 draws). The payoff is roughly linear — there is no magic threshold, just more de-correlation for more variation. The range reflects that "phasing" means one specific random reshuffle of the week-to-week mix; a different draw of the same amplitude gives a slightly different result, which is itself worth remembering before treating any single reduction number as exact.</p>
   </div>
 
   <h3>What you get</h3>
@@ -502,6 +495,10 @@ svg.chart { display: block; width: 100%; }
   <p>The output of the phasing recommendation is a concrete 52-week spend schedule: one number per channel per week, with monthly totals guaranteed to match the original plan exactly. This is what you hand to the media agency, not a strategy document or a framework, but a booking grid.</p>
 
   <p>In this page's real example dataset (4 years of history, 1 year of plan, correlation 0.69), a ±37% weekly deviation on the standard continuous range produces a 16% reduction in maximum CV after one year of phasing (8–21% across 10 independent phasing draws). That's modest because four years of correlated history dilutes one year of de-correlated plan data, and because a continuous range is the gentler of this package's two levers. Blackout does substantially better, covered next.</p>
+
+  <div class="callout">
+    <p>This 16% figure and the ~30% figure two charts up (at a nominally similar ±40%) measure different things, not a contradiction. The chart above sweeps the raw deviation cap at full amplitude on a single channel in isolation. The 16% here is what <code>BudgetPhaser</code>'s own grid search actually recommends against the <em>worst-case channel</em> jointly across all three, at the ±37% amplitude it landed on for this specific dataset — a more conservative, real-world number than the idealised single-channel, full-amplitude sweep above. Both are correct for what they measure; only the "16% vs 30%, both roughly ±40%" comparison would be misleading without this distinction.</p>
+  </div>
 
   <h3>Channel-specific constraints</h3>
 
@@ -515,12 +512,12 @@ svg.chart { display: block; width: 100%; }
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Blackout beats a continuous range at the same nominal budget</div>
-      <div class="fig-sub">Reduction in worst-case elasticity CV · 52-week plan · range across 3 independent data draws</div>
+      <div class="fig-sub">Reduction in worst-case marginal-return CV · 52-week plan · range across 3 independent data draws</div>
     </div>
     <div class="fig-body">
       <svg class="chart" id="chart12" viewBox="0 0 700 230" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Baseline (every channel on a symmetric ±40% range): 16–24% reduction. Search alone switched to Blackout, TV and Meta left on the normal ±40% range: 17–49%. Every channel switched to Blackout: 47–59%, with a consistent, modest cost across draws, around 12 of 52 weeks dark per channel (one a month, as designed) and surviving weeks spending roughly 1.2–1.4x the original weekly maximum, no worse than the single-channel case.</p>
+    <p class="fig-cap">Baseline (every channel on a symmetric ±40% range): 16–24% reduction. Search alone switched to Blackout, TV and Meta left on the normal ±40% range: 17–49% &mdash; a wide span from only 3 data draws, treat it as a rough envelope rather than a precise interval; more draws would very likely narrow it. Every channel switched to Blackout: 47–59%, with a consistent, modest cost across draws, around 12 of 52 weeks dark per channel (one a month, as designed) and surviving weeks spending roughly 1.2–1.4x the original weekly maximum, no worse than the single-channel case.</p>
   </div>
 
   <p>It's not just more efficient at the same nominal budget — it beats even the most aggressive continuous range outright: doubling the continuous range to ±80% still falls short of what Blackout achieves at its default one-dark-week-a-month cap, shown per channel below for one representative data draw. (Individual channels here can land above the worst-case range in the chart above, since that range tracks only the single weakest channel, across three separate draws — not every channel's best case.)</p>
@@ -529,7 +526,7 @@ svg.chart { display: block; width: 100%; }
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">One dark week a month outperforms doubling the deviation range</div>
-      <div class="fig-sub">Per-channel elasticity band-width reduction · 52-week plan · ±80% continuous range vs Blackout(max_dark_weeks_per_month=1)</div>
+      <div class="fig-sub">Per-channel marginal-return band-width reduction · 52-week plan · ±80% continuous range vs Blackout(max_dark_weeks_per_month=1)</div>
     </div>
     <div class="fig-body">
       <div class="legend">
@@ -549,7 +546,7 @@ svg.chart { display: block; width: 100%; }
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Which channels need the stronger lever?</div>
-      <div class="fig-sub">Elasticity CV vs phasing amplitude, per channel, other channels left unphased · continuous 0→80%, then Blackout</div>
+      <div class="fig-sub">Marginal-return CV vs phasing amplitude, per channel, other channels left unphased · continuous 0→80%, then Blackout</div>
     </div>
     <div class="fig-body">
       <div class="legend">
@@ -561,6 +558,32 @@ svg.chart { display: block; width: 100%; }
     </div>
     <p class="fig-cap">Meta's curve is the steepest and flattens earliest: by ±80% continuous it's already at 13.8% CV, close to its own Blackout floor of 11.0%: a continuous nudge alone captures most of Meta's available benefit. TV and Search are still falling fast at ±80% (20.1% and 22.2% CV) and drop substantially further under Blackout (13.9% and 17.0%). The reliability case for the stronger lever is clearest for these two, operational constraints permitting. Same real dataset as throughout this guide (history seed=0, plan seed=1, correlation 0.7).</p>
   </div>
+
+  <h3>The cost of lumpier spend, if the real world saturates</h3>
+
+  <p>Everything on this page assumes the true response to spend is linear — the DGP this diagnostic simulates against has no saturation built in, by design, so it isolates the collinearity question cleanly. But if a channel's real response curve is concave (each extra pound buys a bit less than the last, the standard textbook saturation shape), then lumpier spend has a real, separate cost the diagnostic above can't see: by Jensen's inequality, a concave function's average value across a lumpy spend pattern is <em>always</em> lower than at a smooth spend pattern with the identical total, even though phasing changes nothing about the monthly total itself. This doesn't undo the reliability case above — it's a genuinely different question (identifiability vs. revenue capture under saturation) worth pricing in, not optimising against, since this package doesn't and shouldn't try to trade one off against the other automatically.</p>
+
+  <p>Using this page's own worked schedule (TV on the continuous ±40% range, Meta and Search on Blackout) against a simple power-law saturation curve at three curvature levels, applied to actual weekly spend rather than any hypothetical:</p>
+
+  <div class="knums">
+    <div class="kbox">
+      <div class="corr">Mild curvature</div>
+      <div class="num" style="color:#059669">0.1–1.3%</div>
+      <div class="lab">Estimated revenue cost from phasing's lumpier spend, mild saturation: TV (continuous) 0.1%, Meta/Search (Blackout) ~1.3%</div>
+    </div>
+    <div class="kbox">
+      <div class="corr">Moderate curvature</div>
+      <div class="num" style="color:#d97706">0.3–3.9%</div>
+      <div class="lab">Same schedule, moderate saturation: TV 0.3%, Meta/Search ~3.8–3.9%</div>
+    </div>
+    <div class="kbox">
+      <div class="corr">Strong curvature</div>
+      <div class="num" style="color:#dc2626">0.6–7.6%</div>
+      <div class="lab">Same schedule, strong saturation: TV 0.6%, Meta/Search ~7.5–7.6%</div>
+    </div>
+  </div>
+
+  <p>The pattern is consistent across all three levels: the continuous lever costs very little (TV never goes below its usual weekly floor, so its spend distribution stays fairly smooth), while Blackout's literal £0 weeks make it far more exposed to this effect, several times the cost of the continuous range at every curvature level tested, and the gap widens as curvature increases. This is a real argument for treating Blackout's reliability advantage as conditional: worth it where saturation is genuinely mild or the reliability gain is large, worth reconsidering where a channel is known to saturate hard. Nothing in this package currently checks for saturation or trades it off against CV automatically — that's a deliberate scope boundary (see the roadmap on the project's <a href="https://github.com/raz1470/how_wrong_is_your_mmm#future-advancements">README</a>), not an oversight, and the numbers above are for you to weigh, not a recommendation baked into the tool's own output.</p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════
@@ -578,11 +601,13 @@ svg.chart { display: block; width: 100%; }
 
   <p>The chart below plots our simulation results: CV reduction against the length of the phased period, for three levels of weekly deviation. Also shown is the unphased baseline: what happens if you simply add more (correlated) data without any deliberate mix variation.</p>
 
+  <p style="font-size:.9rem;color:var(--muted);">Every point beyond the length of an actual plan (this page's own worked example is a 52-week plan) is a projection, not a claim about a real future schedule: it repeats the plan's own weekly pattern forward to reach that length, since there's no real data past what you've actually planned. Treat multi-year points as "what this shape of phasing would deliver if repeated," not as a promise about years you haven't planned yet.</p>
+
   <!-- Chart 7: Time-to-benefit multi-line -->
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Phasing compounds; correlated data doesn't</div>
-      <div class="fig-sub">Max elasticity band-width reduction (%) vs phased plan length · 4 years of correlated history fixed</div>
+      <div class="fig-sub">Max marginal-return band-width reduction (%) vs phased plan length · 4 years of correlated history fixed</div>
     </div>
     <div class="fig-body">
       <div class="legend">
@@ -661,7 +686,7 @@ svg.chart { display: block; width: 100%; }
 
   <p>Every result so far used a three-channel toy example: TV, Meta, Search. Real MMMs usually run more, paid social, paid search, display, OOH, radio, affiliates, and often more besides. Before trusting any of this on a real spend history, it's worth asking the obvious question: does the story hold up once you're past three channels?</p>
 
-  <p>We reran the diagnostic and the phasing recommendation at channel counts from 5 to 20, generic channels with randomly drawn elasticities (not hand-picked, to avoid stacking the deck), same demand-driven collinearity structure used throughout this guide.</p>
+  <p>We reran the diagnostic and the phasing recommendation at channel counts from 5 to 20, generic channels with randomly drawn marginal returns (not hand-picked, to avoid stacking the deck), same demand-driven collinearity structure used throughout this guide.</p>
 
   <p>All channels in this simulation share one latent demand signal, so more channels competing for that same signal could plausibly make individual effects harder to pin down. Holding correlation fixed at 0.7, here's what actually happens as channel count grows:</p>
 
@@ -794,7 +819,7 @@ svg.chart { display: block; width: 100%; }
       </g>
     </svg>
   </div>
-  <p class="fig-cap">One pipeline, three steps. The diagnostic quantifies how unreliable your elasticities are today. Phasing recommends a de-correlated spend schedule that preserves monthly totals exactly. Retraining on that new data is where the payoff lands, tighter elasticity estimates without waiting years for it to happen naturally.</p>
+  <p class="fig-cap">One pipeline, three steps. The diagnostic quantifies how identifiable your marginal returns are today. Phasing recommends a de-correlated spend schedule that preserves monthly totals exactly. Retraining on that new data is where the payoff lands, tighter marginal-return estimates without waiting years for it to happen naturally.</p>
 </div>
 
   <p>Run all three steps against your own spend and <code>ReportBuilder</code> packages the result into a single client-ready HTML report: today's model-estimated range, the recommended weekly schedule, and how much it narrows things, no code required to read it. <a href="example-report.html">See a full example report →</a></p>
@@ -807,7 +832,7 @@ svg.chart { display: block; width: 100%; }
   <p class="s-label">Section 6</p>
   <h2>Bringing It Together</h2>
 
-  <p>Marketing channels move together because business decisions are coordinated. That makes elasticity estimates unreliable, not biased: your model's number is one draw from a wide distribution, and the CV measures how wide it is for your own spend history. Budget phasing fixes this directly: vary the weekly channel split within each month, keep monthly totals exactly the same, and it works whether your MMM has three channels or twenty. Blackout buys more reliability per week of disruption than a continuous swing. And switching to a Bayesian model doesn't sidestep any of this: priors regularise noise, they don't manufacture variation the data never had.</p>
+  <p>Marketing channels move together because business decisions are coordinated. That makes marginal-return estimates unreliable to identify, not necessarily biased: your model's number is one draw from a wide distribution, and the CV measures how wide it is for your own spend history. Budget phasing fixes this directly: vary the weekly channel split within each month, keep monthly totals exactly the same, and it works whether your MMM has three channels or twenty. Blackout buys more reliability per week of disruption than a continuous swing. And switching to a Bayesian model doesn't sidestep any of this: priors regularise noise, they don't manufacture variation the data never had.</p>
 
   <div class="callout">
     <p>The question isn't whether to trust your MMM. It's whether your data gave it a fair chance. Budget phasing is how you give it one.</p>
@@ -939,8 +964,8 @@ const PLAN = {
 })();
 
 
-// ── Chart 2: Elasticity estimates strip chart ──────────────────────────────
-(function drawElasticities() {
+// ── Chart 2: Marginal-return estimates strip chart ──────────────────────────────
+(function drawMarginalReturns() {
   const svg = document.getElementById('chart2');
   if (!svg) return;
 
@@ -991,7 +1016,7 @@ const PLAN = {
   g.appendChild(el('text', {
     x: m.left + pw / 2, y: H - 4,
     'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af'
-  }, 'Estimated elasticity'));
+  }, 'Estimated marginal return'));
 
   // Outer border
   g.appendChild(el('rect', {
@@ -1202,7 +1227,7 @@ const PLAN = {
   g.appendChild(el('text', {
     x: 11, y: m.top + ph / 2, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af',
     transform: `rotate(-90, 11, ${m.top + ph / 2})`
-  }, 'Elasticity CV'));
+  }, 'Marginal-return CV'));
 
   svg.appendChild(g);
 })();
@@ -1538,7 +1563,7 @@ function pearson(a, b) {
   const pw = W - m.left - m.right;
   const ph = H - m.top - m.bottom;
 
-  // TV elasticity CV from notebook 01 sweep (cell 8), exact values
+  // TV marginal-return CV from notebook 01 sweep (cell 8), exact values
   const data = [
     { corr: 0.1, cv: 0.096 },
     { corr: 0.2, cv: 0.142 },
@@ -1573,9 +1598,9 @@ function pearson(a, b) {
 
   // Threshold zone labels
   const zones = [
-    { y1: scY(0.20), y2: scY(0.00), color: '#dcfce7', label: 'manageable' },
-    { y1: scY(0.40), y2: scY(0.20), color: '#fef9c3', label: 'unreliable' },
-    { y1: scY(0.65), y2: scY(0.40), color: '#fee2e2', label: 'severe' },
+    { y1: scY(0.20), y2: scY(0.00), color: '#dcfce7', label: 'well-identified' },
+    { y1: scY(0.40), y2: scY(0.20), color: '#fef9c3', label: 'borderline' },
+    { y1: scY(0.65), y2: scY(0.40), color: '#fee2e2', label: 'poorly identified' },
   ];
   for (const z of zones) {
     g.appendChild(el('rect', { x: m.left, y: z.y1, width: pw, height: z.y2 - z.y1, fill: z.color, opacity: 0.35 }));
@@ -1590,7 +1615,7 @@ function pearson(a, b) {
     x: 11, y: m.top + ph / 2,
     'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af',
     transform: `rotate(-90, 11, ${m.top + ph / 2})`
-  }, 'TV elasticity CV'));
+  }, 'TV marginal-return CV'));
 
   // Bars
   for (let i = 0; i < data.length; i++) {
@@ -1628,9 +1653,9 @@ function pearson(a, b) {
   const lx = m.left + pw - 180;
   const ly = m.top + 6;
   const zones2 = [
-    { color: '#16a34a', label: 'manageable  (<20%)' },
-    { color: '#d97706', label: 'unreliable  (20–40%)' },
-    { color: '#dc2626', label: 'severe  (>40%)' },
+    { color: '#16a34a', label: 'well-identified  (<20%)' },
+    { color: '#d97706', label: 'borderline  (20–40%)' },
+    { color: '#dc2626', label: 'poorly identified  (>40%)' },
   ];
   for (let i = 0; i < zones2.length; i++) {
     const y = ly + i * 16;
@@ -1656,7 +1681,7 @@ function pearson(a, b) {
   // Same £12.3m TV/Meta/Search scenario used throughout overview.html
   // (notebook 02: history seed=0, plan seed=1, target correlation 0.7,
   // actual ~0.69 on the combined history+plan). p10/p90 here are the
-  // incremental-revenue range: elasticity draws x planned spend, cross-
+  // incremental-revenue range: marginal-return draws x planned spend, cross-
   // checked against overview.html's own published revenue range before
   // use here (TV and Search matched to the pound; Meta within ~1%).
   const channels = [

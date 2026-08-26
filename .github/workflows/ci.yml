@@ -45,3 +45,26 @@ jobs:
 
       - name: Ruff lint
         run: uv run --no-default-groups --group test ruff check .
+
+  charts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright@1.56.0
+          npx playwright install --with-deps chromium
+
+      # Renders docs/overview.html headless at 1440px and 393px and fails on:
+      # an empty chart, text rendering below 9px, text escaping its SVG box,
+      # labels colliding with each other or a legend swatch, NaN/undefined
+      # attributes, or console errors. Chart font sizes are declared in viewBox
+      # units, so a layout constant tuned for one font size breaks silently
+      # when another changes - this is what catches that.
+      - name: Check chart legibility
+        run: node tools/check_charts.js

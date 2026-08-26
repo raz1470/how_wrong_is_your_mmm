@@ -15,7 +15,7 @@ from how_wrong_is_your_mmm._phaser import (
     _resolve_channel_specs,
 )
 
-ELASTICITIES = {"tv": 0.3, "meta": 0.5, "search": 0.4}
+MARGINAL_RETURNS = {"tv": 0.3, "meta": 0.5, "search": 0.4}
 
 # 4 years of history + 1 year plan, both with DatetimeIndex
 HISTORY_DF = simulate_spend(n_obs=208, correlation=0.7, seed=0, start_date="2019-01-07")
@@ -595,19 +595,21 @@ class TestGeneratePhasedSchedulePerChannel:
 
 class TestBudgetPhaser:
     def test_fit_returns_self(self):
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES)
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        )
         assert phaser.fit(n_sims=5, grid_steps=3, n_phasing_seeds=1) is phaser
 
     def test_results_shape(self):
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=5, n_phasing_seeds=1
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=5, n_phasing_seeds=1)
         assert len(phaser.results_) == 5
 
     def test_summary_columns(self):
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=3, n_phasing_seeds=1
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=1)
         cols = set(phaser.summary().columns)
         assert {
             "alpha",
@@ -618,36 +620,36 @@ class TestBudgetPhaser:
         assert {"cv_tv", "cv_meta", "cv_search"}.issubset(cols)
 
     def test_fast_mode(self):
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=50, grid_steps=20, fast_mode=True
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=50, grid_steps=20, fast_mode=True)
         assert len(phaser.results_) == 10
 
     def test_recommend_is_min_confirmation_cv(self):
         """recommend() returns the confirmation pass's winner, not the raw
         grid argmin — see TestSelectionBiasConfirmation for why."""
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=5, n_phasing_seeds=1
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=5, n_phasing_seeds=1)
         rec = phaser.recommend()
         assert rec["max_cv"] == phaser.confirmation_["max_cv"].min()
 
     def test_recommended_schedule_shape(self):
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=3, n_phasing_seeds=1
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=1)
         assert phaser.recommended_schedule_.shape == PLAN_DF.shape
 
     def test_recommended_schedule_index(self):
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=3, n_phasing_seeds=1
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=1)
         pd.testing.assert_index_equal(phaser.recommended_schedule_.index, PLAN_DF.index)
 
     def test_monthly_totals_preserved_in_recommended_schedule(self):
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=3, n_phasing_seeds=1
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=1)
         month_labels = _get_month_labels(PLAN_DF)
         dev = _max_monthly_deviation(
             PLAN_DF, phaser.recommended_schedule_, month_labels
@@ -656,23 +658,25 @@ class TestBudgetPhaser:
 
     def test_summary_before_fit_raises(self):
         with pytest.raises(RuntimeError):
-            BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).summary()
+            BudgetPhaser(
+                HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+            ).summary()
 
     def test_recommend_before_fit_raises(self):
         with pytest.raises(RuntimeError):
             BudgetPhaser(
-                HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES
+                HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
             ).recommend()
 
     def test_no_datetime_index_on_history_raises(self):
         df = simulate_spend(n_obs=208, correlation=0.7, seed=0)
         with pytest.raises(ValueError, match="DatetimeIndex"):
-            BudgetPhaser(df, PLAN_DF, true_elasticities=ELASTICITIES)
+            BudgetPhaser(df, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS)
 
     def test_no_datetime_index_on_plan_raises(self):
         df = simulate_spend(n_obs=52, correlation=0.7, seed=0)
         with pytest.raises(ValueError, match="DatetimeIndex"):
-            BudgetPhaser(HISTORY_DF, df, true_elasticities=ELASTICITIES)
+            BudgetPhaser(HISTORY_DF, df, true_marginal_returns=MARGINAL_RETURNS)
 
     def test_mismatched_columns_raises(self):
         plan_2ch = simulate_spend(
@@ -684,20 +688,20 @@ class TestBudgetPhaser:
         )
         with pytest.raises(ValueError, match="columns"):
             BudgetPhaser(
-                HISTORY_DF, plan_2ch, true_elasticities={"tv": 0.3, "meta": 0.5}
+                HISTORY_DF, plan_2ch, true_marginal_returns={"tv": 0.3, "meta": 0.5}
             )
 
     def test_nan_in_history_raises_at_construction(self):
         bad_history = HISTORY_DF.copy()
         bad_history.iloc[0, 0] = float("nan")
         with pytest.raises(ValueError, match="missing"):
-            BudgetPhaser(bad_history, PLAN_DF, true_elasticities=ELASTICITIES)
+            BudgetPhaser(bad_history, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS)
 
     def test_nan_in_plan_raises_at_construction(self):
         bad_plan = PLAN_DF.copy()
         bad_plan.iloc[0, 0] = float("nan")
         with pytest.raises(ValueError, match="missing"):
-            BudgetPhaser(HISTORY_DF, bad_plan, true_elasticities=ELASTICITIES)
+            BudgetPhaser(HISTORY_DF, bad_plan, true_marginal_returns=MARGINAL_RETURNS)
 
     def test_zero_variance_channel_raises_at_construction(self):
         bad_history = HISTORY_DF.copy()
@@ -706,7 +710,7 @@ class TestBudgetPhaser:
         bad_plan = PLAN_DF.copy()
         bad_plan[zero_col] = 0.0
         with pytest.raises(ValueError, match="zero variance"):
-            BudgetPhaser(bad_history, bad_plan, true_elasticities=ELASTICITIES)
+            BudgetPhaser(bad_history, bad_plan, true_marginal_returns=MARGINAL_RETURNS)
 
     def test_validation_runs_before_any_simulation(self):
         # A construction-time failure should never reach fit() -- the
@@ -714,23 +718,23 @@ class TestBudgetPhaser:
         bad_history = HISTORY_DF.copy()
         bad_history.iloc[0, 0] = float("nan")
         with pytest.raises(ValueError):
-            BudgetPhaser(bad_history, PLAN_DF, true_elasticities=ELASTICITIES)
+            BudgetPhaser(bad_history, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS)
 
     def test_valid_data_constructs_without_error(self):
         # Regression check: the standard fixture data (used by every other
         # test in this file) must not trip the new validation.
-        BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES)
+        BudgetPhaser(HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS)
 
     def test_alpha_starts_at_zero(self):
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=5, n_phasing_seeds=1
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=5, n_phasing_seeds=1)
         assert phaser.results_["alpha"].iloc[0] == 0.0
 
     def test_alpha_ends_at_one(self):
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=5, n_phasing_seeds=1
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=5, n_phasing_seeds=1)
         assert phaser.results_["alpha"].iloc[-1] == 1.0
 
 
@@ -739,7 +743,7 @@ class TestBudgetPhaserPerChannelCaps:
         phaser = BudgetPhaser(
             HISTORY_DF,
             PLAN_DF,
-            true_elasticities=ELASTICITIES,
+            true_marginal_returns=MARGINAL_RETURNS,
             max_weekly_deviation_pct={"tv": 0.0, "meta": 60.0, "search": 100.0},
         )
         assert phaser.max_weekly_deviation_pct == {
@@ -753,7 +757,7 @@ class TestBudgetPhaserPerChannelCaps:
             BudgetPhaser(
                 HISTORY_DF,
                 PLAN_DF,
-                true_elasticities=ELASTICITIES,
+                true_marginal_returns=MARGINAL_RETURNS,
                 max_weekly_deviation_pct={"tv": 0.0, "meta": 60.0},
             )
 
@@ -762,7 +766,7 @@ class TestBudgetPhaserPerChannelCaps:
             BudgetPhaser(
                 HISTORY_DF,
                 PLAN_DF,
-                true_elasticities=ELASTICITIES,
+                true_marginal_returns=MARGINAL_RETURNS,
                 max_weekly_deviation_pct={"tv": -10.0, "meta": 60.0, "search": 100.0},
             )
 
@@ -770,7 +774,7 @@ class TestBudgetPhaserPerChannelCaps:
         phaser = BudgetPhaser(
             HISTORY_DF,
             PLAN_DF,
-            true_elasticities=ELASTICITIES,
+            true_marginal_returns=MARGINAL_RETURNS,
             max_weekly_deviation_pct={"tv": 0.0, "meta": 60.0, "search": 100.0},
         ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=1)
         pd.testing.assert_series_equal(
@@ -781,7 +785,7 @@ class TestBudgetPhaserPerChannelCaps:
         phaser = BudgetPhaser(
             HISTORY_DF,
             PLAN_DF,
-            true_elasticities=ELASTICITIES,
+            true_marginal_returns=MARGINAL_RETURNS,
             max_weekly_deviation_pct={"tv": 0.0, "meta": 60.0, "search": 100.0},
         ).fit(n_sims=5, grid_steps=5, n_phasing_seeds=1)
         # at grid_steps=5 the best alpha may still land at 0, so only assert
@@ -796,7 +800,7 @@ class TestBudgetPhaserPerChannelCaps:
         phaser = BudgetPhaser(
             HISTORY_DF,
             PLAN_DF,
-            true_elasticities=ELASTICITIES,
+            true_marginal_returns=MARGINAL_RETURNS,
             max_weekly_deviation_pct={"tv": 0.0, "meta": 60.0, "search": Blackout()},
         )
         assert phaser.max_weekly_deviation_pct["search"] == Blackout()
@@ -805,7 +809,7 @@ class TestBudgetPhaserPerChannelCaps:
         phaser = BudgetPhaser(
             HISTORY_DF,
             PLAN_DF,
-            true_elasticities=ELASTICITIES,
+            true_marginal_returns=MARGINAL_RETURNS,
             max_weekly_deviation_pct={"tv": 0.0, "meta": 0.0, "search": Blackout()},
         ).fit(n_sims=5, grid_steps=5, n_phasing_seeds=1)
         month_labels = _get_month_labels(PLAN_DF)
@@ -818,7 +822,7 @@ class TestBudgetPhaserPerChannelCaps:
         phaser = BudgetPhaser(
             HISTORY_DF,
             PLAN_DF,
-            true_elasticities=ELASTICITIES,
+            true_marginal_returns=MARGINAL_RETURNS,
             max_weekly_deviation_pct={"tv": 0.0, "meta": 0.0, "search": Blackout()},
         ).fit(n_sims=5, grid_steps=5, n_phasing_seeds=1)
         pd.testing.assert_series_equal(
@@ -832,7 +836,7 @@ class TestBudgetPhaserPerChannelCaps:
         phaser = BudgetPhaser(
             HISTORY_DF,
             PLAN_DF,
-            true_elasticities=ELASTICITIES,
+            true_marginal_returns=MARGINAL_RETURNS,
             max_weekly_deviation_pct={
                 "tv": 0.0,
                 "meta": 0.0,
@@ -849,7 +853,7 @@ class TestBudgetPhaserPerChannelCaps:
         phaser = BudgetPhaser(
             HISTORY_DF,
             PLAN_DF,
-            true_elasticities=ELASTICITIES,
+            true_marginal_returns=MARGINAL_RETURNS,
             max_weekly_deviation_pct={
                 "tv": 0.0,
                 "meta": 0.0,
@@ -867,19 +871,19 @@ class TestBudgetPhaserPerChannelCaps:
 class TestNPhasingSeedsParam:
     def test_multiple_seeds_produces_correct_shape(self):
         """n_phasing_seeds > 1 should still give grid_steps rows."""
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=4, n_phasing_seeds=3
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=4, n_phasing_seeds=3)
         assert len(phaser.results_) == 4
 
     def test_single_seed_matches_columns(self):
         """n_phasing_seeds=1 gives the same output columns as n_phasing_seeds=3."""
-        p1 = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=3, n_phasing_seeds=1
-        )
-        p3 = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=3, n_phasing_seeds=3
-        )
+        p1 = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=1)
+        p3 = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=3)
         assert list(p1.summary().columns) == list(p3.summary().columns)
 
     def test_multiple_seeds_cv_is_average(self):
@@ -887,16 +891,16 @@ class TestNPhasingSeedsParam:
         than any single seed — verified by checking it lies between the per-seed
         extremes. We proxy this by confirming max_cv at alpha=0 is finite and
         non-negative."""
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=3, n_phasing_seeds=3
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=3)
         assert phaser.results_["max_cv"].iloc[0] >= 0
 
     def test_fast_mode_sets_n_phasing_seeds_one(self):
         """fast_mode overrides n_phasing_seeds to 1 (10 grid points, fast run)."""
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=50, grid_steps=20, n_phasing_seeds=5, fast_mode=True
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=50, grid_steps=20, n_phasing_seeds=5, fast_mode=True)
         # fast_mode caps grid_steps=10 and n_phasing_seeds=1 — result has 10 rows
         assert len(phaser.results_) == 10
 
@@ -907,10 +911,10 @@ class TestFitUnchangedAfterRefactor:
 
     def test_reproducibility(self):
         p1 = BudgetPhaser(
-            HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES, seed=3
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS, seed=3
         ).fit(n_sims=5, grid_steps=4, n_phasing_seeds=2)
         p2 = BudgetPhaser(
-            HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES, seed=3
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS, seed=3
         ).fit(n_sims=5, grid_steps=4, n_phasing_seeds=2)
         pd.testing.assert_frame_equal(p1.results_, p2.results_)
         pd.testing.assert_frame_equal(
@@ -921,7 +925,7 @@ class TestFitUnchangedAfterRefactor:
 class TestChannelSensitivity:
     def setup_method(self):
         self.phaser = BudgetPhaser(
-            HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES, seed=0
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS, seed=0
         ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=1)
 
     def test_unknown_channel_raises(self):
@@ -985,11 +989,13 @@ class TestChannelSensitivity:
 class TestImpactOverHorizons:
     def setup_method(self):
         self.phaser = BudgetPhaser(
-            HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES, seed=0
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS, seed=0
         ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=1)
 
     def test_before_fit_raises(self):
-        unfit = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES)
+        unfit = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        )
         with pytest.raises(RuntimeError, match="Call fit"):
             unfit.impact_over_horizons(n_sims=5, n_phasing_seeds=1)
 
@@ -1082,7 +1088,7 @@ class TestImpactOverHorizons:
 
         direct = CollinearityDiagnostic(
             spend_df=pd.concat([HISTORY_DF, PLAN_DF]),
-            true_elasticities=ELASTICITIES,
+            true_marginal_returns=MARGINAL_RETURNS,
         )
         # Different n_sims/seed draw than the phaser's internal call, so this
         # checks the *planned_spend* pricing is identical, not that the
@@ -1149,39 +1155,41 @@ class TestSelectionBiasConfirmation:
     independently before committing to a recommendation."""
 
     def test_confirmation_populated_after_fit(self):
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=5, n_phasing_seeds=1
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=5, n_phasing_seeds=1)
         assert phaser.confirmation_ is not None
         assert set(phaser.confirmation_.columns) == set(phaser.results_.columns)
 
     def test_confirmation_before_fit_is_none(self):
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES)
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        )
         assert phaser.confirmation_ is None
 
     def test_confirm_top_k_controls_confirmation_row_count(self):
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=8, n_phasing_seeds=1, confirm_top_k=4
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=8, n_phasing_seeds=1, confirm_top_k=4)
         assert len(phaser.confirmation_) == 4
 
     def test_confirm_top_k_capped_at_grid_size(self):
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=3, n_phasing_seeds=1, confirm_top_k=10
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=1, confirm_top_k=10)
         assert len(phaser.confirmation_) == 3
 
     def test_confirmation_alphas_are_among_grid_lowest(self):
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=8, n_phasing_seeds=1, confirm_top_k=3
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=8, n_phasing_seeds=1, confirm_top_k=3)
         expected_alphas = set(phaser.results_.nsmallest(3, "max_cv")["alpha"].round(4))
         assert set(phaser.confirmation_["alpha"].round(4)) == expected_alphas
 
     def test_recommended_schedule_uses_confirmed_alpha(self):
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=5, grid_steps=8, n_phasing_seeds=1, confirm_top_k=3
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=8, n_phasing_seeds=1, confirm_top_k=3)
         confirmed_alpha = float(
             phaser.confirmation_.loc[phaser.confirmation_["max_cv"].idxmin(), "alpha"]
         )
@@ -1192,19 +1200,23 @@ class TestSelectionBiasConfirmation:
         """fast_mode forces confirm_top_k=1 — confirmation still runs (so
         recommend()/recommended_schedule_ stay well-defined) but only
         re-evaluates the single grid winner, not its neighbours."""
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES).fit(
-            n_sims=50, grid_steps=20, n_phasing_seeds=5, fast_mode=True
-        )
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=50, grid_steps=20, n_phasing_seeds=5, fast_mode=True)
         assert len(phaser.confirmation_) == 1
 
     def test_confirm_n_phasing_seeds_defaults_to_triple(self):
         """Default confirm_n_phasing_seeds is 3x n_phasing_seeds — larger
         sample than the grid search itself used per point, per the
         standard optimizer's-curse fix."""
-        phaser = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES)
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        )
         phaser.fit(n_sims=5, grid_steps=4, n_phasing_seeds=2, confirm_top_k=2)
         # Indirectly verify via reproducibility at an explicit equal setting.
-        phaser2 = BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES)
+        phaser2 = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        )
         phaser2.fit(
             n_sims=5,
             grid_steps=4,
@@ -1216,10 +1228,10 @@ class TestSelectionBiasConfirmation:
 
     def test_reproducible_with_same_seed(self):
         p1 = BudgetPhaser(
-            HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES, seed=7
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS, seed=7
         ).fit(n_sims=5, grid_steps=5, n_phasing_seeds=1, confirm_top_k=3)
         p2 = BudgetPhaser(
-            HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES, seed=7
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS, seed=7
         ).fit(n_sims=5, grid_steps=5, n_phasing_seeds=1, confirm_top_k=3)
         pd.testing.assert_frame_equal(p1.confirmation_, p2.confirmation_)
 
@@ -1227,7 +1239,7 @@ class TestSelectionBiasConfirmation:
 class TestRecommendLevers:
     def setup_method(self):
         self.phaser = BudgetPhaser(
-            HISTORY_DF, PLAN_DF, true_elasticities=ELASTICITIES, seed=0
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS, seed=0
         )
 
     def test_returns_one_entry_per_channel(self):
@@ -1253,7 +1265,7 @@ class TestRecommendLevers:
         phased = BudgetPhaser(
             HISTORY_DF,
             PLAN_DF,
-            true_elasticities=ELASTICITIES,
+            true_marginal_returns=MARGINAL_RETURNS,
             max_weekly_deviation_pct=spec,
         ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=1)
         assert phased.recommended_schedule_.shape == PLAN_DF.shape
@@ -1287,3 +1299,152 @@ class TestRecommendLevers:
     def test_fast_mode_does_not_raise(self):
         spec = self.phaser.recommend_levers(fast_mode=True)
         assert set(spec.keys()) == set(PLAN_DF.columns)
+
+
+class TestRecommendedDraws:
+    """P0.5: recommended_schedule_ is picked from n_recommended_draws
+    independently evaluated draws, not one never-evaluated one; the
+    honestly-reported CV is the median across those draws, not the
+    (optimistic) CV of the shipped draw itself."""
+
+    def test_recommended_draws_populated_after_fit(self):
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=5, grid_steps=3, n_phasing_seeds=1, n_recommended_draws=4)
+        assert phaser.recommended_draws_ is not None
+        assert len(phaser.recommended_draws_) == 4
+        assert "max_cv" in phaser.recommended_draws_.columns
+
+    def test_median_cv_is_not_the_shipped_draws_own_cv(self):
+        """The shipped schedule is the BEST of n_recommended_draws (lowest
+        max_cv), so its own evaluation is optimistic relative to the
+        median across all draws -- the two should generally differ."""
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=10, grid_steps=3, n_phasing_seeds=1, n_recommended_draws=8)
+        assert phaser.recommended_schedule_median_cv_ is not None
+        best_cv = phaser.recommended_draws_["max_cv"].min()
+        assert phaser.recommended_schedule_median_cv_ >= best_cv
+
+    def test_recommended_schedule_is_the_best_evaluated_draw(self):
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=10, grid_steps=3, n_phasing_seeds=1, n_recommended_draws=5)
+        best_idx = int(phaser.recommended_draws_["max_cv"].idxmin())
+        best_seed = int(phaser.recommended_draws_.loc[best_idx, "seed"])
+        # Regenerate the schedule at that seed directly and confirm it
+        # matches what was shipped.
+        from how_wrong_is_your_mmm._phaser import _generate_phased_schedule
+
+        best_alpha = float(
+            phaser.confirmation_.loc[phaser.confirmation_["max_cv"].idxmin(), "alpha"]
+        )
+        rebuilt = _generate_phased_schedule(
+            phaser.plan_df,
+            phaser._plan_month_labels,
+            alpha=best_alpha,
+            max_weekly_deviation_pct=phaser.max_weekly_deviation_pct,
+            seed=best_seed,
+        )
+        pd.testing.assert_frame_equal(phaser.recommended_schedule_, rebuilt)
+
+    def test_fast_mode_uses_single_draw(self):
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        ).fit(n_sims=50, grid_steps=10, fast_mode=True)
+        assert len(phaser.recommended_draws_) == 1
+
+
+class TestRemovedMaxMonthlyDeviationPctParam:
+    """P0.6: max_monthly_deviation_pct was stored but never read anywhere
+    -- removed rather than wired up. Guard against it silently coming back
+    as a dead parameter."""
+
+    def test_constructor_rejects_it(self):
+        with pytest.raises(TypeError):
+            BudgetPhaser(
+                HISTORY_DF,
+                PLAN_DF,
+                true_marginal_returns=MARGINAL_RETURNS,
+                max_monthly_deviation_pct=1.0,
+            )
+
+
+class TestRevenueNoiseStdForwarding:
+    """P0.3: base_sales/revenue_noise_std must actually reach the
+    CollinearityDiagnostic instances BudgetPhaser builds internally, not
+    just live as unused constructor args."""
+
+    def test_higher_noise_std_widens_cv(self):
+        low = BudgetPhaser(
+            HISTORY_DF,
+            PLAN_DF,
+            true_marginal_returns=MARGINAL_RETURNS,
+            revenue_noise_std=5_000.0,
+        ).fit(n_sims=30, grid_steps=3, n_phasing_seeds=1, n_recommended_draws=1)
+        high = BudgetPhaser(
+            HISTORY_DF,
+            PLAN_DF,
+            true_marginal_returns=MARGINAL_RETURNS,
+            revenue_noise_std=50_000.0,
+        ).fit(n_sims=30, grid_steps=3, n_phasing_seeds=1, n_recommended_draws=1)
+        assert high.recommend()["max_cv"] > low.recommend()["max_cv"]
+
+
+class TestChannelConstraints:
+    """P1.11: channel_constraints lets a caller hard-pin a channel's lever,
+    bypassing the CV-comparison threshold entirely (e.g. a channel that
+    must never be blacked out regardless of what the comparison prefers)."""
+
+    def setup_method(self):
+        self.phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS, seed=0
+        )
+
+    def test_constrained_channel_keeps_exact_pinned_spec(self):
+        spec = self.phaser.recommend_levers(
+            n_sims=5, n_phasing_seeds=1, channel_constraints={"tv": 0}
+        )
+        assert spec["tv"] == 0
+
+    def test_constrained_channel_skips_cv_comparison_even_if_blackout_would_win(self):
+        # Even with threshold 0 (Blackout wins whenever it's at all better),
+        # a constrained channel must not be touched.
+        spec = self.phaser.recommend_levers(
+            n_sims=5,
+            n_phasing_seeds=1,
+            improvement_threshold_pct=0.0,
+            channel_constraints={"tv": 0},
+        )
+        assert spec["tv"] == 0
+
+    def test_unconstrained_channels_still_decided_normally(self):
+        spec = self.phaser.recommend_levers(
+            n_sims=5, n_phasing_seeds=1, channel_constraints={"tv": 0}
+        )
+        assert set(spec.keys()) == set(PLAN_DF.columns)
+        for ch in PLAN_DF.columns:
+            if ch != "tv":
+                assert isinstance(spec[ch], float | Blackout)
+
+
+class TestBudgetPhaserDeprecatedTrueElasticitiesAlias:
+    def test_constructor_warns(self):
+        with pytest.warns(FutureWarning, match="true_elasticities is deprecated"):
+            BudgetPhaser(HISTORY_DF, PLAN_DF, true_elasticities=MARGINAL_RETURNS)
+
+    def test_both_given_raises(self):
+        with pytest.raises(ValueError, match="only one of"):
+            BudgetPhaser(
+                HISTORY_DF,
+                PLAN_DF,
+                true_marginal_returns=MARGINAL_RETURNS,
+                true_elasticities=MARGINAL_RETURNS,
+            )
+
+    def test_attribute_access_warns(self):
+        phaser = BudgetPhaser(
+            HISTORY_DF, PLAN_DF, true_marginal_returns=MARGINAL_RETURNS
+        )
+        with pytest.warns(FutureWarning, match="deprecated"):
+            assert phaser.true_elasticities == MARGINAL_RETURNS

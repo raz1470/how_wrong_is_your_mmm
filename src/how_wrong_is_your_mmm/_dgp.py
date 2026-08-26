@@ -6,9 +6,12 @@ Two functions with a clean separation of concerns:
   latent demand signal. All pairwise correlations are equal (single rho param).
 
 - simulate_sales: creates a synthetic sales column from a spend DataFrame
-  (real or synthetic) using known elasticities. This step is identical
-  regardless of whether spend is real or synthetic.
+  (real or synthetic) using known marginal returns (mROAS): £ revenue per
+  £ spend, not economic elasticities. This step is identical regardless of
+  whether spend is real or synthetic.
 """
+
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -21,7 +24,18 @@ _CHANNEL_SCALE: dict[str, tuple[float, float]] = {
 }
 _DEFAULT_SCALE = (80_000, 15_000)
 _DEFAULT_CHANNELS = ["tv", "meta", "search"]
-_DEFAULT_ELASTICITIES: dict[str, float] = {"tv": 0.3, "meta": 0.5, "search": 0.4}
+
+# Marginal return (a.k.a. mROAS): £ of incremental revenue per £ of spend.
+# These are NOT elasticities (a unitless %-response-to-%-spend measure) --
+# the DGP is linear in raw spend, so the DGP/estimator coefficient is a
+# marginal £-per-£ return. Values below are a defensible illustrative
+# starting point, not a claim about any real market -- chosen to land in
+# the range practitioners usually mean by "ROI" (revenue / spend) rather
+# than an inflated mROAS, so the illustrative CVs stay honestly wide.
+_DEFAULT_MARGINAL_RETURNS: dict[str, float] = {"tv": 0.5, "meta": 1.0, "search": 1.5}
+# Deprecated alias -- kept only so old code importing the private name
+# doesn't hard-crash. Prefer _DEFAULT_MARGINAL_RETURNS.
+_DEFAULT_ELASTICITIES = _DEFAULT_MARGINAL_RETURNS
 
 
 def _noise_std_from_correlation(correlation: float) -> float:
@@ -91,25 +105,34 @@ def simulate_spend(
 
 def simulate_sales(
     spend_df: pd.DataFrame,
-    true_elasticities: dict[str, float] | None = None,
+    true_marginal_returns: dict[str, float] | None = None,
     base_sales: float = 1_000.0,
-    revenue_noise_std: float = 20_000.0,
+    revenue_noise_std: float = 26_000.0,
     seed: int = 0,
+    true_elasticities: dict[str, float] | None = None,
 ) -> pd.Series:
     """Create a synthetic sales column from a spend DataFrame.
 
-    Applies known elasticities to the spend columns and adds noise.
+    Applies known marginal returns to the spend columns and adds noise.
     Works identically whether spend_df is synthetic or real.
 
-    Model: sales = base + sum(elast[c] * spend[c] for c in channels) + noise
+    Model: sales = base + sum(beta[c] * spend[c] for c in channels) + noise
+
+    Each beta[c] here is a marginal return (a.k.a. mROAS): £ of
+    incremental sales per £ of spend on channel c. Because the DGP is
+    linear in raw £ spend (no log-log transform), this is NOT an
+    elasticity in the economic sense (%-response to %-spend) -- calling
+    it that overstates how "typical" the numbers look to an MMM
+    practitioner, and read as an ROI it makes even a healthy true effect
+    look catastrophic.
 
     Parameters
     ----------
     spend_df:
         DataFrame with one column per channel. Can be synthetic or real.
-    true_elasticities:
-        Dict mapping channel name to true elasticity. Defaults to
-        {"tv": 0.3, "meta": 0.5, "search": 0.4}.
+    true_marginal_returns:
+        Dict mapping channel name to true marginal return (£ revenue per
+        £ spend). Defaults to {"tv": 0.5, "meta": 1.0, "search": 1.5}.
         All columns in spend_df must have an entry.
     base_sales:
         Base sales intercept.
@@ -117,22 +140,42 @@ def simulate_sales(
         Standard deviation of sales noise.
     seed:
         Random seed for the noise draw.
+    true_elasticities:
+        Deprecated alias for `true_marginal_returns`, kept for backward
+        compatibility. Raises ValueError if both are supplied. Emits a
+        FutureWarning -- migrate to `true_marginal_returns`.
 
     Returns
     -------
     pd.Series of simulated sales values.
     """
-    if true_elasticities is None:
-        true_elasticities = _DEFAULT_ELASTICITIES
+    if true_elasticities is not None:
+        if true_marginal_returns is not None:
+            raise ValueError(
+                "Pass only one of true_marginal_returns or the deprecated "
+                "true_elasticities, not both."
+            )
+        warnings.warn(
+            "true_elasticities is deprecated and will be removed in a "
+            "future release -- these are marginal returns (£ revenue per "
+            "£ spend), not elasticities. Use true_marginal_returns instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        true_marginal_returns = true_elasticities
+
+    if true_marginal_returns is None:
+        true_marginal_returns = _DEFAULT_MARGINAL_RETURNS
 
     rng = np.random.default_rng(seed)
     sales = base_sales + revenue_noise_std * rng.standard_normal(len(spend_df))
     for ch in spend_df.columns:
-        if ch not in true_elasticities:
+        if ch not in true_marginal_returns:
             raise ValueError(
-                f"Channel '{ch}' in spend_df has no entry in true_elasticities. "
-                f"Provide true_elasticities for all channels: {list(spend_df.columns)}"
+                f"Channel '{ch}' in spend_df has no entry in "
+                "true_marginal_returns. Provide true_marginal_returns for "
+                f"all channels: {list(spend_df.columns)}"
             )
-        sales = sales + true_elasticities[ch] * spend_df[ch].to_numpy()
+        sales = sales + true_marginal_returns[ch] * spend_df[ch].to_numpy()
 
     return pd.Series(sales, name="sales")

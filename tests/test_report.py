@@ -10,7 +10,7 @@ from how_wrong_is_your_mmm._dgp import simulate_spend
 from how_wrong_is_your_mmm._phaser import Blackout
 from how_wrong_is_your_mmm._report import ReportBuilder, _horizon_label
 
-ELASTICITIES = {"tv": 0.3, "meta": 0.5}
+MARGINAL_RETURNS = {"tv": 0.3, "meta": 0.5}
 CHANNELS = ["tv", "meta"]
 
 # Small dataset, chosen for test speed: 52 weeks of history, a 13-week plan.
@@ -37,7 +37,7 @@ def make_builder(**overrides) -> ReportBuilder:
     kwargs = {
         "history_df": HISTORY_DF,
         "plan_df": PLAN_DF,
-        "true_elasticities": ELASTICITIES,
+        "true_marginal_returns": MARGINAL_RETURNS,
         "seed": 0,
     }
     kwargs.update(overrides)
@@ -421,3 +421,49 @@ class TestReportBuilderToHtml:
         rb = make_builder().fit(**FIT_KWARGS)
         rb.to_html()
         assert list(tmp_path.iterdir()) == []
+
+
+class TestReportBuilderNoiseAssumptionsForwarded:
+    """P0.3: base_sales/revenue_noise_std must be settable on ReportBuilder
+    and actually change the reported numbers, not just be accepted and
+    silently ignored while every internal component uses the package
+    default."""
+
+    def test_higher_revenue_noise_std_widens_reported_cv(self):
+        rb_low = make_builder(revenue_noise_std=5_000.0).fit(**FIT_KWARGS)
+        rb_high = make_builder(revenue_noise_std=80_000.0).fit(**FIT_KWARGS)
+        cv_low = rb_low.report_data_["diagnose_today"][CHANNELS[0]]["cv"]
+        cv_high = rb_high.report_data_["diagnose_today"][CHANNELS[0]]["cv"]
+        assert cv_high > cv_low
+
+    def test_default_matches_collinearity_diagnostic_default(self):
+        rb = make_builder().fit(**FIT_KWARGS)
+        assert rb.revenue_noise_std == 26_000.0
+        assert rb.base_sales == 1_000.0
+
+
+class TestReportBuilderDeprecatedTrueElasticitiesAlias:
+    def test_warns_and_still_works(self):
+        with pytest.warns(FutureWarning, match="true_elasticities is deprecated"):
+            rb = ReportBuilder(
+                history_df=HISTORY_DF,
+                plan_df=PLAN_DF,
+                true_elasticities=MARGINAL_RETURNS,
+                seed=0,
+            )
+        rb.fit(**FIT_KWARGS)
+        assert rb.report_data_ is not None
+
+    def test_both_given_raises(self):
+        with pytest.raises(ValueError, match="only one of"):
+            ReportBuilder(
+                history_df=HISTORY_DF,
+                plan_df=PLAN_DF,
+                true_marginal_returns=MARGINAL_RETURNS,
+                true_elasticities=MARGINAL_RETURNS,
+            )
+
+    def test_attribute_access_warns(self):
+        rb = make_builder()
+        with pytest.warns(FutureWarning, match="deprecated"):
+            assert rb.true_elasticities == MARGINAL_RETURNS

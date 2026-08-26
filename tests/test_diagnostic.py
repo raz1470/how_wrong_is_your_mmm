@@ -8,12 +8,12 @@ import pytest
 from how_wrong_is_your_mmm._dgp import simulate_spend
 from how_wrong_is_your_mmm._diagnostic import CollinearityDiagnostic
 
-ELASTICITIES = {"tv": 0.3, "meta": 0.5, "search": 0.4}
+MARGINAL_RETURNS = {"tv": 0.3, "meta": 0.5, "search": 0.4}
 CHANNELS = ["tv", "meta", "search"]
 
 SUMMARY_COLS = {
     "channel",
-    "true_elasticity",
+    "true_marginal_return",
     "mean_estimated",
     "std_estimated",
     "mean_error_pct",
@@ -71,7 +71,7 @@ class TestSyntheticSpendPath:
         diag = CollinearityDiagnostic(
             correlation=0.5,
             channels=["tv", "meta"],
-            true_elasticities={"tv": 0.3, "meta": 0.5},
+            true_marginal_returns={"tv": 0.3, "meta": 0.5},
         ).fit(n_sims=5)
         assert set(diag.summary()["channel"]) == {"tv", "meta"}
 
@@ -82,27 +82,27 @@ class TestRealSpendPath:
 
     def test_fit_runs(self):
         diag = CollinearityDiagnostic(
-            spend_df=self.spend_df, true_elasticities=ELASTICITIES
+            spend_df=self.spend_df, true_marginal_returns=MARGINAL_RETURNS
         ).fit(n_sims=5)
         assert diag.results_ is not None
 
     def test_summary_columns(self):
         diag = CollinearityDiagnostic(
-            spend_df=self.spend_df, true_elasticities=ELASTICITIES
+            spend_df=self.spend_df, true_marginal_returns=MARGINAL_RETURNS
         ).fit(n_sims=5)
         assert set(diag.summary().columns) == SUMMARY_COLS
 
     def test_spend_df_not_mutated(self):
         original = self.spend_df.copy()
         CollinearityDiagnostic(
-            spend_df=self.spend_df, true_elasticities=ELASTICITIES
+            spend_df=self.spend_df, true_marginal_returns=MARGINAL_RETURNS
         ).fit(n_sims=5)
         pd.testing.assert_frame_equal(self.spend_df, original)
 
     def test_actual_correlation_matches_input(self):
 
         diag = CollinearityDiagnostic(
-            spend_df=self.spend_df, true_elasticities=ELASTICITIES
+            spend_df=self.spend_df, true_marginal_returns=MARGINAL_RETURNS
         ).fit(n_sims=5)
         corr = self.spend_df.corr().to_numpy()
         n = 3
@@ -111,10 +111,14 @@ class TestRealSpendPath:
 
     def test_correlation_param_ignored_when_spend_df_supplied(self):
         diag_low = CollinearityDiagnostic(
-            spend_df=self.spend_df, true_elasticities=ELASTICITIES, correlation=0.1
+            spend_df=self.spend_df,
+            true_marginal_returns=MARGINAL_RETURNS,
+            correlation=0.1,
         ).fit(n_sims=5)
         diag_high = CollinearityDiagnostic(
-            spend_df=self.spend_df, true_elasticities=ELASTICITIES, correlation=0.9
+            spend_df=self.spend_df,
+            true_marginal_returns=MARGINAL_RETURNS,
+            correlation=0.9,
         ).fit(n_sims=5)
         assert abs(diag_low.actual_correlation - diag_high.actual_correlation) < 1e-10
 
@@ -132,60 +136,60 @@ class TestValidateSpendData:
         bad = self.spend_df.copy()
         bad.iloc[10, 0] = float("nan")
         with pytest.raises(ValueError, match="missing"):
-            CollinearityDiagnostic(spend_df=bad, true_elasticities=ELASTICITIES).fit(
-                n_sims=5
-            )
+            CollinearityDiagnostic(
+                spend_df=bad, true_marginal_returns=MARGINAL_RETURNS
+            ).fit(n_sims=5)
 
     def test_nan_error_names_the_column(self):
         bad = self.spend_df.copy()
         bad_col = bad.columns[1]
         bad.loc[bad.index[0], bad_col] = float("nan")
         with pytest.raises(ValueError, match=bad_col):
-            CollinearityDiagnostic(spend_df=bad, true_elasticities=ELASTICITIES).fit(
-                n_sims=5
-            )
+            CollinearityDiagnostic(
+                spend_df=bad, true_marginal_returns=MARGINAL_RETURNS
+            ).fit(n_sims=5)
 
     def test_inf_raises_value_error(self):
         bad = self.spend_df.copy()
         bad.iloc[0, 0] = float("inf")
         with pytest.raises(ValueError, match="non-finite"):
-            CollinearityDiagnostic(spend_df=bad, true_elasticities=ELASTICITIES).fit(
-                n_sims=5
-            )
+            CollinearityDiagnostic(
+                spend_df=bad, true_marginal_returns=MARGINAL_RETURNS
+            ).fit(n_sims=5)
 
     def test_zero_variance_channel_raises_value_error(self):
         bad = self.spend_df.copy()
         zero_col = bad.columns[-1]
         bad[zero_col] = 0.0
         with pytest.raises(ValueError, match="zero variance"):
-            CollinearityDiagnostic(spend_df=bad, true_elasticities=ELASTICITIES).fit(
-                n_sims=5
-            )
+            CollinearityDiagnostic(
+                spend_df=bad, true_marginal_returns=MARGINAL_RETURNS
+            ).fit(n_sims=5)
 
     def test_zero_variance_error_names_the_column(self):
         bad = self.spend_df.copy()
         zero_col = bad.columns[-1]
         bad[zero_col] = 12_345.0  # constant, non-zero -- still zero variance
         with pytest.raises(ValueError, match=zero_col):
-            CollinearityDiagnostic(spend_df=bad, true_elasticities=ELASTICITIES).fit(
-                n_sims=5
-            )
+            CollinearityDiagnostic(
+                spend_df=bad, true_marginal_returns=MARGINAL_RETURNS
+            ).fit(n_sims=5)
 
     def test_non_numeric_column_raises_value_error(self):
         bad = self.spend_df.copy()
         bad[bad.columns[0]] = "not a number"
         with pytest.raises(ValueError, match="numeric"):
-            CollinearityDiagnostic(spend_df=bad, true_elasticities=ELASTICITIES).fit(
-                n_sims=5
-            )
+            CollinearityDiagnostic(
+                spend_df=bad, true_marginal_returns=MARGINAL_RETURNS
+            ).fit(n_sims=5)
 
     def test_too_few_observations_raises_value_error(self):
         # 3 channels: need len(channels) + 2 = 5 rows minimum.
         tiny = self.spend_df.iloc[:4]
         with pytest.raises(ValueError, match="observation"):
-            CollinearityDiagnostic(spend_df=tiny, true_elasticities=ELASTICITIES).fit(
-                n_sims=5
-            )
+            CollinearityDiagnostic(
+                spend_df=tiny, true_marginal_returns=MARGINAL_RETURNS
+            ).fit(n_sims=5)
 
     def test_minimum_valid_length_does_not_raise(self):
         minimal = self.spend_df.iloc[:5]  # exactly len(channels) + 2
@@ -193,7 +197,7 @@ class TestValidateSpendData:
         # stray warning, so capture it explicitly rather than let it float.
         with pytest.warns(UserWarning, match="observations"):
             diag = CollinearityDiagnostic(
-                spend_df=minimal, true_elasticities=ELASTICITIES
+                spend_df=minimal, true_marginal_returns=MARGINAL_RETURNS
             ).fit(n_sims=5)
         assert diag.results_ is not None
 
@@ -202,7 +206,7 @@ class TestValidateSpendData:
         short = self.spend_df.iloc[:20]
         with pytest.warns(UserWarning, match="observations"):
             diag = CollinearityDiagnostic(
-                spend_df=short, true_elasticities=ELASTICITIES
+                spend_df=short, true_marginal_returns=MARGINAL_RETURNS
             ).fit(n_sims=5)
         assert diag.results_ is not None
 
@@ -210,7 +214,7 @@ class TestValidateSpendData:
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             CollinearityDiagnostic(
-                spend_df=self.spend_df, true_elasticities=ELASTICITIES
+                spend_df=self.spend_df, true_marginal_returns=MARGINAL_RETURNS
             ).fit(n_sims=5)
 
     def test_synthetic_path_is_never_validated(self):
@@ -245,13 +249,14 @@ class TestPlannedSpend:
             summary["incremental_revenue_p10"] <= summary["incremental_revenue_p90"]
         ).all()
 
-    def test_unit_spend_matches_elasticity_quantiles(self):
-        # With planned_spend=1 per channel, incremental revenue equals the raw
-        # elasticity distribution, so its quantiles must match a direct computation.
+    def test_unit_spend_matches_marginal_return_quantiles(self):
+        # With planned_spend=1 per channel, incremental revenue equals the
+        # raw marginal-return distribution, so its quantiles must match a
+        # direct computation.
         planned_spend = {"tv": 1.0, "meta": 1.0, "search": 1.0}
         summary = self.diag.summary(planned_spend=planned_spend)
         direct = (
-            self.diag.results_.groupby("channel")["estimated_elasticity"]
+            self.diag.results_.groupby("channel")["estimated_marginal_return"]
             .quantile([0.1, 0.9])
             .unstack()
         )
@@ -306,21 +311,21 @@ class TestValuePerUnit:
         summary = self.diag.summary(value_per_unit=150.0)
         assert {"cac_p10", "cac_p90", "roi_p10", "roi_p90"}.issubset(summary.columns)
 
-    def test_cac_is_reciprocal_of_elasticity_quantiles(self):
+    def test_cac_is_reciprocal_of_marginal_return_quantiles(self):
         summary = self.diag.summary(value_per_unit=150.0)
         direct = self.diag.results_.copy()
-        direct["cac"] = 1.0 / direct["estimated_elasticity"]
+        direct["cac"] = 1.0 / direct["estimated_marginal_return"]
         direct_range = direct.groupby("channel")["cac"].quantile([0.1, 0.9]).unstack()
         for channel in CHANNELS:
             row = summary[summary["channel"] == channel].iloc[0]
             assert row["cac_p10"] == round(direct_range.loc[channel, 0.1], 4)
             assert row["cac_p90"] == round(direct_range.loc[channel, 0.9], 4)
 
-    def test_roi_equals_elasticity_times_value_per_unit(self):
+    def test_roi_equals_marginal_return_times_value_per_unit(self):
         value_per_unit = 150.0
         summary = self.diag.summary(value_per_unit=value_per_unit)
         direct = self.diag.results_.copy()
-        direct["roi"] = direct["estimated_elasticity"] * value_per_unit
+        direct["roi"] = direct["estimated_marginal_return"] * value_per_unit
         direct_range = direct.groupby("channel")["roi"].quantile([0.1, 0.9]).unstack()
         for channel in CHANNELS:
             row = summary[summary["channel"] == channel].iloc[0]
@@ -354,3 +359,104 @@ class TestValuePerUnit:
                 with_ltv["channel"] == channel, "incremental_revenue_p90"
             ].iloc[0]
             assert abs(with_ltv_p90 - 150.0 * no_ltv_p90) < 1
+
+
+class TestAnalyticCV:
+    """analytic_cv(): closed-form CV, no simulation. See P1.8."""
+
+    def test_before_fit_raises(self):
+        with pytest.raises(RuntimeError):
+            CollinearityDiagnostic(correlation=0.7).analytic_cv()
+
+    def test_returns_series_indexed_by_channel(self):
+        diag = CollinearityDiagnostic(correlation=0.7).fit(n_sims=5)
+        cv = diag.analytic_cv()
+        assert set(cv.index) == set(CHANNELS)
+        assert (cv > 0).all()
+
+    def test_approximately_matches_large_sample_monte_carlo(self):
+        # The Monte Carlo CV estimate should converge to the analytic value
+        # as n_sims grows -- a large-n_sims run should land within a loose
+        # tolerance (the MC estimate itself is still noisy).
+        diag = CollinearityDiagnostic(correlation=0.7, spend_seed=1).fit(n_sims=400)
+        analytic = diag.analytic_cv()
+        mc = diag.summary().set_index("channel")["coef_of_variation"]
+        for ch in CHANNELS:
+            assert abs(analytic[ch] - mc[ch]) / analytic[ch] < 0.25
+
+    def test_inversely_proportional_to_marginal_return(self):
+        # CV_j = sigma * sqrt([(X'X)^-1]_jj) / beta_j -- exactly inversely
+        # proportional to the assumed marginal return (P0.2's core claim).
+        diag = CollinearityDiagnostic(
+            correlation=0.7,
+            true_marginal_returns={"tv": 1.0, "meta": 1.0, "search": 1.0},
+        ).fit(n_sims=5)
+        cv1 = diag.analytic_cv()
+        diag2 = CollinearityDiagnostic(
+            correlation=0.7,
+            true_marginal_returns={"tv": 2.0, "meta": 2.0, "search": 2.0},
+        ).fit(n_sims=5)
+        cv2 = diag2.analytic_cv()
+        for ch in CHANNELS:
+            assert abs(cv2[ch] - cv1[ch] / 2) < 1e-9
+
+    def test_scales_linearly_with_revenue_noise_std(self):
+        diag_lo = CollinearityDiagnostic(correlation=0.7, revenue_noise_std=10_000).fit(
+            n_sims=5
+        )
+        diag_hi = CollinearityDiagnostic(correlation=0.7, revenue_noise_std=20_000).fit(
+            n_sims=5
+        )
+        for ch in CHANNELS:
+            assert abs(diag_hi.analytic_cv()[ch] - 2 * diag_lo.analytic_cv()[ch]) < 1e-9
+
+
+class TestNoiseSeedOffset:
+    def test_offset_changes_estimates(self):
+        diag1 = CollinearityDiagnostic(correlation=0.7).fit(
+            n_sims=5, noise_seed_offset=0
+        )
+        diag2 = CollinearityDiagnostic(correlation=0.7).fit(
+            n_sims=5, noise_seed_offset=1000
+        )
+        assert not diag1.results_["estimated_marginal_return"].equals(
+            diag2.results_["estimated_marginal_return"]
+        )
+
+    def test_default_offset_reproduces_original_seeding(self):
+        # noise_seed_offset defaults to 0, i.e. seeds 0..n_sims-1, matching
+        # pre-P1.7 behaviour exactly.
+        diag = CollinearityDiagnostic(correlation=0.7).fit(n_sims=5)
+        assert list(diag.results_.loc[diag.results_["channel"] == "tv", "sim"]) == [
+            0,
+            1,
+            2,
+            3,
+            4,
+        ]
+
+
+class TestDeprecatedTrueElasticitiesAlias:
+    def setup_method(self):
+        self.spend_df = simulate_spend(n_obs=104, correlation=0.6, seed=99)
+
+    def test_constructor_warns(self):
+        with pytest.warns(FutureWarning, match="true_elasticities is deprecated"):
+            CollinearityDiagnostic(
+                spend_df=self.spend_df, true_elasticities=MARGINAL_RETURNS
+            )
+
+    def test_both_given_raises(self):
+        with pytest.raises(ValueError, match="only one of"):
+            CollinearityDiagnostic(
+                spend_df=self.spend_df,
+                true_marginal_returns=MARGINAL_RETURNS,
+                true_elasticities=MARGINAL_RETURNS,
+            )
+
+    def test_attribute_access_warns(self):
+        diag = CollinearityDiagnostic(
+            spend_df=self.spend_df, true_marginal_returns=MARGINAL_RETURNS
+        )
+        with pytest.warns(FutureWarning, match="deprecated"):
+            assert diag.true_elasticities == MARGINAL_RETURNS

@@ -3,7 +3,7 @@
 from how_wrong_is_your_mmm._dgp import simulate_sales, simulate_spend
 from how_wrong_is_your_mmm._mmm import fit_ols
 
-ELASTICITIES = {"tv": 0.3, "meta": 0.5, "search": 0.4}
+MARGINAL_RETURNS = {"tv": 0.3, "meta": 0.5, "search": 0.4}
 
 
 class TestFitOls:
@@ -11,21 +11,22 @@ class TestFitOls:
         self.spend_df = simulate_spend(n_obs=104, correlation=0.3, seed=0)
 
     def test_output_keys(self):
-        sales = simulate_sales(self.spend_df, ELASTICITIES, seed=0)
+        sales = simulate_sales(self.spend_df, MARGINAL_RETURNS, seed=0)
         result = fit_ols(self.spend_df, sales)
         assert set(result.keys()) == {"tv", "meta", "search"}
 
     def test_output_types(self):
-        sales = simulate_sales(self.spend_df, ELASTICITIES, seed=0)
+        sales = simulate_sales(self.spend_df, MARGINAL_RETURNS, seed=0)
         result = fit_ols(self.spend_df, sales)
         assert all(isinstance(v, float) for v in result.values())
 
-    def test_recovers_true_elasticities(self):
-        """With low collinearity and no noise, OLS should recover true elasticities."""
+    def test_recovers_true_marginal_returns(self):
+        """With low collinearity and no noise, OLS should recover the true
+        marginal returns."""
         spend_df = simulate_spend(n_obs=500, correlation=0.1, seed=0)
         sales = simulate_sales(
             spend_df,
-            ELASTICITIES,
+            MARGINAL_RETURNS,
             revenue_noise_std=0.0,
             seed=0,
         )

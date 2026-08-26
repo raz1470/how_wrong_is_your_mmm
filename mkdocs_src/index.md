@@ -23,7 +23,7 @@ pip install how-wrong-is-your-mmm  # coming to PyPI
 
 | Class | What it does |
 |---|---|
-| [`CollinearityDiagnostic`](api/diagnostic.md) | Quantifies how unreliable OLS elasticities are, given your spend data. |
+| [`CollinearityDiagnostic`](api/diagnostic.md) | Quantifies how identifiable OLS marginal returns are, given your spend data. |
 | [`BudgetPhaser`](api/phaser.md) | Recommends a de-correlated weekly spend schedule, monthly totals preserved exactly. |
 | [`Blackout`](api/phaser.md#how_wrong_is_your_mmm.Blackout) | A harder on/off phasing lever for `BudgetPhaser`, in place of a continuous weekly range. |
 | [`ReportBuilder`](api/report.md) | Packages `CollinearityDiagnostic` + `BudgetPhaser` into a single client-ready HTML report. |

@@ -1,8 +1,10 @@
 """Lightweight OLS MMM for the simulation loop.
 
 Fits sales ~ intercept + channel_1 + channel_2 + ... using OLS and returns
-estimated channel elasticities. Works for any number of channels.
-No adstock, no saturation — placeholder for PyMC-Marketing in a later phase.
+estimated channel marginal returns (£ revenue per £ spend, a.k.a. mROAS --
+NOT economic elasticities, since the model is linear in raw £ spend rather
+than log-log). Works for any number of channels. No adstock, no saturation
+— placeholder for PyMC-Marketing in a later phase.
 """
 
 import numpy as np
@@ -13,7 +15,7 @@ def fit_ols(
     spend_df: pd.DataFrame,
     sales: pd.Series,
 ) -> dict[str, float]:
-    """Fit a simple OLS MMM and return estimated channel elasticities.
+    """Fit a simple OLS MMM and return estimated channel marginal returns.
 
     Model: sales = intercept + sum(beta[c] * spend[c] for c in channels)
 
@@ -26,7 +28,8 @@ def fit_ols(
 
     Returns
     -------
-    dict mapping channel name to estimated elasticity.
+    dict mapping channel name to estimated marginal return (£ revenue per
+    £ spend).
     """
     channels = list(spend_df.columns)
     x = np.column_stack(
