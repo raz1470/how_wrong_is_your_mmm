@@ -7,13 +7,15 @@
 const { chromium } = require('playwright');
 const path = require('path');
 
-const FILE = process.argv[2] || path.resolve(__dirname, '../overview.html');
+const FILE = process.argv[2] || path.resolve(__dirname, '../docs/overview.html');
 const MIN_PX = 9.0;                 // below this is not readable on a phone
 const WIDTHS = [['desktop', 1440], ['phone', 393]];
-const EXEC = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+// Use Playwright's own managed Chromium by default (what CI installs).
+// CHROME_PATH overrides it for environments with a preinstalled browser.
+const EXEC = process.env.CHROME_PATH || null;
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: EXEC });
+  const browser = await chromium.launch(EXEC ? { executablePath: EXEC } : {});
   let failures = 0;
 
   for (const [label, width] of WIDTHS) {
