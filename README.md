@@ -143,6 +143,7 @@ always supply your own values.
 | [`03_time_to_benefit`](notebooks/03_time_to_benefit.ipynb) | How long you need to phase your budget before you see a real improvement |
 | [`04_channel_scaling_walkthrough`](notebooks/04_channel_scaling_walkthrough.ipynb) | Checks that the diagnostic and the fix still work when you have more than three channels |
 | [`05_bayesian_comparison`](notebooks/05_bayesian_comparison.ipynb) | Checks whether switching to a Bayesian model fixes the problem on its own (it doesn't, not by much) |
+| [`06_phasing_cost`](notebooks/06_phasing_cost.ipynb) | What the phasing lever actually costs: how much of your signed-off band reaches the model, and what phasing gives up in revenue once the response curve saturates |
 
 ---
 
