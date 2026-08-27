@@ -7,12 +7,14 @@ import pytest
 from how_wrong_is_your_mmm._dgp import simulate_spend
 from how_wrong_is_your_mmm._diagnostic import CollinearityDiagnostic
 from how_wrong_is_your_mmm._phaser import (
+    NUDGE_SHAPES,
     Blackout,
     BudgetPhaser,
     _generate_phased_schedule,
     _get_month_labels,
     _max_monthly_deviation,
     _resolve_channel_specs,
+    _shaped_nudge,
 )
 
 MARGINAL_RETURNS = {"tv": 0.3, "meta": 0.5, "search": 0.4}
@@ -1448,3 +1450,259 @@ class TestBudgetPhaserDeprecatedTrueElasticitiesAlias:
         )
         with pytest.warns(FutureWarning, match="deprecated"):
             assert phaser.true_elasticities == MARGINAL_RETURNS
+
+
+def _abs_dev_pct(phased, plan):
+    """Realised |weekly deviation| from plan, in percent, all channels."""
+    return ((phased - plan) / plan * 100).abs().to_numpy().ravel()
+
+
+class TestShapedNudge:
+    """The magnitude/sign split behind nudge_shape and balance_signs."""
+
+    def test_zero_cap_returns_zeros(self):
+        rng = np.random.default_rng(0)
+        out = _shaped_nudge(rng, 4, 0.0, "edge", False)
+        assert np.all(out == 0.0)
+
+    def test_magnitudes_respect_the_cap(self):
+        for shape in NUDGE_SHAPES:
+            rng = np.random.default_rng(0)
+            out = _shaped_nudge(rng, 500, 0.4, shape, False)
+            assert np.abs(out).max() <= 0.4 + 1e-12, shape
+
+    def test_uniform_spans_the_whole_band(self):
+        rng = np.random.default_rng(0)
+        mag = np.abs(_shaped_nudge(rng, 4000, 0.4, "uniform", False))
+        assert mag.min() < 0.02
+        assert mag.max() > 0.38
+
+    def test_annulus_excludes_the_timid_middle(self):
+        rng = np.random.default_rng(0)
+        mag = np.abs(_shaped_nudge(rng, 4000, 0.4, "annulus", False))
+        assert mag.min() >= 0.2 - 1e-12
+        assert mag.max() <= 0.4 + 1e-12
+
+    def test_edge_is_exactly_the_cap(self):
+        rng = np.random.default_rng(0)
+        mag = np.abs(_shaped_nudge(rng, 200, 0.4, "edge", False))
+        assert np.allclose(mag, 0.4)
+
+    def test_mean_magnitude_orders_uniform_annulus_edge(self):
+        means = []
+        for shape in ("uniform", "annulus", "edge"):
+            rng = np.random.default_rng(1)
+            means.append(np.abs(_shaped_nudge(rng, 6000, 0.4, shape, False)).mean())
+        assert means[0] < means[1] < means[2]
+
+    def test_uniform_mean_magnitude_is_about_half_the_cap(self):
+        # The reason a nominal +/-20% setting moves a typical week by ~8%.
+        rng = np.random.default_rng(2)
+        mag = np.abs(_shaped_nudge(rng, 20000, 0.4, "uniform", False))
+        assert 0.19 < mag.mean() < 0.21
+
+    def test_balanced_signs_sum_to_zero_for_even_months(self):
+        rng = np.random.default_rng(0)
+        out = _shaped_nudge(rng, 4, 0.4, "edge", True)
+        assert np.isclose(out.sum(), 0.0)
+        assert (out > 0).sum() == 2
+        assert (out < 0).sum() == 2
+
+    def test_balanced_signs_leave_one_week_flat_for_odd_months(self):
+        rng = np.random.default_rng(0)
+        out = _shaped_nudge(rng, 5, 0.4, "edge", True)
+        assert (out > 0).sum() == 2
+        assert (out < 0).sum() == 2
+        assert (out == 0).sum() == 1
+
+    def test_unbalanced_signs_are_not_always_even(self):
+        rng = np.random.default_rng(0)
+        counts = {
+            (_shaped_nudge(rng, 4, 0.4, "edge", False) > 0).sum() for _ in range(50)
+        }
+        assert counts != {2}
+
+
+class TestGeneratePhasedScheduleNudgeShape:
+    def setup_method(self):
+        self.month_labels = _get_month_labels(PLAN_DF)
+
+    def _sched(self, shape, balanced, seed=0, alpha=1.0, mag=40.0):
+        return _generate_phased_schedule(
+            PLAN_DF,
+            self.month_labels,
+            alpha=alpha,
+            max_weekly_deviation_pct=mag,
+            seed=seed,
+            nudge_shape=shape,
+            balance_signs=balanced,
+        )
+
+    def test_default_path_is_byte_identical_to_the_unshaped_call(self):
+        # Guards every published number: docs/overview.html and the
+        # notebooks all derive from seeded default-path schedules, so this
+        # must never drift, whatever is added to the shaped path.
+        for seed in (0, 7, 99):
+            legacy = _generate_phased_schedule(
+                PLAN_DF,
+                self.month_labels,
+                alpha=1.0,
+                max_weekly_deviation_pct=40.0,
+                seed=seed,
+            )
+            pd.testing.assert_frame_equal(legacy, self._sched("uniform", False, seed))
+
+    def test_explicit_uniform_unbalanced_matches_the_default(self):
+        assert _generate_phased_schedule.__defaults__[:2] == ("uniform", False)
+
+    @pytest.mark.parametrize("shape", NUDGE_SHAPES)
+    @pytest.mark.parametrize("balanced", [False, True])
+    def test_monthly_totals_preserved(self, shape, balanced):
+        result = self._sched(shape, balanced)
+        dev = _max_monthly_deviation(PLAN_DF, result, self.month_labels)
+        assert dev < 1e-10
+
+    @pytest.mark.parametrize("shape", NUDGE_SHAPES)
+    @pytest.mark.parametrize("balanced", [False, True])
+    def test_zero_alpha_unchanged(self, shape, balanced):
+        result = self._sched(shape, balanced, alpha=0.0)
+        pd.testing.assert_frame_equal(result, PLAN_DF.astype(float))
+
+    @pytest.mark.parametrize("shape", NUDGE_SHAPES)
+    @pytest.mark.parametrize("balanced", [False, True])
+    def test_reproducibility(self, shape, balanced):
+        pd.testing.assert_frame_equal(
+            self._sched(shape, balanced, seed=7), self._sched(shape, balanced, seed=7)
+        )
+
+    @pytest.mark.parametrize("shape", NUDGE_SHAPES)
+    @pytest.mark.parametrize("balanced", [False, True])
+    def test_shape_changes_the_schedule(self, shape, balanced):
+        if shape == "uniform" and not balanced:
+            pytest.skip("that is the default path, covered by the identity test")
+        assert not np.allclose(
+            self._sched(shape, balanced).to_numpy(),
+            self._sched("uniform", False).to_numpy(),
+        )
+
+    def test_realised_deviation_orders_by_shape(self):
+        # The point of the whole option: more of the negotiated band
+        # actually reaches the model. Averaged over seeds, since one draw
+        # is noisy.
+        means = []
+        for shape in ("uniform", "annulus", "edge"):
+            per_seed = [
+                _abs_dev_pct(self._sched(shape, False, seed=s), PLAN_DF).mean()
+                for s in range(30)
+            ]
+            means.append(float(np.mean(per_seed)))
+        assert means[0] < means[1] < means[2]
+
+    def test_uniform_realises_far_less_than_its_nominal_band(self):
+        per_seed = [
+            _abs_dev_pct(
+                self._sched("uniform", False, seed=s, mag=20.0), PLAN_DF
+            ).mean()
+            for s in range(30)
+        ]
+        assert 5.0 < float(np.mean(per_seed)) < 12.0
+
+    @pytest.mark.parametrize("shape", ["annulus", "edge"])
+    def test_balancing_signs_contains_the_rescale_overshoot(self, shape):
+        # An unbalanced month forces the surviving weeks to absorb it, so
+        # the realised deviation can run far past the nominal band -- at
+        # cap=80% the edge shape reaches ~5x it. Sign-balanced months have
+        # almost nothing to rescale away, and land under 2x.
+        nominal = 80.0
+        worst = {
+            balanced: max(
+                _abs_dev_pct(
+                    self._sched(shape, balanced, seed=s, mag=nominal), PLAN_DF
+                ).max()
+                for s in range(30)
+            )
+            for balanced in (False, True)
+        }
+        assert worst[False] > 2.0 * nominal
+        assert worst[True] < 0.6 * worst[False]
+        assert worst[True] < 2.0 * nominal
+
+    def test_locked_channels_stay_exactly_on_plan_under_every_shape(self):
+        for shape in NUDGE_SHAPES:
+            for balanced in (False, True):
+                result = _generate_phased_schedule(
+                    PLAN_DF,
+                    self.month_labels,
+                    alpha=1.0,
+                    max_weekly_deviation_pct={"tv": 40.0, "meta": 0.0, "search": 0.0},
+                    seed=0,
+                    nudge_shape=shape,
+                    balance_signs=balanced,
+                )
+                for locked in ("meta", "search"):
+                    pd.testing.assert_series_equal(
+                        result[locked], PLAN_DF[locked].astype(float)
+                    )
+
+    @pytest.mark.parametrize("shape", NUDGE_SHAPES)
+    @pytest.mark.parametrize("balanced", [False, True])
+    def test_all_blackout_is_untouched_by_the_shape(self, shape, balanced):
+        # Blackout is on/off by construction, so the options must not reach
+        # it. Every channel is Blackout here on purpose: a float-spec
+        # channel in the same call draws from the same generator, and the
+        # shaped path does not consume randomness for a locked channel, so
+        # mixing specs shifts the stream and would make this compare
+        # different draws rather than the same draw under two options.
+        spec = Blackout(max_dark_weeks_per_month=1)
+        base = _generate_phased_schedule(
+            PLAN_DF, self.month_labels, alpha=1.0, max_weekly_deviation_pct=spec, seed=3
+        )
+        shaped = _generate_phased_schedule(
+            PLAN_DF,
+            self.month_labels,
+            alpha=1.0,
+            max_weekly_deviation_pct=spec,
+            seed=3,
+            nudge_shape=shape,
+            balance_signs=balanced,
+        )
+        pd.testing.assert_frame_equal(base, shaped)
+
+    def test_annulus_never_leaves_a_week_untouched_before_rescale(self):
+        rng = np.random.default_rng(11)
+        assert np.abs(_shaped_nudge(rng, 2000, 0.4, "annulus", False)).min() > 0.0
+
+    def test_invalid_shape_raises(self):
+        with pytest.raises(ValueError, match="nudge_shape must be one of"):
+            self._sched("gaussian", False)
+
+
+class TestBudgetPhaserNudgeShape:
+    def test_defaults_preserve_shipped_behaviour(self):
+        phaser = BudgetPhaser(
+            history_df=HISTORY_DF,
+            plan_df=PLAN_DF,
+            true_marginal_returns=MARGINAL_RETURNS,
+        )
+        assert phaser.nudge_shape == "uniform"
+        assert phaser.balance_signs is False
+
+    def test_stores_the_options(self):
+        phaser = BudgetPhaser(
+            history_df=HISTORY_DF,
+            plan_df=PLAN_DF,
+            true_marginal_returns=MARGINAL_RETURNS,
+            nudge_shape="annulus",
+            balance_signs=True,
+        )
+        assert phaser.nudge_shape == "annulus"
+        assert phaser.balance_signs is True
+
+    def test_invalid_shape_raises_at_construction(self):
+        with pytest.raises(ValueError, match="nudge_shape must be one of"):
+            BudgetPhaser(
+                history_df=HISTORY_DF,
+                plan_df=PLAN_DF,
+                true_marginal_returns=MARGINAL_RETURNS,
+                nudge_shape="triangular",
+            )
