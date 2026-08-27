@@ -414,7 +414,7 @@ footer a { color: var(--muted); }
     <div class="fig-body">
       <svg class="chart" id="chartCorrCost" viewBox="0 0 700 300" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">The cost is not linear. Up to about 0.4 the estimate is noisy but usable. Past 0.7 it climbs steeply, and by 0.9 the typical swing is about 60% of the estimate itself. This plan sits at 0.68, which is squarely in the middle band: not guesswork, but not something to move budget on without checking.</p>
+    <p class="fig-cap">The cost is not linear. Up to about 0.4 the estimate is noisy but usable. Past 0.7 it climbs steeply, and by 0.9 the typical swing is about 60% of the estimate itself.</p>
   </div>
 
   <p>It isn't that the model is badly built. It's that the data it's learning from was never designed to answer this question.</p>
@@ -433,35 +433,21 @@ footer a { color: var(--muted); }
 
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Same monthly totals, different weekly phasing</div>
-      <div class="fig-sub">One possible lever mix. TV: continuous ±40% range &nbsp;·&nbsp; Meta &amp; Search: Blackout (cap 1 dark week/month)</div>
+      <div class="fig-title">What each lever setting actually looks like</div>
+      <div class="fig-sub">TV's plan under three settings, one quarter &nbsp;·&nbsp; same monthly total every month, in all three</div>
     </div>
     <div class="fig-body">
       <div class="legend">
         <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#9ca3af" stroke-width="2.5"/></svg> Original plan</span>
         <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#2563eb" stroke-width="2.5"/></svg> Phased plan</span>
-        <span class="li"><svg width="10" height="10"><circle cx="5" cy="5" r="3.6" fill="#111827"/></svg> Dark week (£0), Meta &amp; Search only</span>
+        <span class="li"><svg width="10" height="10"><circle cx="5" cy="5" r="3.6" fill="#111827"/></svg> Dark week (&pound;0)</span>
       </div>
-      <div class="fig-scroll"><svg class="chart" id="chartFix" viewBox="0 0 700 584" preserveAspectRatio="xMinYMin meet"></svg></div>
+      <svg class="chart" id="chartLevers" viewBox="0 0 700 396" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="swipe-hint">Swipe the chart sideways to see the full year.</p>
-    <p class="fig-cap">TV never goes fully dark here. It just runs up to 40% above or below its usual week, still landing on the same monthly total. Meta and Search use the harder on/off lever instead: some weeks nothing at all, with the weeks that stay on absorbing that spend. Same guarantee either way, just applied differently per channel. This particular mix was chosen to show both levers side by side. On this plan the algorithm would actually pick the on/off lever for all three channels, which is what <a href="#algorithm">section 4</a> works through.</p>
+    <p class="fig-cap">One quarter of TV spend, phased three ways against the plan it started from. A &plusmn;20% nudge is almost invisible against the plan and &plusmn;40% only a little bolder; the on/off lever is the only one that changes the shape of the quarter, taking three weeks to &pound;0 and handing that budget to the weeks either side. That is not a flattering choice of example, it is the finding: the numbers in the next section say the same thing, where &plusmn;20% buys TV four points of reliability and the on/off switch buys it fifty-seven. All three land on exactly the same total in every one of the three months, which is the constraint the algorithm never breaks. Meta and Search are left exactly as planned here, so each panel shows only what TV's own lever does.</p>
   </div>
 
-  <p>That's what the schedule looks like. Whether it does the job is a separate question, and there's a direct way to check: measure how much the channels still move together afterwards.</p>
-
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">The correlation actually breaks</div>
-      <div class="fig-sub">Pairwise channel correlation, before and after phasing</div>
-    </div>
-    <div class="fig-body">
-      <svg class="chart" id="chartCorr" viewBox="0 0 700 290" preserveAspectRatio="xMinYMin meet"></svg>
-    </div>
-    <p class="fig-cap">This is the whole point, in one picture. Before, every pair of channels moves together at around 0.68, which is why the model can't tell them apart. After, TV has come loose from both of the others, at 0.11 and 0.08. Meta and Search stay more linked at 0.30, since the on/off lever only frees up one week a month. Same channels, same budget, same monthly totals: only the weekly timing changed.</p>
-  </div>
-
-  <p>Nothing about the budget changed. The model simply gets to watch the channels behave differently from one another, which is the one thing your planning cycle has never let it do.</p>
+  <p>Notice what hasn't moved. Every month still spends exactly what it was always going to spend, on exactly the channels it was going to spend it on, and the annual budget is untouched. All that changes is which week the money lands in &mdash; and that is enough to give the model weeks where TV moves and Meta doesn't. That is the whole intervention. The next section is the arithmetic behind it, and how the algorithm decides how far to push each channel.</p>
 </section>
 
 <!-- SECTION 4: THE ALGORITHM -->
@@ -478,6 +464,19 @@ footer a { color: var(--muted); }
   <div class="callout" style="padding: 1.1rem 1.4rem;">
     <p style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:.92rem; font-weight:600; margin:0 0 .6rem 0;">raw<sub>week</sub> = plan<sub>week</sub> &times; nudge<sub>week</sub></p>
     <p style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:.92rem; font-weight:600; margin:0;">phased<sub>week</sub> = raw<sub>week</sub> &times; ( &Sigma;plan<sub>month</sub> &divide; &Sigma;raw<sub>month</sub> )</p>
+  </div>
+
+  <p>Two lines of arithmetic, and that is the whole transformation. Before asking what it does to your model, though, there is a simpler question to settle: does it actually break the correlation? That one you can answer without fitting anything, by measuring how much the channels still move together once the schedule is applied.</p>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">The correlation actually breaks</div>
+      <div class="fig-sub">Pairwise channel correlation, before and after phasing</div>
+    </div>
+    <div class="fig-body">
+      <svg class="chart" id="chartCorr" viewBox="0 0 700 290" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Before, every pair of channels moves together at around 0.68, and that one number is why your model can't tell them apart. After, with all three channels on the on/off lever, TV and Search have come completely apart at 0.00 and Meta and Search sit at 0.16. TV and Meta are the strongest link left at 0.24 &mdash; still the pair to watch, but a third of what it was. Mean pairwise correlation falls from 0.68 to 0.13. Same channels, same budget, same monthly totals. Only the weekly timing changed.</p>
   </div>
 
   <p>That arithmetic is the easy part. The harder part happens before any of this runs, and it comes in two stages. First, each channel is swept on its own from a small nudge up to the full on/off switch, to see which lever suits it best. Then the whole plan is searched together across nudge sizes, refitting the model against thousands of simulated alternative histories at each setting, and keeping whichever size narrows your least reliable channel the most.</p>
@@ -507,7 +506,7 @@ footer a { color: var(--muted); }
   <p class="s-label">5 · The impact</p>
   <h2>What the phasing algorithm buys you</h2>
 
-  <p>The example above shows you can mix levers per channel. To see the ceiling, we simulated every channel on the harder on/off lever instead: pace the budget, refit the model, and check how much tighter the confidence gets. That figure is averaged across many equally-valid ways the schedule could land, not just one. Here's what moved, after one year and after two.</p>
+  <p>Breaking the correlation is the mechanism. Tighter estimates are the point. So we took that same all-Blackout schedule, refit the model against it, and measured how much tighter the ranges actually get. That figure is averaged across many equally-valid ways the schedule could land, not just one. Here's what moved, after one year and after two.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -863,26 +862,32 @@ const PLAN = {
   search: [54912,71117,47171,44350,77931,63497,48612,68792,69875,68743,75837,68204,46509,57055,53645,68040,60241,57857,37491,63431,55583,47477,80539,82429,31339,38598,50579,77492,69479,53658,79289,47339,43255,85838,64154,77590,61390,18924,62337,48602,53989,53122,63444,40296,73185,77015,52062,56853,61836,70509,53908,64849],
 };
 
-// The Fix chart illustrates mixing levers per channel rather than every
-// channel on the same setting: TV on a continuous +/-40% range, Meta and
-// Search on Blackout(max_dark_weeks_per_month=1).
-//
-// This is BudgetPhaser.recommended_schedule_ itself, taken verbatim, on the
-// canonical scenario (history 208w seed=0, plan 52w seed=1, correlation=0.7,
-// marginal returns 0.5/1.0/1.5, n_sims=50, grid_steps=25, n_phasing_seeds=10,
-// fast_mode=False, recommended alpha=1.0). The array shipped here previously
-// did not reproduce from any current call: its correlations were 0.104 /
-// -0.059 / 0.307 where the package's own output gives 0.114 / 0.084 / 0.298.
-// Taking the package's real output means the correlation matrix below always
-// describes a schedule a reader could actually reproduce.
-//
-// TV's weekly spend moves within its range but never hits £0; Meta and
-// Search hit exactly £0 on a dark week, capped at one per month (12 each,
-// 4 shared). Monthly totals preserved exactly for all three.
-const MIXED_RECOMMENDED = {
-  tv:     [147866,65895,150606,40015,111141,156776,74763,76488,131441,107570,90881,71707,111232,97013,65423,120209,64087,80384,83374,110106,119641,138214,142842,95907,29695,29237,116499,59192,129521,110457,94908,65088,110235,166659,66028,111527,126229,82741,76722,130124,57632,87776,137646,37370,103854,124564,66457,58901,112117,153249,107201,92397],
-  meta:   [128215,126805,0,60156,0,124971,95162,131585,0,122395,106537,116532,85061,0,85994,131186,0,80484,58469,109097,139547,0,113391,131292,40444,0,84818,90474,90856,98613,139444,69732,0,128387,116895,102760,80163,0,103277,102163,83907,82655,0,94881,0,94942,120245,0,99971,107595,103080,83706],
-  search: [81581,0,70080,65889,0,90851,69554,98427,0,91317,100740,90601,62286,0,71843,91121,69766,67005,0,73461,64371,72035,122199,0,47550,47368,62072,95100,85266,0,97302,0,53081,105338,0,109114,86332,26612,80475,62743,69698,68578,0,59042,107232,0,76283,80079,87097,0,75930,64849],
+// TV alone on each lever at alpha=1, phasing seed 99 (the seed this
+// notebook already uses for illustrative schedules). From
+// notebooks/02_phaser_walkthrough.ipynb, section "What does each lever
+// setting look like?": _generate_phased_schedule on the canonical scenario
+// (history 208w seed=0 from 2019-01-07, plan 52w seed=1 from 2023-01-09,
+// correlation 0.7), with meta and search locked at 0 so each panel isolates
+// TV's own lever -- the same convention chartLever uses. Monthly totals
+// preserved exactly. Mean |weekly deviation| over the full 52 weeks:
+// 5.3% / 10.8% / 41.2% (the chart draws the first 12 of them).
+const TV_LEVERS = {
+  n20: [112591,108691,114433,68668,128701,111313,70914,108241,102784,112230,88624,97960,84557,78814,96330,134176,75480,98144,99370,93313,91286,97832,140133,130230,38463,43357,90511,91126,129109,90804,142280,53121,92740,148749,103686,103892,105547,73399,103514,125095,76886,84240,100165,49209,88185,113706,81145,94313,102211,129430,105514,92397],
+  n40: [108960,107596,111000,76826,127110,114366,68612,109081,97802,114881,89498,99417,81677,68589,98830,144781,72267,98714,98485,95341,92785,90874,151828,128481,35475,43888,86026,96453,143575,74965,163015,44360,81747,147768,102629,92457,117761,73676,92477,144183,79496,85502,88241,46034,77670,128579,79961,94375,101331,129673,106088,92397],
+  bo: [136749,128973,138660,0,157471,131546,0,130151,0,149717,119972,131909,114150,0,121368,158360,101469,124881,0,116527,114716,116118,143787,146753,0,0,105187,94847,126609,118263,158817,81520,0,196553,147878,0,135152,103494,135321,124380,0,97754,132445,0,113924,121173,97147,123912,0,169783,137773,92397],
+};
+
+// BudgetPhaser.recommended_schedule_ with every channel on
+// Blackout(max_dark_weeks_per_month=1) -- the same all-Blackout scenario
+// chartImpact uses. Same canonical scenario, n_sims=50, grid_steps=25,
+// n_phasing_seeds=10, fast_mode=False. Replaces the old MIXED_RECOMMENDED,
+// which showed a lever mix the algorithm would never actually pick.
+// Resulting pairwise correlation: tv-meta 0.24, tv-search 0.00,
+// meta-search 0.17 (mean 0.13, down from 0.68).
+const ALL_BLACKOUT = {
+  tv: [159948,0,162183,82251,174954,146151,98063,0,0,149717,119972,131909,127284,131262,135332,0,98858,121667,125304,0,111763,152922,0,193268,60468,54453,0,109012,145517,135925,0,85904,143865,207121,147878,0,135152,103494,0,137847,96930,108339,146785,68567,127773,135904,0,134472,147481,0,149514,92397],
+  meta: [128215,126805,0,60156,148976,115099,87644,0,112306,124654,108504,0,85061,0,85994,131186,107815,68417,0,92740,118625,74115,97787,113225,0,58572,0,98956,99374,107858,0,81636,105626,150302,121829,0,83547,94442,103277,102163,83907,82655,0,98061,113884,98123,0,89145,0,113124,108377,83706],
+  search: [68973,89327,59249,0,95952,78181,0,84700,95497,93950,0,93212,62286,0,71843,91121,75529,72540,47006,79529,0,71190,0,123601,46993,38598,50579,77492,69479,53658,119352,71258,65111,0,98610,0,94362,29087,76838,59907,66547,0,78201,0,87765,92358,62434,76247,0,94561,72297,64849],
 };
 
 // ── Chart: Problem (forest plot, before phasing) ────────────────────────────
@@ -1014,8 +1019,7 @@ const PROBLEM_DATA = [
 // ── Responsive chart registry ──────────────────────────────────────────────
 // Each chart registers a wide renderer and, where it has one, a narrow
 // renderer. Charts with no narrow entry keep their 700-unit layout and are
-// held at a readable minimum width by .fig-scroll instead (chartFix,
-// chartGrid). The registry clears the SVG and restores the wide viewBox, so a
+// held at a readable minimum width by .fig-scroll instead (chartGrid). The registry clears the SVG and restores the wide viewBox, so a
 // narrow renderer is free to set its own.
 const CHARTS = [];
 function chart(id, vbWide, wide, narrow) { CHARTS.push({ id, vbWide, wide, narrow }); }
@@ -1086,77 +1090,89 @@ function drawCause() {
 }
 
 
-// ── Chart: Fix (stacked, one row per channel, mixed levers) ─────────────────
-function drawFix() {
-  const svg = document.getElementById('chartFix');
+
+// ── Chart: what each lever setting does to one channel's plan ──────────────
+// TV only, first 12 weeks so the monthly preservation the formula above
+// describes is true of every month drawn: the plan starts 2023-01-09, so weeks
+// 1-12 are three complete monthly groups (Jan/Feb/Mar, four weeks each) and
+// week 13 opens an April group whose remaining weeks fall outside this window.
+// Drawing 13 weeks put a week on the chart whose month does not reconcile,
+// which the caption claims it does. At 52 weeks +/-20% and +/-40% are not
+// distinguishable at this width -- tested before choosing.
+const LEVER_PANELS = [
+  { key: 'n20', label: '\u00b120% nudge' },
+  { key: 'n40', label: '\u00b140% nudge' },
+  { key: 'bo',  label: 'Blackout (on/off), max 1 dark week a month' },
+];
+const LEVER_WEEKS = 12;
+const LEVER_YMAX = 200000;
+
+function drawLeverPanels() {
+  const svg = document.getElementById('chartLevers');
   if (!svg) return;
-
-  const W = 700, H = 584, footerH = 24;
-  const rowH = (H - footerH) / 3;
-  const m = { top: 26, right: 16, bottom: 14, left: 62 };
-  const pw = W - m.left - m.right;
-  const ph = rowH - m.top - m.bottom;
-
-  const panels = [
-    { key: 'tv',     name: 'TV: continuous ±40% range',  color: '#2563eb', yMax: 220000, dark: false },
-    { key: 'meta',   name: 'Meta: Blackout',              color: '#d97706', yMax: 160000, dark: true },
-    { key: 'search', name: 'Search: Blackout',            color: '#059669', yMax: 140000, dark: true },
-  ];
-
-  const T = 52;
+  const W = 700, rowH = 132, m = { top: 26, right: 14, bottom: 24, left: 74 };
+  const pw = W - m.left - m.right, ph = rowH - m.top - m.bottom;
+  const T = LEVER_WEEKS, plan = PLAN.tv;
   const g = el('g', {});
 
-  panels.forEach((p, idx) => {
-    const offsetY = idx * rowH;
-    const pg = el('g', { transform: `translate(0,${offsetY})` });
-
+  LEVER_PANELS.forEach((p, idx) => {
+    const off = idx * rowH;
     const scX = i => m.left + (i / (T - 1)) * pw;
-    const scY = v => m.top + ph - (v / p.yMax) * ph;
-    const pathD = data => data.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
-
-    pg.appendChild(el('text', { x: m.left, y: 14, 'font-size': FS.name, 'font-weight': '700', fill: p.color }, p.name));
-
-    const yTicks = [0, p.yMax];
-    for (const v of yTicks) {
-      const y = scY(v);
-      pg.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
-      pg.appendChild(el('text', { x: m.left - 8, y: y + 3, 'text-anchor': 'end', 'font-size': FS.axis, fill: '#9ca3af' }, `£${Math.round(v / 1000)}k`));
+    const scY = v => off + m.top + ph - (v / LEVER_YMAX) * ph;
+    g.appendChild(el('text', { x: m.left, y: off + 15, 'font-size': FS.name, 'font-weight': '700', fill: '#2563eb' }, p.label));
+    for (const v of [0, LEVER_YMAX]) {
+      g.appendChild(el('line', { x1: m.left, y1: scY(v), x2: m.left + pw, y2: scY(v), stroke: '#e5e7eb', 'stroke-width': 1 }));
+      g.appendChild(el('text', { x: m.left - 8, y: scY(v) + 4, 'text-anchor': 'end', 'font-size': FS.axis, fill: '#9ca3af' }, `\u00a3${v / 1000}k`));
     }
-
-    pg.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-    pg.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-
-    pg.appendChild(el('text', { x: m.left, y: m.top + ph + 13, 'text-anchor': 'start', 'font-size': FS.axis, fill: '#9ca3af' }, 'Wk 1'));
-    pg.appendChild(el('text', { x: m.left + pw, y: m.top + ph + 13, 'text-anchor': 'end', 'font-size': FS.axis, fill: '#9ca3af' }, 'Wk 52'));
-
-    pg.appendChild(el('path', { d: pathD(PLAN[p.key]), fill: 'none', stroke: '#9ca3af', 'stroke-width': 1.75, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.9 }));
-    pg.appendChild(el('path', { d: pathD(MIXED_RECOMMENDED[p.key]), fill: 'none', stroke: p.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.95 }));
-
-    // Dark weeks (Meta/Search only): exactly £0, marked with a solid dot on the baseline
-    if (p.dark) {
-      MIXED_RECOMMENDED[p.key].forEach((v, i) => {
-        if (v === 0) {
-          pg.appendChild(el('circle', { cx: scX(i), cy: scY(0), r: 3, fill: '#111827' }));
-        }
-      });
-    }
-
-    g.appendChild(pg);
+    const path = d => d.slice(0, T).map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
+    g.appendChild(el('path', { d: path(plan), fill: 'none', stroke: '#9ca3af', 'stroke-width': 1.8, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    g.appendChild(el('path', { d: path(TV_LEVERS[p.key]), fill: 'none', stroke: '#2563eb', 'stroke-width': 2.2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    TV_LEVERS[p.key].slice(0, T).forEach((v, i) => {
+      if (v === 0) g.appendChild(el('circle', { cx: scX(i), cy: scY(0), r: 3.5, fill: '#111827' }));
+    });
+    g.appendChild(el('text', { x: m.left, y: off + rowH - 6, 'font-size': FS.axis, fill: '#9ca3af' }, 'Wk 1'));
+    g.appendChild(el('text', { x: m.left + pw, y: off + rowH - 6, 'text-anchor': 'end', 'font-size': FS.axis, fill: '#9ca3af' }, `Wk ${T}`));
   });
 
-  g.appendChild(el('text', { x: m.left + pw / 2, y: H - 8, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af' }, 'Week'));
-  g.appendChild(el('text', { x: 16, y: (H - footerH) / 2, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af', transform: `rotate(-90 16 ${(H - footerH) / 2})` }, 'Weekly spend (£k)'));
-
+  g.appendChild(el('text', { x: 16, y: (rowH * LEVER_PANELS.length) / 2, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af', transform: `rotate(-90 16 ${(rowH * LEVER_PANELS.length) / 2})` }, 'Weekly spend'));
   svg.appendChild(g);
 }
 
+function drawLeverPanelsNarrow(svg) {
+  const W = 340, rowH = 104, m = { top: 22, right: 8, bottom: 20, left: 46 };
+  const pw = W - m.left - m.right, ph = rowH - m.top - m.bottom;
+  const T = LEVER_WEEKS, plan = PLAN.tv;
+  svg.setAttribute('viewBox', `0 0 ${W} ${rowH * LEVER_PANELS.length}`);
+  const g = el('g', {});
+  LEVER_PANELS.forEach((p, idx) => {
+    const off = idx * rowH;
+    const scX = i => m.left + (i / (T - 1)) * pw;
+    const scY = v => off + m.top + ph - (v / LEVER_YMAX) * ph;
+    // Blackout's label is too long for 340 units; shortened here only.
+    const lbl = p.key === 'bo' ? 'Blackout (on/off)' : p.label;
+    g.appendChild(el('text', { x: 2, y: off + 13, 'font-size': FSN.name, 'font-weight': '700', fill: '#2563eb' }, lbl));
+    for (const v of [0, LEVER_YMAX]) {
+      g.appendChild(el('line', { x1: m.left, y1: scY(v), x2: m.left + pw, y2: scY(v), stroke: '#e5e7eb', 'stroke-width': 1 }));
+      g.appendChild(el('text', { x: m.left - 5, y: scY(v) + 4, 'text-anchor': 'end', 'font-size': FSN.axis, fill: '#9ca3af' }, `\u00a3${v / 1000}k`));
+    }
+    const path = d => d.slice(0, T).map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
+    g.appendChild(el('path', { d: path(plan), fill: 'none', stroke: '#9ca3af', 'stroke-width': 1.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    g.appendChild(el('path', { d: path(TV_LEVERS[p.key]), fill: 'none', stroke: '#2563eb', 'stroke-width': 1.9, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    TV_LEVERS[p.key].slice(0, T).forEach((v, i) => {
+      if (v === 0) g.appendChild(el('circle', { cx: scX(i), cy: scY(0), r: 3, fill: '#111827' }));
+    });
+    g.appendChild(el('text', { x: m.left, y: off + rowH - 5, 'font-size': FSN.axis, fill: '#9ca3af' }, 'Wk 1'));
+    g.appendChild(el('text', { x: m.left + pw, y: off + rowH - 5, 'text-anchor': 'end', 'font-size': FSN.axis, fill: '#9ca3af' }, `Wk ${T}`));
+  });
+  svg.appendChild(g);
+}
 
 // ── Chart: Impact (today / 1yr / 2yr forest plot, all-Blackout scenario) ────
 // Straight from notebooks/02_phaser_walkthrough.ipynb's blackout_impact(),
 // section "What does the reliability gain look like in £, and how fast does it
 // show up?" — every channel on Blackout(max_dark_weeks_per_month=1), the
-// ceiling case, distinct from the mixed-lever illustration in the Fix chart
-// above. today = the unphased 52-week plan year; y1/y2 = that same plan phased
+// ceiling case, and the same schedule chartCorr draws in section 4.
+// today = the unphased 52-week plan year; y1/y2 = that same plan phased
 // at the recommended alpha over 52 and 104 weeks, each averaged across 10
 // independent phased-schedule draws.
 //
@@ -1239,7 +1255,7 @@ function drawImpact() {
 
 
 // ── Chart: Correlation matrix, before vs after phasing ─────────────────────
-// Computed live from this page's own PLAN and MIXED_RECOMMENDED arrays, so the
+// Computed live from this page's own PLAN and ALL_BLACKOUT arrays, so the
 // matrix can never drift from the spend series the charts above already plot.
 function drawCorrMatrix() {
   const svg = document.getElementById('chartCorr');
@@ -1283,13 +1299,13 @@ function drawCorrMatrix() {
         const v = matrix[i][j];
         const x = labelGutter + cellSize * j, y = gridTop + cellSize * i;
         g.appendChild(el('rect', { x: x + 1, y: y + 1, width: cellSize - 2, height: cellSize - 2, fill: colorFor(v, i === j), stroke: '#e5e7eb', 'stroke-width': 1, rx: 3 }));
-        g.appendChild(el('text', { x: x + cellSize / 2, y: y + cellSize / 2 + 4, 'text-anchor': 'middle', 'font-size': FS.cell, 'font-weight': '700', fill: (i !== j && v > 0.62) ? '#f9fafb' : '#111827' }, v.toFixed(2)));
+        g.appendChild(el('text', { x: x + cellSize / 2, y: y + cellSize / 2 + 4, 'text-anchor': 'middle', 'font-size': FS.cell, 'font-weight': '700', fill: (i !== j && v > 0.62) ? '#f9fafb' : '#111827' }, Math.abs(v) < 0.005 ? '0.00' : v.toFixed(2)));
       }
     }
     return g;
   }
 
-  const before = matrixOf(PLAN), after = matrixOf(MIXED_RECOMMENDED);
+  const before = matrixOf(PLAN), after = matrixOf(ALL_BLACKOUT);
   const g = el('g', {});
   g.appendChild(drawGrid(startX, before, 'Before phasing', `mean pairwise: ${meanPairwise(before).toFixed(2)}`));
   g.appendChild(drawGrid(startX + panelW + gap, after, 'After phasing', `mean pairwise: ${meanPairwise(after).toFixed(2)}`));
@@ -1620,10 +1636,6 @@ function drawCorrCost() {
     g.appendChild(el('text', { x: x + w / 2, y: m.top + ph + 16, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af' }, d.corr.toFixed(1)));
   });
 
-  // "this plan" marker on the 0.7 column
-  const px = m.left + barW * 6 + barW / 2;
-  g.appendChild(el('path', { d: `M${px - 4},${m.top + ph + 24} L${px + 4},${m.top + ph + 24} L${px},${m.top + ph + 18} Z`, fill: '#111827' }));
-  g.appendChild(el('text', { x: px, y: m.top + ph + 36, 'text-anchor': 'middle', 'font-size': FS.val, 'font-weight': '700', fill: '#111827' }, 'this plan, 0.68'));
 
   g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
   g.appendChild(el('text', { x: 16, y: m.top + ph / 2, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af', transform: `rotate(-90 16 ${m.top + ph / 2})` }, "How much TV's estimate moves"));
@@ -1762,11 +1774,11 @@ function drawCorrMatrixNarrow(svg) {
     for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
       const v = matrix[i][j], x = gutter + cell * j, y = gridTop + cell * i;
       g.appendChild(el('rect', { x: x + 1, y: y + 1, width: cell - 2, height: cell - 2, fill: colorFor(v, i === j), stroke: '#e5e7eb', 'stroke-width': 1, rx: 3 }));
-      g.appendChild(el('text', { x: x + cell / 2, y: y + cell / 2 + 4, 'text-anchor': 'middle', 'font-size': FSN.cell, 'font-weight': '700', fill: (i !== j && v > 0.62) ? '#f9fafb' : '#111827' }, v.toFixed(2)));
+      g.appendChild(el('text', { x: x + cell / 2, y: y + cell / 2 + 4, 'text-anchor': 'middle', 'font-size': FSN.cell, 'font-weight': '700', fill: (i !== j && v > 0.62) ? '#f9fafb' : '#111827' }, Math.abs(v) < 0.005 ? '0.00' : v.toFixed(2)));
     }
     return g;
   }
-  const before = matrixOf(PLAN), after = matrixOf(MIXED_RECOMMENDED);
+  const before = matrixOf(PLAN), after = matrixOf(ALL_BLACKOUT);
   const g = el('g', {});
   g.appendChild(panel(0, before, 'Before phasing', `mean pairwise: ${meanPairwise(before).toFixed(2)}`));
   g.appendChild(panel(panelH, after, 'After phasing', `mean pairwise: ${meanPairwise(after).toFixed(2)}`));
@@ -1931,16 +1943,13 @@ function drawCorrCostNarrow(svg) {
     if (i % 2 === 0) g.appendChild(el('text', { x: x + w / 2, y: scY(d.v) - 5, 'text-anchor': 'middle', 'font-size': FSN.sub, 'font-weight': '700', fill: colorFor(d.v) }, `${Math.round(d.v)}%`));
     g.appendChild(el('text', { x: x + w / 2, y: m.top + ph + 15, 'text-anchor': 'middle', 'font-size': FSN.sub, fill: '#9ca3af' }, d.corr.toFixed(1)));
   });
-  const px = m.left + barW * 6 + barW / 2;
-  g.appendChild(el('path', { d: `M${px - 4},${m.top + ph + 23} L${px + 4},${m.top + ph + 23} L${px},${m.top + ph + 18} Z`, fill: '#111827' }));
-  g.appendChild(el('text', { x: Math.min(px, W - 46), y: m.top + ph + 35, 'text-anchor': 'middle', 'font-size': FSN.sub, 'font-weight': '700', fill: '#111827' }, 'this plan, 0.68'));
   g.appendChild(el('text', { x: W / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': FSN.axis, fill: '#9ca3af' }, 'Mean channel correlation'));
   svg.appendChild(g);
 }
 
 // ── Registrations ──────────────────────────────────────────────────────────
 chart('chartCause', '0 0 700 232', drawCause, drawCauseNarrow);
-chart('chartFix', '0 0 700 584', drawFix, null);
+chart('chartLevers', '0 0 700 396', drawLeverPanels, drawLeverPanelsNarrow);
 chart('chartImpact', '0 0 700 230', drawImpact, drawImpactNarrow);
 chart('chartCorr', '0 0 700 290', drawCorrMatrix, drawCorrMatrixNarrow);
 chart('chartLever', '0 0 700 280', drawLever, drawLeverNarrow);
