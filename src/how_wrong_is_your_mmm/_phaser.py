@@ -270,18 +270,93 @@ def _resolve_channel_specs(
     return {ch: _as_spec(max_weekly_deviation_pct, ch) for ch in channels}
 
 
+NUDGE_SHAPES = ("uniform", "annulus", "edge")
+
+
+def _validate_nudge_shape(nudge_shape: str) -> str:
+    if nudge_shape not in NUDGE_SHAPES:
+        raise ValueError(
+            f"nudge_shape must be one of {NUDGE_SHAPES}, got {nudge_shape!r}."
+        )
+    return nudge_shape
+
+
+def _shaped_nudge(
+    rng: np.random.Generator,
+    n_weeks: int,
+    cap: float,
+    nudge_shape: str,
+    balance_signs: bool,
+) -> np.ndarray:
+    """Draw one month's per-week deviations for a symmetric +/-cap range.
+
+    Splits the draw into a magnitude and a sign, because the two do
+    different jobs and the useful variants change only one of them.
+
+    magnitude (nudge_shape), as a fraction of the week's planned spend:
+    - "uniform": |dev| ~ U(0, cap). The mean absolute value of a uniform
+      draw is HALF its cap, so a nominal +/-20% setting moves a typical
+      week by ~8% once the monthly rescale has also removed the month's
+      common component. Most of the range the user negotiated is never
+      spent. This is the shipped behaviour and stays the default.
+    - "annulus": |dev| ~ U(cap/2, cap). Excludes the timid middle, so every
+      week moves meaningfully, while still spreading spend over a range of
+      levels rather than parking it at two.
+    - "edge": |dev| = cap exactly. Maximises the variation injected per
+      unit of cap, and gives up the spread of levels to get it.
+
+    sign (balance_signs):
+    - False: an independent fair coin per week.
+    - True: within the month, equal numbers of up and down weeks (an odd
+      week out is left at its plan). The rescale that follows preserves the
+      monthly total by dividing through the month's mean deviation, so a
+      sign-balanced month has almost nothing to divide out and the realised
+      deviations stay close to the ones drawn. Unbalanced months are where
+      the overshoot comes from: three weeks drawn down force the surviving
+      week to absorb the whole month, and at cap=0.8 that can reach three
+      times its planned spend.
+
+    Returns an array of fractional deviations, one per week. Note that the
+    cap binds on the DRAW, not on the realised deviation after the rescale
+    -- see _generate_phased_schedule.
+    """
+    if cap <= 0.0:
+        return np.zeros(n_weeks)
+
+    if nudge_shape == "uniform":
+        magnitude = rng.uniform(0.0, cap, size=n_weeks)
+    elif nudge_shape == "annulus":
+        magnitude = rng.uniform(cap / 2.0, cap, size=n_weeks)
+    else:  # "edge"
+        magnitude = np.full(n_weeks, cap, dtype=float)
+
+    if balance_signs:
+        signs = np.zeros(n_weeks)
+        half = n_weeks // 2
+        order = rng.permutation(n_weeks)
+        signs[order[:half]] = 1.0
+        signs[order[half : 2 * half]] = -1.0
+    else:
+        signs = rng.choice([-1.0, 1.0], size=n_weeks)
+
+    return magnitude * signs
+
+
 def _generate_phased_schedule(
     spend_df: pd.DataFrame,
     month_labels: np.ndarray,
     alpha: float,
     max_weekly_deviation_pct: DeviationSpec | dict[str, DeviationSpec],
     seed: int,
+    nudge_shape: str = "uniform",
+    balance_signs: bool = False,
 ) -> pd.DataFrame:
     """Generate one phased weekly schedule for a given amplitude alpha.
 
     For each month and each channel independently:
-    1. Draw a raw per-week deviation. For a symmetric range: uniform
-       between -alpha x magnitude and +alpha x magnitude. For Blackout:
+    1. Draw a raw per-week deviation. For a symmetric range: shaped by
+       nudge_shape and balance_signs, defaulting to uniform between
+       -alpha x magnitude and +alpha x magnitude. For Blackout:
        either every week is an independent -100% (dark) draw with
        probability alpha x prob, or (if max_dark_weeks_per_month is set)
        the month activates blackout with probability alpha x prob and, if
@@ -312,11 +387,41 @@ def _generate_phased_schedule(
         _resolve_channel_specs.
     seed:
         Random seed.
+    nudge_shape:
+        How a symmetric range's per-week magnitude is drawn within the cap:
+        "uniform" (default, |dev| ~ U(0, cap) -- the shipped behaviour),
+        "annulus" (|dev| ~ U(cap/2, cap)) or "edge" (|dev| = cap). Ignored
+        by Blackout channels, which are on/off by construction. See
+        _shaped_nudge.
+    balance_signs:
+        If True, each month gets equal numbers of up and down weeks (an odd
+        week out is left at its plan) instead of an independent coin flip
+        per week, which keeps the monthly rescale factor near 1 and so keeps
+        the realised deviations close to the drawn ones. Ignored by Blackout
+        channels. Default False, the shipped behaviour.
 
     Returns
     -------
     pd.DataFrame with the same shape and index as spend_df.
+
+    Notes
+    -----
+    max_weekly_deviation_pct binds on the DRAW, before step 2's rescale,
+    so it is not a hard cap on the realised weekly deviation. Under the
+    default uniform draw roughly 3-4% of weeks finish outside their nominal
+    band; the more of the band a shape uses, the more the rescale has to
+    move, unless balance_signs keeps the month's mean deviation near zero.
+    Enforcing a cap on the realised deviation would need a repair step
+    after the rescale, which this function does not do.
+
+    Changing nudge_shape or balance_signs changes the generator's call
+    sequence, so two schedules built with the same seed under different
+    options are not the same draw seen two ways. Compare shapes in
+    distribution, across seeds, not draw for draw. A channel locked at 0
+    consumes no randomness on the shaped path (it does on the default
+    one), so mixing locked and unlocked channels shifts the stream too.
     """
+    _validate_nudge_shape(nudge_shape)
     rng = np.random.default_rng(seed)
     channels = list(spend_df.columns)
     channel_specs = _resolve_channel_specs(max_weekly_deviation_pct, channels)
@@ -358,7 +463,19 @@ def _generate_phased_schedule(
                 low_pct, high_pct = spec
                 low_dev = alpha * low_pct / 100.0
                 high_dev = alpha * high_pct / 100.0
-                raw = rng.uniform(low_dev, high_dev, size=n_weeks)
+                if nudge_shape == "uniform" and not balance_signs:
+                    # The default path deliberately keeps this exact RNG
+                    # call, rather than routing through _shaped_nudge's
+                    # equivalent magnitude-and-sign formulation. Splitting
+                    # the draw changes the generator's call sequence, so
+                    # every seeded schedule -- and every published number
+                    # derived from one, in docs/overview.html and the
+                    # notebooks -- would silently move.
+                    raw = rng.uniform(low_dev, high_dev, size=n_weeks)
+                else:
+                    raw = _shaped_nudge(
+                        rng, n_weeks, high_dev, nudge_shape, balance_signs
+                    )
 
             orig_weeks = spend_df.iloc[mask, ci].to_numpy()
             monthly_total = orig_weeks.sum()
@@ -455,9 +572,39 @@ class BudgetPhaser:
         Deprecated alias for `true_marginal_returns`, kept for backward
         compatibility. Raises ValueError if both are supplied. Emits a
         FutureWarning -- migrate to `true_marginal_returns`.
+    nudge_shape:
+        How much of the negotiated band each week's nudge actually uses.
+        `max_weekly_deviation_pct` is a cap, and "uniform" spends only about
+        half of it: the mean absolute value of a uniform draw is half its
+        range, so a +/-20% setting moves a typical week by roughly 8%.
+        "annulus" draws the magnitude from the outer half of the band
+        (U(cap/2, cap)), and "edge" uses the cap exactly. Default "uniform",
+        which is the historical behaviour -- every number published in
+        `docs/overview.html` and the notebooks assumes it. Blackout channels
+        are unaffected; they are on/off by construction. Research option:
+        prefer "annulus" with `balance_signs=True` if you are exploring
+        this, and read the Notes on cost below.
+    balance_signs:
+        If True, each month gets equal numbers of up and down weeks rather
+        than an independent coin flip per week, which keeps the
+        monthly-total rescale factor near 1 and so keeps realised weekly
+        deviations close to the ones drawn. Without it an unbalanced month
+        forces its surviving weeks to absorb the whole month, and at
+        cap=80% a single week can reach several times its planned spend.
+        Default False, the historical behaviour.
 
     Notes
     -----
+    `nudge_shape` and `balance_signs` are research options, not tuning
+    knobs with a known best setting. Using more of the band buys tighter
+    estimates, and under a saturating (concave) response it also gives up
+    revenue, because the same monthly budget spread more unevenly across a
+    curve that bends produces less output. The package's own DGP is linear
+    in spend, so it cannot price that trade-off for you: nothing here
+    charges you for an aggressive schedule. Treat the defaults as the
+    supported path until that cost is quantified for your own response
+    curves.
+
     An earlier version also accepted `max_monthly_deviation_pct`, a
     "maximum allowed deviation" input that was stored but never actually
     enforced or read anywhere (the identically-named `max_monthly_deviation_pct`
@@ -478,6 +625,8 @@ class BudgetPhaser:
         base_sales: float = 1_000.0,
         revenue_noise_std: float = 26_000.0,
         true_elasticities: dict[str, float] | None = None,
+        nudge_shape: str = "uniform",
+        balance_signs: bool = False,
     ) -> None:
         _get_month_labels(history_df)  # validates DatetimeIndex
         _get_month_labels(plan_df)  # validates DatetimeIndex
@@ -497,6 +646,8 @@ class BudgetPhaser:
         _resolve_channel_specs(
             max_weekly_deviation_pct, list(plan_df.columns)
         )  # validates shape and bounds, fails fast
+
+        _validate_nudge_shape(nudge_shape)
 
         if true_elasticities is not None:
             if true_marginal_returns is not None:
@@ -522,6 +673,8 @@ class BudgetPhaser:
             else _DEFAULT_MARGINAL_RETURNS
         )
         self.max_weekly_deviation_pct = max_weekly_deviation_pct
+        self.nudge_shape = nudge_shape
+        self.balance_signs = balance_signs
         self.seed = seed
         self.base_sales = base_sales
         self.revenue_noise_std = revenue_noise_std
@@ -581,6 +734,8 @@ class BudgetPhaser:
                 alpha=alpha,
                 max_weekly_deviation_pct=spec,
                 seed=self.seed + seed_offset + j,
+                nudge_shape=self.nudge_shape,
+                balance_signs=self.balance_signs,
             )
 
             monthly_dev = _max_monthly_deviation(
@@ -784,6 +939,8 @@ class BudgetPhaser:
                 alpha=best_alpha,
                 max_weekly_deviation_pct=self.max_weekly_deviation_pct,
                 seed=draw_seed,
+                nudge_shape=self.nudge_shape,
+                balance_signs=self.balance_signs,
             )
             combined_m = pd.concat([self.history_df, schedule_m])
             diag_m = CollinearityDiagnostic(
@@ -1153,6 +1310,8 @@ class BudgetPhaser:
                     alpha=best_alpha,
                     max_weekly_deviation_pct=self.max_weekly_deviation_pct,
                     seed=self.seed + 30_000 + h * 100 + j,
+                    nudge_shape=self.nudge_shape,
+                    balance_signs=self.balance_signs,
                 )
                 combined = pd.concat([self.history_df, phased])
                 diag = CollinearityDiagnostic(

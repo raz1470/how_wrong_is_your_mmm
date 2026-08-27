@@ -444,7 +444,7 @@ footer a { color: var(--muted); }
       </div>
       <svg class="chart" id="chartLevers" viewBox="0 0 700 396" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">One quarter of TV spend, phased three ways against the plan it started from. A &plusmn;20% nudge is almost invisible against the plan and &plusmn;40% only a little bolder; the on/off lever is the only one that changes the shape of the quarter, taking three weeks to &pound;0 and handing that budget to the weeks either side. That is not a flattering choice of example, it is the finding: the numbers in the next section say the same thing, where &plusmn;20% buys TV four points of reliability and the on/off switch buys it fifty-seven. All three land on exactly the same total in every one of the three months, which is the constraint the algorithm never breaks. Meta and Search are left exactly as planned here, so each panel shows only what TV's own lever does.</p>
+    <p class="fig-cap">One quarter of TV spend, phased three ways against the plan it started from. A &plusmn;20% nudge shadows the plan closely, moving the average week by 8.3% rather than 20% &mdash; the nudge is drawn anywhere inside the band, so most weeks land near the middle of it. &plusmn;40% pulls clearly away at 16.6%, and the on/off lever reshapes the quarter, taking three weeks to &pound;0 and handing that budget to the weeks either side. All three land on exactly the same total in every one of the three months, which is the constraint the algorithm never breaks. Meta and Search are left exactly as planned, so each panel shows only what TV's own lever does. The schedule drawn is the median-typical one of 500, not a flattering pick.</p>
   </div>
 
   <p>Notice what hasn't moved. Every month still spends exactly what it was always going to spend, on exactly the channels it was going to spend it on, and the annual budget is untouched. All that changes is which week the money lands in &mdash; and that is enough to give the model weeks where TV moves and Meta doesn't. That is the whole intervention. The next section is the arithmetic behind it, and how the algorithm decides how far to push each channel.</p>
@@ -497,7 +497,7 @@ footer a { color: var(--muted); }
       </div>
       <svg class="chart" id="chartLever" viewBox="0 0 700 280" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Each line is one channel phased on its own, with the other two left exactly as planned, so you can see what that channel's own lever is worth. All three keep improving as the nudge gets bigger, and the on/off switch is worth another 12 to 19 points on top of the strongest continuous setting. These are per-channel figures: the whole-plan numbers in the next section come from phasing every channel together.</p>
+    <p class="fig-cap">Each line is one channel phased on its own, with the other two left exactly as planned, so you can see what that channel's own lever is worth. All three keep improving as the nudge gets bigger, and at these settings the on/off switch adds another 12 to 19 points on top of the strongest continuous one. That gap says less about going dark than it looks: a continuous nudge is drawn anywhere inside its band, so it spends only about 40% of the range it was given, while the on/off lever uses all of it every time. Draw the continuous lever harder and the gap closes. These are per-channel figures: the whole-plan numbers in the next section come from phasing every channel together.</p>
   </div>
 </section>
 
@@ -862,19 +862,28 @@ const PLAN = {
   search: [54912,71117,47171,44350,77931,63497,48612,68792,69875,68743,75837,68204,46509,57055,53645,68040,60241,57857,37491,63431,55583,47477,80539,82429,31339,38598,50579,77492,69479,53658,79289,47339,43255,85838,64154,77590,61390,18924,62337,48602,53989,53122,63444,40296,73185,77015,52062,56853,61836,70509,53908,64849],
 };
 
-// TV alone on each lever at alpha=1, phasing seed 99 (the seed this
-// notebook already uses for illustrative schedules). From
+// TV alone on each lever at alpha=1, phasing seed 427. From
 // notebooks/02_phaser_walkthrough.ipynb, section "What does each lever
 // setting look like?": _generate_phased_schedule on the canonical scenario
 // (history 208w seed=0 from 2019-01-07, plan 52w seed=1 from 2023-01-09,
 // correlation 0.7), with meta and search locked at 0 so each panel isolates
 // TV's own lever -- the same convention chartLever uses. Monthly totals
-// preserved exactly. Mean |weekly deviation| over the full 52 weeks:
-// 5.3% / 10.8% / 41.2% (the chart draws the first 12 of them).
+// preserved exactly.
+//
+// Seed 427 is chosen by a stated rule, not by eye: of 500 seeds it sits
+// closest to the MEDIAN realised mean |weekly deviation| across all three
+// levers over the 12 weeks this chart draws, and is close to typical over
+// the full 52 as well. The previous seed 99 was a low outlier -- 3.3% /
+// 6.4% / 43.8% against medians of 8.3% / 16.6% / 50.9% -- so in the drawn
+// window it understated the continuous levers by roughly 60%.
+// Realised mean |dev| here, 12 weeks: 8.3% / 16.6% / 50.9%; over 52 weeks:
+// 7.9% / 16.1% / 47.0%. Every seed puts exactly three dark weeks in the
+// drawn window, since the Blackout cap activates once per month and the
+// window is three whole months.
 const TV_LEVERS = {
-  n20: [112591,108691,114433,68668,128701,111313,70914,108241,102784,112230,88624,97960,84557,78814,96330,134176,75480,98144,99370,93313,91286,97832,140133,130230,38463,43357,90511,91126,129109,90804,142280,53121,92740,148749,103686,103892,105547,73399,103514,125095,76886,84240,100165,49209,88185,113706,81145,94313,102211,129430,105514,92397],
-  n40: [108960,107596,111000,76826,127110,114366,68612,109081,97802,114881,89498,99417,81677,68589,98830,144781,72267,98714,98485,95341,92785,90874,151828,128481,35475,43888,86026,96453,143575,74965,163015,44360,81747,147768,102629,92457,117761,73676,92477,144183,79496,85502,88241,46034,77670,128579,79961,94375,101331,129673,106088,92397],
-  bo: [136749,128973,138660,0,157471,131546,0,130151,0,149717,119972,131909,114150,0,121368,158360,101469,124881,0,116527,114716,116118,143787,146753,0,0,105187,94847,126609,118263,158817,81520,0,196553,147878,0,135152,103494,135321,124380,0,97754,132445,0,113924,121173,97147,123912,0,169783,137773,92397],
+  n20: [107970,118534,119812,58065,122999,93127,87569,115473,101018,106011,103168,91402,91085,90885,91190,120718,75145,113279,102857,92434,73876,99022,146595,118203,42839,44673,90110,91268,125388,93469,106069,53372,98808,178641,117484,103462,86587,78990,124047,108233,61149,67117,129354,52130,92063,97337,90714,97311,94184,130683,109289,92397],
+  n40: [100856,125770,121226,56530,115707,77126,102665,123671,93475,102291,119868,85964,93910,91109,89203,119655,71229,128513,105231,93855,58764,93318,165263,103541,44536,46835,84334,97736,138169,77833,90045,43994,93217,209634,132642,91994,76078,85811,132953,110835,48538,51834,145740,52720,87116,91380,101028,99732,86982,131915,112838,92397],
+  bo: [159948,0,162183,82251,174954,146151,98063,0,142129,144043,115426,0,0,116661,120278,156938,0,117887,121412,110001,108291,154405,191198,0,61055,54453,0,109012,145517,135925,184114,94505,158271,0,138886,150438,0,97201,135321,124380,0,97754,132445,0,113924,121173,97147,134472,147481,0,149514,92397],
 };
 
 // BudgetPhaser.recommended_schedule_ with every channel on
