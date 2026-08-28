@@ -144,6 +144,7 @@ always supply your own values.
 | [`04_channel_scaling_walkthrough`](notebooks/04_channel_scaling_walkthrough.ipynb) | Checks that the diagnostic and the fix still work when you have more than three channels |
 | [`05_bayesian_comparison`](notebooks/05_bayesian_comparison.ipynb) | Checks whether switching to a Bayesian model fixes the problem on its own (it doesn't, not by much) |
 | [`06_phasing_cost`](notebooks/06_phasing_cost.ipynb) | What the phasing lever actually costs: how much of your signed-off band reaches the model, and what phasing gives up in revenue once the response curve saturates |
+| [`07_omitted_variable_bias`](notebooks/07_omitted_variable_bias.ipynb) | The other half of "how wrong": bias, not variance. Budgets follow demand, so a model fitted on spend alone is confounded — and unlike collinearity, nothing about the width of your estimates warns you. Measures how much phasing helps, what a realistic demand proxy adds on top, and what the whole thing is worth once an inflated marginal return is allowed to set the budget rather than just the mix |
 
 ---
 
