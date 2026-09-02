@@ -45,7 +45,7 @@ _DEFAULT_ELASTICITIES = _DEFAULT_MARGINAL_RETURNS
 _PLANNING_STREAM = 20_260_828
 
 # Demand processes available to simulate_demand.
-DEMAND_PROCESSES = ("white_noise", "ar1", "seasonal", "seasonal_ar1")
+DEMAND_PROCESSES = ("white_noise", "ar1", "seasonal", "seasonal_ar1", "trend")
 
 
 def _noise_std_from_correlation(correlation: float) -> float:
@@ -69,6 +69,7 @@ def simulate_demand(
     ar_coef: float = 0.8,
     season_period: float = 52.0,
     season_weight: float = 0.7,
+    trend_drift: float = 0.15,
 ) -> np.ndarray:
     """Generate a latent demand series, standardised to mean 0 / sd 1.
 
@@ -89,6 +90,15 @@ def simulate_demand(
         - "ar1": persistent demand, x_t = ar_coef * x_{t-1} + eps.
         - "seasonal": a pure sinusoid at season_period weeks.
         - "seasonal_ar1": season_weight * seasonal + (1 - season_weight) * ar1.
+        - "trend": a random walk with drift, x_t = x_{t-1} + trend_drift + eps.
+          A genuine *non-stationary* trend -- unlike "ar1", which however
+          persistent (ar_coef < 1 is enforced) always mean-reverts. This is
+          the sharpest test for adstock, a low-pass filter: integration
+          concentrates a random walk's energy near zero frequency even more
+          than a raw AR(1) does, so carryover should leave it comparatively
+          untouched while destroying the high-frequency variation phasing
+          adds. Depends on `seed`, like "white_noise"/"ar1" -- each draw is a
+          different path, not a fixed shape.
 
         The distinction matters: BudgetPhaser preserves monthly totals and moves
         spend only *within* a month, so it can only attack spend-demand coupling
@@ -102,6 +112,11 @@ def simulate_demand(
         Period of the seasonal component, in observations (52 = annual weekly).
     season_weight:
         Weight on the seasonal component in "seasonal_ar1", in [0, 1].
+    trend_drift:
+        Per-step drift for "trend", in units of the step innovation's own std
+        (each step is trend_drift + N(0, 1)). 0 gives a pure driftless random
+        walk; larger magnitudes give a more visibly directional path. Sign
+        sets direction -- positive for growth, negative for decline.
 
     Returns
     -------
@@ -129,12 +144,31 @@ def simulate_demand(
     def _seasonal() -> np.ndarray:
         return np.sin(2 * np.pi * np.arange(n_obs) / season_period)
 
+    def _trend() -> np.ndarray:
+        """Random walk with drift: x_t = x_{t-1} + trend_drift + eps_t, x_0 = 0.
+
+        Deliberately NOT a deterministic ramp. A noiseless straight line is an
+        unrealistic caricature of demand, and (found the hard way) it is a
+        non-stationary shape squeezed through code elsewhere in this project
+        that draws one series over a long window and then standardises and
+        slices it -- a deterministic ramp's variance in a short sub-window is
+        a tiny, geometry-dependent fraction of its full-window variance,
+        which silently breaks any correlation targeting calibrated against
+        the full window. A stochastic walk has the same non-stationarity (by
+        design -- see the docstring above) but does not hand callers a
+        pathologically clean signal.
+        """
+        steps = trend_drift + rng.standard_normal(n_obs)
+        return np.cumsum(steps)
+
     if process == "white_noise":
         series = rng.standard_normal(n_obs)
     elif process == "ar1":
         series = _ar1()
     elif process == "seasonal":
         series = _seasonal()
+    elif process == "trend":
+        series = _trend()
     else:
         seasonal = _seasonal()
         ar = _ar1()
@@ -420,6 +454,76 @@ def simulate_spend(
     return df
 
 
+def _saturation_for(saturation: dict[str, float] | float | None, channel: str) -> float:
+    """Resolve the saturation exponent for one channel, validating as it goes.
+
+    Returns 1.0 (linear) when no curvature applies to this channel, which is
+    the value the caller uses to take the original linear code path.
+    """
+    if saturation is None:
+        return 1.0
+    if isinstance(saturation, dict):
+        if channel not in saturation:
+            return 1.0
+        b = saturation[channel]
+    else:
+        b = saturation
+    b = float(b)
+    if not 0.0 < b <= 1.0:
+        raise ValueError(
+            f"saturation exponent for '{channel}' must be in (0, 1], got {b}. "
+            "b = 1 is linear; smaller means stronger diminishing returns."
+        )
+    return b
+
+
+def _adstock_for(adstock: dict[str, float] | float | None, channel: str) -> float:
+    """Resolve the geometric adstock decay for one channel, validating.
+
+    Returns 0.0 (no carryover) when none applies, which is the value the caller
+    uses to take the original no-carryover code path.
+    """
+    if adstock is None:
+        return 0.0
+    if isinstance(adstock, dict):
+        if channel not in adstock:
+            return 0.0
+        lam = adstock[channel]
+    else:
+        lam = adstock
+    lam = float(lam)
+    if not 0.0 <= lam < 1.0:
+        raise ValueError(
+            f"adstock decay for '{channel}' must be in [0, 1), got {lam}. "
+            "0 is no carryover; approaching 1 spreads spend over more weeks."
+        )
+    return lam
+
+
+def apply_adstock(spend: np.ndarray, decay: float) -> np.ndarray:
+    """Normalised geometric adstock: a[t] = (1 - decay) * x[t] + decay * a[t-1].
+
+    The (1 - decay) factor is what makes this normalised, and it matters for
+    this package specifically. Without it, carryover inflates total adstocked
+    spend by 1 / (1 - decay), so the supplied marginal return would silently
+    mean something different at every decay and no two settings would be
+    comparable. Normalised, a constant spend level passes through unchanged --
+    so a channel's steady-state level, and therefore the reference point the
+    marginal return is calibrated at, does not move with decay at all.
+
+    Seeded with a[0] = x[0] rather than 0, which is the same steady-state
+    reasoning: a zero seed injects a warm-up ramp that is an artefact of where
+    the array happens to start, and would read as a real spend pattern.
+    """
+    if decay == 0.0:
+        return spend
+    out = np.empty_like(spend, dtype=float)
+    out[0] = spend[0]
+    for t in range(1, len(spend)):
+        out[t] = (1.0 - decay) * spend[t] + decay * out[t - 1]
+    return out
+
+
 def simulate_sales(
     spend_df: pd.DataFrame,
     true_marginal_returns: dict[str, float] | None = None,
@@ -429,6 +533,9 @@ def simulate_sales(
     true_elasticities: dict[str, float] | None = None,
     demand: np.ndarray | pd.Series | None = None,
     demand_coef: float = 0.0,
+    saturation: dict[str, float] | float | None = None,
+    adstock: dict[str, float] | float | None = None,
+    reference_spend: dict[str, float] | None = None,
 ) -> pd.Series:
     """Create a synthetic sales column from a spend DataFrame.
 
@@ -473,6 +580,47 @@ def simulate_sales(
         Coefficient on `demand`. Ignored when demand is None. Get a value in
         practitioner-legible units from calibrate_baseline, which derives it
         from the baseline's share of sales and its volatility.
+    saturation:
+        Optional diminishing returns. A float applied to every channel, or a
+        dict of channel -> exponent b in (0, 1]; channels absent from the dict
+        stay linear. The contribution becomes k * spend ** b, with k chosen so
+        that the MARGINAL return at `reference_spend` is exactly the supplied
+        `true_marginal_returns` value. So the supplied marginal return keeps
+        its meaning -- it is the return on the next pound at the reference
+        level, rather than an average over the curve.
+
+        b = 1.0 is linear and takes the same code path as saturation=None,
+        so it reproduces the linear output exactly rather than approximately.
+
+        Curvature is only identified by variation in spend LEVEL. A plan that
+        sits in a narrow band around its own average barely traces the curve
+        out, which is why b is normally treated as an assumption rather than
+        an estimate. Schedules that drive spend to zero trace out far more of
+        it -- whether that is enough to estimate b is a question this
+        parameter exists to let a notebook answer.
+    adstock:
+        Optional geometric carryover. A float applied to every channel, or a
+        dict of channel -> decay in [0, 1); channels absent from the dict get
+        no carryover. Applied BEFORE saturation, matching the convention in
+        Robyn, Meridian and PyMC-Marketing. Normalised, so a constant spend
+        level passes through unchanged and the supplied marginal return means
+        the same thing at every decay -- see apply_adstock.
+
+        decay = 0.0 is no carryover and takes the same code path as
+        adstock=None, so it reproduces the no-carryover output exactly.
+
+        Carryover matters to this package more than it looks. The phasing
+        lever works by adding high-frequency spend variation that demand
+        cannot explain; adstock is a low-pass filter and attenuates exactly
+        that component. So it is a sensitivity that can eat the benefit,
+        not merely another knob.
+    reference_spend:
+        Spend level at which the supplied marginal returns are exact, per
+        channel. Defaults to each channel's mean spend in `spend_df`. Supply
+        it explicitly when comparing schedules, so that every schedule is
+        calibrated against the SAME curve rather than against its own mean --
+        otherwise the curve moves with the schedule and the comparison is
+        not like for like. Ignored when the channel is linear.
 
     Returns
     -------
@@ -521,6 +669,38 @@ def simulate_sales(
                 "true_marginal_returns. Provide true_marginal_returns for "
                 f"all channels: {list(spend_df.columns)}"
             )
-        sales = sales + true_marginal_returns[ch] * spend_df[ch].to_numpy()
+        x = spend_df[ch].to_numpy()
+        lam = _adstock_for(adstock, ch)
+        b = _saturation_for(saturation, ch)
+        if lam == 0.0 and b == 1.0:
+            # Same expression as before either transform existed, so the
+            # default reproduces earlier output digit for digit.
+            sales = sales + true_marginal_returns[ch] * x
+            continue
+        # Adstock first, then saturation -- the order Robyn, Meridian and
+        # PyMC-Marketing all use. apply_adstock is the identity at lam == 0.
+        x = apply_adstock(x, lam)
+        if b == 1.0:
+            sales = sales + true_marginal_returns[ch] * x
+        else:
+            x_ref = (
+                float(x.mean())
+                if reference_spend is None
+                else float(reference_spend[ch])
+            )
+            if x_ref <= 0:
+                raise ValueError(
+                    f"reference_spend for '{ch}' must be positive to calibrate "
+                    f"a saturating response, got {x_ref}"
+                )
+            if (x < 0).any():
+                raise ValueError(
+                    f"channel '{ch}' has negative spend, which a saturating "
+                    "response is not defined for"
+                )
+            # k chosen so d(contribution)/dx at x_ref equals the supplied
+            # marginal return: k * b * x_ref**(b-1) == mr.
+            k = true_marginal_returns[ch] / (b * x_ref ** (b - 1.0))
+            sales = sales + k * x**b
 
     return pd.Series(sales, name="sales")

@@ -3,6 +3,7 @@
 from how_wrong_is_your_mmm._dgp import (
     DEMAND_PROCESSES,
     BaselineCalibration,
+    apply_adstock,
     calibrate_baseline,
     simulate_demand,
     simulate_sales,
@@ -22,6 +23,7 @@ __all__ = [
     "BudgetPhaser",
     "CollinearityDiagnostic",
     "ReportBuilder",
+    "apply_adstock",
     "calibrate_baseline",
     "fit_ols",
     "simulate_demand",

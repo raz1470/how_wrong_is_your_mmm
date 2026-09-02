@@ -21,3 +21,7 @@ reports/*
 
 # Internal working log -- kept locally, not published
 NOTES.md
+notes_archive/
+
+# Grid sweep raw output (8.8MB) -- regenerate with tools/grid_sweep/grid_sweep.py
+tools/grid_sweep/grid_raw.csv
