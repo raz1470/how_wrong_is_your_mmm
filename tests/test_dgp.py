@@ -9,6 +9,7 @@ from how_wrong_is_your_mmm._dgp import (
     apply_adstock,
     calibrate_baseline,
     simulate_demand,
+    simulate_demand_proxy,
     simulate_sales,
     simulate_spend,
 )
@@ -683,3 +684,66 @@ class TestAdstockInSimulateSales:
             self.spend_df, MARGINAL_RETURNS, demand=demand, demand_coef=250.0, **kwargs
         )
         np.testing.assert_allclose((with_demand - without).to_numpy(), 250.0 * demand)
+
+
+class TestSimulateDemandProxy:
+    def test_standardised(self):
+        demand = simulate_demand(300, process="ar1", seed=0)
+        proxy = simulate_demand_proxy(demand, quality=0.7, seed=1)
+        assert proxy.mean() == pytest.approx(0.0, abs=1e-9)
+        assert proxy.std() == pytest.approx(1.0, abs=1e-9)
+
+    def test_quality_one_is_the_truth_standardised(self):
+        demand = simulate_demand(300, process="ar1", seed=0)
+        proxy = simulate_demand_proxy(demand, quality=1.0)
+        np.testing.assert_allclose(proxy, demand, atol=1e-9)
+
+    def test_correlation_lands_near_target_quality(self):
+        demand = simulate_demand(2000, process="white_noise", seed=0)
+        for quality in (0.5, 0.7, 0.9):
+            proxy = simulate_demand_proxy(demand, quality=quality, seed=1)
+            corr = np.corrcoef(proxy, demand)[0, 1]
+            assert corr == pytest.approx(quality, abs=0.05)
+
+    def test_lower_quality_is_less_correlated(self):
+        demand = simulate_demand(500, process="ar1", seed=0)
+        corr_hi = np.corrcoef(
+            simulate_demand_proxy(demand, quality=0.9, seed=1), demand
+        )[0, 1]
+        corr_lo = np.corrcoef(
+            simulate_demand_proxy(demand, quality=0.5, seed=1), demand
+        )[0, 1]
+        assert corr_hi > corr_lo
+
+    def test_seed_changes_the_draw(self):
+        demand = simulate_demand(300, process="ar1", seed=0)
+        a = simulate_demand_proxy(demand, quality=0.7, seed=1)
+        b = simulate_demand_proxy(demand, quality=0.7, seed=2)
+        assert not np.allclose(a, b)
+
+    def test_reproducible_at_the_same_seed(self):
+        demand = simulate_demand(300, process="ar1", seed=0)
+        a = simulate_demand_proxy(demand, quality=0.7, seed=1)
+        b = simulate_demand_proxy(demand, quality=0.7, seed=1)
+        np.testing.assert_allclose(a, b)
+
+    def test_accepts_a_series(self):
+        demand = pd.Series(simulate_demand(200, process="ar1", seed=0))
+        proxy = simulate_demand_proxy(demand, quality=0.8, seed=1)
+        assert proxy.shape == (200,)
+
+    @pytest.mark.parametrize("bad", [0.0, -0.1, 1.1, 2.0])
+    def test_invalid_quality_raises(self, bad):
+        demand = simulate_demand(100, process="ar1", seed=0)
+        with pytest.raises(ValueError, match="quality must be in"):
+            simulate_demand_proxy(demand, quality=bad)
+
+    def test_proxy_noise_stream_does_not_collide_with_other_draws(self):
+        """Different seed argument to simulate_demand_proxy must not
+        reproduce the same noise a different seeded draw elsewhere in the
+        module would produce at that same integer -- see _PROXY_STREAM."""
+        demand = simulate_demand(300, process="white_noise", seed=7)
+        proxy = simulate_demand_proxy(demand, quality=0.7, seed=7)
+        # seed=7 reused deliberately: proxy's stream is offset from
+        # simulate_demand's own, so this is not the same draw as demand.
+        assert not np.allclose(proxy, demand)

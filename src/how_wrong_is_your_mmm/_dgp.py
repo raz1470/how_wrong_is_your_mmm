@@ -44,6 +44,12 @@ _DEFAULT_ELASTICITIES = _DEFAULT_MARGINAL_RETURNS
 # see the note in simulate_spend.
 _PLANNING_STREAM = 20_260_828
 
+# Entropy for simulate_demand_proxy's noise draw. Deliberately separate from
+# every other stream in this module (same reasoning as _PLANNING_STREAM) so a
+# given seed's proxy noise never collides with spend/planning noise drawn at
+# that same seed value.
+_PROXY_STREAM = 74_190_233
+
 # Demand processes available to simulate_demand.
 DEMAND_PROCESSES = ("white_noise", "ar1", "seasonal", "seasonal_ar1", "trend")
 
@@ -182,6 +188,76 @@ def simulate_demand(
             "demand series has zero variance -- check season_period against n_obs"
         )
     return (series - series.mean()) / sd
+
+
+def simulate_demand_proxy(
+    demand: np.ndarray | pd.Series,
+    quality: float = 1.0,
+    seed: int = 0,
+) -> np.ndarray:
+    """Measurement-error proxy for a true demand series.
+
+    A practitioner never has the true demand series that simulate_sales's
+    `demand`/`demand_coef` (or CollinearityDiagnostic/BudgetPhaser's own
+    `demand`/`demand_coef`) bias sales toward -- what they have, at best, is
+    a proxy: a category (not brand) search-trend index, a seasonality index,
+    or a sales baseline from an existing model. This models the classic
+    measurement-error case: the truth plus noise, scaled so the resulting
+    series correlates with the truth at exactly `quality` in expectation.
+
+    *Assumption stated once, and it is a real one:* the proxy is treated as
+    exogenous to the advertiser's own marketing. A brand-search series would
+    not be -- it is partly caused by the very channel being measured, and
+    controlling for it would absorb the effect under estimation. Category-
+    level demand indices are the intended case.
+
+    For a STRUCTURAL proxy instead -- e.g. a category index that tracks only
+    the seasonal cycle and misses idiosyncratic shocks entirely -- there is
+    no separate function: just call simulate_demand with a different process
+    than the one actually driving sales (see notebooks/07 section 6's
+    seasonal_proxy). That is a mismatched generative process, not
+    measurement error, so it does not fit this function's quality dial.
+
+    Parameters
+    ----------
+    demand:
+        The true demand series to build a proxy for -- typically what was
+        passed as `demand` to simulate_sales, or a CollinearityDiagnostic /
+        BudgetPhaser instance's own `demand_` after fit()/construction.
+    quality:
+        Target correlation with the truth, in (0, 1]. 1.0 (default) returns
+        the series standardised but otherwise unchanged. There is no
+        realistic default -- 0.9 is already an unusually good real-world
+        proxy (see notebooks/07 section 6's sweep), so pick a value you can
+        defend for your own data source rather than relying on this one.
+        A given noise draw's REALISED correlation with the truth is close
+        to but not exactly `quality` -- it is the expectation, not a
+        guarantee, of any one draw.
+    seed:
+        Random seed for the noise draw, drawn from a stream (_PROXY_STREAM)
+        kept separate from every other seeded draw in this module -- see
+        _PLANNING_STREAM's docstring note for why that separation matters.
+
+    Returns
+    -------
+    np.ndarray, standardised to mean 0 / sd 1, same length as `demand`.
+    """
+    if not 0.0 < quality <= 1.0:
+        raise ValueError("quality must be in (0, 1]")
+
+    demand_arr = np.asarray(demand, dtype=float)
+
+    if quality >= 1.0:
+        noisy = demand_arr
+    else:
+        rng = np.random.default_rng([seed, _PROXY_STREAM])
+        scale = np.sqrt((1 - quality**2) / quality**2)
+        noisy = demand_arr + scale * rng.standard_normal(len(demand_arr))
+
+    sd = noisy.std()
+    if sd == 0:
+        raise ValueError("proxy series has zero variance")
+    return (noisy - noisy.mean()) / sd
 
 
 @dataclass(frozen=True)
