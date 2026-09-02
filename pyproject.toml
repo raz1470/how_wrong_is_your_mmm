@@ -79,6 +79,9 @@ select = ["E", "F", "I", "N", "UP", "RUF"]
 # _HTML_TEMPLATE is a large raw HTML/CSS/JS string literal -- long lines are
 # inherent to that markup, not a Python style issue.
 "src/how_wrong_is_your_mmm/_report.py" = ["E501", "RUF001", "RUF002"]
+# Same reasoning as _report.py above -- _CSS and the f-string HTML template
+# have long lines inherent to markup/CSS, not a Python style issue.
+"src/how_wrong_is_your_mmm/_discovery_report.py" = ["E501"]
 # X is standard design-matrix notation (stats/ML convention), not a naming bug.
 "tools/grid_sweep/*.py" = ["N806"]
 # One-off exploratory scripts behind notebook 11 -- same relaxed treatment as
