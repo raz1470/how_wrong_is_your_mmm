@@ -460,3 +460,86 @@ class TestDeprecatedTrueElasticitiesAlias:
         )
         with pytest.warns(FutureWarning, match="deprecated"):
             assert diag.true_elasticities == MARGINAL_RETURNS
+
+
+class TestDemandAndControls:
+    """demand_coef/demand + fit(controls=...): omitted-variable bias wiring."""
+
+    def test_backward_compatible_no_demand_by_default(self):
+        diag = CollinearityDiagnostic(correlation=0.7).fit(n_sims=10)
+        assert diag.demand_ is None
+        assert diag.controls_ is None
+
+    def test_demand_coef_creates_bias_when_uncontrolled(self):
+        diag = CollinearityDiagnostic(
+            correlation=0.7, spend_seed=1, demand_coef=2_000.0
+        ).fit(n_sims=150, controls=False)
+        tv_bias_pct = diag.summary().set_index("channel").loc["tv", "mean_error_pct"]
+        assert abs(tv_bias_pct) > 5
+
+    def test_controlling_with_true_demand_reduces_bias(self):
+        omitted = CollinearityDiagnostic(
+            correlation=0.7, spend_seed=1, demand_coef=2_000.0
+        ).fit(n_sims=150, controls=False)
+        controlled = CollinearityDiagnostic(
+            correlation=0.7, spend_seed=1, demand_coef=2_000.0
+        ).fit(n_sims=150, controls=True)
+        bias_omitted = abs(
+            omitted.summary().set_index("channel").loc["tv", "mean_error_pct"]
+        )
+        bias_controlled = abs(
+            controlled.summary().set_index("channel").loc["tv", "mean_error_pct"]
+        )
+        assert bias_controlled < bias_omitted / 3
+
+    def test_controls_true_requires_demand(self):
+        with pytest.raises(ValueError, match="requires a demand series"):
+            CollinearityDiagnostic(correlation=0.7).fit(n_sims=5, controls=True)
+
+    def test_real_spend_path_demand_coef_without_demand_raises(self):
+        spend_df = simulate_spend(n_obs=60, correlation=0.5, seed=2)
+        with pytest.raises(ValueError, match="no demand series was supplied"):
+            CollinearityDiagnostic(spend_df=spend_df, demand_coef=10.0).fit(n_sims=5)
+
+    def test_real_spend_path_accepts_explicit_demand(self):
+        spend_df = simulate_spend(n_obs=60, correlation=0.5, seed=2)
+        demand = pd.Series(range(60), dtype=float)
+        diag = CollinearityDiagnostic(
+            spend_df=spend_df, demand=demand, demand_coef=1.0
+        ).fit(n_sims=5)
+        assert diag.demand_ is not None
+        assert len(diag.demand_) == 60
+
+    def test_explicit_controls_series_used_over_demand(self):
+        diag = CollinearityDiagnostic(
+            correlation=0.7, spend_seed=1, demand_coef=1_000.0
+        )
+        diag.fit(n_sims=5)  # draws demand_ via demand_coef, controls defaults to None
+        proxy = pd.Series(
+            diag.demand_ * 0.6 + 1.0, index=diag.spend_df_.index, name="proxy"
+        )
+        diag2 = CollinearityDiagnostic(
+            correlation=0.7, spend_seed=1, demand_coef=1_000.0
+        ).fit(n_sims=5, controls=proxy)
+        assert diag2.controls_ is proxy
+
+    def test_analytic_cv_matches_monte_carlo_with_controls(self):
+        diag = CollinearityDiagnostic(
+            correlation=0.7, spend_seed=3, demand_coef=1_500.0
+        ).fit(n_sims=400, controls=True)
+        analytic = diag.analytic_cv()
+        mc = diag.summary().set_index("channel")["coef_of_variation"]
+        for ch in CHANNELS:
+            assert abs(analytic[ch] - mc[ch]) / analytic[ch] < 0.3
+
+    def test_synthetic_path_explicit_demand_wrong_shape_raises(self):
+        with pytest.raises(ValueError, match="demand must be a 1-D series"):
+            CollinearityDiagnostic(
+                correlation=0.7, n_obs=50, demand=[1.0, 2.0, 3.0]
+            ).fit(n_sims=5)
+
+    def test_saturation_and_adstock_do_not_raise(self):
+        diag = CollinearityDiagnostic(correlation=0.7, saturation=0.7, adstock=0.3).fit(
+            n_sims=10
+        )
+        assert diag.results_.shape == (30, 6)
