@@ -634,12 +634,22 @@ class BudgetPhaser:
         What every internal CollinearityDiagnostic's OLS fit controls for,
         forwarded to its fit(). None or False (default): omit -- reproduces
         prior behaviour exactly. True: control with this instance's own
-        true demand_ (requires a demand series). A DataFrame or Series: an
-        explicit proxy. One fixed setting for the whole instance (not a
-        per-fit()-call choice, unlike CollinearityDiagnostic) because every
-        method here (fit, channel_sensitivity, recommend_levers,
-        impact_over_horizons) needs to score candidates under the same
-        measurement the client will actually see.
+        true demand_ (requires a demand series). A float in (0, 1]: control
+        with a measurement-error proxy of that quality, built from
+        self.demand_ via simulate_demand_proxy (see proxy_seed) -- the
+        client-facing case. A DataFrame or Series: an explicit proxy. One
+        fixed setting for the whole instance (not a per-fit()-call choice,
+        unlike CollinearityDiagnostic) because every method here (fit,
+        channel_sensitivity, recommend_levers, impact_over_horizons) needs
+        to score candidates under the same measurement the client will
+        actually see. A float quality is reproducible across every one of
+        those internal calls (same demand_, same quality, same
+        proxy_seed -> the identical proxy draw every time), so this stays
+        one consistent control throughout despite being resolved fresh by
+        each internal CollinearityDiagnostic rather than pre-built once.
+    proxy_seed:
+        Random seed forwarded to simulate_demand_proxy when `controls` is
+        a float quality. Ignored otherwise.
 
     Notes
     -----
@@ -682,7 +692,8 @@ class BudgetPhaser:
         saturation: dict[str, float] | float | None = None,
         adstock: dict[str, float] | float | None = None,
         reference_spend: dict[str, float] | None = None,
-        controls: pd.DataFrame | pd.Series | bool | None = None,
+        controls: pd.DataFrame | pd.Series | bool | float | None = None,
+        proxy_seed: int = 0,
     ) -> None:
         _get_month_labels(history_df)  # validates DatetimeIndex
         _get_month_labels(plan_df)  # validates DatetimeIndex
@@ -749,6 +760,7 @@ class BudgetPhaser:
             reference_spend = {ch: float(plan_df[ch].mean()) for ch in plan_df.columns}
         self.reference_spend = reference_spend
         self.controls = controls
+        self.proxy_seed = proxy_seed
 
         n_total = len(history_df) + len(plan_df)
         if demand is not None:
@@ -850,6 +862,7 @@ class BudgetPhaser:
                 n_sims=n_sims,
                 noise_seed_offset=noise_seed_offset,
                 controls=self.controls,
+                proxy_seed=self.proxy_seed,
             )
             summ = diag.summary().set_index("channel")
 
@@ -1058,6 +1071,7 @@ class BudgetPhaser:
                 n_sims=n_sims,
                 noise_seed_offset=confirm_noise_offset + 1,
                 controls=self.controls,
+                proxy_seed=self.proxy_seed,
             )
             summ_m = diag_m.summary().set_index("channel")["coef_of_variation"]
             draw_schedules.append(schedule_m)

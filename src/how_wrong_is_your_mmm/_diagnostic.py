@@ -33,6 +33,7 @@ from how_wrong_is_your_mmm._dgp import (
     _DEFAULT_CHANNELS,
     _DEFAULT_MARGINAL_RETURNS,
     simulate_demand,
+    simulate_demand_proxy,
     simulate_sales,
     simulate_spend,
 )
@@ -292,7 +293,8 @@ class CollinearityDiagnostic:
         n_sims: int = 50,
         fast_mode: bool = False,
         noise_seed_offset: int = 0,
-        controls: pd.DataFrame | pd.Series | bool | None = None,
+        controls: pd.DataFrame | pd.Series | bool | float | None = None,
+        proxy_seed: int = 0,
     ) -> CollinearityDiagnostic:
         """Run the diagnostic.
 
@@ -313,11 +315,19 @@ class CollinearityDiagnostic:
             measure how much controlling removes rather than to represent
             a real analysis (a practitioner has a proxy, not the truth).
             Raises ValueError if True is passed with no demand series
-            available. A DataFrame or Series: an explicit proxy (or any
-            other control) to use instead -- how a real demand-proxy run
-            is done. Stored as `self.controls_` after fit() for reuse
-            (e.g. by analytic_cv(), or to hand the same resolved series to
-            another call).
+            available. A float in (0, 1]: control with a measurement-error
+            proxy of that quality, built from self.demand_ via
+            simulate_demand_proxy (see `proxy_seed`) -- the client-facing
+            case, standing in for a real proxy a practitioner would supply
+            (a category search-trend index, a seasonality index, an
+            existing model's baseline). A DataFrame or Series: an explicit
+            proxy (or any other control) to use instead, e.g. a real one.
+            Stored as `self.controls_` after fit() for reuse (e.g. by
+            analytic_cv(), or to hand the same resolved series to another
+            call).
+        proxy_seed:
+            Random seed forwarded to simulate_demand_proxy when `controls`
+            is a float quality. Ignored otherwise.
         noise_seed_offset:
             Shift applied to every noise seed used to simulate sales
             (seed = noise_seed_offset + sim, for sim in range(n_sims)).
@@ -398,6 +408,19 @@ class CollinearityDiagnostic:
             )
         elif controls is False or controls is None:
             resolved_controls = None
+        elif isinstance(controls, (int, float)):
+            if self.demand_ is None:
+                raise ValueError(
+                    "controls=<quality> requires a demand series to build "
+                    "a proxy from -- supply demand= or set demand_coef "
+                    "(synthetic path)."
+                )
+            proxy = simulate_demand_proxy(
+                self.demand_, quality=float(controls), seed=proxy_seed
+            )
+            resolved_controls = pd.Series(
+                proxy, index=self.spend_df_.index, name="demand_proxy"
+            )
         else:
             resolved_controls = controls
         self.controls_ = resolved_controls

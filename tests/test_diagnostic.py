@@ -543,3 +543,45 @@ class TestDemandAndControls:
             n_sims=10
         )
         assert diag.results_.shape == (30, 6)
+
+
+class TestFloatQualityControls:
+    """controls=<quality float>: the client-facing proxy-quality input."""
+
+    def test_reduces_bias_relative_to_omitted(self):
+        omitted = CollinearityDiagnostic(
+            correlation=0.7, spend_seed=1, demand_coef=2_000.0
+        ).fit(n_sims=200, controls=False)
+        proxy = CollinearityDiagnostic(
+            correlation=0.7, spend_seed=1, demand_coef=2_000.0
+        ).fit(n_sims=200, controls=0.8, proxy_seed=5)
+        bias_omitted = abs(
+            omitted.summary().set_index("channel").loc["tv", "mean_error_pct"]
+        )
+        bias_proxy = abs(
+            proxy.summary().set_index("channel").loc["tv", "mean_error_pct"]
+        )
+        assert bias_proxy < bias_omitted
+
+    def test_reproducible_given_same_proxy_seed(self):
+        common = dict(correlation=0.7, spend_seed=1, demand_coef=2_000.0)
+        d1 = CollinearityDiagnostic(**common).fit(n_sims=5, controls=0.8, proxy_seed=9)
+        d2 = CollinearityDiagnostic(**common).fit(n_sims=5, controls=0.8, proxy_seed=9)
+        pd.testing.assert_series_equal(d1.controls_, d2.controls_)
+
+    def test_different_proxy_seed_gives_a_different_draw(self):
+        common = dict(correlation=0.7, spend_seed=1, demand_coef=2_000.0)
+        d1 = CollinearityDiagnostic(**common).fit(n_sims=5, controls=0.8, proxy_seed=1)
+        d2 = CollinearityDiagnostic(**common).fit(n_sims=5, controls=0.8, proxy_seed=2)
+        assert not d1.controls_.equals(d2.controls_)
+
+    def test_requires_demand(self):
+        with pytest.raises(ValueError, match="requires a demand series"):
+            CollinearityDiagnostic(correlation=0.7).fit(n_sims=5, controls=0.8)
+
+    def test_controls_stored_as_named_series(self):
+        diag = CollinearityDiagnostic(
+            correlation=0.7, spend_seed=1, demand_coef=500.0
+        ).fit(n_sims=5, controls=0.8)
+        assert diag.controls_.name == "demand_proxy"
+        assert len(diag.controls_) == len(diag.spend_df_)

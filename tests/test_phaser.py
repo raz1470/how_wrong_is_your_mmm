@@ -1778,3 +1778,21 @@ class TestDemandAndControls:
         omitted = BudgetPhaser(**common, controls=False).fit(fast_mode=True)
         controlled = BudgetPhaser(**common, controls=True).fit(fast_mode=True)
         assert not omitted.results_["max_cv"].equals(controlled.results_["max_cv"])
+
+
+class TestFloatQualityControlsOnPhaser:
+    def test_fit_runs_with_float_quality_controls(self):
+        phaser = BudgetPhaser(
+            history_df=HISTORY_DF,
+            plan_df=PLAN_DF,
+            demand_coef=500.0,
+            controls=0.8,
+            proxy_seed=3,
+        ).fit(fast_mode=True)
+        assert phaser.recommended_schedule_.shape == PLAN_DF.shape
+
+    def test_stores_proxy_seed(self):
+        phaser = BudgetPhaser(
+            history_df=HISTORY_DF, plan_df=PLAN_DF, demand_coef=500.0, proxy_seed=42
+        )
+        assert phaser.proxy_seed == 42
