@@ -4,13 +4,18 @@ The point of the table is that no column agrees with another, so no single
 lever is 'the recommendation'. Cost figures are notebook 07 section 7.2's
 phasing_cost_pct at b=0.6; saturation visibility is not measured yet.
 """
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 
 agg = pd.read_csv("grid_agg.csv")
 COST = {  # notebook 07 sec 7.2, phasing cost as % of media contribution, b=0.6
-    "unphased": 0.00, "+/-20%": 0.11, "+/-40%": 0.47,
-    "+/-80%": 2.25, "Blackout": 9.90, "TV alone +/-80%": 0.52,
+    "unphased": 0.00,
+    "+/-20%": 0.11,
+    "+/-40%": 0.47,
+    "+/-80%": 2.25,
+    "Blackout": 9.90,
+    "TV alone +/-80%": 0.52,
 }
 ORDER = ["unphased", "+/-20%", "+/-40%", "+/-80%", "Blackout", "TV alone +/-80%"]
 
@@ -29,15 +34,17 @@ for lev in ORDER:
         blk = blk.set_index("lever")
         u = blk.loc["unphased", "mean_bias_%"]
         removed.append(100 * (u - blk.loc[lev, "mean_bias_%"]) / u)
-    rows.append({
-        "lever": lev,
-        "variance: CV narrowed %": 100 * (base_cv - r["mean_cv_%"]) / base_cv,
-        "bias: removed %": 100 * (base_bias - r["mean_bias_%"]) / base_bias,
-        "bias removed, grid min": min(removed),
-        "bias removed, grid max": max(removed),
-        "saturation visibility": np.nan,
-        "cost: revenue given up %": COST[lev],
-    })
+    rows.append(
+        {
+            "lever": lev,
+            "variance: CV narrowed %": 100 * (base_cv - r["mean_cv_%"]) / base_cv,
+            "bias: removed %": 100 * (base_bias - r["mean_bias_%"]) / base_bias,
+            "bias removed, grid min": min(removed),
+            "bias removed, grid max": max(removed),
+            "saturation visibility": np.nan,
+            "cost: revenue given up %": COST[lev],
+        }
+    )
 
 t = pd.DataFrame(rows)
 pd.set_option("display.width", 200)

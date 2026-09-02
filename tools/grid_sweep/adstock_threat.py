@@ -25,15 +25,6 @@ import time
 
 import numpy as np
 import pandas as pd
-
-from how_wrong_is_your_mmm import (
-    apply_adstock,
-    calibrate_baseline,
-    fit_ols,
-    simulate_demand,
-    simulate_sales,
-    simulate_spend,
-)
 from profile_grid import (
     BASELINE_CV,
     BASELINE_SHARE,
@@ -45,6 +36,15 @@ from profile_grid import (
     all_channels,
     is_unphased,
     schedule_for,
+)
+
+from how_wrong_is_your_mmm import (
+    apply_adstock,
+    calibrate_baseline,
+    fit_ols,
+    simulate_demand,
+    simulate_sales,
+    simulate_spend,
 )
 
 # Demand PROCESS matters here in a way it did not for phasing. Notebook 07
@@ -119,6 +119,7 @@ def build_world(demand_seed, process="white_noise", correlation=0.7, demand_shar
     )
     return plan, demand_series, calibration
 
+
 N_SIMS = int(os.environ.get("N_SIMS", 40))
 N_PHASING_SEEDS = int(os.environ.get("N_PHASING_SEEDS", 6))
 N_DEMAND_SEEDS = int(os.environ.get("N_DEMAND_SEEDS", 16))
@@ -163,51 +164,54 @@ def main():
     started = time.time()
     records = []
     for process in PROCESSES:
-      for decay in DECAYS:
-        for label, levers in LEVERS:
-            bias = {ch: [] for ch in CHANNELS}
-            exo = []
-            for demand_seed in range(N_DEMAND_SEEDS):
-                plan_df, dem, cal = build_world(demand_seed, process)
-                seeds = [0] if is_unphased(levers) else range(N_PHASING_SEEDS)
-                means = {ch: [] for ch in CHANNELS}
-                for phasing_seed in seeds:
-                    sched = schedule_for(plan_df, levers, phasing_seed)
-                    dem_arr = dem.loc[sched.index].to_numpy()
-                    design_frame = adstocked_frame(sched, decay)
-                    exo.append(exogenous_variation(sched, dem_arr, decay))
-                    draws = {ch: [] for ch in CHANNELS}
-                    for sim in range(N_SIMS):
-                        sales = simulate_sales(
-                            sched,
-                            TRUE_MR,
-                            base_sales=cal.baseline_level,
-                            seed=sim,
-                            demand=dem_arr,
-                            demand_coef=cal.demand_coef,
-                            adstock=decay,
-                        )
-                        fitted = fit_ols(design_frame, sales, controls=None)
+        for decay in DECAYS:
+            for label, levers in LEVERS:
+                bias = {ch: [] for ch in CHANNELS}
+                exo = []
+                for demand_seed in range(N_DEMAND_SEEDS):
+                    plan_df, dem, cal = build_world(demand_seed, process)
+                    seeds = [0] if is_unphased(levers) else range(N_PHASING_SEEDS)
+                    means = {ch: [] for ch in CHANNELS}
+                    for phasing_seed in seeds:
+                        sched = schedule_for(plan_df, levers, phasing_seed)
+                        dem_arr = dem.loc[sched.index].to_numpy()
+                        design_frame = adstocked_frame(sched, decay)
+                        exo.append(exogenous_variation(sched, dem_arr, decay))
+                        draws = {ch: [] for ch in CHANNELS}
+                        for sim in range(N_SIMS):
+                            sales = simulate_sales(
+                                sched,
+                                TRUE_MR,
+                                base_sales=cal.baseline_level,
+                                seed=sim,
+                                demand=dem_arr,
+                                demand_coef=cal.demand_coef,
+                                adstock=decay,
+                            )
+                            fitted = fit_ols(design_frame, sales, controls=None)
+                            for ch in CHANNELS:
+                                draws[ch].append(fitted[ch])
                         for ch in CHANNELS:
-                            draws[ch].append(fitted[ch])
+                            means[ch].append(np.mean(draws[ch]))
                     for ch in CHANNELS:
-                        means[ch].append(np.mean(draws[ch]))
-                for ch in CHANNELS:
-                    bias[ch].append(
-                        100 * (np.mean(means[ch]) - TRUE_MR[ch]) / TRUE_MR[ch]
-                    )
-            records.append(
-                {
-                    "process": process,
-                    "decay": decay,
-                    "lever": label,
-                    "mean_bias_%": float(
-                        np.mean([np.mean(bias[ch]) for ch in CHANNELS])
-                    ),
-                    "exogenous_share": float(np.mean(exo)),
-                }
-            )
-            print(f"  {process} decay={decay} {label} ({time.time() - started:.0f}s)", flush=True)
+                        bias[ch].append(
+                            100 * (np.mean(means[ch]) - TRUE_MR[ch]) / TRUE_MR[ch]
+                        )
+                records.append(
+                    {
+                        "process": process,
+                        "decay": decay,
+                        "lever": label,
+                        "mean_bias_%": float(
+                            np.mean([np.mean(bias[ch]) for ch in CHANNELS])
+                        ),
+                        "exogenous_share": float(np.mean(exo)),
+                    }
+                )
+                print(
+                    f"  {process} decay={decay} {label} ({time.time() - started:.0f}s)",
+                    flush=True,
+                )
 
     frame = pd.DataFrame(records)
     frame.to_csv("adstock_threat.csv", index=False)
@@ -215,7 +219,9 @@ def main():
     order = [lab for lab, _ in LEVERS]
     pd.set_option("display.width", 200)
     for process, block in frame.groupby("process", sort=False):
-        piv = block.pivot(index="lever", columns="decay", values="mean_bias_%").loc[order]
+        piv = block.pivot(index="lever", columns="decay", values="mean_bias_%").loc[
+            order
+        ]
         removed = 100 * (piv.loc["unphased"] - piv) / piv.loc["unphased"]
         print(f"\n{'=' * 78}\nPROCESS: {process}\n{'=' * 78}")
         print("\nmean bias %, by lever and carryover:")

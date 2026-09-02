@@ -4,6 +4,7 @@ Includes 'unphased' in this same run (not cross-run hardcoded) so
 removed-%/survival-% are computed against a reference taken with the
 exact same seeds/settings.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -17,7 +18,7 @@ from how_wrong_is_your_mmm import (
     simulate_sales,
     simulate_spend,
 )
-from how_wrong_is_your_mmm._phaser import Blackout, _generate_phased_schedule
+from how_wrong_is_your_mmm._phaser import _generate_phased_schedule
 
 N_HIST, N_PLAN = 208, 52
 CHANNELS = ["tv", "meta", "search"]
@@ -43,17 +44,30 @@ def build_world(demand_seed, process="white_noise", correlation=0.7, demand_shar
     hist_demand = _window_standardised(demand[:N_HIST])
     plan_demand = _window_standardised(demand[N_HIST:])
     history = simulate_spend(
-        n_obs=N_HIST, correlation=correlation, seed=1000 + demand_seed,
-        start_date="2019-01-07", demand=hist_demand, demand_share=demand_share,
+        n_obs=N_HIST,
+        correlation=correlation,
+        seed=1000 + demand_seed,
+        start_date="2019-01-07",
+        demand=hist_demand,
+        demand_share=demand_share,
     )
     plan = simulate_spend(
-        n_obs=N_PLAN, correlation=correlation, seed=2000 + demand_seed,
-        start_date="2023-01-09", demand=plan_demand, demand_share=demand_share,
+        n_obs=N_PLAN,
+        correlation=correlation,
+        seed=2000 + demand_seed,
+        start_date="2023-01-09",
+        demand=plan_demand,
+        demand_share=demand_share,
     )
     index = history.index.append(plan.index)
-    demand_series = pd.Series(np.concatenate([hist_demand, plan_demand]), index=index, name="demand")
+    demand_series = pd.Series(
+        np.concatenate([hist_demand, plan_demand]), index=index, name="demand"
+    )
     calibration = calibrate_baseline(
-        pd.concat([history, plan]), TRUE_MR, baseline_share=BASELINE_SHARE, baseline_cv=BASELINE_CV,
+        pd.concat([history, plan]),
+        TRUE_MR,
+        baseline_share=BASELINE_SHARE,
+        baseline_cv=BASELINE_CV,
     )
     return plan, demand_series, calibration
 
@@ -72,13 +86,19 @@ def is_unphased(spec):
     return all(isinstance(v, float) and v == 0.0 for v in spec.values())
 
 
-def schedule_for(plan_df, spec, seed, nudge_shape="uniform", balance_signs=False, freq="M"):
+def schedule_for(
+    plan_df, spec, seed, nudge_shape="uniform", balance_signs=False, freq="M"
+):
     if is_unphased(spec):
         return plan_df
     return _generate_phased_schedule(
-        plan_df, plan_df.index.to_period(freq).to_numpy(), alpha=1.0,
-        max_weekly_deviation_pct=spec, seed=seed,
-        nudge_shape=nudge_shape, balance_signs=balance_signs,
+        plan_df,
+        plan_df.index.to_period(freq).to_numpy(),
+        alpha=1.0,
+        max_weekly_deviation_pct=spec,
+        seed=seed,
+        nudge_shape=nudge_shape,
+        balance_signs=balance_signs,
     )
 
 
@@ -101,14 +121,21 @@ def main():
                 seeds = [0] if is_unphased(spec) else range(N_PHASING_SEEDS)
                 means = {ch: [] for ch in CHANNELS}
                 for phasing_seed in seeds:
-                    sched = schedule_for(plan_df, spec, phasing_seed, nudge_shape, balance_signs)
+                    sched = schedule_for(
+                        plan_df, spec, phasing_seed, nudge_shape, balance_signs
+                    )
                     dem_arr = dem.loc[sched.index].to_numpy()
                     design_frame = adstocked_frame(sched, decay)
                     draws = {ch: [] for ch in CHANNELS}
                     for sim in range(N_SIMS):
                         sales = simulate_sales(
-                            sched, TRUE_MR, base_sales=cal.baseline_level, seed=sim,
-                            demand=dem_arr, demand_coef=cal.demand_coef, adstock=decay,
+                            sched,
+                            TRUE_MR,
+                            base_sales=cal.baseline_level,
+                            seed=sim,
+                            demand=dem_arr,
+                            demand_coef=cal.demand_coef,
+                            adstock=decay,
                         )
                         fitted = fit_ols(design_frame, sales, controls=None)
                         for ch in CHANNELS:
@@ -116,11 +143,18 @@ def main():
                     for ch in CHANNELS:
                         means[ch].append(np.mean(draws[ch]))
                 for ch in CHANNELS:
-                    bias[ch].append(100 * (np.mean(means[ch]) - TRUE_MR[ch]) / TRUE_MR[ch])
-            rows.append({
-                "decay": decay, "lever": label,
-                "mean_bias_%": float(np.mean([np.mean(bias[ch]) for ch in CHANNELS])),
-            })
+                    bias[ch].append(
+                        100 * (np.mean(means[ch]) - TRUE_MR[ch]) / TRUE_MR[ch]
+                    )
+            rows.append(
+                {
+                    "decay": decay,
+                    "lever": label,
+                    "mean_bias_%": float(
+                        np.mean([np.mean(bias[ch]) for ch in CHANNELS])
+                    ),
+                }
+            )
             print(f"  decay={decay} {label}", flush=True)
 
     frame = pd.DataFrame(rows)

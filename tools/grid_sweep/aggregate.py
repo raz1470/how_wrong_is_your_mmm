@@ -132,7 +132,9 @@ def main():
     )
     print("\nbias removed vs that column's own unphased row, %:")
     piv = slice_.pivot(index="lever", columns="demand_share", values="mean_bias_%")
-    print((100 * (piv.loc["unphased"] - piv) / piv.loc["unphased"]).round(1).to_string())
+    print(
+        (100 * (piv.loc["unphased"] - piv) / piv.loc["unphased"]).round(1).to_string()
+    )
 
     print("\n" + "=" * 96)
     print("B. WHAT A CLIENT CAN OBSERVE, AND WHAT THEY CANNOT (unphased)")

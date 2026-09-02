@@ -1,4 +1,5 @@
 """Section 2 probe: bias/variance for edge+balanced vs uniform vs Blackout."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -29,23 +30,38 @@ def _window_standardised(x):
     return (x - x.mean()) / x.std()
 
 
-def build_world(process="white_noise", demand_seed=0, correlation=0.7, demand_share=1.0):
+def build_world(
+    process="white_noise", demand_seed=0, correlation=0.7, demand_share=1.0
+):
     n = N_HIST + N_PLAN
     demand = simulate_demand(n, process=process, seed=demand_seed)
     hist_demand = _window_standardised(demand[:N_HIST])
     plan_demand = _window_standardised(demand[N_HIST:])
     history = simulate_spend(
-        n_obs=N_HIST, correlation=correlation, seed=1000 + demand_seed,
-        start_date="2019-01-07", demand=hist_demand, demand_share=demand_share,
+        n_obs=N_HIST,
+        correlation=correlation,
+        seed=1000 + demand_seed,
+        start_date="2019-01-07",
+        demand=hist_demand,
+        demand_share=demand_share,
     )
     plan = simulate_spend(
-        n_obs=N_PLAN, correlation=correlation, seed=2000 + demand_seed,
-        start_date="2023-01-09", demand=plan_demand, demand_share=demand_share,
+        n_obs=N_PLAN,
+        correlation=correlation,
+        seed=2000 + demand_seed,
+        start_date="2023-01-09",
+        demand=plan_demand,
+        demand_share=demand_share,
     )
     index = history.index.append(plan.index)
-    demand_series = pd.Series(np.concatenate([hist_demand, plan_demand]), index=index, name="demand")
+    demand_series = pd.Series(
+        np.concatenate([hist_demand, plan_demand]), index=index, name="demand"
+    )
     calibration = calibrate_baseline(
-        pd.concat([history, plan]), TRUE_MR, baseline_share=BASELINE_SHARE, baseline_cv=BASELINE_CV,
+        pd.concat([history, plan]),
+        TRUE_MR,
+        baseline_share=BASELINE_SHARE,
+        baseline_cv=BASELINE_CV,
     )
     return plan, demand_series, calibration
 
@@ -59,7 +75,12 @@ LEVERS = [
     ("+/-80% (uniform)", all_channels(80.0), "uniform", False),
     ("+/-40% (edge, balanced)", all_channels(40.0), "edge", True),
     ("+/-80% (edge, balanced)", all_channels(80.0), "edge", True),
-    ("Blackout", {ch: Blackout(max_dark_weeks_per_month=1) for ch in CHANNELS}, "uniform", False),
+    (
+        "Blackout",
+        {ch: Blackout(max_dark_weeks_per_month=1) for ch in CHANNELS},
+        "uniform",
+        False,
+    ),
 ]
 
 
@@ -67,13 +88,19 @@ def is_unphased(spec):
     return all(isinstance(v, float) and v == 0.0 for v in spec.values())
 
 
-def schedule_for(plan_df, spec, seed, nudge_shape="uniform", balance_signs=False, freq="M"):
+def schedule_for(
+    plan_df, spec, seed, nudge_shape="uniform", balance_signs=False, freq="M"
+):
     if is_unphased(spec):
         return plan_df
     return _generate_phased_schedule(
-        plan_df, plan_df.index.to_period(freq).to_numpy(), alpha=1.0,
-        max_weekly_deviation_pct=spec, seed=seed,
-        nudge_shape=nudge_shape, balance_signs=balance_signs,
+        plan_df,
+        plan_df.index.to_period(freq).to_numpy(),
+        alpha=1.0,
+        max_weekly_deviation_pct=spec,
+        seed=seed,
+        nudge_shape=nudge_shape,
+        balance_signs=balance_signs,
     )
 
 
@@ -83,8 +110,12 @@ def fit_draws(spend, demand_series, calibration, n_sims):
     draws = {ch: [] for ch in CHANNELS}
     for sim in range(n_sims):
         sales = simulate_sales(
-            spend, TRUE_MR, base_sales=calibration.baseline_level, seed=sim,
-            demand=demand_values, demand_coef=calibration.demand_coef,
+            spend,
+            TRUE_MR,
+            base_sales=calibration.baseline_level,
+            seed=sim,
+            demand=demand_values,
+            demand_coef=calibration.demand_coef,
         )
         fitted = fit_ols(spend, sales, controls=None)
         for ch in CHANNELS:

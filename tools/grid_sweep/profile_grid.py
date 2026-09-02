@@ -16,7 +16,6 @@ would make a null result unattributable.
 
 from __future__ import annotations
 
-import itertools
 import os
 import time
 

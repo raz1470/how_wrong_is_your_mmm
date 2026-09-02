@@ -2,12 +2,13 @@
 at b=0.6, all three channels phased together (notebook 06 only tested TV alone).
 No simulation needed -- concave_truth is a deterministic function of spend.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 
-from how_wrong_is_your_mmm import calibrate_baseline, simulate_demand, simulate_spend
+from how_wrong_is_your_mmm import simulate_demand, simulate_spend
 from how_wrong_is_your_mmm._phaser import Blackout, _generate_phased_schedule
 
 N_HIST, N_PLAN = 208, 52
@@ -29,12 +30,20 @@ def build_world(demand_seed, correlation=0.7, demand_share=1.0):
     hist_demand = _window_standardised(demand[:N_HIST])
     plan_demand = _window_standardised(demand[N_HIST:])
     history = simulate_spend(
-        n_obs=N_HIST, correlation=correlation, seed=1000 + demand_seed,
-        start_date="2019-01-07", demand=hist_demand, demand_share=demand_share,
+        n_obs=N_HIST,
+        correlation=correlation,
+        seed=1000 + demand_seed,
+        start_date="2019-01-07",
+        demand=hist_demand,
+        demand_share=demand_share,
     )
     plan = simulate_spend(
-        n_obs=N_PLAN, correlation=correlation, seed=2000 + demand_seed,
-        start_date="2023-01-09", demand=plan_demand, demand_share=demand_share,
+        n_obs=N_PLAN,
+        correlation=correlation,
+        seed=2000 + demand_seed,
+        start_date="2023-01-09",
+        demand=plan_demand,
+        demand_share=demand_share,
     )
     return plan
 
@@ -59,13 +68,19 @@ def is_unphased(spec):
     return all(isinstance(v, float) and v == 0.0 for v in spec.values())
 
 
-def schedule_for(plan_df, spec, seed, nudge_shape="uniform", balance_signs=False, freq="M"):
+def schedule_for(
+    plan_df, spec, seed, nudge_shape="uniform", balance_signs=False, freq="M"
+):
     if is_unphased(spec):
         return plan_df
     return _generate_phased_schedule(
-        plan_df, plan_df.index.to_period(freq).to_numpy(), alpha=1.0,
-        max_weekly_deviation_pct=spec, seed=seed,
-        nudge_shape=nudge_shape, balance_signs=balance_signs,
+        plan_df,
+        plan_df.index.to_period(freq).to_numpy(),
+        alpha=1.0,
+        max_weekly_deviation_pct=spec,
+        seed=seed,
+        nudge_shape=nudge_shape,
+        balance_signs=balance_signs,
     )
 
 
@@ -74,7 +89,12 @@ LEVERS = [
     ("+/-80% (uniform)", all_channels(80.0), "uniform", False),
     ("+/-40% (edge, balanced)", all_channels(40.0), "edge", True),
     ("+/-80% (edge, balanced)", all_channels(80.0), "edge", True),
-    ("Blackout", {ch: Blackout(max_dark_weeks_per_month=1) for ch in CHANNELS}, "uniform", False),
+    (
+        "Blackout",
+        {ch: Blackout(max_dark_weeks_per_month=1) for ch in CHANNELS},
+        "uniform",
+        False,
+    ),
 ]
 
 baseline = sum(concave_truth(plan_df[ch].to_numpy(), ch, B).sum() for ch in CHANNELS)
@@ -87,7 +107,9 @@ for label, spec, nudge_shape, balance_signs in LEVERS:
         totals = []
         for seed in range(N_DRAW_SEEDS):
             sched = schedule_for(plan_df, spec, seed, nudge_shape, balance_signs)
-            totals.append(sum(concave_truth(sched[ch].to_numpy(), ch, B).sum() for ch in CHANNELS))
+            totals.append(
+                sum(concave_truth(sched[ch].to_numpy(), ch, B).sum() for ch in CHANNELS)
+            )
     mean_total = float(np.mean(totals))
     cost_pct = 100 * (baseline - mean_total) / baseline
     rows.append({"lever": label, "cost: revenue given up %": cost_pct})

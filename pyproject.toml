@@ -75,10 +75,15 @@ line-length = 88
 select = ["E", "F", "I", "N", "UP", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
-"notebooks/*.ipynb" = ["E501", "E402", "RUF001", "RUF002", "I001", "F401", "F811", "F541", "E741"]
+"notebooks/*.ipynb" = ["E501", "E402", "RUF001", "RUF002", "I001", "F401", "F811", "F541", "E741", "F404", "N806"]
 # _HTML_TEMPLATE is a large raw HTML/CSS/JS string literal -- long lines are
 # inherent to that markup, not a Python style issue.
 "src/how_wrong_is_your_mmm/_report.py" = ["E501", "RUF001", "RUF002"]
+# X is standard design-matrix notation (stats/ML convention), not a naming bug.
+"tools/grid_sweep/*.py" = ["N806"]
+# One-off exploratory scripts behind notebook 11 -- same relaxed treatment as
+# notebooks themselves, not maintained code.
+"tools/grid_sweep/_nb11_scratch/*.py" = ["N806", "E501", "F841"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

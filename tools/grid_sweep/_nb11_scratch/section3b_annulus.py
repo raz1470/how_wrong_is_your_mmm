@@ -1,13 +1,18 @@
 """Add annulus+balanced +/-80% to the saturation identifiability check."""
+
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 
 from how_wrong_is_your_mmm import (
-    apply_adstock, calibrate_baseline, simulate_demand, simulate_sales, simulate_spend,
+    apply_adstock,
+    calibrate_baseline,
+    simulate_demand,
+    simulate_sales,
+    simulate_spend,
 )
-from how_wrong_is_your_mmm._phaser import Blackout, _generate_phased_schedule
+from how_wrong_is_your_mmm._phaser import _generate_phased_schedule
 
 N_HIST, N_PLAN = 208, 52
 CHANNELS = ["tv", "meta", "search"]
@@ -31,14 +36,32 @@ def build_world(demand_seed, correlation=0.7, demand_share=1.0):
     demand = simulate_demand(n, process="white_noise", seed=demand_seed)
     hist_demand = _window_standardised(demand[:N_HIST])
     plan_demand = _window_standardised(demand[N_HIST:])
-    history = simulate_spend(n_obs=N_HIST, correlation=correlation, seed=1000 + demand_seed,
-        start_date="2019-01-07", demand=hist_demand, demand_share=demand_share)
-    plan = simulate_spend(n_obs=N_PLAN, correlation=correlation, seed=2000 + demand_seed,
-        start_date="2023-01-09", demand=plan_demand, demand_share=demand_share)
+    history = simulate_spend(
+        n_obs=N_HIST,
+        correlation=correlation,
+        seed=1000 + demand_seed,
+        start_date="2019-01-07",
+        demand=hist_demand,
+        demand_share=demand_share,
+    )
+    plan = simulate_spend(
+        n_obs=N_PLAN,
+        correlation=correlation,
+        seed=2000 + demand_seed,
+        start_date="2023-01-09",
+        demand=plan_demand,
+        demand_share=demand_share,
+    )
     index = history.index.append(plan.index)
-    demand_series = pd.Series(np.concatenate([hist_demand, plan_demand]), index=index, name="demand")
-    calibration = calibrate_baseline(pd.concat([history, plan]), TRUE_MR,
-        baseline_share=BASELINE_SHARE, baseline_cv=BASELINE_CV)
+    demand_series = pd.Series(
+        np.concatenate([hist_demand, plan_demand]), index=index, name="demand"
+    )
+    calibration = calibrate_baseline(
+        pd.concat([history, plan]),
+        TRUE_MR,
+        baseline_share=BASELINE_SHARE,
+        baseline_cv=BASELINE_CV,
+    )
     return plan, demand_series, calibration
 
 
@@ -56,11 +79,20 @@ def is_unphased(spec):
     return all(isinstance(v, float) and v == 0.0 for v in spec.values())
 
 
-def schedule_for(plan_df, spec, seed, nudge_shape="uniform", balance_signs=False, freq="M"):
+def schedule_for(
+    plan_df, spec, seed, nudge_shape="uniform", balance_signs=False, freq="M"
+):
     if is_unphased(spec):
         return plan_df
-    return _generate_phased_schedule(plan_df, plan_df.index.to_period(freq).to_numpy(), alpha=1.0,
-        max_weekly_deviation_pct=spec, seed=seed, nudge_shape=nudge_shape, balance_signs=balance_signs)
+    return _generate_phased_schedule(
+        plan_df,
+        plan_df.index.to_period(freq).to_numpy(),
+        alpha=1.0,
+        max_weekly_deviation_pct=spec,
+        seed=seed,
+        nudge_shape=nudge_shape,
+        balance_signs=balance_signs,
+    )
 
 
 def design(spend_arr, demand_arr, b, lam):
@@ -108,32 +140,53 @@ def main():
                 ref = {ch: float(plan_df[ch].mean()) for ch in CHANNELS}
                 seeds = [0] if is_unphased(spec) else range(N_PHASING_SEEDS)
                 for phasing_seed in seeds:
-                    sched = schedule_for(plan_df, spec, phasing_seed, nudge_shape, balance_signs)
+                    sched = schedule_for(
+                        plan_df, spec, phasing_seed, nudge_shape, balance_signs
+                    )
                     dem_arr = dem.loc[sched.index].to_numpy()
                     sales_cols = [
-                        simulate_sales(sched, TRUE_MR, base_sales=cal.baseline_level, seed=sim,
-                            demand=dem_arr, demand_coef=cal.demand_coef,
-                            saturation=b_true, adstock=lam_true, reference_spend=ref,
-                        ).to_numpy() for sim in range(N_SIMS)
+                        simulate_sales(
+                            sched,
+                            TRUE_MR,
+                            base_sales=cal.baseline_level,
+                            seed=sim,
+                            demand=dem_arr,
+                            demand_coef=cal.demand_coef,
+                            saturation=b_true,
+                            adstock=lam_true,
+                            reference_spend=ref,
+                        ).to_numpy()
+                        for sim in range(N_SIMS)
                     ]
                     sales_matrix = np.column_stack(sales_cols)
                     spend_arr = sched[CHANNELS].to_numpy()
                     bb, ll, surface = profile(spend_arr, dem_arr, sales_matrix)
-                    rec_b.append(bb); rec_lam.append(ll)
+                    rec_b.append(bb)
+                    rec_lam.append(ll)
                     widths.append(valley_width(surface))
-            rec_b = np.concatenate(rec_b); rec_lam = np.concatenate(rec_lam)
-            rows.append({
-                "b_true": b_true, "lam_true": lam_true, "lever": label,
-                "b_sd": rec_b.std(), "lam_sd": rec_lam.std(),
-                "valley_%": 100 * float(np.mean(widths)),
-            })
+            rec_b = np.concatenate(rec_b)
+            rec_lam = np.concatenate(rec_lam)
+            rows.append(
+                {
+                    "b_true": b_true,
+                    "lam_true": lam_true,
+                    "lever": label,
+                    "b_sd": rec_b.std(),
+                    "lam_sd": rec_lam.std(),
+                    "valley_%": 100 * float(np.mean(widths)),
+                }
+            )
             print(f"  done b={b_true} lam={lam_true} {label}", flush=True)
 
     frame = pd.DataFrame(rows)
     pd.set_option("display.width", 220)
     for (b_true, lam_true), block in frame.groupby(["b_true", "lam_true"]):
         print(f"\n=== true b = {b_true}, true lambda = {lam_true} ===")
-        print(block[["lever", "b_sd", "lam_sd", "valley_%"]].round(3).to_string(index=False))
+        print(
+            block[["lever", "b_sd", "lam_sd", "valley_%"]]
+            .round(3)
+            .to_string(index=False)
+        )
 
 
 if __name__ == "__main__":

@@ -21,11 +21,8 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-
 from profile_grid import (
-    B_CANDIDATES,
     CHANNELS,
-    LAM_CANDIDATES,
     N_DEMAND_SEEDS,
     N_PHASING_SEEDS,
     N_SIMS,
@@ -116,10 +113,7 @@ def main():
                     widths.append(valley_width(surface))
                     mins.append(
                         np.mean(
-                            [
-                                sched[ch].min() / plan_df[ch].mean()
-                                for ch in CHANNELS
-                            ]
+                            [sched[ch].min() / plan_df[ch].mean() for ch in CHANNELS]
                         )
                     )
             rec_b = np.concatenate(rec_b)

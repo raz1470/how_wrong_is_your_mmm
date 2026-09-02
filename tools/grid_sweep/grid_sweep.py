@@ -54,7 +54,8 @@ N_DEMAND_SEEDS = int(os.environ.get("N_DEMAND_SEEDS", 6))
 # --- the grid -------------------------------------------------------------
 
 DEMAND_SHARES = tuple(
-    float(x) for x in os.environ.get("DEMAND_SHARES", "1.0,0.75,0.5,0.25,0.0").split(",")
+    float(x)
+    for x in os.environ.get("DEMAND_SHARES", "1.0,0.75,0.5,0.25,0.0").split(",")
 )
 CORRELATIONS = tuple(
     float(x) for x in os.environ.get("CORRELATIONS", "0.4,0.7,0.9").split(",")
@@ -186,13 +187,11 @@ def main():
             # "you cannot tell these worlds apart" claim can be checked rather
             # than asserted.
             corr_matrix = plan_df.corr().to_numpy()
-            pairwise = float(
-                corr_matrix[np.triu_indices(len(CHANNELS), k=1)].mean()
-            )
+            pairwise = float(corr_matrix[np.triu_indices(len(CHANNELS), k=1)].mean())
             coupling = float(
-                np.corrcoef(plan_df["tv"].to_numpy(), dem.loc[plan_df.index].to_numpy())[
-                    0, 1
-                ]
+                np.corrcoef(
+                    plan_df["tv"].to_numpy(), dem.loc[plan_df.index].to_numpy()
+                )[0, 1]
             )
 
             for label, levers in LEVERS:
