@@ -11,6 +11,7 @@ from how_wrong_is_your_mmm._dgp import (
     simulate_spend,
 )
 from how_wrong_is_your_mmm._diagnostic import CollinearityDiagnostic
+from how_wrong_is_your_mmm._identifiability import IdentifiabilityDiagnostic
 from how_wrong_is_your_mmm._mmm import fit_ols
 from how_wrong_is_your_mmm._phaser import Blackout, BudgetPhaser
 from how_wrong_is_your_mmm._report import ReportBuilder
@@ -23,6 +24,7 @@ __all__ = [
     "Blackout",
     "BudgetPhaser",
     "CollinearityDiagnostic",
+    "IdentifiabilityDiagnostic",
     "ReportBuilder",
     "apply_adstock",
     "calibrate_baseline",
