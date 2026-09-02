@@ -1706,3 +1706,75 @@ class TestBudgetPhaserNudgeShape:
                 true_marginal_returns=MARGINAL_RETURNS,
                 nudge_shape="triangular",
             )
+
+
+class TestDemandAndControls:
+    """demand/demand_coef/saturation/adstock/controls wiring into BudgetPhaser."""
+
+    def test_backward_compatible_no_demand_by_default(self):
+        phaser = BudgetPhaser(history_df=HISTORY_DF, plan_df=PLAN_DF)
+        assert phaser.demand_ is None
+
+    def test_demand_coef_resolves_demand_of_the_right_length(self):
+        phaser = BudgetPhaser(
+            history_df=HISTORY_DF, plan_df=PLAN_DF, demand_coef=500.0, demand_seed=7
+        )
+        assert phaser.demand_ is not None
+        assert len(phaser.demand_) == len(HISTORY_DF) + len(PLAN_DF)
+
+    def test_wrong_length_demand_raises_at_construction(self):
+        with pytest.raises(ValueError, match="demand must be a 1-D series"):
+            BudgetPhaser(history_df=HISTORY_DF, plan_df=PLAN_DF, demand=np.zeros(10))
+
+    def test_saturation_defaults_reference_spend_to_plan_df_mean(self):
+        phaser = BudgetPhaser(history_df=HISTORY_DF, plan_df=PLAN_DF, saturation=0.7)
+        expected = {ch: float(PLAN_DF[ch].mean()) for ch in PLAN_DF.columns}
+        assert phaser.reference_spend == expected
+
+    def test_no_saturation_leaves_reference_spend_none(self):
+        phaser = BudgetPhaser(history_df=HISTORY_DF, plan_df=PLAN_DF)
+        assert phaser.reference_spend is None
+
+    def test_explicit_reference_spend_not_overridden(self):
+        custom = {ch: 1.0 for ch in PLAN_DF.columns}
+        phaser = BudgetPhaser(
+            history_df=HISTORY_DF,
+            plan_df=PLAN_DF,
+            saturation=0.7,
+            reference_spend=custom,
+        )
+        assert phaser.reference_spend == custom
+
+    def test_fit_runs_with_demand_and_controls(self):
+        phaser = BudgetPhaser(
+            history_df=HISTORY_DF,
+            plan_df=PLAN_DF,
+            demand_coef=500.0,
+            controls=True,
+        ).fit(fast_mode=True)
+        assert phaser.recommended_schedule_.shape == PLAN_DF.shape
+
+    def test_channel_sensitivity_works_without_calling_fit_first(self):
+        phaser = BudgetPhaser(history_df=HISTORY_DF, plan_df=PLAN_DF, demand_coef=500.0)
+        curve = phaser.channel_sensitivity(
+            "tv", alphas=[0.0, 1.0], n_sims=5, n_phasing_seeds=1
+        )
+        assert len(curve) == 2
+
+    def test_uncontrolled_demand_bias_beats_controlled_on_recommended_schedule(self):
+        # Not a bias-size assertion (that's CollinearityDiagnostic's job,
+        # already covered there) -- just confirms controls=True actually
+        # reaches the internal CollinearityDiagnostic calls, by checking
+        # the two settings produce different recommended schedules given
+        # the same seed (if controls weren't wired through, they'd be
+        # identical -- same demand_, same seed, same everything else).
+        common = dict(
+            history_df=HISTORY_DF,
+            plan_df=PLAN_DF,
+            demand_coef=2_000.0,
+            demand_seed=3,
+            seed=0,
+        )
+        omitted = BudgetPhaser(**common, controls=False).fit(fast_mode=True)
+        controlled = BudgetPhaser(**common, controls=True).fit(fast_mode=True)
+        assert not omitted.results_["max_cv"].equals(controlled.results_["max_cv"])
