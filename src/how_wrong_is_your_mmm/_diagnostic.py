@@ -32,6 +32,8 @@ import pandas as pd
 from how_wrong_is_your_mmm._dgp import (
     _DEFAULT_CHANNELS,
     _DEFAULT_MARGINAL_RETURNS,
+    simulate_demand,
+    simulate_demand_proxy,
     simulate_sales,
     simulate_spend,
 )
@@ -170,6 +172,46 @@ class CollinearityDiagnostic:
         Deprecated alias for `true_marginal_returns`, kept for backward
         compatibility. Raises ValueError if both are supplied. Emits a
         FutureWarning -- migrate to `true_marginal_returns`.
+    demand:
+        Optional latent demand series. On the real-spend path (spend_df
+        supplied) this is the only way to give fit() a demand series at
+        all -- there's no internal draw to fall back on, so it's required
+        whenever demand_coef is nonzero. On the synthetic path it's
+        optional: supply your own (e.g. to reuse one demand draw across
+        several CollinearityDiagnostic instances, the way BudgetPhaser
+        does internally) or leave it None to let fit() draw one from
+        demand_process/demand_seed whenever demand_coef is nonzero.
+    demand_process:
+        One of DEMAND_PROCESSES (see simulate_demand), used for the
+        internal demand draw on the synthetic path. Ignored when `demand`
+        is supplied directly.
+    demand_share:
+        Forwarded to simulate_spend on the synthetic path: share of
+        channels' common variance attributable to demand vs. an
+        independent planning factor. See simulate_spend's own docstring --
+        this only changes anything when demand_share < 1.
+    demand_coef:
+        Coefficient on demand in the sales equation -- what actually
+        creates omitted-variable bias. 0.0 (default) means demand doesn't
+        affect sales at all and reproduces this class's pre-existing
+        behaviour exactly. Get a value in practitioner-legible units from
+        calibrate_baseline rather than guessing one directly.
+    demand_seed:
+        Random seed for the internal demand draw (synthetic path only,
+        when `demand` isn't supplied directly). Deliberately separate from
+        spend_seed so changing one doesn't shift the other's draw.
+    saturation:
+        Forwarded to simulate_sales -- see its own docstring. A float
+        applied to every channel, or a dict of channel -> exponent b in
+        (0, 1]; None (default) is linear, reproducing prior behaviour.
+    adstock:
+        Forwarded to simulate_sales -- see its own docstring. A float
+        applied to every channel, or a dict of channel -> decay in [0, 1);
+        None (default) is no carryover, reproducing prior behaviour.
+    reference_spend:
+        Forwarded to simulate_sales -- see its own docstring. Only matters
+        when saturation is active; defaults to each channel's own mean
+        spend, same as simulate_sales's own default.
     """
 
     def __init__(
@@ -183,6 +225,14 @@ class CollinearityDiagnostic:
         base_sales: float = 1_000.0,
         revenue_noise_std: float = 26_000.0,
         true_elasticities: dict[str, float] | None = None,
+        demand: np.ndarray | pd.Series | None = None,
+        demand_process: str = "white_noise",
+        demand_share: float = 1.0,
+        demand_coef: float = 0.0,
+        demand_seed: int = 0,
+        saturation: dict[str, float] | float | None = None,
+        adstock: dict[str, float] | float | None = None,
+        reference_spend: dict[str, float] | None = None,
     ) -> None:
         if true_elasticities is not None:
             if true_marginal_returns is not None:
@@ -212,10 +262,20 @@ class CollinearityDiagnostic:
         self.spend_seed = spend_seed
         self.base_sales = base_sales
         self.revenue_noise_std = revenue_noise_std
+        self.demand = demand
+        self.demand_process = demand_process
+        self.demand_share = demand_share
+        self.demand_coef = demand_coef
+        self.demand_seed = demand_seed
+        self.saturation = saturation
+        self.adstock = adstock
+        self.reference_spend = reference_spend
 
         self.spend_df_: pd.DataFrame | None = None
         self.channels_: list[str] = []
         self.results_: pd.DataFrame | None = None
+        self.demand_: np.ndarray | None = None
+        self.controls_: pd.DataFrame | pd.Series | None = None
 
     @property
     def true_elasticities(self) -> dict[str, float]:
@@ -233,6 +293,8 @@ class CollinearityDiagnostic:
         n_sims: int = 50,
         fast_mode: bool = False,
         noise_seed_offset: int = 0,
+        controls: pd.DataFrame | pd.Series | bool | float | None = None,
+        proxy_seed: int = 0,
     ) -> CollinearityDiagnostic:
         """Run the diagnostic.
 
@@ -242,6 +304,30 @@ class CollinearityDiagnostic:
             Number of simulations (noise seeds).
         fast_mode:
             If True, overrides n_sims=10 for quick notebook iteration.
+        controls:
+            What the OLS fit controls for, forwarded to fit_ols. None or
+            False (default): omit -- reproduces prior behaviour exactly,
+            and is what every real MMM does, so it's what the resulting CV
+            actually means (see the class/coef_of_variation docstrings on
+            what a low CV does and doesn't tell you). True: control with
+            this instance's own true demand series (self.demand_, from
+            `demand`/demand_coef) -- the correctly-specified world, used to
+            measure how much controlling removes rather than to represent
+            a real analysis (a practitioner has a proxy, not the truth).
+            Raises ValueError if True is passed with no demand series
+            available. A float in (0, 1]: control with a measurement-error
+            proxy of that quality, built from self.demand_ via
+            simulate_demand_proxy (see `proxy_seed`) -- the client-facing
+            case, standing in for a real proxy a practitioner would supply
+            (a category search-trend index, a seasonality index, an
+            existing model's baseline). A DataFrame or Series: an explicit
+            proxy (or any other control) to use instead, e.g. a real one.
+            Stored as `self.controls_` after fit() for reuse (e.g. by
+            analytic_cv(), or to hand the same resolved series to another
+            call).
+        proxy_seed:
+            Random seed forwarded to simulate_demand_proxy when `controls`
+            is a float quality. Ignored otherwise.
         noise_seed_offset:
             Shift applied to every noise seed used to simulate sales
             (seed = noise_seed_offset + sim, for sim in range(n_sims)).
@@ -273,14 +359,71 @@ class CollinearityDiagnostic:
             _validate_spend_data(self.spend_df)
             self.spend_df_ = self.spend_df.copy()
             self.channels_ = list(self.spend_df.columns)
+            if self.demand_coef and self.demand is None:
+                raise ValueError(
+                    "demand_coef is set but no demand series was supplied. "
+                    "On the real-spend path (spend_df given) there is no "
+                    "internal demand draw to fall back on -- pass demand= "
+                    "explicitly, aligned to spend_df."
+                )
+            self.demand_ = (
+                np.asarray(self.demand, dtype=float)
+                if self.demand is not None
+                else None
+            )
         else:
+            if self.demand is not None:
+                demand_arr = np.asarray(self.demand, dtype=float)
+                if demand_arr.shape != (self.n_obs,):
+                    raise ValueError(
+                        f"demand must be a 1-D series of length n_obs="
+                        f"{self.n_obs}, got shape {demand_arr.shape}"
+                    )
+            elif self.demand_coef:
+                demand_arr = simulate_demand(
+                    self.n_obs, process=self.demand_process, seed=self.demand_seed
+                )
+            else:
+                demand_arr = None
+            self.demand_ = demand_arr
             self.spend_df_ = simulate_spend(
                 n_obs=self.n_obs,
                 correlation=self.correlation,
                 channels=self.channels,
                 seed=self.spend_seed,
+                demand=demand_arr,
+                demand_share=self.demand_share,
             )
             self.channels_ = list(self.channels)
+
+        if controls is True:
+            if self.demand_ is None:
+                raise ValueError(
+                    "controls=True requires a demand series -- supply "
+                    "demand= or set demand_coef (synthetic path) so fit() "
+                    "has a true demand series to control with."
+                )
+            resolved_controls = pd.Series(
+                self.demand_, index=self.spend_df_.index, name="demand"
+            )
+        elif controls is False or controls is None:
+            resolved_controls = None
+        elif isinstance(controls, (int, float)):
+            if self.demand_ is None:
+                raise ValueError(
+                    "controls=<quality> requires a demand series to build "
+                    "a proxy from -- supply demand= or set demand_coef "
+                    "(synthetic path)."
+                )
+            proxy = simulate_demand_proxy(
+                self.demand_, quality=float(controls), seed=proxy_seed
+            )
+            resolved_controls = pd.Series(
+                proxy, index=self.spend_df_.index, name="demand_proxy"
+            )
+        else:
+            resolved_controls = controls
+        self.controls_ = resolved_controls
 
         records = []
         for sim in range(n_sims):
@@ -290,8 +433,13 @@ class CollinearityDiagnostic:
                 base_sales=self.base_sales,
                 revenue_noise_std=self.revenue_noise_std,
                 seed=noise_seed_offset + sim,
+                demand=self.demand_,
+                demand_coef=self.demand_coef,
+                saturation=self.saturation,
+                adstock=self.adstock,
+                reference_spend=self.reference_spend,
             )
-            estimated = fit_ols(self.spend_df_, sales)
+            estimated = fit_ols(self.spend_df_, sales, controls=resolved_controls)
             for channel in self.channels_:
                 true_r = self.true_marginal_returns[channel]
                 est_r = estimated[channel]
@@ -333,10 +481,21 @@ class CollinearityDiagnostic:
         if self.spend_df_ is None:
             raise RuntimeError("Call fit() first (to populate spend_df_).")
 
-        x = np.column_stack(
-            [np.ones(len(self.spend_df_))]
-            + [self.spend_df_[c].to_numpy() for c in self.channels_]
-        )
+        cols = [np.ones(len(self.spend_df_))] + [
+            self.spend_df_[c].to_numpy() for c in self.channels_
+        ]
+        if self.controls_ is not None:
+            # Match fit_ols's own column assembly, so the closed form sees
+            # exactly the design matrix fit_ols actually fit -- otherwise
+            # analytic_cv would silently go stale the moment controls are
+            # used (the whole point of the closed form is that it's exact).
+            controls_df = (
+                self.controls_.to_frame(name=self.controls_.name or "control")
+                if isinstance(self.controls_, pd.Series)
+                else self.controls_
+            )
+            cols += [controls_df[c].to_numpy() for c in controls_df.columns]
+        x = np.column_stack(cols)
         xtx_inv = np.linalg.inv(x.T @ x)
         cv = {}
         for i, ch in enumerate(self.channels_):

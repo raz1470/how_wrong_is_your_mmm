@@ -6,6 +6,7 @@ from how_wrong_is_your_mmm._dgp import (
     apply_adstock,
     calibrate_baseline,
     simulate_demand,
+    simulate_demand_proxy,
     simulate_sales,
     simulate_spend,
 )
@@ -27,6 +28,7 @@ __all__ = [
     "calibrate_baseline",
     "fit_ols",
     "simulate_demand",
+    "simulate_demand_proxy",
     "simulate_sales",
     "simulate_spend",
 ]

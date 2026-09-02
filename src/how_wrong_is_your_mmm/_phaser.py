@@ -35,7 +35,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from how_wrong_is_your_mmm._dgp import _DEFAULT_MARGINAL_RETURNS
+from how_wrong_is_your_mmm._dgp import _DEFAULT_MARGINAL_RETURNS, simulate_demand
 from how_wrong_is_your_mmm._diagnostic import (
     CollinearityDiagnostic,
     _validate_spend_data,
@@ -592,6 +592,64 @@ class BudgetPhaser:
         forces its surviving weeks to absorb the whole month, and at
         cap=80% a single week can reach several times its planned spend.
         Default False, the historical behaviour.
+    demand:
+        Optional latent demand series spanning history_df + plan_df (i.e.
+        length len(history_df) + len(plan_df)), forwarded to every internal
+        CollinearityDiagnostic this class creates. Supply your own, or
+        leave it None to let this class draw one internally from
+        demand_process/demand_seed whenever demand_coef is nonzero -- see
+        CollinearityDiagnostic's own `demand` docstring, this mirrors it.
+        Resolved once at construction (self.demand_), not redrawn per
+        phasing draw or grid point, because it represents the one true
+        state of the world every candidate schedule is measured against.
+    demand_process:
+        One of DEMAND_PROCESSES (see simulate_demand). Ignored when
+        `demand` is supplied directly.
+    demand_coef:
+        Coefficient on demand in the sales equation -- what actually
+        creates omitted-variable bias. 0.0 (default) reproduces this
+        class's pre-existing behaviour exactly. Get a value in
+        practitioner-legible units from calibrate_baseline.
+    demand_seed:
+        Random seed for the internal demand draw, when `demand` isn't
+        supplied directly.
+    saturation:
+        Forwarded to every internal CollinearityDiagnostic -- see
+        simulate_sales's own docstring. None (default) is linear,
+        reproducing prior behaviour.
+    adstock:
+        Forwarded to every internal CollinearityDiagnostic -- see
+        simulate_sales's own docstring. None (default) is no carryover,
+        reproducing prior behaviour.
+    reference_spend:
+        Forwarded to every internal CollinearityDiagnostic. Only matters
+        when saturation is active. Defaults to plan_df's own per-channel
+        mean spend (the ORIGINAL, unphased plan) rather than
+        simulate_sales's own per-call default (each candidate schedule's
+        own mean) -- deliberately, so every phasing candidate is priced
+        against the SAME response curve. Leaving this at simulate_sales's
+        own default would make the curve move with each candidate
+        schedule, which would make comparing them not like for like.
+    controls:
+        What every internal CollinearityDiagnostic's OLS fit controls for,
+        forwarded to its fit(). None or False (default): omit -- reproduces
+        prior behaviour exactly. True: control with this instance's own
+        true demand_ (requires a demand series). A float in (0, 1]: control
+        with a measurement-error proxy of that quality, built from
+        self.demand_ via simulate_demand_proxy (see proxy_seed) -- the
+        client-facing case. A DataFrame or Series: an explicit proxy. One
+        fixed setting for the whole instance (not a per-fit()-call choice,
+        unlike CollinearityDiagnostic) because every method here (fit,
+        channel_sensitivity, recommend_levers, impact_over_horizons) needs
+        to score candidates under the same measurement the client will
+        actually see. A float quality is reproducible across every one of
+        those internal calls (same demand_, same quality, same
+        proxy_seed -> the identical proxy draw every time), so this stays
+        one consistent control throughout despite being resolved fresh by
+        each internal CollinearityDiagnostic rather than pre-built once.
+    proxy_seed:
+        Random seed forwarded to simulate_demand_proxy when `controls` is
+        a float quality. Ignored otherwise.
 
     Notes
     -----
@@ -627,6 +685,15 @@ class BudgetPhaser:
         true_elasticities: dict[str, float] | None = None,
         nudge_shape: str = "uniform",
         balance_signs: bool = False,
+        demand: np.ndarray | pd.Series | None = None,
+        demand_process: str = "white_noise",
+        demand_coef: float = 0.0,
+        demand_seed: int = 0,
+        saturation: dict[str, float] | float | None = None,
+        adstock: dict[str, float] | float | None = None,
+        reference_spend: dict[str, float] | None = None,
+        controls: pd.DataFrame | pd.Series | bool | float | None = None,
+        proxy_seed: int = 0,
     ) -> None:
         _get_month_labels(history_df)  # validates DatetimeIndex
         _get_month_labels(plan_df)  # validates DatetimeIndex
@@ -678,6 +745,42 @@ class BudgetPhaser:
         self.seed = seed
         self.base_sales = base_sales
         self.revenue_noise_std = revenue_noise_std
+        self.demand = demand
+        self.demand_process = demand_process
+        self.demand_coef = demand_coef
+        self.demand_seed = demand_seed
+        self.saturation = saturation
+        self.adstock = adstock
+        # Defaults to the ORIGINAL, unphased plan's own mean spend rather
+        # than simulate_sales's own per-call default (each candidate
+        # schedule's own mean) -- so every phasing candidate this class
+        # evaluates is priced against the SAME response curve. See the
+        # reference_spend docstring above.
+        if reference_spend is None and saturation is not None:
+            reference_spend = {ch: float(plan_df[ch].mean()) for ch in plan_df.columns}
+        self.reference_spend = reference_spend
+        self.controls = controls
+        self.proxy_seed = proxy_seed
+
+        n_total = len(history_df) + len(plan_df)
+        if demand is not None:
+            demand_arr = np.asarray(demand, dtype=float)
+            if demand_arr.shape != (n_total,):
+                raise ValueError(
+                    "demand must be a 1-D series of length "
+                    f"len(history_df) + len(plan_df) = {n_total}, got shape "
+                    f"{demand_arr.shape}"
+                )
+        elif demand_coef:
+            demand_arr = simulate_demand(
+                n_total, process=demand_process, seed=demand_seed
+            )
+        else:
+            demand_arr = None
+        # Resolved once here, not redrawn per phasing draw or grid point --
+        # it represents the one true state of the world every candidate
+        # schedule is measured against. See the demand docstring above.
+        self.demand_ = demand_arr
 
         self._plan_month_labels = _get_month_labels(plan_df)
         self.results_: pd.DataFrame | None = None
@@ -749,8 +852,18 @@ class BudgetPhaser:
                 true_marginal_returns=self.true_marginal_returns,
                 base_sales=self.base_sales,
                 revenue_noise_std=self.revenue_noise_std,
+                demand=self.demand_,
+                demand_coef=self.demand_coef,
+                saturation=self.saturation,
+                adstock=self.adstock,
+                reference_spend=self.reference_spend,
             )
-            diag.fit(n_sims=n_sims, noise_seed_offset=noise_seed_offset)
+            diag.fit(
+                n_sims=n_sims,
+                noise_seed_offset=noise_seed_offset,
+                controls=self.controls,
+                proxy_seed=self.proxy_seed,
+            )
             summ = diag.summary().set_index("channel")
 
             seed_results.append(
@@ -948,8 +1061,18 @@ class BudgetPhaser:
                 true_marginal_returns=self.true_marginal_returns,
                 base_sales=self.base_sales,
                 revenue_noise_std=self.revenue_noise_std,
+                demand=self.demand_,
+                demand_coef=self.demand_coef,
+                saturation=self.saturation,
+                adstock=self.adstock,
+                reference_spend=self.reference_spend,
             )
-            diag_m.fit(n_sims=n_sims, noise_seed_offset=confirm_noise_offset + 1)
+            diag_m.fit(
+                n_sims=n_sims,
+                noise_seed_offset=confirm_noise_offset + 1,
+                controls=self.controls,
+                proxy_seed=self.proxy_seed,
+            )
             summ_m = diag_m.summary().set_index("channel")["coef_of_variation"]
             draw_schedules.append(schedule_m)
             record = {"draw": m, "seed": draw_seed, "max_cv": float(summ_m.max())}
