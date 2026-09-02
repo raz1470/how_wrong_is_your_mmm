@@ -6,6 +6,7 @@ import pytest
 
 from how_wrong_is_your_mmm._dgp import (
     DEMAND_PROCESSES,
+    apply_adstock,
     calibrate_baseline,
     simulate_demand,
     simulate_sales,
@@ -292,6 +293,42 @@ class TestSimulateDemand:
         mixed = lag1(simulate_demand(500, process="seasonal_ar1", seed=0))
         assert lag1(simulate_demand(500, process="ar1", seed=0)) < mixed
 
+    def test_trend_differs_by_seed(self):
+        """Stochastic, like "white_noise"/"ar1" -- not a fixed shape."""
+        a = simulate_demand(60, process="trend", seed=0)
+        b = simulate_demand(60, process="trend", seed=1)
+        assert not np.allclose(a, b)
+
+    def test_trend_is_more_persistent_than_ar1(self):
+        """The property the adstock threat test leans on: integration
+        concentrates a random walk's energy near zero frequency more than
+        even a highly persistent stationary AR(1) does, because AR(1) must
+        mean-revert (ar_coef < 1 is enforced) and a random walk does not."""
+
+        def lag1(series):
+            return np.corrcoef(series[:-1], series[1:])[0, 1]
+
+        assert lag1(simulate_demand(500, process="trend", seed=0)) > lag1(
+            simulate_demand(500, process="ar1", ar_coef=0.8, seed=0)
+        )
+
+    @pytest.mark.parametrize("seed", range(10))
+    def test_trend_drift_sign_sets_direction_on_average(self, seed):
+        """Not guaranteed for any single draw (it's a random walk -- a
+        single path can wander against its own drift), but the endpoint
+        should exceed the start more often than not across draws, and
+        flipping the drift's sign should flip that tendency."""
+        up = simulate_demand(200, process="trend", trend_drift=0.15, seed=seed)
+        down = simulate_demand(200, process="trend", trend_drift=-0.15, seed=seed)
+        assert (up[-1] - up[0]) > (down[-1] - down[0])
+
+    def test_trend_drift_zero_is_a_pure_random_walk(self):
+        """trend_drift=0 must not raise or special-case -- it's just cumsum
+        of the innovations, no drift term."""
+        series = simulate_demand(104, process="trend", trend_drift=0.0, seed=0)
+        assert series.shape == (104,)
+        assert series.std() == pytest.approx(1.0, abs=1e-12)
+
     def test_invalid_process_raises(self):
         with pytest.raises(ValueError, match="process must be one of"):
             simulate_demand(50, process="brownian")
@@ -421,3 +458,228 @@ class TestSimulateSalesDemand:
             simulate_sales(
                 self.spend_df, MARGINAL_RETURNS, demand=np.zeros(51), demand_coef=1.0
             )
+
+
+class TestApplyAdstock:
+    """Normalised geometric adstock: a[t] = (1-d)*x[t] + d*a[t-1]."""
+
+    def test_zero_decay_returns_input_unchanged(self):
+        x = np.array([1.0, 5.0, 3.0, 9.0])
+        assert apply_adstock(x, 0.0) is x
+
+    @pytest.mark.parametrize("decay", [0.0, 0.3, 0.6, 0.9])
+    def test_constant_spend_passes_through_unchanged(self, decay):
+        # This is what "normalised" buys: a channel's steady-state level does
+        # not move with decay, so the supplied marginal return keeps meaning
+        # the same thing and two decays are comparable.
+        const = np.full(40, 7.0)
+        np.testing.assert_allclose(apply_adstock(const, decay), 7.0)
+
+    @pytest.mark.parametrize("decay", [0.3, 0.6, 0.9])
+    def test_impulse_decays_at_exactly_the_decay_rate(self, decay):
+        impulse = np.zeros(30)
+        impulse[5] = 100.0
+        out = apply_adstock(impulse, decay)
+        np.testing.assert_allclose(out[5], 100.0 * (1.0 - decay))
+        for t in range(6, 15):
+            np.testing.assert_allclose(out[t] / out[t - 1], decay)
+
+    @pytest.mark.parametrize("decay", [0.3, 0.6])
+    def test_impulse_mass_is_conserved(self, decay):
+        impulse = np.zeros(200)
+        impulse[5] = 100.0
+        np.testing.assert_allclose(apply_adstock(impulse, decay).sum(), 100.0)
+
+    def test_seeded_from_first_observation_not_zero(self):
+        x = np.array([10.0, 10.0, 10.0])
+        # A zero seed would give 10*(1-d) here and read as a warm-up ramp that
+        # is an artefact of where the array starts.
+        assert apply_adstock(x, 0.5)[0] == 10.0
+
+    def test_low_passes_weekly_variation(self):
+        x = simulate_spend(n_obs=104, seed=0)["tv"].to_numpy()
+        spreads = [np.diff(apply_adstock(x, d)).std() for d in (0.0, 0.3, 0.6, 0.9)]
+        assert spreads == sorted(spreads, reverse=True)
+
+
+class TestSaturationAndAdstockAreDefaultInert:
+    spend_df = simulate_spend(n_obs=52, seed=0)
+
+    def _base(self):
+        return simulate_sales(self.spend_df, MARGINAL_RETURNS, seed=3)
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {},
+            {"saturation": None},
+            {"saturation": 1.0},
+            {"saturation": {"tv": 1.0}},
+            {"adstock": None},
+            {"adstock": 0.0},
+            {"adstock": {"tv": 0.0}},
+            {"saturation": 1.0, "adstock": 0.0},
+            {"saturation": {}, "adstock": {}},
+        ],
+    )
+    def test_inert_settings_reproduce_the_linear_output_exactly(self, kwargs):
+        # Exact equality, not allclose: b=1 and decay=0 take the original
+        # code path deliberately so published seeded numbers cannot move.
+        pd.testing.assert_series_equal(
+            simulate_sales(self.spend_df, MARGINAL_RETURNS, seed=3, **kwargs),
+            self._base(),
+        )
+
+    def test_channels_absent_from_the_dict_stay_linear(self):
+        only_tv = simulate_sales(
+            self.spend_df, MARGINAL_RETURNS, seed=3, saturation={"tv": 0.5}
+        )
+        base = self._base()
+        # meta and search unchanged means the whole difference is TV's.
+        tv = self.spend_df["tv"].to_numpy()
+        k = MARGINAL_RETURNS["tv"] / (0.5 * tv.mean() ** (0.5 - 1.0))
+        expected = base.to_numpy() - MARGINAL_RETURNS["tv"] * tv + k * tv**0.5
+        np.testing.assert_allclose(only_tv.to_numpy(), expected)
+
+
+class TestSaturation:
+    spend_df = simulate_spend(n_obs=52, seed=0)
+
+    @pytest.mark.parametrize("b", [0.3, 0.6, 0.9])
+    def test_marginal_return_at_reference_equals_the_supplied_value(self, b):
+        # The calibration promise: the supplied marginal return is the return
+        # on the next pound at the reference level.
+        ref = {ch: float(self.spend_df[ch].mean()) for ch in CHANNELS}
+        eps = 1.0
+        for ch in CHANNELS:
+            lo = self.spend_df.copy()
+            hi = self.spend_df.copy()
+            for other in CHANNELS:
+                lo[other] = 0.0 if other != ch else ref[ch] - eps / 2
+                hi[other] = 0.0 if other != ch else ref[ch] + eps / 2
+            kwargs = dict(
+                seed=0,
+                saturation=b,
+                reference_spend=ref,
+                revenue_noise_std=0.0,
+                base_sales=0.0,
+            )
+            slope = (
+                simulate_sales(hi, MARGINAL_RETURNS, **kwargs).iloc[0]
+                - simulate_sales(lo, MARGINAL_RETURNS, **kwargs).iloc[0]
+            )
+            np.testing.assert_allclose(slope, MARGINAL_RETURNS[ch], rtol=1e-6)
+
+    def test_doubling_spend_scales_contribution_by_two_to_the_b(self):
+        ref = {ch: float(self.spend_df[ch].mean()) for ch in CHANNELS}
+        kwargs = dict(
+            seed=0,
+            saturation=0.6,
+            reference_spend=ref,
+            revenue_noise_std=0.0,
+            base_sales=0.0,
+        )
+        one = simulate_sales(self.spend_df, MARGINAL_RETURNS, **kwargs).sum()
+        two = simulate_sales(self.spend_df * 2, MARGINAL_RETURNS, **kwargs).sum()
+        np.testing.assert_allclose(two / one, 2.0**0.6)
+
+    def test_explicit_reference_spend_overrides_the_column_mean(self):
+        ref = {ch: float(self.spend_df[ch].mean()) for ch in CHANNELS}
+        default = simulate_sales(
+            self.spend_df, MARGINAL_RETURNS, seed=0, saturation=0.6
+        )
+        explicit = simulate_sales(
+            self.spend_df, MARGINAL_RETURNS, seed=0, saturation=0.6, reference_spend=ref
+        )
+        pd.testing.assert_series_equal(default, explicit)
+        moved = simulate_sales(
+            self.spend_df,
+            MARGINAL_RETURNS,
+            seed=0,
+            saturation=0.6,
+            reference_spend={ch: v * 2 for ch, v in ref.items()},
+        )
+        assert not np.allclose(moved.to_numpy(), explicit.to_numpy())
+
+    @pytest.mark.parametrize("bad", [0.0, -0.2, 1.5])
+    def test_out_of_range_exponent_raises(self, bad):
+        with pytest.raises(ValueError, match="must be in"):
+            simulate_sales(self.spend_df, MARGINAL_RETURNS, saturation=bad)
+
+    def test_non_positive_reference_spend_raises(self):
+        with pytest.raises(ValueError, match="must be positive"):
+            simulate_sales(
+                self.spend_df,
+                MARGINAL_RETURNS,
+                saturation=0.6,
+                reference_spend={ch: 0.0 for ch in CHANNELS},
+            )
+
+    def test_negative_spend_raises(self):
+        negative = self.spend_df.copy()
+        negative.iloc[0, 0] = -1.0
+        with pytest.raises(ValueError, match="negative spend"):
+            simulate_sales(negative, MARGINAL_RETURNS, saturation=0.6)
+
+
+class TestAdstockInSimulateSales:
+    spend_df = simulate_spend(n_obs=52, seed=0)
+
+    @pytest.mark.parametrize("bad", [1.0, 1.5, -0.1])
+    def test_out_of_range_decay_raises(self, bad):
+        with pytest.raises(ValueError, match="must be in"):
+            simulate_sales(self.spend_df, MARGINAL_RETURNS, adstock=bad)
+
+    def test_linear_with_adstock_is_marginal_return_times_adstocked_spend(self):
+        out = simulate_sales(
+            self.spend_df,
+            MARGINAL_RETURNS,
+            seed=0,
+            adstock=0.5,
+            revenue_noise_std=0.0,
+            base_sales=0.0,
+        )
+        expected = sum(
+            MARGINAL_RETURNS[ch] * apply_adstock(self.spend_df[ch].to_numpy(), 0.5)
+            for ch in CHANNELS
+        )
+        np.testing.assert_allclose(out.to_numpy(), expected)
+
+    def test_adstock_is_applied_before_saturation(self):
+        # The Robyn / Meridian / PyMC order. Saturating first would give a
+        # different series, which is what this pins down.
+        ref = {ch: float(self.spend_df[ch].mean()) for ch in CHANNELS}
+        out = simulate_sales(
+            self.spend_df,
+            MARGINAL_RETURNS,
+            seed=0,
+            adstock=0.5,
+            saturation=0.6,
+            reference_spend=ref,
+            revenue_noise_std=0.0,
+            base_sales=0.0,
+        )
+        expected = np.zeros(len(self.spend_df))
+        for ch in CHANNELS:
+            a = apply_adstock(self.spend_df[ch].to_numpy(), 0.5)
+            k = MARGINAL_RETURNS[ch] / (0.6 * ref[ch] ** (0.6 - 1.0))
+            expected = expected + k * a**0.6
+        np.testing.assert_allclose(out.to_numpy(), expected)
+
+        saturate_first = np.zeros(len(self.spend_df))
+        for ch in CHANNELS:
+            k = MARGINAL_RETURNS[ch] / (0.6 * ref[ch] ** (0.6 - 1.0))
+            saturate_first = saturate_first + apply_adstock(
+                k * self.spend_df[ch].to_numpy() ** 0.6, 0.5
+            )
+        assert not np.allclose(out.to_numpy(), saturate_first)
+
+    def test_demand_term_is_unaffected_by_either_transform(self):
+        demand = simulate_demand(52, seed=0)
+        ref = {ch: float(self.spend_df[ch].mean()) for ch in CHANNELS}
+        kwargs = dict(seed=1, saturation=0.6, adstock=0.4, reference_spend=ref)
+        without = simulate_sales(self.spend_df, MARGINAL_RETURNS, **kwargs)
+        with_demand = simulate_sales(
+            self.spend_df, MARGINAL_RETURNS, demand=demand, demand_coef=250.0, **kwargs
+        )
+        np.testing.assert_allclose((with_demand - without).to_numpy(), 250.0 * demand)
