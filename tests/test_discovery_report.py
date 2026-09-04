@@ -415,6 +415,15 @@ class TestToHtml:
         html_out = report.to_html()
         assert "Spend, history + plan" in html_out
         assert "Demand (standardised)" in html_out
+        assert "Sales / revenue, weekly" in html_out
+
+    def test_appendix_spend_chart_uses_supplied_plan_not_winner_schedule(self):
+        # The appendix is "what you supplied" -- it should show history_df
+        # + plan_df as given, not the winner lever's rephased schedule.
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert "as supplied" in html_out
+        assert "recommended" not in html_out.split("Appendix: what you supplied")[1]
 
     def test_client_name_and_plan_year_appear(self):
         report = fit_small(make_report(client_name="Acme Co", plan_year="2024"))

@@ -1224,8 +1224,7 @@ def _render_html(report: DiscoveryReport) -> str:
     # adstock, saturation (each per channel), the actual spend series, and
     # the one shared latent demand series. Every chart below reads straight
     # off report's own public attributes -- nothing here is re-derived.
-    winner_combined = pd.concat([report.history_df, report.winner_schedule_])
-    week_labels = [d.strftime("%b '%y") for d in winner_combined.index]
+    week_labels = [d.strftime("%b '%y") for d in combined_baseline.index]
 
     mroi_data = [
         {"name": ch, "color": colors[ch], "value": report.true_marginal_returns[ch]}
@@ -1320,7 +1319,7 @@ def _render_html(report: DiscoveryReport) -> str:
             "channel in this report -- no curvature to plot.</em></p>"
         )
 
-    spend_series = {ch: winner_combined[ch].to_numpy() for ch in channels}
+    spend_series = {ch: combined_baseline[ch].to_numpy() for ch in channels}
     appendix_spend_svg = _svg_multiline(
         spend_series,
         colors,
@@ -1336,6 +1335,20 @@ def _render_html(report: DiscoveryReport) -> str:
         normalize=False,
         y_fmt=lambda v: f"{v:.1f}",
         y_label="Demand (standardised)",
+        x_label="Week",
+        x_tick_labels=week_labels,
+    )
+
+    weekly_sales = (
+        report.calibration_.baseline_level
+        + report.calibration_.demand_coef * report.demand_
+        + true_contributions.sum(axis=1).to_numpy()
+    )
+    sales_series_svg = _svg_multiline(
+        {"sales": weekly_sales},
+        {"sales": "#111827"},
+        normalize=False,
+        y_label="Weekly sales / revenue",
         x_label="Week",
         x_tick_labels=week_labels,
     )
@@ -1571,9 +1584,7 @@ the three problems below (dominance check, else worst-axis).</div>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Spend, history + plan</div>
-      <div class="fig-sub">Actual weekly spend by channel, on the recommended ({
-        winner
-    }) schedule</div>
+      <div class="fig-sub">Actual weekly spend by channel, as supplied -- before any phasing</div>
     </div>
     <div class="fig-body">
       <div class="legend">{legend}</div>
@@ -1587,6 +1598,14 @@ the three problems below (dominance check, else worst-axis).</div>
       <div class="fig-sub">The one latent demand series driving every simulated sales column in this report</div>
     </div>
     <div class="fig-body">{demand_series_svg}</div>
+  </div>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Sales / revenue, weekly</div>
+      <div class="fig-sub">Baseline + demand + channel contributions, no noise -- what these inputs imply</div>
+    </div>
+    <div class="fig-body">{sales_series_svg}</div>
   </div>
 </section>
 
