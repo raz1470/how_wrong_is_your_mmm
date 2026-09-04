@@ -10,7 +10,9 @@ from how_wrong_is_your_mmm._discovery_report import (
     DiscoveryReport,
     _default_levers,
     _is_unphased,
+    _nice_axis_bounds,
     _safe_improvement,
+    _svg_dotplot,
     _svg_multiline,
 )
 from how_wrong_is_your_mmm._phaser import Blackout
@@ -107,6 +109,39 @@ class TestSvgMultiline:
         )
         polys = re.findall(r'points="([^"]+)"', svg)
         assert polys[0] != polys[1]
+
+
+class TestSvgDotplot:
+    def test_returns_svg_markup(self):
+        svg = _svg_dotplot([{"name": "tv", "color": "#000", "value": 0.5}])
+        assert svg.startswith("<svg")
+        assert "<circle" in svg
+
+    def test_value_label_uses_supplied_fmt(self):
+        svg = _svg_dotplot(
+            [{"name": "tv", "color": "#000", "value": 0.5}],
+            fmt=lambda v: f"£{v:.2f}",
+        )
+        assert "£0.50" in svg
+
+    def test_channel_name_appears_as_row_label(self):
+        svg = _svg_dotplot([{"name": "search", "color": "#000", "value": 1.2}])
+        assert "search" in svg
+
+
+class TestNiceAxisBounds:
+    def test_positive_range_brackets_the_data(self):
+        lo, hi, step = _nice_axis_bounds(3.0, 83.0)
+        assert lo <= 3.0
+        assert hi >= 83.0
+        assert step > 0
+
+    def test_negative_lower_bound_is_handled(self):
+        # Demand is standardised to mean 0 -- the range straddles zero.
+        lo, hi, _step = _nice_axis_bounds(-2.3, 1.8)
+        assert lo <= -2.3
+        assert hi >= 1.8
+        assert lo < 0 < hi
 
 
 class TestConstruction:
@@ -349,13 +384,37 @@ class TestToHtml:
     def test_saturation_curve_omitted_when_linear(self):
         report = fit_small(make_report(saturation=1.0))
         html_out = report.to_html()
-        assert "Assumed saturation curve" not in html_out
+        assert "Saturation, by channel" not in html_out
         assert "assumed linear" in html_out
 
     def test_saturation_curve_shown_when_nonlinear(self):
         report = fit_small(make_report(saturation=0.7))
         html_out = report.to_html()
-        assert "Assumed saturation curve" in html_out
+        assert "Saturation, by channel" in html_out
+
+    def test_adstock_chart_omitted_when_no_decay(self):
+        report = fit_small(make_report(adstock=0.0))
+        html_out = report.to_html()
+        assert "Adstock, by channel" not in html_out
+        assert "assumed instantaneous" in html_out
+
+    def test_adstock_chart_shown_when_decay(self):
+        report = fit_small(make_report(adstock=0.3))
+        html_out = report.to_html()
+        assert "Adstock, by channel" in html_out
+
+    def test_appendix_shows_marginal_return_per_channel(self):
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert "Channel marginal return" in html_out
+        for ch, mr in report.true_marginal_returns.items():
+            assert f"£{mr:.2f}" in html_out
+
+    def test_appendix_shows_spend_and_demand_series(self):
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert "Spend, history + plan" in html_out
+        assert "Demand (standardised)" in html_out
 
     def test_client_name_and_plan_year_appear(self):
         report = fit_small(make_report(client_name="Acme Co", plan_year="2024"))

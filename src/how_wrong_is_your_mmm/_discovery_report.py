@@ -18,7 +18,8 @@ Report structure: cover -> spend correlation, before vs after ->
 variance problem + impact -> bias problem + impact -> identifiability
 problem + impact (saturation and adstock each get their own chart) ->
 cross-strategy table (every candidate, with a dropdown) -> appendix
-(spend/demand time series, saturation curve).
+(every input the client supplied: marginal return, adstock and saturation
+per channel, the spend series, and the shared demand series).
 
 Follows the package's shared-DGP design (session 44): one demand series
 drives every simulated sales column in this report, and saturation/adstock
@@ -41,6 +42,7 @@ import pandas as pd
 
 from how_wrong_is_your_mmm._dgp import (
     _DEFAULT_MARGINAL_RETURNS,
+    apply_adstock,
     calibrate_baseline,
     channel_contributions,
     simulate_demand,
@@ -101,14 +103,22 @@ def _svg_multiline(
     series: dict[str, np.ndarray],
     colors: dict[str, str],
     width: int = 680,
-    height: int = 170,
-    pad_left: int = 40,
-    pad_bottom: int = 20,
-    pad_top: int = 10,
-    pad_right: int = 10,
+    height: int = 200,
+    pad_left: int = 58,
+    pad_bottom: int = 36,
+    pad_top: int = 14,
+    pad_right: int = 14,
     normalize: bool = True,
+    y_fmt=None,
+    y_label: str = "",
+    x_label: str = "Week",
+    x_tick_labels: list[str] | None = None,
+    n_x_ticks: int = 5,
 ) -> str:
-    """Render a small multi-series line chart as a self-contained inline SVG.
+    """Render a small multi-series line chart as a self-contained inline SVG,
+    with a real x/y axis -- gridlines, tick labels, axis titles -- the same
+    visual language as docs/overview.html's time-series charts (e.g.
+    chartCause) and this module's own _svg_forest.
 
     No JS, no external library -- every point is computed in Python and
     baked into the polyline points at render time, since none of this
@@ -116,51 +126,114 @@ def _svg_multiline(
 
     normalize:
         If True (default), each series is min-max scaled INDEPENDENTLY
-        onto the same y-axis, so shape (not absolute level) is what's
-        compared -- appropriate for the spend time series, where channels
-        can sit on very different budgets and the week-to-week pattern is
-        the point. If False, every series shares ONE y-axis scaled to the
-        combined min/max across all of them -- required for the
-        saturation curve: channels' response curves are the same power-law
-        SHAPE up to a scale factor, so independently-normalized curves for
-        different channels would land on top of each other and hide the
-        one thing worth seeing (their different levels).
+        onto the same [0, 1] range, so shape (not absolute level) is what's
+        compared, and the y-axis reads as a relative 0-100% scale rather
+        than real units -- appropriate when channels sit on very different
+        budgets and the week-to-week pattern, not the level, is the point.
+        If False, every series shares ONE y-axis scaled to the combined
+        min/max across all of them, formatted by `y_fmt` -- used by every
+        appendix chart (spend, demand, the saturation response curve, the
+        adstock decay-by-lag curve), since the actual level IS the point
+        there, and independently-normalized curves would land on top of
+        each other and hide the one thing worth seeing.
+    y_fmt:
+        Value formatter for y-axis tick labels when normalize=False.
+        Defaults to `_fmt_gbp` (this report's most common y quantity);
+        pass a different formatter for a non-£ axis (demand, a percentage).
+    x_tick_labels:
+        One label per data point (same length as each series), shown at a
+        handful of evenly spaced ticks. Defaults to "Wk 1", "Wk 2", ... --
+        pass real calendar labels, or spend-level labels for a response
+        curve, to match what the x-axis actually represents.
     """
     n = len(next(iter(series.values())))
     if n < 2:
         return "<p><em>Not enough weeks to plot.</em></p>"
+    fmt = y_fmt if y_fmt is not None else _fmt_gbp
     plot_w = width - pad_left - pad_right
     plot_h = height - pad_top - pad_bottom
 
     def x_at(i: int) -> float:
         return pad_left + plot_w * i / (n - 1)
 
-    shared_lo, shared_hi = None, None
-    if not normalize:
+    if normalize:
+        y_lo, y_hi = 0.0, 1.0
+        y_ticks = [0.0, 0.25, 0.5, 0.75, 1.0]
+
+        def y_tick_fmt(v: float) -> str:
+            return f"{v:.0%}"
+    else:
         all_vals = np.concatenate([np.asarray(v, dtype=float) for v in series.values()])
-        shared_lo, shared_hi = float(all_vals.min()), float(all_vals.max())
+        y_lo, y_hi, y_step = _nice_axis_bounds(
+            float(all_vals.min()), float(all_vals.max())
+        )
+        y_ticks = list(np.arange(y_lo, y_hi + y_step / 2, y_step))
+        y_tick_fmt = fmt
+
+    def y_at(v: float) -> float:
+        span = y_hi - y_lo if y_hi > y_lo else 1.0
+        return pad_top + plot_h * (1 - (v - y_lo) / span)
+
+    if x_tick_labels is None:
+        x_tick_labels = [f"Wk {i + 1}" for i in range(n)]
+    tick_idx = sorted(set(np.linspace(0, n - 1, min(n_x_ticks, n)).round().astype(int)))
 
     parts = [
         f'<svg class="chart" viewBox="0 0 {width} {height}" '
         f'xmlns="http://www.w3.org/2000/svg">'
     ]
-    # Baseline axis.
+    for v in y_ticks:
+        y = y_at(v)
+        is_zero_line = (not normalize) and y_lo < 0 < y_hi and abs(v) < 1e-9
+        parts.append(
+            f'<line x1="{pad_left}" y1="{y:.1f}" x2="{width - pad_right}" y2="{y:.1f}" '
+            f'stroke="{"#9ca3af" if is_zero_line else "#e5e7eb"}" stroke-width="1"/>'
+        )
+        parts.append(
+            f'<text x="{pad_left - 8}" y="{y + 3.5:.1f}" text-anchor="end" '
+            f'font-size="10" fill="#9ca3af">{y_tick_fmt(v)}</text>'
+        )
+    for i in tick_idx:
+        x = x_at(i)
+        parts.append(
+            f'<line x1="{x:.1f}" y1="{pad_top + plot_h:.1f}" x2="{x:.1f}" '
+            f'y2="{pad_top + plot_h + 5:.1f}" stroke="#d1d5db" stroke-width="1"/>'
+        )
+        parts.append(
+            f'<text x="{x:.1f}" y="{pad_top + plot_h + 16:.1f}" text-anchor="middle" '
+            f'font-size="10" fill="#9ca3af">{html.escape(x_tick_labels[i])}</text>'
+        )
     parts.append(
-        f'<line x1="{pad_left}" y1="{height - pad_bottom}" '
-        f'x2="{width - pad_right}" y2="{height - pad_bottom}" '
-        f'stroke="#d1d5db" stroke-width="1"/>'
+        f'<line x1="{pad_left}" y1="{pad_top}" x2="{pad_left}" '
+        f'y2="{pad_top + plot_h:.1f}" stroke="#d1d5db" stroke-width="1"/>'
     )
+    parts.append(
+        f'<line x1="{pad_left}" y1="{pad_top + plot_h:.1f}" x2="{width - pad_right}" '
+        f'y2="{pad_top + plot_h:.1f}" stroke="#d1d5db" stroke-width="1"/>'
+    )
+    if x_label:
+        parts.append(
+            f'<text x="{pad_left + plot_w / 2:.1f}" y="{height - 4}" text-anchor="middle" '
+            f'font-size="10" fill="#9ca3af">{html.escape(x_label)}</text>'
+        )
+    if y_label:
+        cy = pad_top + plot_h / 2
+        parts.append(
+            f'<text x="12" y="{cy:.1f}" text-anchor="middle" font-size="10" fill="#9ca3af" '
+            f'transform="rotate(-90 12 {cy:.1f})">{html.escape(y_label)}</text>'
+        )
+
     for name, values in series.items():
         arr = np.asarray(values, dtype=float)
         if normalize:
             lo, hi = arr.min(), arr.max()
+            span = hi - lo if hi > lo else 1.0
+            points = " ".join(
+                f"{x_at(i):.1f},{pad_top + plot_h * (1 - (v - lo) / span):.1f}"
+                for i, v in enumerate(arr)
+            )
         else:
-            lo, hi = shared_lo, shared_hi
-        span = hi - lo if hi > lo else 1.0
-        points = " ".join(
-            f"{x_at(i):.1f},{pad_top + plot_h * (1 - (v - lo) / span):.1f}"
-            for i, v in enumerate(arr)
-        )
+            points = " ".join(f"{x_at(i):.1f},{y_at(v):.1f}" for i, v in enumerate(arr))
         color = colors.get(name, "#111827")
         parts.append(
             f'<polyline points="{points}" fill="none" stroke="{color}" '
@@ -221,6 +294,21 @@ def _nice_tick_step(max_val: float, target_ticks: int = 6) -> float:
         if step >= raw_step:
             return step
     return 10 * magnitude
+
+
+def _nice_axis_bounds(
+    lo: float, hi: float, target_ticks: int = 5
+) -> tuple[float, float, float]:
+    """Round an arbitrary [lo, hi] data range out to a human tick grid --
+    same 1/2/5 x 10^k step selection as _nice_tick_step, but handling a
+    negative lower bound too (needed for a standardised series like demand,
+    which sits at mean 0 and can go either side of it)."""
+    if hi <= lo:
+        hi = lo + 1.0
+    step = _nice_tick_step(hi - lo, target_ticks)
+    nice_lo = math.floor(lo / step) * step
+    nice_hi = math.ceil(hi / step) * step
+    return nice_lo, nice_hi, step
 
 
 def _hi(v: float | tuple[float, float]) -> float:
@@ -347,6 +435,91 @@ def _svg_forest(
             f'<text x="{sc_x(_hi(after)) + 8:.1f}" y="{cy_after + 3:.1f}" '
             f'font-size="11.5" fill="{color}" font-weight="700">'
             f"{after_label}</text>"
+        )
+        parts.append(
+            f'<text x="{m_left - 10}" y="{cy + 4:.1f}" text-anchor="end" '
+            f'font-size="12.5" font-weight="700" fill="{color}">'
+            f"{html.escape(ch['name'])}</text>"
+        )
+
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _svg_dotplot(
+    data: list[dict],
+    width: int = 700,
+    row_h: int = 46,
+    x_label: str = "",
+    fmt=None,
+) -> str:
+    """Single-value-per-channel horizontal dot chart: one row per channel, a
+    dot at that channel's value, against a value-axis with gridlines and
+    tick labels -- the same axis language as _svg_forest, collapsed to one
+    mark per row since this is a report INPUT (e.g. marginal return), not a
+    before/after comparison.
+
+    Each `data` entry: {name, color, value}.
+    """
+    fmt = fmt if fmt is not None else (lambda v: f"{v:.2f}")
+    m_top, m_right, m_bottom, m_left = 14, 80, 40, 100
+    height = m_top + m_bottom + row_h * len(data)
+    pw = width - m_left - m_right
+    ph = height - m_top - m_bottom
+    row = ph / len(data)
+
+    raw_max = max(ch["value"] for ch in data)
+    step = _nice_tick_step(raw_max)
+    x_max = step * math.ceil(raw_max / step) if raw_max > 0 else step
+
+    def sc_x(v: float) -> float:
+        return m_left + (v / x_max) * pw
+
+    parts = [
+        f'<svg class="chart" viewBox="0 0 {width} {height}" '
+        f'xmlns="http://www.w3.org/2000/svg">'
+    ]
+    for i in range(len(data)):
+        if i % 2 == 1:
+            y = m_top + row * i
+            parts.append(
+                f'<rect x="{m_left}" y="{y:.1f}" width="{pw}" height="{row:.1f}" '
+                f'fill="#f9fafb"/>'
+            )
+
+    ticks = np.arange(0, x_max + step / 2, step)
+    for v in ticks:
+        x = sc_x(v)
+        parts.append(
+            f'<line x1="{x:.1f}" y1="{m_top}" x2="{x:.1f}" y2="{m_top + ph:.1f}" '
+            f'stroke="#e5e7eb" stroke-width="1"/>'
+        )
+        parts.append(
+            f'<text x="{x:.1f}" y="{m_top + ph + 16:.1f}" text-anchor="middle" '
+            f'font-size="10" fill="#9ca3af">{fmt(v)}</text>'
+        )
+    parts.append(
+        f'<text x="{m_left + pw / 2:.1f}" y="{m_top + ph + 30:.1f}" '
+        f'text-anchor="middle" font-size="10" fill="#9ca3af">'
+        f"{html.escape(x_label)}</text>"
+    )
+    parts.append(
+        f'<rect x="{m_left}" y="{m_top}" width="{pw}" height="{ph:.1f}" '
+        f'fill="none" stroke="#e5e7eb" stroke-width="1"/>'
+    )
+
+    for i, ch in enumerate(data):
+        cy = m_top + row * i + row / 2
+        x = sc_x(ch["value"])
+        color = ch["color"]
+        parts.append(
+            f'<line x1="{m_left}" y1="{cy:.1f}" x2="{x:.1f}" y2="{cy:.1f}" '
+            f'stroke="{color}" stroke-width="3" opacity="0.35"/>'
+        )
+        parts.append(f'<circle cx="{x:.1f}" cy="{cy:.1f}" r="6" fill="{color}"/>')
+        parts.append(
+            f'<text x="{x + 10:.1f}" y="{cy + 4:.1f}" font-size="11.5" '
+            f'fill="{color}" font-weight="700">{fmt(ch["value"])}</text>'
         )
         parts.append(
             f'<text x="{m_left - 10}" y="{cy + 4:.1f}" text-anchor="end" '
@@ -872,6 +1045,10 @@ def _render_html(report: DiscoveryReport) -> str:
     meta = report.report_data_["meta"]
     channels = report.channels_
     colors = _channel_colors(channels)
+    legend = "".join(
+        f'<div class="li"><span class="sw" style="background:{colors[ch]}"></span>{ch}</div>'
+        for ch in channels
+    )
     baseline_label = meta["baseline_label"]
     winner = meta["winner"]
     baseline = report.results_[baseline_label]
@@ -1042,14 +1219,73 @@ def _render_html(report: DiscoveryReport) -> str:
         for ch in channels
     )
 
-    # Appendix: winner schedule spend time series + demand, and a
-    # saturation curve (only meaningful when saturation isn't linear).
+    # Appendix: everything the client supplied as an input to this report,
+    # in the order they'd recognise supplying it -- marginal return,
+    # adstock, saturation (each per channel), the actual spend series, and
+    # the one shared latent demand series. Every chart below reads straight
+    # off report's own public attributes -- nothing here is re-derived.
     winner_combined = pd.concat([report.history_df, report.winner_schedule_])
-    spend_series = {ch: winner_combined[ch].to_numpy() for ch in channels}
-    appendix_spend_svg = _svg_multiline(spend_series, colors)
+    week_labels = [d.strftime("%b '%y") for d in winner_combined.index]
 
-    saturation_note = ""
-    saturation_svg = ""
+    mroi_data = [
+        {"name": ch, "color": colors[ch], "value": report.true_marginal_returns[ch]}
+        for ch in channels
+    ]
+    mroi_svg = _svg_dotplot(
+        mroi_data,
+        x_label="Marginal return (£ revenue per £1 of spend)",
+        fmt=lambda v: f"£{v:.2f}",
+    )
+
+    adstock_values_text = ", ".join(
+        f"{ch} {meta['adstock'][ch]:.2f}" for ch in channels
+    )
+    if any(lam != 0.0 for lam in meta["adstock"].values()):
+        max_lag = min(
+            52,
+            max(
+                [1]
+                + [
+                    int(np.ceil(np.log(0.02) / np.log(lam)))
+                    for lam in meta["adstock"].values()
+                    if lam > 0
+                ]
+            ),
+        )
+        impulse = np.zeros(max_lag + 1)
+        impulse[0] = 1.0
+        lag_curves = {
+            ch: apply_adstock(impulse, meta["adstock"][ch]) for ch in channels
+        }
+        adstock_svg = _svg_multiline(
+            lag_curves,
+            colors,
+            normalize=False,
+            y_fmt=lambda v: f"{v:.0%}",
+            y_label="Share of effect remaining",
+            x_label="Weeks after spend",
+            x_tick_labels=[f"+{i}" for i in range(max_lag + 1)],
+        )
+        adstock_fig_html = f"""
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Adstock, by channel</div>
+      <div class="fig-sub">Share of a week's spend still driving sales, by weeks since it ran &middot; decay: {adstock_values_text}</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">{legend}</div>
+      {adstock_svg}
+    </div>
+  </div>"""
+    else:
+        adstock_fig_html = (
+            "<p><em>Adstock was assumed instantaneous (decay = 0) for "
+            "every channel in this report -- no carryover to plot.</em></p>"
+        )
+
+    saturation_values_text = ", ".join(
+        f"{ch} {meta['saturation'][ch]:.2f}" for ch in channels
+    )
     if any(b != 1.0 for b in meta["saturation"].values()):
         xs = np.linspace(0, max(report.reference_spend_.values()) * 1.5, 60)
         curves = {}
@@ -1059,23 +1295,56 @@ def _render_html(report: DiscoveryReport) -> str:
             mr0 = report.true_marginal_returns[ch]
             k = mr0 / (b * x0 ** (b - 1.0)) if x0 > 0 else 0.0
             curves[ch] = k * xs**b
-        saturation_svg = _svg_multiline(curves, colors, normalize=False)
+        saturation_svg = _svg_multiline(
+            curves,
+            colors,
+            normalize=False,
+            y_label="Weekly revenue",
+            x_label="Weekly spend",
+            x_tick_labels=[_fmt_gbp(x) for x in xs],
+        )
+        saturation_fig_html = f"""
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Saturation, by channel</div>
+      <div class="fig-sub">Assumed response curve, spend to revenue &middot; exponent (b): {saturation_values_text}</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">{legend}</div>
+      {saturation_svg}
+    </div>
+  </div>"""
     else:
-        saturation_note = (
+        saturation_fig_html = (
             "<p><em>Saturation was assumed linear (b = 1.0) for every "
             "channel in this report -- no curvature to plot.</em></p>"
         )
+
+    spend_series = {ch: winner_combined[ch].to_numpy() for ch in channels}
+    appendix_spend_svg = _svg_multiline(
+        spend_series,
+        colors,
+        normalize=False,
+        y_label="Weekly spend",
+        x_label="Week",
+        x_tick_labels=week_labels,
+    )
+
+    demand_series_svg = _svg_multiline(
+        {"demand": report.demand_},
+        {"demand": "#111827"},
+        normalize=False,
+        y_fmt=lambda v: f"{v:.1f}",
+        y_label="Demand (standardised)",
+        x_label="Week",
+        x_tick_labels=week_labels,
+    )
 
     def stat_box(label: str, value: str) -> str:
         return (
             f'<div class="meta-box"><div class="lbl">{label}</div>'
             f'<div class="val">{value}</div></div>'
         )
-
-    legend = "".join(
-        f'<div class="li"><span class="sw" style="background:{colors[ch]}"></span>{ch}</div>'
-        for ch in channels
-    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -1281,23 +1550,44 @@ the three problems below (dominance check, else worst-axis).</div>
 
 <section>
   <div class="s-label">Section 6</div>
-  <h2>Appendix</h2>
+  <h2>Appendix: what you supplied</h2>
+  <p>Every input this report is built on, laid out plainly -- so it can be
+  checked against what you actually told us, and so anyone could reproduce
+  every chart above from these inputs alone, in a notebook, without this
+  report class.</p>
+
   <div class="fig">
-    <div class="fig-hdr"><div class="fig-title">Spend, history + plan (recommended schedule)</div></div>
-    <div class="fig-body">{appendix_spend_svg}</div>
-    <div class="legend">{legend}</div>
+    <div class="fig-hdr">
+      <div class="fig-title">Channel marginal return</div>
+      <div class="fig-sub">The plausible ROI supplied per channel -- ground truth throughout this report</div>
+    </div>
+    <div class="fig-body">{mroi_svg}</div>
   </div>
-  {
-        ""
-        if not saturation_svg
-        else f'''
+
+  {adstock_fig_html}
+
+  {saturation_fig_html}
+
   <div class="fig">
-    <div class="fig-hdr"><div class="fig-title">Assumed saturation curve, by channel</div></div>
-    <div class="fig-body">{saturation_svg}</div>
-    <div class="legend">{legend}</div>
-  </div>'''
-    }
-  {saturation_note}
+    <div class="fig-hdr">
+      <div class="fig-title">Spend, history + plan</div>
+      <div class="fig-sub">Actual weekly spend by channel, on the recommended ({
+        winner
+    }) schedule</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">{legend}</div>
+      {appendix_spend_svg}
+    </div>
+  </div>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Demand</div>
+      <div class="fig-sub">The one latent demand series driving every simulated sales column in this report</div>
+    </div>
+    <div class="fig-body">{demand_series_svg}</div>
+  </div>
 </section>
 
 </main>
