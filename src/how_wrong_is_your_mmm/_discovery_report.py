@@ -14,10 +14,11 @@ the report picks ONE "highest impact" strategy (dominance check, else
 worst-axis -- see _pick_winner) and uses it for every "impact from best
 lever" callout.
 
-Report structure: cover -> correlation (before) -> variance problem +
-impact -> bias problem + impact -> identifiability problem + impact ->
-correlation (after) -> cross-strategy table (every candidate, with a
-dropdown) -> appendix (spend/demand time series, saturation curve).
+Report structure: cover -> spend correlation, before vs after ->
+variance problem + impact -> bias problem + impact -> identifiability
+problem + impact (saturation and adstock each get their own chart) ->
+cross-strategy table (every candidate, with a dropdown) -> appendix
+(spend/demand time series, saturation curve).
 
 Follows the package's shared-DGP design (session 44): one demand series
 drives every simulated sales column in this report, and saturation/adstock
@@ -1015,10 +1016,8 @@ def _render_html(report: DiscoveryReport) -> str:
         )
         for ch in channels
     }
-    id_narrowing_text = ", ".join(
-        f"{ch} b {b_narrowing[ch]:.0%} / lambda {lam_narrowing[ch]:.0%}"
-        for ch in channels
-    )
+    b_narrowing_text = ", ".join(f"{ch} {b_narrowing[ch]:.0%}" for ch in channels)
+    lam_narrowing_text = ", ".join(f"{ch} {lam_narrowing[ch]:.0%}" for ch in channels)
 
     corr_before_html = _corr_table_html(baseline["correlation"], channels)
     corr_after_html = _corr_table_html(best["correlation"], channels)
@@ -1118,11 +1117,30 @@ the three problems below (dominance check, else worst-axis).</div>
 
 <section>
   <div class="s-label">Section 1</div>
-  <h2>Spend correlation, before</h2>
+  <h2>Spend correlation, before vs. after</h2>
   <p>How entangled each channel's spend is with every other channel's, across
   history + plan. The more correlated a pair, the harder it is for a model to
-  tell their individual contributions apart.</p>
-  {corr_before_html}
+  tell their individual contributions apart -- phasing under <b>{winner}</b>
+  is the only change made between the two matrices below.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Channel correlation, before vs. after</div>
+      <div class="fig-sub">Pearson correlation, weekly spend by channel &middot; plan year only, monthly totals identical in both</div>
+    </div>
+    <div class="fig-body corr-cols">
+      <div class="corr-col">
+        <div class="corr-col-hdr">Before phasing</div>
+        {corr_before_html}
+      </div>
+      <div class="corr-col">
+        <div class="corr-col-hdr">After phasing</div>
+        {corr_after_html}
+      </div>
+    </div>
+    <p class="fig-cap">Monthly totals are identical on both sides -- only the
+    within-month weekly pattern changes, which is what breaks the
+    collinearity.</p>
+  </div>
 </section>
 
 <section>
@@ -1201,16 +1219,14 @@ the three problems below (dominance check, else worst-axis).</div>
   value.</p>
   <p><b>The fix:</b> the same phasing strategy was scored on this too, and
   <b>{winner}</b> won here as well.</p>
-  <p><b>The impact:</b> ranges narrow by {id_narrowing_text}, and the RSS
-  valley shrinks from {id_valley_before:.0f}% to {id_valley_after:.0f}% of
-  the (b, lambda) grid within {tol_pct:.0f}% of the best fit, averaged
-  across channels.</p>
+  <p><b>The impact:</b> saturation ranges narrow by {b_narrowing_text};
+  adstock ranges narrow by {lam_narrowing_text}. The RSS valley shrinks from
+  {id_valley_before:.0f}% to {id_valley_after:.0f}% of the (b, lambda) grid
+  within {tol_pct:.0f}% of the best fit, averaged across channels.</p>
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">The recovered range tightens, by channel</div>
-      <div class="fig-sub">Recovered saturation and adstock, each channel profiled on its own: unphased vs {
-        winner
-    }</div>
+      <div class="fig-title">Saturation range tightens, by channel</div>
+      <div class="fig-sub">Recovered saturation exponent (b): unphased vs {winner}</div>
     </div>
     <div class="fig-body">
       <div class="legend">
@@ -1221,25 +1237,35 @@ the three problems below (dominance check, else worst-axis).</div>
         <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Plausible value supplied</span>
       </div>
       {b_svg}
-      {lam_svg}
     </div>
     <p class="fig-cap">Each row is the p10&ndash;p90 range of that
-    channel's OWN recovered value across sims, holding every other channel
-    at its own supplied curvature -- a wide range means this channel's
-    spend pattern doesn't pin the parameter down.</p>
+    channel's OWN recovered saturation across sims, holding every other
+    channel at its own supplied curvature -- a wide range means this
+    channel's spend pattern doesn't pin down HOW MUCH it saturates.</p>
+  </div>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Adstock range tightens, by channel</div>
+      <div class="fig-sub">Recovered adstock decay (lambda): unphased vs {winner}</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Unphased (today)</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> {
+        html.escape(winner)
+    }</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Plausible value supplied</span>
+      </div>
+      {lam_svg}
+    </div>
+    <p class="fig-cap">Same idea, for how long each channel's effect carries
+    over -- a wide range means this channel's spend pattern doesn't pin down
+    HOW LONG the effect lasts.</p>
   </div>
 </section>
 
 <section>
   <div class="s-label">Section 5</div>
-  <h2>Spend correlation, after</h2>
-  <p>The same correlation matrix, recomputed on the recommended
-  ({winner}) schedule.</p>
-  {corr_after_html}
-</section>
-
-<section>
-  <div class="s-label">Section 6</div>
   <h2>Every candidate strategy</h2>
   <p>The table above defaults to {winner}, the report's recommended
   strategy. Use the dropdown to see any other candidate's numbers -- the
@@ -1254,7 +1280,7 @@ the three problems below (dominance check, else worst-axis).</div>
 </section>
 
 <section>
-  <div class="s-label">Section 7</div>
+  <div class="s-label">Section 6</div>
   <h2>Appendix</h2>
   <div class="fig">
     <div class="fig-hdr"><div class="fig-title">Spend, history + plan (recommended schedule)</div></div>
@@ -1339,6 +1365,9 @@ svg.chart { display: block; width: 100%; }
 .legend { display: flex; flex-wrap: wrap; gap: .85rem; padding: .1rem 1.1rem .95rem; font-size: .78rem; }
 .li { display: flex; align-items: center; gap: .35rem; }
 .sw { width: .7rem; height: .7rem; border-radius: 2px; display: inline-block; }
+.corr-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+@media (max-width: 620px) { .corr-cols { grid-template-columns: 1fr; } }
+.corr-col-hdr { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: .5rem; text-align: center; }
 table.corr-table, table.cross-table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .85rem; }
 table.corr-table th, table.corr-table td, table.cross-table th, table.cross-table td { border: 1px solid var(--border); padding: .4rem .6rem; text-align: center; }
 table.cross-table th { background: var(--bg); }
