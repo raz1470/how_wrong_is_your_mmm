@@ -7,12 +7,21 @@ quantifies that unreliability.
 
 Scope note: this diagnostic measures sampling variance under a model that is
 correctly specified by construction (the DGP and the estimator share the same
-linear functional form). It is silent on misspecification -- an omitted
-driver (seasonality, a competitor event, adstock, saturation) can leave this
-diagnostic looking healthy while the point estimate itself is badly biased.
-Read the coefficient of variation (CV) below as "how identifiable is this
-design", not "how correct is this model." See docs/collinearity_research.html
-for the full scope discussion.
+functional form). Demand is the one exception controlled by choice (via
+`controls` on fit(), see below). Curvature is not optional in the same way:
+when saturation/adstock are supplied, fit() transforms its own design to
+match them (see fit()'s docstring), so the estimator's functional form
+tracks the DGP's exactly -- it does NOT estimate saturation/adstock from the
+data, it takes them as given, correctly-specified inputs. Whether the spend
+PATTERN could actually pin those down is a different question, answered by
+IdentifiabilityDiagnostic, not this class. Leaving saturation/adstock at
+their defaults (None, i.e. linear/no-carryover) reproduces the original
+behaviour exactly. An omitted driver this class genuinely can't see
+(seasonality, a competitor event, or a curvature you didn't tell it about)
+can still leave CV looking healthy while the point estimate itself is badly
+biased. Read the coefficient of variation (CV) below as "how identifiable is
+this design", not "how correct is this model." See
+docs/collinearity_research.html for the full scope discussion.
 
 One pipeline, two entry points:
   - Synthetic spend: pass correlation, spend is generated internally for N channels.
@@ -32,6 +41,9 @@ import pandas as pd
 from how_wrong_is_your_mmm._dgp import (
     _DEFAULT_CHANNELS,
     _DEFAULT_MARGINAL_RETURNS,
+    _adstock_for,
+    _saturation_for,
+    apply_adstock,
     simulate_demand,
     simulate_demand_proxy,
     simulate_sales,
@@ -119,6 +131,65 @@ def _validate_spend_data(spend_df: pd.DataFrame) -> None:
         )
 
 
+def _curvature_transform(
+    spend_df: pd.DataFrame,
+    channels: list[str],
+    saturation: dict[str, float] | float | None,
+    adstock: dict[str, float] | float | None,
+    reference_spend: dict[str, float] | None,
+) -> tuple[pd.DataFrame, dict[str, float]]:
+    """Transform spend into the design fit() actually regresses on, plus the
+    per-channel anchor factor that converts the resulting OLS coefficient
+    into a marginal return at reference spend.
+
+    Mirrors simulate_sales's own contribution formula exactly -- same
+    adstock-then-saturation order, same k = mr / (b * x_ref**(b-1)) anchor
+    -- but stops one step short of multiplying by k. fit_ols estimates k
+    itself as the OLS coefficient on the transformed column, so this
+    returns the transformed design and the multiplier (b * x_ref**(b-1))
+    that turns "coefficient on adstock(x, lam)**b" back into "marginal
+    return at reference_spend", the same units true_marginal_returns is in.
+    At b=1 the multiplier is exactly 1.0 (mr = k directly), so this is a
+    generalisation of the linear case, not a different formula for it.
+
+    A channel with no curvature (b=1, lam=0 -- the all-None default) takes
+    the identity path: its transformed column is the raw spend column and
+    its anchor factor is exactly 1.0, so fit()'s output is bit-for-bit
+    unchanged from before this transform existed.
+    """
+    transformed: dict[str, np.ndarray] = {}
+    anchor_factor: dict[str, float] = {}
+    for ch in channels:
+        lam = _adstock_for(adstock, ch)
+        b = _saturation_for(saturation, ch)
+        x = spend_df[ch].to_numpy()
+        if lam == 0.0 and b == 1.0:
+            transformed[ch] = x
+            anchor_factor[ch] = 1.0
+            continue
+        x = apply_adstock(x, lam)
+        if b == 1.0:
+            transformed[ch] = x
+            anchor_factor[ch] = 1.0
+            continue
+        x_ref = (
+            float(x.mean()) if reference_spend is None else float(reference_spend[ch])
+        )
+        if x_ref <= 0:
+            raise ValueError(
+                f"reference_spend for '{ch}' must be positive to calibrate "
+                f"a saturating response, got {x_ref}"
+            )
+        if (x < 0).any():
+            raise ValueError(
+                f"channel '{ch}' has negative spend, which a saturating "
+                "response is not defined for"
+            )
+        transformed[ch] = x**b
+        anchor_factor[ch] = b * x_ref ** (b - 1.0)
+    return pd.DataFrame(transformed, index=spend_df.index), anchor_factor
+
+
 class CollinearityDiagnostic:
     """Quantify how unreliable OLS marginal-return estimates are for a spend dataset.
 
@@ -201,15 +272,21 @@ class CollinearityDiagnostic:
         when `demand` isn't supplied directly). Deliberately separate from
         spend_seed so changing one doesn't shift the other's draw.
     saturation:
-        Forwarded to simulate_sales -- see its own docstring. A float
-        applied to every channel, or a dict of channel -> exponent b in
-        (0, 1]; None (default) is linear, reproducing prior behaviour.
+        Forwarded to simulate_sales for truth generation, AND used by
+        fit() to transform its own design to match (see fit()'s note) --
+        so the estimator stays correctly specified for curvature, not just
+        for demand. A float applied to every channel, or a dict of channel
+        -> exponent b in (0, 1]; None (default) is linear, reproducing
+        prior behaviour exactly.
     adstock:
-        Forwarded to simulate_sales -- see its own docstring. A float
-        applied to every channel, or a dict of channel -> decay in [0, 1);
-        None (default) is no carryover, reproducing prior behaviour.
+        Forwarded to simulate_sales for truth generation, AND used by
+        fit() to transform its own design to match (see fit()'s note),
+        same reasoning as saturation. A float applied to every channel, or
+        a dict of channel -> decay in [0, 1); None (default) is no
+        carryover, reproducing prior behaviour exactly.
     reference_spend:
-        Forwarded to simulate_sales -- see its own docstring. Only matters
+        Forwarded to simulate_sales, AND used by fit() to anchor the same
+        marginal-return conversion on the estimator side. Only matters
         when saturation is active; defaults to each channel's own mean
         spend, same as simulate_sales's own default.
     """
@@ -276,6 +353,8 @@ class CollinearityDiagnostic:
         self.results_: pd.DataFrame | None = None
         self.demand_: np.ndarray | None = None
         self.controls_: pd.DataFrame | pd.Series | None = None
+        self.fit_spend_df_: pd.DataFrame | None = None
+        self.anchor_factor_: dict[str, float] | None = None
 
     @property
     def true_elasticities(self) -> dict[str, float]:
@@ -304,6 +383,18 @@ class CollinearityDiagnostic:
             Number of simulations (noise seeds).
         fast_mode:
             If True, overrides n_sims=10 for quick notebook iteration.
+
+        Note on saturation/adstock (set on __init__, not here): when set,
+        fit() does not fit a linear OLS on raw spend -- it transforms each
+        channel's spend the same way simulate_sales does (adstock then
+        saturation, see _curvature_transform) and fits on THAT, converting
+        the resulting coefficient back to a marginal return at
+        reference_spend. This assumes the supplied saturation/adstock are
+        correct, the same assumption simulate_sales makes when generating
+        the truth -- it does not estimate curvature from the data (that is
+        IdentifiabilityDiagnostic's job). At the defaults (None, i.e.
+        linear/no-carryover) this is the identity transform and fit()
+        behaves exactly as it did before saturation/adstock existed.
         controls:
             What the OLS fit controls for, forwarded to fit_ols. None or
             False (default): omit -- reproduces prior behaviour exactly,
@@ -425,6 +516,14 @@ class CollinearityDiagnostic:
             resolved_controls = controls
         self.controls_ = resolved_controls
 
+        self.fit_spend_df_, self.anchor_factor_ = _curvature_transform(
+            self.spend_df_,
+            self.channels_,
+            self.saturation,
+            self.adstock,
+            self.reference_spend,
+        )
+
         records = []
         for sim in range(n_sims):
             sales = simulate_sales(
@@ -439,10 +538,18 @@ class CollinearityDiagnostic:
                 adstock=self.adstock,
                 reference_spend=self.reference_spend,
             )
-            estimated = fit_ols(self.spend_df_, sales, controls=resolved_controls)
+            # Fit on the curvature-transformed design (identity when
+            # saturation/adstock are at their defaults), then convert each
+            # channel's raw coefficient back to a marginal return at
+            # reference_spend via its anchor factor -- see
+            # _curvature_transform's docstring. Without this, fit() always
+            # fit a linear OLS on raw spend even when the DGP above it just
+            # generated a curved response, which left the point estimate
+            # badly biased by a mismatch this diagnostic couldn't see.
+            estimated = fit_ols(self.fit_spend_df_, sales, controls=resolved_controls)
             for channel in self.channels_:
                 true_r = self.true_marginal_returns[channel]
-                est_r = estimated[channel]
+                est_r = estimated[channel] * self.anchor_factor_[channel]
                 records.append(
                     {
                         "sim": sim,
@@ -460,8 +567,10 @@ class CollinearityDiagnostic:
     def analytic_cv(self) -> pd.Series:
         """Closed-form coefficient of variation per channel, no simulation.
 
-        Because the DGP and the estimator share the same linear functional
-        form, OLS variance has an exact closed form:
+        Because the DGP and the estimator share the same functional form
+        (linear, or linear-in-transformed-features when saturation/adstock
+        are supplied -- see fit()'s note), OLS variance has an exact closed
+        form:
         ``Var(beta_hat_j) = sigma^2 * [(X'X)^-1]_jj``, so
         ``CV_j = sigma * sqrt([(X'X)^-1]_jj) / beta_j``. This requires no
         noise simulation at all -- it is exact, about 50x faster than
@@ -482,7 +591,7 @@ class CollinearityDiagnostic:
             raise RuntimeError("Call fit() first (to populate spend_df_).")
 
         cols = [np.ones(len(self.spend_df_))] + [
-            self.spend_df_[c].to_numpy() for c in self.channels_
+            self.fit_spend_df_[c].to_numpy() for c in self.channels_
         ]
         if self.controls_ is not None:
             # Match fit_ols's own column assembly, so the closed form sees
@@ -500,8 +609,14 @@ class CollinearityDiagnostic:
         cv = {}
         for i, ch in enumerate(self.channels_):
             var_beta = (self.revenue_noise_std**2) * xtx_inv[i + 1, i + 1]
+            # var_beta is Var(coefficient on the transformed column); scale
+            # by the anchor factor squared to get Var(marginal return at
+            # reference_spend) -- same conversion fit() applies to the point
+            # estimate itself, so this closed form stays exact once
+            # saturation/adstock are supplied, not just at their defaults.
+            var_mr = var_beta * self.anchor_factor_[ch] ** 2
             beta = self.true_marginal_returns[ch]
-            cv[ch] = float(np.sqrt(var_beta) / abs(beta))
+            cv[ch] = float(np.sqrt(var_mr) / abs(beta))
         return pd.Series(cv, name="analytic_cv")
 
     def summary(

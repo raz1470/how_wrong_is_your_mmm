@@ -2,6 +2,7 @@
 
 import warnings
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -585,3 +586,101 @@ class TestFloatQualityControls:
         ).fit(n_sims=5, controls=0.8)
         assert diag.controls_.name == "demand_proxy"
         assert len(diag.controls_) == len(diag.spend_df_)
+
+
+class TestCurvatureAwareFit:
+    """saturation/adstock on fit(): correctly-specified curvature, not
+    misspecification. Session 46 -- fit() used to always fit a linear OLS
+    on raw spend even when saturation/adstock made simulate_sales's truth
+    curved, which left a bias phasing couldn't touch (session 45's
+    finding). See _curvature_transform in _diagnostic.py.
+    """
+
+    def test_noop_at_defaults_matches_raw_spend(self):
+        diag = CollinearityDiagnostic(correlation=0.7, spend_seed=2).fit(n_sims=5)
+        pd.testing.assert_frame_equal(diag.fit_spend_df_, diag.spend_df_)
+        assert diag.anchor_factor_ == {ch: 1.0 for ch in CHANNELS}
+
+    def test_curvature_supplied_recovers_true_marginal_return(self):
+        # The regression test for the fix itself: session 45 found that a
+        # near-perfect demand proxy (quality=0.999) still left ~25% bias
+        # once saturation/adstock were realistic, because fit() ignored
+        # them. With the curvature transform, that same near-perfect proxy
+        # should recover the true marginal return closely.
+        diag = CollinearityDiagnostic(
+            correlation=0.7,
+            n_obs=208,
+            revenue_noise_std=5_000.0,
+            demand_coef=500.0,
+            saturation={"tv": 0.6, "meta": 0.85, "search": 0.9},
+            adstock={"tv": 0.5, "meta": 0.1, "search": 0.1},
+        ).fit(n_sims=100, controls=0.999, proxy_seed=0)
+        bias_pct = diag.summary().set_index("channel")["mean_error_pct"]
+        for ch in CHANNELS:
+            assert abs(bias_pct[ch]) < 3.0, f"{ch}: {bias_pct[ch]}% (was ~25% pre-fix)"
+
+    def test_float_saturation_adstock_broadcast_like_per_channel_dict(self):
+        diag_f = CollinearityDiagnostic(
+            correlation=0.7, spend_seed=1, saturation=0.7, adstock=0.3
+        ).fit(n_sims=5)
+        diag_d = CollinearityDiagnostic(
+            correlation=0.7,
+            spend_seed=1,
+            saturation={ch: 0.7 for ch in CHANNELS},
+            adstock={ch: 0.3 for ch in CHANNELS},
+        ).fit(n_sims=5)
+        pd.testing.assert_frame_equal(diag_f.fit_spend_df_, diag_d.fit_spend_df_)
+        assert diag_f.anchor_factor_ == diag_d.anchor_factor_
+
+    def test_anchor_factor_matches_hand_computed_formula(self):
+        diag = CollinearityDiagnostic(
+            correlation=0.5, spend_seed=3, saturation=0.6
+        ).fit(n_sims=5)
+        for ch in CHANNELS:
+            x_ref = diag.spend_df_[ch].mean()  # adstock=0 (default): unchanged by it
+            expected = 0.6 * x_ref ** (0.6 - 1.0)
+            assert abs(diag.anchor_factor_[ch] - expected) < 1e-9
+
+    def test_saturation_only_transform_is_x_pow_b(self):
+        diag = CollinearityDiagnostic(
+            correlation=0.5, spend_seed=4, saturation=0.5
+        ).fit(n_sims=5)
+        for ch in CHANNELS:
+            expected = diag.spend_df_[ch].to_numpy() ** 0.5
+            assert np.allclose(diag.fit_spend_df_[ch].to_numpy(), expected)
+
+    def test_adstock_only_keeps_anchor_factor_one_but_transforms_design(self):
+        diag = CollinearityDiagnostic(correlation=0.5, spend_seed=6, adstock=0.4).fit(
+            n_sims=5
+        )
+        # b=1 throughout -- linear, so no rescaling needed on the estimate...
+        assert diag.anchor_factor_ == {ch: 1.0 for ch in CHANNELS}
+        # ...but the design fit_ols sees is still adstocked, not raw spend.
+        for ch in CHANNELS:
+            assert not np.allclose(
+                diag.fit_spend_df_[ch].to_numpy(), diag.spend_df_[ch].to_numpy()
+            )
+
+    def test_analytic_cv_matches_monte_carlo_with_curvature(self):
+        diag = CollinearityDiagnostic(
+            correlation=0.7, spend_seed=2, saturation=0.7, adstock=0.2
+        ).fit(n_sims=400)
+        analytic = diag.analytic_cv()
+        mc = diag.summary().set_index("channel")["coef_of_variation"]
+        for ch in CHANNELS:
+            assert abs(analytic[ch] - mc[ch]) / analytic[ch] < 0.3
+
+    def test_negative_reference_spend_raises(self):
+        with pytest.raises(ValueError, match="must be positive"):
+            CollinearityDiagnostic(
+                correlation=0.6,
+                saturation=0.7,
+                reference_spend={ch: -1.0 for ch in CHANNELS},
+            ).fit(n_sims=5)
+
+    def test_negative_spend_with_saturation_raises(self):
+        spend_df = pd.DataFrame(
+            {ch: [100.0, -5.0, 200.0, 150.0, 90.0] for ch in CHANNELS}
+        )
+        with pytest.raises(ValueError, match="negative spend"):
+            CollinearityDiagnostic(spend_df=spend_df, saturation=0.5).fit(n_sims=2)

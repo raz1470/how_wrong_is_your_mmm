@@ -127,6 +127,19 @@ class TestConstruction:
         with pytest.raises(ValueError, match="adstock"):
             make_report(adstock=1.0)
 
+    def test_float_saturation_broadcasts_to_every_channel(self):
+        report = make_report(saturation=0.8)
+        assert report.saturation == {ch: 0.8 for ch in CHANNELS}
+
+    def test_dict_saturation_kept_per_channel(self):
+        values = {"tv": 0.6, "meta": 0.8, "search": 1.0}
+        report = make_report(saturation=values)
+        assert report.saturation == values
+
+    def test_dict_saturation_missing_channel_raises(self):
+        with pytest.raises(KeyError, match="saturation"):
+            make_report(saturation={"tv": 0.6, "meta": 0.8})
+
     def test_default_levers_used_when_not_supplied(self):
         report = make_report()
         assert len(report.levers_) == 5
@@ -171,6 +184,9 @@ class TestFit:
             assert set(report.results_[label]["bias_pct"]) == set(CHANNELS)
 
     def test_identifiability_summary_keys(self):
+        # identifiability is now keyed by channel (IdentifiabilityDiagnostic
+        # profiles each channel's own curvature separately), not one shared
+        # summary -- see NOTES.md, session 45.
         report = fit_small(make_report())
         expected = {
             "b_mean",
@@ -182,7 +198,27 @@ class TestFit:
             "valley_pct",
         }
         for label in report.results_:
-            assert set(report.results_[label]["identifiability"]) == expected
+            identifiability = report.results_[label]["identifiability"]
+            assert set(identifiability) == set(CHANNELS)
+            for ch in CHANNELS:
+                assert set(identifiability[ch]) == expected
+
+    def test_each_lever_has_per_channel_curvature_ranges(self):
+        # b_p10/b_p90/lam_p10/lam_p90 are the recovered-value ranges the
+        # identifiability forest charts are built from.
+        report = fit_small(make_report())
+        for label in report.results_:
+            for key in ("b_p10", "b_p90", "lam_p10", "lam_p90"):
+                assert set(report.results_[label][key]) == set(CHANNELS)
+            for ch in CHANNELS:
+                assert (
+                    report.results_[label]["b_p10"][ch]
+                    <= report.results_[label]["b_p90"][ch]
+                )
+                assert (
+                    report.results_[label]["lam_p10"][ch]
+                    <= report.results_[label]["lam_p90"][ch]
+                )
 
     def test_correlation_matrix_is_square(self):
         report = fit_small(make_report())

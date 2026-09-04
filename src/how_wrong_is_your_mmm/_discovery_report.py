@@ -20,18 +20,19 @@ correlation (after) -> cross-strategy table (every candidate, with a
 dropdown) -> appendix (spend/demand time series, saturation curve).
 
 Follows the package's shared-DGP design (session 44): one demand series
-and one (saturation, adstock) assumption drive every simulated sales
-column in this report. Only the OLS model's KNOWLEDGE of demand changes
-between sections -- known for variance and identifiability, a
-measurement-error proxy (at the client's supplied plausible quality) for
-bias -- so a single demand draw and a single curvature assumption are
-resolved once in __init__ and reused throughout, never redrawn per
-candidate or per section.
+drives every simulated sales column in this report, and saturation/adstock
+-- per channel since identifiability was made per-channel later the same
+session -- are resolved once in __init__ and reused throughout, never
+redrawn per candidate or per section. Only the OLS model's KNOWLEDGE of
+demand changes between sections -- known for variance and identifiability,
+a measurement-error proxy (at the client's supplied plausible quality) for
+bias.
 """
 
 from __future__ import annotations
 
 import html
+import math
 from datetime import UTC, datetime
 
 import numpy as np
@@ -39,11 +40,15 @@ import pandas as pd
 
 from how_wrong_is_your_mmm._dgp import (
     _DEFAULT_MARGINAL_RETURNS,
+    apply_adstock,
     calibrate_baseline,
     simulate_demand,
 )
 from how_wrong_is_your_mmm._diagnostic import CollinearityDiagnostic
-from how_wrong_is_your_mmm._identifiability import IdentifiabilityDiagnostic
+from how_wrong_is_your_mmm._identifiability import (
+    IdentifiabilityDiagnostic,
+    _per_channel_map,
+)
 from how_wrong_is_your_mmm._phaser import (
     Blackout,
     _generate_phased_schedule,
@@ -190,25 +195,194 @@ def _corr_table_html(matrix: dict, channels: list[str]) -> str:
     )
 
 
-def _bar_pair_html(
-    label: str, before: float, after: float, color: str, fmt: str = "{:.1f}%"
+def _fmt_gbp(v: float) -> str:
+    """£ formatting matching the JS fmtGBP() in docs/overview.html."""
+    a = abs(v)
+    if a < 1_000:
+        return f"£{round(v):,.0f}"
+    if a < 1_000_000:
+        return f"£{round(v / 1_000):,.0f}k"
+    return f"£{v / 1_000_000:.2f}m"
+
+
+def _true_channel_revenue(
+    report: DiscoveryReport, combined: pd.DataFrame, ch: str
+) -> float:
+    """Actual curved revenue this channel generates over the PLAN portion
+    of `combined` (its last len(plan_df) rows) -- the true dashed-line
+    reference the variance/bias forest charts anchor against.
+
+    Replaces the earlier `true_marginal_returns[ch] * planned_spend_[ch]`
+    approximation, which is exact only when the channel is linear (b=1).
+    For a saturating channel it overstates true revenue when the plan
+    spends above reference_spend and understates it below -- the same per-
+    week contribution formula simulate_sales uses to generate the truth
+    (mr0 * x for linear, k * x**b anchored at reference_spend otherwise)
+    applied here instead of one flat multiplier. See NOTES.md, session 45
+    continued's review-round-1 finding.
+    """
+    lam = report.adstock[ch]
+    b = report.saturation[ch]
+    x = apply_adstock(combined[ch].to_numpy(), lam)
+    x_plan = x[-len(report.plan_df) :]
+    mr0 = report.true_marginal_returns[ch]
+    if b == 1.0:
+        return float(mr0 * x_plan.sum())
+    x_ref = report.reference_spend_[ch]
+    k = mr0 / (b * x_ref ** (b - 1.0))
+    return float((k * x_plan**b).sum())
+
+
+def _nice_tick_step(max_val: float, target_ticks: int = 6) -> float:
+    """Round a chart's tick step up to a human "1/2/5 x 10^k" size, the way
+    a plotting library would choose gridlines -- unlike docs/overview.html's
+    charts, this report doesn't know its £ scale in advance (every user
+    brings their own spend/marginal-return numbers), so the axis can't be
+    hand-picked the way overview.html's fixed £m ticks are."""
+    if max_val <= 0:
+        return 1.0
+    raw_step = max_val / target_ticks
+    magnitude = 10 ** math.floor(math.log10(raw_step))
+    for m in (1, 2, 5, 10):
+        step = m * magnitude
+        if step >= raw_step:
+            return step
+    return 10 * magnitude
+
+
+def _hi(v: float | tuple[float, float]) -> float:
+    """Upper end of a range mark, or the value itself for a point mark --
+    lets _svg_forest's axis/label code treat both the same way."""
+    return v[1] if isinstance(v, tuple) else v
+
+
+def _svg_forest(
+    data: list[dict],
+    width: int = 700,
+    row_h: int = 62,
+    x_label: str = "Incremental revenue",
+    fmt=_fmt_gbp,
 ) -> str:
-    """One labelled before/after horizontal-bar comparison row."""
-    scale = max(abs(before), abs(after), 1e-9)
-    before_w = 100 * abs(before) / scale
-    after_w = 100 * abs(after) / scale
-    return f"""
-    <div class="bar-row">
-      <div class="bar-label">{label}</div>
-      <div class="bar-track">
-        <div class="bar bar-before" style="width:{before_w:.1f}%"></div>
-        <span class="bar-val">{fmt.format(before)} &rarr; </span>
-      </div>
-      <div class="bar-track">
-        <div class="bar bar-after" style="width:{after_w:.1f}%; background:{color}"></div>
-        <span class="bar-val">{fmt.format(after)}</span>
-      </div>
-    </div>"""
+    """Two-state horizontal chart: each channel gets a pale "before" mark
+    and a solid "after" mark, plus a dashed line at the value implied by
+    the truth -- the same visual language as docs/overview.html's
+    chartProblem/chartImpact (JS there, static Python/SVG here since
+    nothing in this report changes once the winner's picked, same
+    reasoning as _svg_multiline).
+
+    Each `data` entry: {name, color, before, after, truth: float | None}.
+    `before`/`after` are each either a (p10, p90) tuple -- drawn as a
+    rounded range bar, the variance section's shape -- or a single float
+    -- drawn as a dot, for a mean-estimate quantity like the bias section
+    that has no p10/p90 to show. The two states in one chart don't have to
+    match shape (a point "before" against a range "after" renders fine),
+    though every section built so far uses one shape throughout.
+
+    Values are raw numbers -- tick step is picked at render time from
+    whatever range this chart's own numbers span, via _nice_tick_step, and
+    every axis/value label goes through `fmt` (defaults to £ formatting,
+    the variance/bias sections' convention; pass a plain "{:.2f}".format
+    for a non-£ quantity like the identifiability section's b/lambda).
+    """
+    m_top, m_right, m_bottom, m_left = 14, 96, 40, 100
+    height = m_top + m_bottom + row_h * len(data)
+    pw = width - m_left - m_right
+    ph = height - m_top - m_bottom
+    row = ph / len(data)
+
+    raw_max = max(
+        max(_hi(ch["before"]), _hi(ch["after"]), ch.get("truth") or 0.0) for ch in data
+    )
+    step = _nice_tick_step(raw_max)
+    x_max = step * math.ceil(raw_max / step) if raw_max > 0 else step
+
+    def sc_x(v: float) -> float:
+        return m_left + (v / x_max) * pw
+
+    def mark(
+        v: float | tuple[float, float],
+        cy: float,
+        color: str,
+        opacity: float | None = None,
+    ) -> str:
+        op = f' opacity="{opacity}"' if opacity is not None else ""
+        if isinstance(v, tuple):
+            lo, hi = v
+            return (
+                f'<line x1="{sc_x(lo):.1f}" y1="{cy:.1f}" x2="{sc_x(hi):.1f}" '
+                f'y2="{cy:.1f}" stroke="{color}" stroke-width="5.5" '
+                f'stroke-linecap="round"{op}/>'
+            )
+        return f'<circle cx="{sc_x(v):.1f}" cy="{cy:.1f}" r="5.5" fill="{color}"{op}/>'
+
+    parts = [
+        f'<svg class="chart" viewBox="0 0 {width} {height}" '
+        f'xmlns="http://www.w3.org/2000/svg">'
+    ]
+
+    for i in range(len(data)):
+        if i % 2 == 1:
+            y = m_top + row * i
+            parts.append(
+                f'<rect x="{m_left}" y="{y:.1f}" width="{pw}" height="{row:.1f}" '
+                f'fill="#f9fafb"/>'
+            )
+
+    ticks = np.arange(0, x_max + step / 2, step)
+    for v in ticks:
+        x = sc_x(v)
+        parts.append(
+            f'<line x1="{x:.1f}" y1="{m_top}" x2="{x:.1f}" y2="{m_top + ph:.1f}" '
+            f'stroke="#e5e7eb" stroke-width="1"/>'
+        )
+        parts.append(
+            f'<text x="{x:.1f}" y="{m_top + ph + 16:.1f}" text-anchor="middle" '
+            f'font-size="10" fill="#9ca3af">{fmt(v)}</text>'
+        )
+    parts.append(
+        f'<text x="{m_left + pw / 2:.1f}" y="{m_top + ph + 30:.1f}" '
+        f'text-anchor="middle" font-size="10" fill="#9ca3af">'
+        f"{html.escape(x_label)}</text>"
+    )
+    parts.append(
+        f'<rect x="{m_left}" y="{m_top}" width="{pw}" height="{ph:.1f}" '
+        f'fill="none" stroke="#e5e7eb" stroke-width="1"/>'
+    )
+
+    for i, ch in enumerate(data):
+        cy = m_top + row * i + row / 2
+        step_y = row * 0.22
+        cy_before, cy_after = cy - step_y, cy + step_y
+        before, after = ch["before"], ch["after"]
+        color = ch["color"]
+
+        parts.append(mark(before, cy_before, color, opacity=0.35))
+        parts.append(mark(after, cy_after, color))
+        if ch.get("truth") is not None:
+            tx = sc_x(ch["truth"])
+            parts.append(
+                f'<line x1="{tx:.1f}" y1="{cy_before - 5:.1f}" x2="{tx:.1f}" '
+                f'y2="{cy_after + 5:.1f}" stroke="#111827" stroke-width="1.6" '
+                f'stroke-dasharray="3,2"/>'
+            )
+        after_label = (
+            f"{fmt(after[0])} &ndash; {fmt(after[1])}"
+            if isinstance(after, tuple)
+            else fmt(after)
+        )
+        parts.append(
+            f'<text x="{sc_x(_hi(after)) + 8:.1f}" y="{cy_after + 3:.1f}" '
+            f'font-size="11.5" fill="{color}" font-weight="700">'
+            f"{after_label}</text>"
+        )
+        parts.append(
+            f'<text x="{m_left - 10}" y="{cy + 4:.1f}" text-anchor="end" '
+            f'font-size="12.5" font-weight="700" fill="{color}">'
+            f"{html.escape(ch['name'])}</text>"
+        )
+
+    parts.append("</svg>")
+    return "".join(parts)
 
 
 class DiscoveryReport:
@@ -243,16 +417,17 @@ class DiscoveryReport:
         lower values are more pessimistic about what you can actually
         control for in practice. Default 0.8.
     saturation, adstock:
-        The report's single shared plausible saturation exponent b in
-        (0, 1] (1.0 = linear, default) and adstock decay lambda in
-        [0, 1) (0.0 = no carryover, default), applied uniformly to every
-        channel. Unlike CollinearityDiagnostic/BudgetPhaser, these are
-        plain floats here, not per-channel dicts -- IdentifiabilityDiagnostic's
-        grid search (used in the identifiability section) assumes one
-        shared curvature for the whole plan, consistent with the
-        package's shared-DGP design (session 44); giving variance/bias a
-        per-channel curvature while identifiability only understands one
-        shared value would make the "one true world" claim false.
+        The plausible saturation exponent b in (0, 1] (1.0 = linear,
+        default) and adstock decay lambda in [0, 1) (0.0 = no carryover,
+        default) to assume PER CHANNEL -- either a dict covering every
+        channel in history_df/plan_df, or a single float that broadcasts
+        to every channel (the old shared-value behaviour). Each channel
+        gets its own value because IdentifiabilityDiagnostic's grid search
+        is now per-channel too: a channel's OWN spend pattern determines
+        how well its OWN curvature can be pinned down, which differs by
+        channel even when every channel shares the same assumed curvature
+        (session 45, changed from the original single-shared-float design
+        at Ryan's request -- see NOTES.md).
     revenue_noise_std:
         Forwarded to every internal CollinearityDiagnostic/IdentifiabilityDiagnostic.
         Set this from your own model's residual standard deviation -- see
@@ -285,8 +460,8 @@ class DiscoveryReport:
         baseline_share: float = 0.7,
         baseline_cv: float = 0.05,
         demand_proxy_quality: float = 0.8,
-        saturation: float = 1.0,
-        adstock: float = 0.0,
+        saturation: dict[str, float] | float = 1.0,
+        adstock: dict[str, float] | float = 0.0,
         revenue_noise_std: float = 26_000.0,
         levers: list[tuple[str, dict, str, bool]] | None = None,
         client_name: str = "",
@@ -301,10 +476,6 @@ class DiscoveryReport:
             )
         if not 0.0 < demand_proxy_quality <= 1.0:
             raise ValueError("demand_proxy_quality must be in (0, 1]")
-        if not 0.0 < saturation <= 1.0:
-            raise ValueError("saturation must be in (0, 1]")
-        if not 0.0 <= adstock < 1.0:
-            raise ValueError("adstock must be in [0, 1)")
 
         _get_month_labels(plan_df)  # validates DatetimeIndex, fails fast
 
@@ -318,8 +489,6 @@ class DiscoveryReport:
         self.baseline_share = baseline_share
         self.baseline_cv = baseline_cv
         self.demand_proxy_quality = demand_proxy_quality
-        self.saturation = saturation
-        self.adstock = adstock
         self.revenue_noise_std = revenue_noise_std
         self.client_name = client_name
         self.plan_year = plan_year
@@ -327,6 +496,27 @@ class DiscoveryReport:
         self.demand_process = demand_process
 
         self.channels_ = list(plan_df.columns)
+        # Per-channel from here on (a bare float broadcasts) -- see
+        # IdentifiabilityDiagnostic's per-channel profiling, the reason
+        # this stopped being a single shared value.
+        self.saturation = _per_channel_map(
+            saturation,
+            self.channels_,
+            "saturation",
+            lo=0.0,
+            hi=1.0,
+            lo_inclusive=False,
+            hi_inclusive=True,
+        )
+        self.adstock = _per_channel_map(
+            adstock,
+            self.channels_,
+            "adstock",
+            lo=0.0,
+            hi=1.0,
+            lo_inclusive=True,
+            hi_inclusive=False,
+        )
         self.levers_ = levers if levers is not None else _default_levers(self.channels_)
         self._plan_month_labels = _get_month_labels(plan_df)
 
@@ -334,6 +524,14 @@ class DiscoveryReport:
         # the SAME response curve -- same reasoning as BudgetPhaser's own
         # reference_spend default (see that class's docstring).
         self.reference_spend_ = {ch: float(plan_df[ch].mean()) for ch in self.channels_}
+
+        # Total planned spend per channel over the plan period -- distinct
+        # from reference_spend_ (mean weekly spend, anchors the saturation
+        # curve). This is what "planned_spend" means to
+        # CollinearityDiagnostic.summary()'s incremental-revenue range:
+        # revenue = marginal-return draw x total spend for the period, the
+        # same convention docs/overview.html's forest-plot charts use.
+        self.planned_spend_ = {ch: float(plan_df[ch].sum()) for ch in self.channels_}
 
         self.calibration_ = calibrate_baseline(
             pd.concat([history_df, plan_df]),
@@ -429,8 +627,14 @@ class DiscoveryReport:
             )
 
             variance_draws = []
+            revenue_p10_draws = []
+            revenue_p90_draws = []
             bias_draws = []
             id_draws = []
+            id_b_p10_draws = []
+            id_b_p90_draws = []
+            id_lam_p10_draws = []
+            id_lam_p90_draws = []
             corr_draws = []
             representative_schedule = None
 
@@ -452,8 +656,12 @@ class DiscoveryReport:
                     reference_spend=self.reference_spend_,
                 )
                 diag_var.fit(n_sims=n_sims, controls=True)
-                var_summary = diag_var.summary().set_index("channel")
+                var_summary = diag_var.summary(
+                    planned_spend=self.planned_spend_
+                ).set_index("channel")
                 variance_draws.append(var_summary["coef_of_variation"])
+                revenue_p10_draws.append(var_summary["incremental_revenue_p10"])
+                revenue_p90_draws.append(var_summary["incremental_revenue_p90"])
                 corr_draws.append(diag_var.correlation_matrix)
 
                 diag_bias = CollinearityDiagnostic(
@@ -489,11 +697,56 @@ class DiscoveryReport:
                     lam_candidates=id_lam_candidates,
                 )
                 diag_id.fit(n_sims=id_n_sims, noise_seed_offset=sd)
-                id_draws.append(diag_id.summary(tol=valley_tol))
+                id_draws.append(diag_id.summary(tol=valley_tol).set_index("channel"))
+                # p10-p90 of each channel's own recovered b/lambda across
+                # sims -- the range chart's real data (the summary's b_sd
+                # is a spread too, but a p10-p90 range plots directly on
+                # the same before/after forest chart sections 2/3 use).
+                id_b_p10_draws.append(
+                    pd.Series(
+                        {
+                            ch: diag_id.results_[ch]["recovered_b"].quantile(0.1)
+                            for ch in self.channels_
+                        }
+                    )
+                )
+                id_b_p90_draws.append(
+                    pd.Series(
+                        {
+                            ch: diag_id.results_[ch]["recovered_b"].quantile(0.9)
+                            for ch in self.channels_
+                        }
+                    )
+                )
+                id_lam_p10_draws.append(
+                    pd.Series(
+                        {
+                            ch: diag_id.results_[ch]["recovered_lam"].quantile(0.1)
+                            for ch in self.channels_
+                        }
+                    )
+                )
+                id_lam_p90_draws.append(
+                    pd.Series(
+                        {
+                            ch: diag_id.results_[ch]["recovered_lam"].quantile(0.9)
+                            for ch in self.channels_
+                        }
+                    )
+                )
 
             variance_cv = pd.concat(variance_draws, axis=1).mean(axis=1)
+            revenue_p10 = pd.concat(revenue_p10_draws, axis=1).mean(axis=1)
+            revenue_p90 = pd.concat(revenue_p90_draws, axis=1).mean(axis=1)
             bias_pct = pd.concat(bias_draws, axis=1).mean(axis=1)
-            identifiability = pd.concat(id_draws, axis=1).mean(axis=1)
+            # Per-channel DataFrame (b_mean, b_sd, ..., valley_pct), each
+            # draw already indexed by channel -- average across draws
+            # channel-by-channel, column-by-column.
+            identifiability = pd.concat(id_draws).groupby(level=0).mean()
+            id_b_p10 = pd.concat(id_b_p10_draws, axis=1).mean(axis=1)
+            id_b_p90 = pd.concat(id_b_p90_draws, axis=1).mean(axis=1)
+            id_lam_p10 = pd.concat(id_lam_p10_draws, axis=1).mean(axis=1)
+            id_lam_p90 = pd.concat(id_lam_p90_draws, axis=1).mean(axis=1)
             correlation = {
                 a: {
                     b: float(np.mean([m.loc[a, b] for m in corr_draws]))
@@ -504,18 +757,25 @@ class DiscoveryReport:
 
             results[label] = {
                 "variance_cv": variance_cv.to_dict(),
+                "revenue_p10": revenue_p10.to_dict(),
+                "revenue_p90": revenue_p90.to_dict(),
                 "bias_pct": bias_pct.to_dict(),
-                "identifiability": identifiability.to_dict(),
+                "identifiability": identifiability.to_dict(orient="index"),
+                "b_p10": id_b_p10.to_dict(),
+                "b_p90": id_b_p90.to_dict(),
+                "lam_p10": id_lam_p10.to_dict(),
+                "lam_p90": id_lam_p90.to_dict(),
                 "correlation": correlation,
                 "scores": {
                     "variance": float(variance_cv.mean()),
                     "bias": float(bias_pct.abs().mean()),
-                    "identifiability": float(identifiability["valley_pct"]),
+                    "identifiability": float(identifiability["valley_pct"].mean()),
                 },
             }
             schedules[label] = representative_schedule
 
         self.results_ = results
+        self.valley_tol_ = valley_tol
         self.winner_ = self._pick_winner(results)
         self.winner_schedule_ = schedules[self.winner_]
         self.report_data_ = self._build_report_data(fast_mode=fast_mode)
@@ -651,30 +911,131 @@ def _render_html(report: DiscoveryReport) -> str:
         else ""
     )
 
-    variance_rows = "".join(
-        _bar_pair_html(
-            ch,
-            100 * baseline["variance_cv"][ch],
-            100 * best["variance_cv"][ch],
-            colors[ch],
+    # Actual curved revenue over the plan period, per channel -- the
+    # dashed "truth" reference on the variance/bias forest charts. Uses
+    # the unphased plan (history + plan_df as given) since the true
+    # revenue a plan generates doesn't depend on which lever is being
+    # scored against it. See _true_channel_revenue.
+    combined_baseline = pd.concat([report.history_df, report.plan_df])
+    true_revenue = {
+        ch: _true_channel_revenue(report, combined_baseline, ch) for ch in channels
+    }
+
+    # Variance section: incremental-revenue forest chart (before/after,
+    # £ p10-p90 range per channel) rather than a raw CV bar -- CV is the
+    # metric the diagnostic optimizes, but £ revenue range is the number a
+    # client actually feels, and matches docs/overview.html's own framing
+    # of this same problem.
+    variance_forest_data = [
+        {
+            "name": ch,
+            "color": colors[ch],
+            "before": (baseline["revenue_p10"][ch], baseline["revenue_p90"][ch]),
+            "after": (best["revenue_p10"][ch], best["revenue_p90"][ch]),
+            "truth": true_revenue[ch],
+        }
+        for ch in channels
+    ]
+    variance_svg = _svg_forest(variance_forest_data)
+
+    def _range_width(bounds: tuple[float, float]) -> float:
+        return bounds[1] - bounds[0]
+
+    variance_narrowing = {
+        ch: _safe_improvement(
+            _range_width((baseline["revenue_p10"][ch], baseline["revenue_p90"][ch])),
+            _range_width((best["revenue_p10"][ch], best["revenue_p90"][ch])),
         )
         for ch in channels
+    }
+    variance_narrowing_text = ", ".join(
+        f"{ch} {variance_narrowing[ch]:.0%}" for ch in channels
     )
-    bias_rows = "".join(
-        _bar_pair_html(ch, baseline["bias_pct"][ch], best["bias_pct"][ch], colors[ch])
+
+    # Bias section: same chart family as variance (£ revenue, dashed true
+    # line) but a point per state, not a range -- bias_pct is a mean error
+    # averaged across draws, there's no p10/p90 to show. "Believed revenue"
+    # is what a client would think they got if they trusted the biased
+    # estimate: true revenue inflated/deflated by that mean error %.
+    def _believed_revenue(ch: str, results: dict) -> float:
+        return true_revenue[ch] * (1.0 + results["bias_pct"][ch] / 100.0)
+
+    bias_forest_data = [
+        {
+            "name": ch,
+            "color": colors[ch],
+            "before": _believed_revenue(ch, baseline),
+            "after": _believed_revenue(ch, best),
+            "truth": true_revenue[ch],
+        }
+        for ch in channels
+    ]
+    bias_svg = _svg_forest(bias_forest_data)
+    bias_narrowing_text = ", ".join(
+        f"{ch} {abs(baseline['bias_pct'][ch]):.0f}% &rarr; {abs(best['bias_pct'][ch]):.0f}%"
         for ch in channels
     )
 
-    id_before = baseline["identifiability"]
-    id_after = best["identifiability"]
-    id_rows = "".join(
-        _bar_pair_html(lbl, id_before[key], id_after[key], "#7c3aed", fmt="{:.3f}")
-        for lbl, key in [
-            ("b (saturation) sd", "b_sd"),
-            ("lambda (adstock) sd", "lam_sd"),
-        ]
-    ) + _bar_pair_html(
-        "RSS valley width", id_before["valley_pct"], id_after["valley_pct"], "#7c3aed"
+    # Identifiability section: same forest-chart family as sections 2/3,
+    # not the abandoned RSS "valley" picture (that showed the RSS surface
+    # itself, which read as confusing rather than illuminating -- see
+    # NOTES.md). What the client actually wants to know: given a plausible
+    # saturation/adstock per channel, how wide is the range of estimates
+    # recovered when fitting unphased vs {winner}? One chart per parameter,
+    # one row per channel -- IdentifiabilityDiagnostic profiles each
+    # channel's own curvature separately, holding every other channel at
+    # its own true value (session 45's per-channel redesign).
+    def _fmt_plain(v: float) -> str:
+        return f"{v:.2f}"
+
+    b_forest_data = [
+        {
+            "name": ch,
+            "color": colors[ch],
+            "before": (baseline["b_p10"][ch], baseline["b_p90"][ch]),
+            "after": (best["b_p10"][ch], best["b_p90"][ch]),
+            "truth": report.saturation[ch],
+        }
+        for ch in channels
+    ]
+    b_svg = _svg_forest(
+        b_forest_data, x_label="Saturation exponent (b)", fmt=_fmt_plain
+    )
+
+    lam_forest_data = [
+        {
+            "name": ch,
+            "color": colors[ch],
+            "before": (baseline["lam_p10"][ch], baseline["lam_p90"][ch]),
+            "after": (best["lam_p10"][ch], best["lam_p90"][ch]),
+            "truth": report.adstock[ch],
+        }
+        for ch in channels
+    ]
+    lam_svg = _svg_forest(
+        lam_forest_data, x_label="Adstock decay (lambda)", fmt=_fmt_plain
+    )
+
+    id_valley_before = baseline["scores"]["identifiability"]
+    id_valley_after = best["scores"]["identifiability"]
+    tol_pct = report.valley_tol_ * 100
+    b_narrowing = {
+        ch: _safe_improvement(
+            _range_width((baseline["b_p10"][ch], baseline["b_p90"][ch])),
+            _range_width((best["b_p10"][ch], best["b_p90"][ch])),
+        )
+        for ch in channels
+    }
+    lam_narrowing = {
+        ch: _safe_improvement(
+            _range_width((baseline["lam_p10"][ch], baseline["lam_p90"][ch])),
+            _range_width((best["lam_p10"][ch], best["lam_p90"][ch])),
+        )
+        for ch in channels
+    }
+    id_narrowing_text = ", ".join(
+        f"{ch} b {b_narrowing[ch]:.0%} / lambda {lam_narrowing[ch]:.0%}"
+        for ch in channels
     )
 
     corr_before_html = _corr_table_html(baseline["correlation"], channels)
@@ -708,11 +1069,11 @@ def _render_html(report: DiscoveryReport) -> str:
 
     saturation_note = ""
     saturation_svg = ""
-    if meta["saturation"] < 1.0:
-        b = meta["saturation"]
+    if any(b != 1.0 for b in meta["saturation"].values()):
         xs = np.linspace(0, max(report.reference_spend_.values()) * 1.5, 60)
         curves = {}
         for ch in channels:
+            b = meta["saturation"][ch]
             x0 = report.reference_spend_[ch]
             mr0 = report.true_marginal_returns[ch]
             k = mr0 / (b * x0 ** (b - 1.0)) if x0 > 0 else 0.0
@@ -720,8 +1081,8 @@ def _render_html(report: DiscoveryReport) -> str:
         saturation_svg = _svg_multiline(curves, colors, normalize=False)
     else:
         saturation_note = (
-            "<p><em>Saturation was assumed linear (b = 1.0) for this report "
-            "-- no curvature to plot.</em></p>"
+            "<p><em>Saturation was assumed linear (b = 1.0) for every "
+            "channel in this report -- no curvature to plot.</em></p>"
         )
 
     def stat_box(label: str, value: str) -> str:
@@ -785,34 +1146,106 @@ the three problems below (dominance check, else worst-axis).</div>
 <section>
   <div class="s-label">Section 2</div>
   <h2>The variance problem</h2>
-  <p>Coefficient of variation of each channel's model-estimated marginal
-  return, with demand known -- how wide a range of "equally plausible" ROI
-  estimates your spend history alone can support. Lower is better.</p>
-  <div class="fig"><div class="fig-body">{variance_rows}</div></div>
-  <p class="fig-cap">Before (unphased) &rarr; after ({winner}).</p>
+  <p><b>The problem:</b> spend is locked to a single plan, so channels move
+  together and the model can't unpick which one actually earned the
+  result.</p>
+  <p><b>The fix:</b> every candidate phasing strategy was swept against
+  this same history and plan, and <b>{winner}</b> won.</p>
+  <p><b>The impact:</b> incremental-revenue ranges tighten by
+  {variance_narrowing_text}.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">The range tightens</div>
+      <div class="fig-sub">Incremental revenue, the model-estimated range: unphased vs {
+        winner
+    }</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Unphased (today)</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> {
+        html.escape(winner)
+    }</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Revenue at the true marginal return</span>
+      </div>
+      {variance_svg}
+    </div>
+    <p class="fig-cap">The dashed line marks the revenue implied by the
+    true marginal return -- the centre barely moves, because the centre
+    was never the problem. What changes is the width.</p>
+  </div>
 </section>
 
 <section>
   <div class="s-label">Section 3</div>
   <h2>The bias problem</h2>
-  <p>Mean estimation error against the true marginal return, with demand
-  controlled for only via a proxy of quality {meta["demand_proxy_quality"]:.0%}
-  (not the true series) -- this is the omitted-variable bias a model sees
-  when demand is imperfectly measured, as it usually is in practice.</p>
-  <div class="fig"><div class="fig-body">{bias_rows}</div></div>
-  <p class="fig-cap">Before (unphased) &rarr; after ({winner}).</p>
+  <p><b>The problem:</b> even once phasing fixes the collinearity, demand
+  is never measured perfectly -- working from a proxy of quality
+  {meta["demand_proxy_quality"]:.0%} (not the true series) still pulls the
+  model's estimate off the true marginal return.</p>
+  <p><b>The fix:</b> the same phasing strategy was scored on this bias too,
+  and <b>{winner}</b> won here as well.</p>
+  <p><b>The impact:</b> mean estimation error narrows: {bias_narrowing_text}.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">The estimate moves toward the truth</div>
+      <div class="fig-sub">Revenue implied by the biased estimate: unphased vs {
+        winner
+    }</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af" opacity="0.35"/></svg> Believed today (unphased)</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af"/></svg> Believed, {
+        html.escape(winner)
+    }</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> True revenue</span>
+      </div>
+      {bias_svg}
+    </div>
+    <p class="fig-cap">"Believed" is the revenue a client would expect if
+    they trusted the biased estimate -- the dot moves toward the dashed
+    true-revenue line as the proxy's remaining confound shrinks.</p>
+  </div>
 </section>
 
 <section>
   <div class="s-label">Section 4</div>
   <h2>The identifiability problem</h2>
-  <p>Can this spend pattern pin down the saturation exponent (b) and the
-  adstock decay (lambda), even with demand known? Measured by the spread of
-  the recovered value across draws (sd) and the width of the RSS valley
-  (valley_pct) -- a flat valley means many curvatures fit about equally
-  well, i.e. unmeasurable from this design. Lower is better throughout.</p>
-  <div class="fig"><div class="fig-body">{id_rows}</div></div>
-  <p class="fig-cap">Before (unphased) &rarr; after ({winner}).</p>
+  <p><b>The problem:</b> the client supplies a plausible saturation and
+  adstock per channel, but with demand known and the spend pattern locked
+  to a single plan, many other curvature values fit the data about equally
+  well -- so what the model recovers can range far from that plausible
+  value.</p>
+  <p><b>The fix:</b> the same phasing strategy was scored on this too, and
+  <b>{winner}</b> won here as well.</p>
+  <p><b>The impact:</b> ranges narrow by {id_narrowing_text}, and the RSS
+  valley shrinks from {id_valley_before:.0f}% to {id_valley_after:.0f}% of
+  the (b, lambda) grid within {tol_pct:.0f}% of the best fit, averaged
+  across channels.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">The recovered range tightens, by channel</div>
+      <div class="fig-sub">Recovered saturation and adstock, each channel profiled on its own: unphased vs {
+        winner
+    }</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Unphased (today)</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> {
+        html.escape(winner)
+    }</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Plausible value supplied</span>
+      </div>
+      {b_svg}
+      {lam_svg}
+    </div>
+    <p class="fig-cap">Each row is the p10&ndash;p90 range of that
+    channel's OWN recovered value across sims, holding every other channel
+    at its own supplied curvature -- a wide range means this channel's
+    spend pattern doesn't pin the parameter down.</p>
+  </div>
 </section>
 
 <section>
@@ -851,7 +1284,7 @@ the three problems below (dominance check, else worst-axis).</div>
         if not saturation_svg
         else f'''
   <div class="fig">
-    <div class="fig-hdr"><div class="fig-title">Assumed saturation curve (b = {meta["saturation"]:.2f})</div></div>
+    <div class="fig-hdr"><div class="fig-title">Assumed saturation curve, by channel</div></div>
     <div class="fig-body">{saturation_svg}</div>
     <div class="legend">{legend}</div>
   </div>'''
@@ -917,18 +1350,13 @@ h2 { font-size: 1.3rem; font-weight: 700; letter-spacing: -.02em; line-height: 1
 .fig { margin: 1.5rem 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .fig-hdr { padding: .75rem 1.1rem; background: var(--bg); border-bottom: 1px solid var(--border); }
 .fig-title { font-size: .95rem; font-weight: 700; }
+.fig-sub { font-size: .8rem; color: var(--muted); margin-top: .15rem; }
 .fig-body { padding: 1.1rem 1.1rem .3rem; }
 .fig-cap { padding: .6rem 1.1rem .95rem; font-size: .82rem; color: var(--muted); }
 svg.chart { display: block; width: 100%; }
 .legend { display: flex; flex-wrap: wrap; gap: .85rem; padding: .1rem 1.1rem .95rem; font-size: .78rem; }
 .li { display: flex; align-items: center; gap: .35rem; }
 .sw { width: .7rem; height: .7rem; border-radius: 2px; display: inline-block; }
-.bar-row { margin-bottom: .9rem; }
-.bar-label { font-size: .82rem; font-weight: 700; margin-bottom: .25rem; }
-.bar-track { position: relative; background: var(--bg); border-radius: 4px; height: 1.4rem; margin-bottom: .2rem; display: flex; align-items: center; }
-.bar { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--light); }
-.bar-before { background: var(--light); }
-.bar-val { position: relative; margin-left: .5rem; font-size: .78rem; color: var(--text); z-index: 1; }
 table.corr-table, table.cross-table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .85rem; }
 table.corr-table th, table.corr-table td, table.cross-table th, table.cross-table td { border: 1px solid var(--border); padding: .4rem .6rem; text-align: center; }
 table.cross-table th { background: var(--bg); }
