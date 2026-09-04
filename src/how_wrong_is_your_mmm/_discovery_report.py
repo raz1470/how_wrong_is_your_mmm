@@ -40,8 +40,8 @@ import pandas as pd
 
 from how_wrong_is_your_mmm._dgp import (
     _DEFAULT_MARGINAL_RETURNS,
-    apply_adstock,
     calibrate_baseline,
+    channel_contributions,
     simulate_demand,
 )
 from how_wrong_is_your_mmm._diagnostic import CollinearityDiagnostic
@@ -203,34 +203,6 @@ def _fmt_gbp(v: float) -> str:
     if a < 1_000_000:
         return f"£{round(v / 1_000):,.0f}k"
     return f"£{v / 1_000_000:.2f}m"
-
-
-def _true_channel_revenue(
-    report: DiscoveryReport, combined: pd.DataFrame, ch: str
-) -> float:
-    """Actual curved revenue this channel generates over the PLAN portion
-    of `combined` (its last len(plan_df) rows) -- the true dashed-line
-    reference the variance/bias forest charts anchor against.
-
-    Replaces the earlier `true_marginal_returns[ch] * planned_spend_[ch]`
-    approximation, which is exact only when the channel is linear (b=1).
-    For a saturating channel it overstates true revenue when the plan
-    spends above reference_spend and understates it below -- the same per-
-    week contribution formula simulate_sales uses to generate the truth
-    (mr0 * x for linear, k * x**b anchored at reference_spend otherwise)
-    applied here instead of one flat multiplier. See NOTES.md, session 45
-    continued's review-round-1 finding.
-    """
-    lam = report.adstock[ch]
-    b = report.saturation[ch]
-    x = apply_adstock(combined[ch].to_numpy(), lam)
-    x_plan = x[-len(report.plan_df) :]
-    mr0 = report.true_marginal_returns[ch]
-    if b == 1.0:
-        return float(mr0 * x_plan.sum())
-    x_ref = report.reference_spend_[ch]
-    k = mr0 / (b * x_ref ** (b - 1.0))
-    return float((k * x_plan**b).sum())
 
 
 def _nice_tick_step(max_val: float, target_ticks: int = 6) -> float:
@@ -656,9 +628,9 @@ class DiscoveryReport:
                     reference_spend=self.reference_spend_,
                 )
                 diag_var.fit(n_sims=n_sims, controls=True)
-                var_summary = diag_var.summary(
-                    planned_spend=self.planned_spend_
-                ).set_index("channel")
+                var_summary = diag_var.summary(planned_spend=phased_plan).set_index(
+                    "channel"
+                )
                 variance_draws.append(var_summary["coef_of_variation"])
                 revenue_p10_draws.append(var_summary["incremental_revenue_p10"])
                 revenue_p90_draws.append(var_summary["incremental_revenue_p90"])
@@ -915,10 +887,20 @@ def _render_html(report: DiscoveryReport) -> str:
     # dashed "truth" reference on the variance/bias forest charts. Uses
     # the unphased plan (history + plan_df as given) since the true
     # revenue a plan generates doesn't depend on which lever is being
-    # scored against it. See _true_channel_revenue.
+    # scored against it. channel_contributions is the same per-week
+    # formula simulate_sales uses internally to generate the truth,
+    # exposed directly -- a notebook could call this line for line.
     combined_baseline = pd.concat([report.history_df, report.plan_df])
+    true_contributions = channel_contributions(
+        combined_baseline,
+        report.true_marginal_returns,
+        report.saturation,
+        report.adstock,
+        report.reference_spend_,
+    )
     true_revenue = {
-        ch: _true_channel_revenue(report, combined_baseline, ch) for ch in channels
+        ch: float(true_contributions[ch].iloc[-len(report.plan_df) :].sum())
+        for ch in channels
     }
 
     # Variance section: incremental-revenue forest chart (before/after,

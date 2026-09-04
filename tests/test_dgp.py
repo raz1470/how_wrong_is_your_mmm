@@ -5,9 +5,11 @@ import pandas as pd
 import pytest
 
 from how_wrong_is_your_mmm._dgp import (
+    _DEFAULT_MARGINAL_RETURNS,
     DEMAND_PROCESSES,
     apply_adstock,
     calibrate_baseline,
+    channel_contributions,
     simulate_demand,
     simulate_demand_proxy,
     simulate_sales,
@@ -747,3 +749,57 @@ class TestSimulateDemandProxy:
         # seed=7 reused deliberately: proxy's stream is offset from
         # simulate_demand's own, so this is not the same draw as demand.
         assert not np.allclose(proxy, demand)
+
+
+class TestChannelContributions:
+    """channel_contributions: the per-week true-contribution formula
+    simulate_sales sums internally, exposed directly -- see session 46,
+    NOTES.md (promoted so a notebook can price a real or hypothetical
+    future plan without going through DiscoveryReport)."""
+
+    spend_df = simulate_spend(n_obs=52, seed=0)
+
+    def test_sums_to_simulate_sales_minus_base_and_noise(self):
+        # simulate_sales = base_sales + noise + sum(channel_contributions),
+        # so at base_sales=0, revenue_noise_std=0 the two must match exactly.
+        kwargs = dict(saturation=0.6, adstock=0.3)
+        sales = simulate_sales(
+            self.spend_df,
+            MARGINAL_RETURNS,
+            base_sales=0.0,
+            revenue_noise_std=0.0,
+            **kwargs,
+        )
+        contributions = channel_contributions(self.spend_df, MARGINAL_RETURNS, **kwargs)
+        np.testing.assert_allclose(
+            sales.to_numpy(), contributions.sum(axis=1).to_numpy()
+        )
+
+    def test_linear_default_is_marginal_return_times_spend(self):
+        contributions = channel_contributions(self.spend_df, MARGINAL_RETURNS)
+        for ch in CHANNELS:
+            expected = MARGINAL_RETURNS[ch] * self.spend_df[ch].to_numpy()
+            np.testing.assert_allclose(contributions[ch].to_numpy(), expected)
+
+    def test_defaults_to_default_marginal_returns_when_none_given(self):
+        contributions = channel_contributions(self.spend_df)
+        for ch in CHANNELS:
+            expected = _DEFAULT_MARGINAL_RETURNS[ch] * self.spend_df[ch].to_numpy()
+            np.testing.assert_allclose(contributions[ch].to_numpy(), expected)
+
+    def test_shape_and_index_match_spend_df(self):
+        contributions = channel_contributions(self.spend_df, MARGINAL_RETURNS)
+        assert list(contributions.columns) == CHANNELS
+        pd.testing.assert_index_equal(contributions.index, self.spend_df.index)
+
+    def test_missing_channel_raises(self):
+        with pytest.raises(ValueError, match="no entry in"):
+            channel_contributions(self.spend_df, {"tv": 0.3, "meta": 0.5})
+
+    def test_saturation_and_adstock_change_contributions_vs_linear(self):
+        linear = channel_contributions(self.spend_df, MARGINAL_RETURNS)
+        curved = channel_contributions(
+            self.spend_df, MARGINAL_RETURNS, saturation=0.5, adstock=0.4
+        )
+        for ch in CHANNELS:
+            assert not np.allclose(linear[ch].to_numpy(), curved[ch].to_numpy())

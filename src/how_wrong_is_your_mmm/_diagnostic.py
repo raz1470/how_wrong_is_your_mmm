@@ -621,7 +621,7 @@ class CollinearityDiagnostic:
 
     def summary(
         self,
-        planned_spend: dict[str, float] | None = None,
+        planned_spend: dict[str, float] | pd.DataFrame | None = None,
         value_per_unit: float | None = None,
     ) -> pd.DataFrame:
         """Return a summary of marginal-return estimates across simulations.
@@ -640,13 +640,34 @@ class CollinearityDiagnostic:
         Parameters
         ----------
         planned_spend:
-            Optional dict mapping channel name to planned spend. When
-            supplied, adds an incremental-revenue range (p10/p90) per
-            channel, computed as the simulated marginal-return distribution
-            multiplied by planned spend (and by `value_per_unit`, if that
-            is also given). Assumes sales is already a £ value (revenue)
-            when `value_per_unit` is not supplied. Must cover every channel
-            in the fitted data; extra keys are ignored.
+            What this means, and how incremental revenue is computed from
+            it, depends on what you pass:
+
+            - dict[str, float] (a total per channel): the original,
+              linear convention -- incremental_revenue =
+              estimated_marginal_return * total. Exact when the channel
+              is linear (saturation/adstock at their defaults). Once
+              curvature is active this UNDERSTATES total revenue,
+              structurally, by roughly a factor of `b` -- marginal
+              return is always less than average return for a concave
+              response, and a bare total can't say how it's spread over
+              time, which is what the gap between them depends on. Kept
+              for backward compatibility and for channels without
+              curvature.
+            - pd.DataFrame (one column per channel, the actual future
+              WEEKLY spend pattern -- a real plan, or one built with
+              simulate_spend/a BudgetPhaser schedule): the
+              curvature-aware path. Transforms the given pattern the
+              same way fit() transformed its own design (see
+              _curvature_transform) and converts using THIS instance's
+              own `anchor_factor_` (populated by fit()), so the result
+              is exact revenue under whatever curvature this instance
+              was fit with. At saturation/adstock defaults this reduces
+              to the dict path exactly (its column sums are the totals
+              that path would take).
+
+            Must cover every channel in the fitted data; extra keys/
+            columns are ignored.
         value_per_unit:
             Optional £ value per unit of "sales" — e.g. average LTV per new
             customer, for use when the sales column represents signups or
@@ -685,6 +706,26 @@ class CollinearityDiagnostic:
                 raise KeyError(
                     f"planned_spend is missing channel(s): {sorted(missing)}"
                 )
+            if isinstance(planned_spend, pd.DataFrame):
+                # Curvature-aware path -- see the docstring above. Same
+                # transform fit() used on its own design, but converted
+                # with THIS instance's anchor_factor_, not a freshly
+                # resolved one (the transformed values don't depend on
+                # reference_spend at all, only the anchor factor does --
+                # see _curvature_transform -- so this is exact regardless
+                # of what reference_spend the DataFrame path would have
+                # resolved on its own).
+                future_design, _ = _curvature_transform(
+                    planned_spend,
+                    self.channels_,
+                    self.saturation,
+                    self.adstock,
+                    self.reference_spend,
+                )
+                planned_spend = {
+                    ch: float(future_design[ch].sum()) / self.anchor_factor_[ch]
+                    for ch in self.channels_
+                }
             multiplier = 1.0 if value_per_unit is None else value_per_unit
             revenue = self.results_.copy()
             revenue["planned_spend"] = revenue["channel"].map(planned_spend)

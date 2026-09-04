@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from how_wrong_is_your_mmm._dgp import simulate_spend
+from how_wrong_is_your_mmm._dgp import apply_adstock, simulate_spend
 from how_wrong_is_your_mmm._diagnostic import CollinearityDiagnostic
 
 MARGINAL_RETURNS = {"tv": 0.3, "meta": 0.5, "search": 0.4}
@@ -684,3 +684,76 @@ class TestCurvatureAwareFit:
         )
         with pytest.raises(ValueError, match="negative spend"):
             CollinearityDiagnostic(spend_df=spend_df, saturation=0.5).fit(n_sims=2)
+
+
+class TestPlannedSpendDataFrame:
+    """summary(planned_spend=<DataFrame>): the curvature-aware revenue
+    path -- see session 46 continued, NOTES.md. A notebook can call this
+    directly with any weekly spend pattern; DiscoveryReport does exactly
+    this with its own phased schedules, no report-only formula involved.
+    """
+
+    def test_matches_dict_path_at_defaults(self):
+        # No curvature: the DataFrame path's column sums are exactly the
+        # totals the dict path would take, so the two must agree exactly.
+        diag = CollinearityDiagnostic(correlation=0.7, spend_seed=1).fit(n_sims=20)
+        future = pd.DataFrame({ch: [10_000.0, 20_000.0, 30_000.0] for ch in CHANNELS})
+        totals = {ch: float(future[ch].sum()) for ch in CHANNELS}
+        by_frame = diag.summary(planned_spend=future)
+        by_dict = diag.summary(planned_spend=totals)
+        pd.testing.assert_frame_equal(by_frame, by_dict)
+
+    def test_matches_hand_computed_formula_under_curvature(self):
+        diag = CollinearityDiagnostic(
+            correlation=0.7, spend_seed=2, saturation=0.6, adstock=0.3
+        ).fit(n_sims=20)
+        future = pd.DataFrame(
+            {ch: [50_000.0, 80_000.0, 65_000.0, 90_000.0] for ch in CHANNELS}
+        )
+        summary = diag.summary(planned_spend=future).set_index("channel")
+        for ch in CHANNELS:
+            x = apply_adstock(future[ch].to_numpy(), 0.3)
+            expected_total = float((x**0.6).sum()) / diag.anchor_factor_[ch]
+            direct = diag.results_.loc[
+                diag.results_["channel"] == ch, "estimated_marginal_return"
+            ]
+            expected_p10 = round((direct * expected_total).quantile(0.1), 4)
+            expected_p90 = round((direct * expected_total).quantile(0.9), 4)
+            assert summary.loc[ch, "incremental_revenue_p10"] == expected_p10
+            assert summary.loc[ch, "incremental_revenue_p90"] == expected_p90
+
+    def test_same_total_different_pattern_gives_different_revenue_under_curvature(self):
+        diag = CollinearityDiagnostic(
+            correlation=0.7, spend_seed=3, saturation=0.5
+        ).fit(n_sims=10)
+        smooth = pd.DataFrame({ch: [50_000.0] * 4 for ch in CHANNELS})
+        spiky = pd.DataFrame(
+            {ch: [10_000.0, 10_000.0, 90_000.0, 90_000.0] for ch in CHANNELS}
+        )
+        assert (smooth.sum() == spiky.sum()).all()  # same total, different shape
+        smooth_summary = diag.summary(planned_spend=smooth).set_index("channel")
+        spiky_summary = diag.summary(planned_spend=spiky).set_index("channel")
+        for ch in CHANNELS:
+            assert (
+                smooth_summary.loc[ch, "incremental_revenue_p90"]
+                != spiky_summary.loc[ch, "incremental_revenue_p90"]
+            )
+
+    def test_same_total_same_pattern_gives_same_revenue_when_linear(self):
+        diag = CollinearityDiagnostic(correlation=0.7, spend_seed=4).fit(n_sims=10)
+        smooth = pd.DataFrame({ch: [50_000.0] * 4 for ch in CHANNELS})
+        spiky = pd.DataFrame(
+            {ch: [10_000.0, 10_000.0, 90_000.0, 90_000.0] for ch in CHANNELS}
+        )
+        smooth_summary = diag.summary(planned_spend=smooth).set_index("channel")
+        spiky_summary = diag.summary(planned_spend=spiky).set_index("channel")
+        pd.testing.assert_series_equal(
+            smooth_summary["incremental_revenue_p90"],
+            spiky_summary["incremental_revenue_p90"],
+        )
+
+    def test_missing_channel_column_raises(self):
+        diag = CollinearityDiagnostic(correlation=0.7).fit(n_sims=5)
+        future = pd.DataFrame({"tv": [1.0], "meta": [1.0]})
+        with pytest.raises(KeyError):
+            diag.summary(planned_spend=future)
