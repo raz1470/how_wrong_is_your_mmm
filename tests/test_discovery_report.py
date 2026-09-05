@@ -590,26 +590,63 @@ class TestToHtml:
     def test_diagnostics_charts_have_no_after_state(self):
         # single=True mode: one mark per row, not a before/after pair --
         # the per-chart legends shouldn't carry a second, winner-labelled
-        # state the way the paired before/after sections do.
+        # state the way the paired before/after Impact section does.
         report = fit_small(make_report())
         html_out = report.to_html()
         diagnostics_block = html_out[
-            html_out.index("<h2>Diagnostics</h2>") : html_out.index(
-                "<h2>Phasing strategy</h2>"
-            )
+            html_out.index("<h2>Diagnostics</h2>") : html_out.index("<h2>Impact</h2>")
         ]
         assert "Unphased (today)" in diagnostics_block
         assert f", {html.escape(report.winner_)}</span>" not in diagnostics_block
         assert 'opacity="0.35"' not in diagnostics_block
 
     def test_sections_renumbered_with_diagnostics_second(self):
+        # Session 49: problem (Diagnostics) -> impact (Impact) -> what to
+        # do (Phased spend) -> appendix (every strategy compared).
         report = fit_small(make_report())
         html_out = report.to_html()
         labels = re.findall(r'<div class="s-label">Section (\d)</div>', html_out)
-        assert labels == ["1", "2", "3", "4", "5", "6", "7"]
+        assert labels == ["1", "2", "3", "4", "5"]
         assert html_out.index("<h2>Scenario inputs</h2>") < html_out.index(
             "<h2>Diagnostics</h2>"
         )
         assert html_out.index("<h2>Diagnostics</h2>") < html_out.index(
-            "<h2>Phasing strategy</h2>"
+            "<h2>Impact</h2>"
         )
+        assert html_out.index("<h2>Impact</h2>") < html_out.index(
+            "<h2>Phased spend</h2>"
+        )
+        assert html_out.index("<h2>Phased spend</h2>") < html_out.index(
+            "<h2>Appendix: every strategy compared</h2>"
+        )
+
+    def test_impact_table_lives_only_in_appendix(self):
+        # Session 49: the strategy-impact table moved out of "Phasing
+        # strategy" into its own appendix -- Section 4 (Phased spend) is
+        # just the pacing chart for the one winning strategy.
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        phased_spend_block = html_out[
+            html_out.index("<h2>Phased spend</h2>") : html_out.index(
+                "<h2>Appendix: every strategy compared</h2>"
+            )
+        ]
+        assert "cross-table" not in phased_spend_block
+        assert 'class="pacing-cell"' in phased_spend_block
+        appendix_block = html_out[
+            html_out.index("<h2>Appendix: every strategy compared</h2>") :
+        ]
+        assert "cross-table" in appendix_block
+        assert f'data-lever="{report.winner_}" class="winner-row"' in appendix_block
+
+    def test_impact_section_does_not_restate_the_problem(self):
+        # Session 49: Section 3 (Impact) assumes Section 2 (Diagnostics)
+        # already established the problem -- it shouldn't repeat "The
+        # problem:" callouts the old per-metric sections used to open with.
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        impact_block = html_out[
+            html_out.index("<h2>Impact</h2>") : html_out.index("<h2>Phased spend</h2>")
+        ]
+        assert "<b>The problem:</b>" not in impact_block
+        assert "<b>The impact:</b>" in impact_block

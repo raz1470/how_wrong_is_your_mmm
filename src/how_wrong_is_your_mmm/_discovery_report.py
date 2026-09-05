@@ -14,8 +14,13 @@ the report picks ONE "highest impact" strategy (dominance check, else
 worst-axis -- see _pick_winner) and uses it for every "impact from best
 lever" callout.
 
-Report structure (session 48 split "how bad is the problem" from "how much
-phasing fixes it" -- still no dropdown, no JS anywhere on the page):
+Report structure (session 49: "problem, then impact, then what to do about
+it" -- still no dropdown, no JS anywhere on the page). Sections 1-4 are
+all about ONE strategy in play -- today that's always the swept winner,
+but nothing in their construction assumes a sweep happened, which matters
+if a future report ever lets a user hand-pick a strategy (with per-channel
+constraints) instead of sweeping for one -- see ReportBuilder note above.
+Only the appendix is sweep-specific:
 
 1. Scenario inputs -- everything the report is built on, in one section:
    a plain per-channel input table (spend, ROI, saturation, adstock); the
@@ -32,27 +37,24 @@ phasing fixes it" -- still no dropdown, no JS anywhere on the page):
 2. Diagnostics -- how bad the unphased problem is, full stop, before any
    fix is shown: spend correlation, variance, bias and identifiability
    (saturation + adstock), each as the unphased state only, via
-   _svg_forest's single=True mode. Session 48: pulled forward so the
-   reader sees the problem before the phasing numbers in Section 3, ahead
-   of a future Impact section that will carry the "after" half of these
-   same four charts on its own -- until then, sections 4-7 keep their own
-   before/after versions too, so the unphased half is temporarily shown
-   twice.
-3. Phasing strategy -- a strategy-impact table, one row per candidate
-   lever, variance/bias/identifiability improvement over unphased plus
-   phasing's revenue cost, winning row highlighted; then a
-   small-multiples "recommended pacing" chart, one per channel,
-   as-supplied vs the winner's own phased schedule.
-4. Spend correlation, before vs after.
-5. Variance problem + impact.
-6. Bias problem + impact.
-7. Identifiability problem + impact (saturation and adstock each get
-   their own chart).
+   _svg_forest's single=True mode (session 48).
+3. Impact -- the same four charts, now before vs after: what phasing
+   under the winning strategy does to each problem Section 2 just showed.
+   Consolidates what used to be four separate before/after sections
+   (session 49) -- each one now skips restating "the problem" (Section 2
+   already showed it) and goes straight to "the impact."
+4. Phased spend -- small-multiples "recommended pacing" chart, one per
+   channel, as-supplied vs the winning strategy's own phased schedule.
+   Used to sit alongside the strategy-impact table in one "Phasing
+   strategy" section (session 47); session 49 split them, since the
+   pacing chart is about the ONE winning strategy while the table below
+   is about comparing every candidate.
 
-No appendix -- section 1 absorbed it (session 47): the old marginal-
-return dot-plot was dropped as a duplicate of the ROI column, and the
-old flat "sales, weekly" total-line chart was dropped as a duplicate of
-implied contribution's own stacked total.
+Appendix: every strategy compared -- the strategy-impact table, one row
+per candidate lever, variance/bias/identifiability improvement over
+unphased plus phasing's revenue cost, winning row highlighted. The only
+sweep-specific content in the report; sections 1-4 are all built from
+this table's winning row alone (session 49).
 
 Follows the package's shared-DGP design (session 44): one demand series
 drives every simulated sales column in this report, and saturation/adstock
@@ -1893,41 +1895,17 @@ the three problems below (dominance check, else worst-axis).</div>
 
 <section>
   <div class="s-label">Section 3</div>
-  <h2>Phasing strategy</h2>
+  <h2>Impact</h2>
+  <p>Section 2 showed how bad each of these four problems is left unphased.
+  Here's what phasing under <b>{winner}</b> -- the candidate that most
+  improves on the unphased plan without tanking any of the three
+  reliability scores (dominance check, else worst-axis) -- actually does
+  about each one.</p>
 
-  <h3>Strategy impact</h3>
-  <p>Every candidate lever, swept from doing nothing through to
-  <b>Blackout</b>, scored on the three reliability problems this package
-  diagnoses plus what phasing costs in revenue to get there. <b>{winner}</b>
-  is highlighted below -- the candidate that most improves on the unphased
-  plan without tanking any of the three (dominance check, else worst-axis).</p>
-  <div class="table-scroll">
-  <table class="cross-table">
-    <thead><tr><th>Strategy</th><th>Variance impact</th><th>Bias impact</th><th>Identifiability impact</th><th>Cost</th></tr></thead>
-    <tbody>{impact_table_rows_html}</tbody>
-  </table>
-  </div>
-  <p class="fig-cap">Impact is the % improvement over doing nothing,
-  averaged across channels -- the same numbers that pick the winning row.
-  Cost is the share of true plan-period revenue given up by phasing under
-  each channel's assumed response curve, also averaged across channels --
-  zero when saturation is linear, largest for the strategies that push
-  spend hardest into the curve's steepest region.</p>
-
-  <h3>Recommended pacing</h3>
-  <p>As supplied (grey) vs. the recommended weekly pacing under
-  <b>{winner}</b> (black), one chart per channel -- same monthly totals
-  both sides, only the within-month timing changes.</p>
-  <div class="pacing-grid">{pacing_cells_html}</div>
-</section>
-
-<section>
-  <div class="s-label">Section 4</div>
-  <h2>Spend correlation, before vs. after</h2>
-  <p>How entangled each channel's spend is with every other channel's, across
-  history + plan. The more correlated a pair, the harder it is for a model to
-  tell their individual contributions apart -- phasing under <b>{winner}</b>
-  is the only change made between the two matrices below.</p>
+  <h3>Spend correlation</h3>
+  <p>Phasing under <b>{winner}</b> is the only change made between the two
+  matrices below -- same monthly totals both sides, only the within-month
+  weekly pattern changes, which is what breaks the collinearity.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Channel correlation, before vs. after</div>
@@ -1943,20 +1921,9 @@ the three problems below (dominance check, else worst-axis).</div>
         {corr_after_html}
       </div>
     </div>
-    <p class="fig-cap">Monthly totals are identical on both sides -- only the
-    within-month weekly pattern changes, which is what breaks the
-    collinearity.</p>
   </div>
-</section>
 
-<section>
-  <div class="s-label">Section 5</div>
-  <h2>The variance problem</h2>
-  <p><b>The problem:</b> spend is locked to a single plan, so channels move
-  together and the model can't unpick which one actually earned the
-  result.</p>
-  <p><b>The fix:</b> every candidate phasing strategy was swept against
-  this same history and plan, and <b>{winner}</b> won.</p>
+  <h3>Variance</h3>
   <p><b>The impact:</b> incremental-revenue ranges tighten by
   {variance_narrowing_text}.</p>
   <div class="fig">
@@ -1980,17 +1947,8 @@ the three problems below (dominance check, else worst-axis).</div>
     true marginal return -- the centre barely moves, because the centre
     was never the problem. What changes is the width.</p>
   </div>
-</section>
 
-<section>
-  <div class="s-label">Section 6</div>
-  <h2>The bias problem</h2>
-  <p><b>The problem:</b> even once phasing fixes the collinearity, demand
-  is never measured perfectly -- working from a proxy of quality
-  {meta["demand_proxy_quality"]:.0%} (not the true series) still pulls the
-  model's estimate off the true marginal return.</p>
-  <p><b>The fix:</b> the same phasing strategy was scored on this bias too,
-  and <b>{winner}</b> won here as well.</p>
+  <h3>Bias</h3>
   <p><b>The impact:</b> mean estimation error narrows: {bias_narrowing_text}.</p>
   <div class="fig">
     <div class="fig-hdr">
@@ -2013,18 +1971,8 @@ the three problems below (dominance check, else worst-axis).</div>
     they trusted the biased estimate -- the dot moves toward the dashed
     true-revenue line as the proxy's remaining confound shrinks.</p>
   </div>
-</section>
 
-<section>
-  <div class="s-label">Section 7</div>
-  <h2>The identifiability problem</h2>
-  <p><b>The problem:</b> the client supplies a plausible saturation and
-  adstock per channel, but with demand known and the spend pattern locked
-  to a single plan, many other curvature values fit the data about equally
-  well -- so what the model recovers can range far from that plausible
-  value.</p>
-  <p><b>The fix:</b> the same phasing strategy was scored on this too, and
-  <b>{winner}</b> won here as well.</p>
+  <h3>Identifiability</h3>
   <p><b>The impact:</b> saturation ranges narrow by {b_narrowing_text};
   adstock ranges narrow by {lam_narrowing_text}. The RSS valley shrinks from
   {id_valley_before:.0f}% to {id_valley_after:.0f}% of the (b, lambda) grid
@@ -2068,6 +2016,36 @@ the three problems below (dominance check, else worst-axis).</div>
     over -- a wide range means this channel's spend pattern doesn't pin down
     HOW LONG the effect lasts.</p>
   </div>
+</section>
+
+<section>
+  <div class="s-label">Section 4</div>
+  <h2>Phased spend</h2>
+  <p>As supplied (grey) vs. the recommended weekly pacing under
+  <b>{winner}</b> (black), one chart per channel -- same monthly totals
+  both sides, only the within-month timing changes.</p>
+  <div class="pacing-grid">{pacing_cells_html}</div>
+</section>
+
+<section>
+  <div class="s-label">Section 5</div>
+  <h2>Appendix: every strategy compared</h2>
+  <p>Every candidate lever, swept from doing nothing through to
+  <b>Blackout</b>, scored on the three reliability problems this package
+  diagnoses plus what phasing costs in revenue to get there. <b>{winner}</b>
+  is highlighted below -- Sections 2-4 are all built from this row alone.</p>
+  <div class="table-scroll">
+  <table class="cross-table">
+    <thead><tr><th>Strategy</th><th>Variance impact</th><th>Bias impact</th><th>Identifiability impact</th><th>Cost</th></tr></thead>
+    <tbody>{impact_table_rows_html}</tbody>
+  </table>
+  </div>
+  <p class="fig-cap">Impact is the % improvement over doing nothing,
+  averaged across channels -- the same numbers that pick the winning row.
+  Cost is the share of true plan-period revenue given up by phasing under
+  each channel's assumed response curve, also averaged across channels --
+  zero when saturation is linear, largest for the strategies that push
+  spend hardest into the curve's steepest region.</p>
 </section>
 
 </main>
