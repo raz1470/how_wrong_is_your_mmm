@@ -487,14 +487,20 @@ class TestToHtml:
         ids = re.findall(r'id="([^"]+)"', html_out)
         assert len(ids) == len(set(ids))
 
-    def test_corr_col_can_shrink_and_scroll_rather_than_overflow(self):
-        # Session 49: a wide before/after correlation table (many
-        # channels, long names) forced its grid column past the page
-        # edge -- .corr-col needs min-width:0 (to actually shrink to its
-        # 1fr track) plus overflow-x:auto (to scroll instead of overflow).
+    def test_impact_correlation_shows_after_only_not_side_by_side(self):
+        # Session 49: the Impact section's before/after correlation pair
+        # forced a horizontal scroll at more channels (see the dropped
+        # .corr-col fix, superseded by this) -- Ryan didn't want to
+        # scroll for it, so Impact shows only "after"; "before" lives in
+        # Diagnostics (Section 2) for readers who want the comparison.
         report = fit_small(make_report())
         html_out = report.to_html()
-        assert ".corr-col { min-width: 0; overflow-x: auto; }" in html_out
+        impact_block = html_out[
+            html_out.index("<h2>Impact</h2>") : html_out.index("<h2>Phased spend</h2>")
+        ]
+        assert "corr-cols" not in impact_block
+        assert "Channel correlation, after phasing" in impact_block
+        assert "Before phasing" not in impact_block
 
     def test_impact_table_has_one_row_per_lever(self):
         report = fit_small(make_report())

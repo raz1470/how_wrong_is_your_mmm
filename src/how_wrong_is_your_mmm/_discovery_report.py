@@ -1937,23 +1937,16 @@ the three problems below (dominance check, else worst-axis).</div>
   about each one.</p>
 
   <h3>Spend correlation</h3>
-  <p>Phasing under <b>{winner}</b> is the only change made between the two
-  matrices below -- same monthly totals both sides, only the within-month
-  weekly pattern changes, which is what breaks the collinearity.</p>
+  <p>After phasing under <b>{winner}</b> -- same monthly totals as before,
+  only the within-month weekly pattern changes, which is what breaks the
+  collinearity. See Section 2 for the unphased matrix to compare against.</p>
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Channel correlation, before vs. after</div>
-      <div class="fig-sub">Pearson correlation, weekly spend by channel &middot; plan year only, monthly totals identical in both</div>
+      <div class="fig-title">Channel correlation, after phasing</div>
+      <div class="fig-sub">Pearson correlation, weekly spend by channel &middot; plan year only, monthly totals unchanged from unphased</div>
     </div>
-    <div class="fig-body corr-cols">
-      <div class="corr-col">
-        <div class="corr-col-hdr">Before phasing</div>
-        {corr_before_html}
-      </div>
-      <div class="corr-col">
-        <div class="corr-col-hdr">After phasing</div>
-        {corr_after_html}
-      </div>
+    <div class="fig-body">
+      {corr_after_html}
     </div>
   </div>
 
@@ -2133,14 +2126,6 @@ svg.chart { display: block; width: 100%; }
 .legend { display: flex; flex-wrap: wrap; gap: .85rem; padding: .1rem 1.1rem .95rem; font-size: .78rem; }
 .li { display: flex; align-items: center; gap: .35rem; }
 .sw { width: .7rem; height: .7rem; border-radius: 2px; display: inline-block; }
-.corr-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-@media (max-width: 620px) { .corr-cols { grid-template-columns: 1fr; } }
-.corr-col-hdr { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: .5rem; text-align: center; }
-/* min-width:0 lets a grid item actually shrink to its 1fr track (the
-   grid default is min-width:auto, which is the content's own width) --
-   without it, a wide table (many channels, long names) forces its
-   column past the page edge instead of scrolling within it. */
-.corr-col { min-width: 0; overflow-x: auto; }
 .table-scroll { overflow-x: auto; }
 table.corr-table, table.cross-table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .85rem; }
 table.corr-table th, table.corr-table td, table.cross-table th, table.cross-table td { border: 1px solid var(--border); padding: .4rem .6rem; text-align: center; }
