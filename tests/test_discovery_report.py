@@ -110,6 +110,18 @@ class TestSvgMultiline:
         polys = re.findall(r'points="([^"]+)"', svg)
         assert polys[0] != polys[1]
 
+    def test_markers_true_draws_a_circle_per_point(self):
+        # Not currently exercised via to_html() (the report's own charts
+        # are all dense weekly series), but the helper is meant for a
+        # series with few, categorical x points -- keep it covered
+        # directly rather than only through report rendering.
+        svg = _svg_multiline({"a": [1, 2, 3]}, {"a": "#000"}, markers=True)
+        assert svg.count("<circle") == 3
+
+    def test_markers_false_draws_no_circle(self):
+        svg = _svg_multiline({"a": [1, 2, 3]}, {"a": "#000"}, markers=False)
+        assert "<circle" not in svg
+
 
 class TestSvgDotplot:
     def test_returns_svg_markup(self):
@@ -375,11 +387,55 @@ class TestToHtml:
         ids = re.findall(r'id="([^"]+)"', html_out)
         assert len(ids) == len(set(ids))
 
-    def test_cross_strategy_table_has_one_row_group_per_lever(self):
+    def test_impact_table_has_one_row_per_lever(self):
         report = fit_small(make_report())
         html_out = report.to_html()
         for label, *_ in report.levers_:
             assert f'data-lever="{label}"' in html_out
+
+    def test_no_dropdown_or_strategy_selector(self):
+        # Session 46: the strategy-family dropdown was dropped -- the
+        # channel-summary table is now static inputs only, and the impact
+        # table shows every lever as a row rather than filtering to one.
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert "<select" not in html_out
+        assert "<script" not in html_out
+
+    def test_channel_summary_table_is_static_inputs_only(self):
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert (
+            "<th>Channel</th><th>Spend</th><th>Saturation</th><th>Adstock</th></tr>"
+            in html_out
+        )
+        for ch in CHANNELS:
+            assert html_out.count(f"<td>{ch}</td>") >= 1
+
+    def test_impact_table_headers_and_winner_highlighted(self):
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert (
+            "<th>Strategy</th><th>Variance impact</th><th>Bias impact</th>"
+            "<th>Identifiability impact</th><th>Cost</th>" in html_out
+        )
+        assert html_out.count('class="winner-row"') == 1
+        assert f'data-lever="{report.winner_}" class="winner-row"' in html_out
+
+    def test_unphased_row_shows_zero_impact(self):
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert (
+            '<tr data-lever="unphased"><td>unphased</td>'
+            "<td>0%</td><td>0%</td><td>0%</td>" in html_out
+        )
+
+    def test_recommended_pacing_has_one_cell_per_channel(self):
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert html_out.count('class="pacing-cell"') == len(CHANNELS)
+        for ch in CHANNELS:
+            assert f'<div class="pacing-title">{ch}</div>' in html_out
 
     def test_saturation_curve_omitted_when_linear(self):
         report = fit_small(make_report(saturation=1.0))

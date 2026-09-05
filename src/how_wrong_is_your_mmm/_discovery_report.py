@@ -14,14 +14,18 @@ the report picks ONE "highest impact" strategy (dominance check, else
 worst-axis -- see _pick_winner) and uses it for every "impact from best
 lever" callout.
 
-Report structure: cover -> channel summary (recommended strategy,
-every candidate one dropdown away, plus one chart per reliability metric
-showing how it moves across every candidate lever, not just the winner)
--> spend correlation, before vs after -> variance problem + impact ->
-bias problem + impact -> identifiability problem + impact (saturation and
-adstock each get their own chart) -> appendix (every input the client
-supplied: marginal return, adstock and saturation per channel, the spend
-series, and the shared demand series).
+Report structure: cover -> channel summary (three parts, no dropdown --
+session 46 simplified this from a per-channel table with a
+strategy-picker: (a) a plain per-channel input table -- spend,
+saturation, adstock, nothing modelled; (b) a strategy-impact table, one
+row per candidate lever, variance/bias/identifiability improvement over
+unphased plus phasing's revenue cost, winning row highlighted; (c) a
+small-multiples chart, one per channel, as-supplied vs the winner's own
+phased schedule) -> spend correlation, before vs after -> variance
+problem + impact -> bias problem + impact -> identifiability problem +
+impact (saturation and adstock each get their own chart) -> appendix
+(every input the client supplied: marginal return, adstock and
+saturation per channel, the spend series, and the shared demand series).
 
 Follows the package's shared-DGP design (session 44): one demand series
 drives every simulated sales column in this report, and saturation/adstock
@@ -1216,26 +1220,40 @@ def _render_html(report: DiscoveryReport) -> str:
     corr_before_html = _corr_table_html(baseline["correlation"], channels)
     corr_after_html = _corr_table_html(best["correlation"], channels)
 
-    # Channel-summary table + dropdown -- the only part of the page driven
-    # by JS, since every other section is fixed once the winner is picked.
-    # Rows carry the lever label in a data- attribute (not an id -- several
-    # rows share a lever, one per channel, so an id would collide) and the
-    # JS below matches on it directly rather than via a CSS selector, which
-    # sidesteps having to CSS-escape labels containing "+/-", "%", "()".
     lever_labels = [label for label, *_ in report.levers_]
-    options_html = "".join(
-        f'<option value="{html.escape(lbl)}"{" selected" if lbl == winner else ""}>'
-        f"{html.escape(lbl)}{' (recommended)' if lbl == winner else ''}</option>"
-        for lbl in lever_labels
+
+    # Channel summary, part (a): plain per-channel inputs -- spend,
+    # saturation, adstock, nothing modelled and nothing lever-dependent, so
+    # no dropdown, no JS. Session 46: the old combined table conflated
+    # "what you gave us" with "what the model estimates under a strategy",
+    # which read as confusing -- split apart, this half is the intro.
+    channel_summary_rows_html = "".join(
+        f"<tr><td>{html.escape(ch)}</td>"
+        f"<td>{_fmt_gbp(report.planned_spend_[ch])}</td>"
+        f"<td>{report.saturation[ch]:.2f}</td>"
+        f"<td>{report.adstock[ch]:.2f}</td></tr>"
+        for ch in channels
     )
 
-    # Cost: % of a channel's true plan-period revenue given up by phasing,
-    # under the assumed (possibly concave) response curve. Zero whenever
-    # that channel's saturation is linear (b = 1) -- Jensen's inequality
-    # has nothing to bite on. true_revenue (already computed above) is
-    # the unphased baseline; each lever's own figure is built the exact
-    # same way (channel_contributions on history + that lever's schedule,
-    # sliced to the plan-only weeks) so the two are directly comparable.
+    # Channel summary, part (b): strategy-impact table, one row per
+    # candidate lever -- replaces the four per-channel line charts a
+    # single table reads faster for "which lever should I pick" than four
+    # charts did. Variance/bias/identifiability columns are the exact same
+    # report-wide (mean-across-channel) % improvement over unphased that
+    # _pick_winner itself scores levers on, so the highlighted winning row
+    # is provably consistent with the criterion that picked it -- just
+    # evaluated for every lever, not only the winner, the same broadening
+    # sections 2-4's own two-point comparisons already get elsewhere.
+    #
+    # Cost: % of true plan-period revenue given up by phasing, under the
+    # assumed (possibly concave) response curve. Zero whenever a channel's
+    # saturation is linear (b = 1) -- Jensen's inequality has nothing to
+    # bite on. true_revenue (already computed above) is the unphased
+    # baseline; each lever's own figure is built the exact same way
+    # (channel_contributions on history + that lever's schedule, sliced to
+    # the plan-only weeks) so the two are directly comparable. Shown here
+    # as the mean across channels, alongside the three reliability columns
+    # it trades off against.
     lever_cost_pct = {}
     for lbl in lever_labels:
         lever_contributions = channel_contributions(
@@ -1254,77 +1272,54 @@ def _render_html(report: DiscoveryReport) -> str:
             for ch in channels
         }
 
-    # Lever-impact charts: each reliability metric plotted across every
-    # candidate lever, not just unphased vs {winner} -- shows the SHAPE of
-    # the improvement (does a modest lever already capture most of the
-    # benefit, or is a channel still climbing all the way to Blackout).
-    # Same per-lever numbers report.results_ already holds for the table,
-    # reduced to a % improvement over unphased the same way sections 2-4
-    # compute their own two-point versions.
-    def _lever_series(metric_fn) -> dict[str, list[float]]:
-        return {ch: [metric_fn(lbl, ch) for lbl in lever_labels] for ch in channels}
-
-    def _variance_impact(lbl: str, ch: str) -> float:
-        return 100 * _safe_improvement(
-            baseline["variance_cv"][ch], report.results_[lbl]["variance_cv"][ch]
+    baseline_scores = baseline["scores"]
+    impact_table_rows_html = ""
+    for lbl in lever_labels:
+        scores = report.results_[lbl]["scores"]
+        variance_impact = 100 * _safe_improvement(
+            baseline_scores["variance"], scores["variance"]
+        )
+        bias_impact = 100 * _safe_improvement(baseline_scores["bias"], scores["bias"])
+        id_impact = 100 * _safe_improvement(
+            baseline_scores["identifiability"], scores["identifiability"]
+        )
+        cost_impact = float(np.mean(list(lever_cost_pct[lbl].values())))
+        is_winner = lbl == winner
+        row_class = ' class="winner-row"' if is_winner else ""
+        winner_tag = ' <span class="winner-tag">Recommended</span>' if is_winner else ""
+        impact_table_rows_html += (
+            f'<tr data-lever="{html.escape(lbl)}"{row_class}>'
+            f"<td>{html.escape(lbl)}{winner_tag}</td>"
+            f"<td>{variance_impact:.0f}%</td>"
+            f"<td>{bias_impact:.0f}%</td>"
+            f"<td>{id_impact:.0f}%</td>"
+            f"<td>{cost_impact:.2f}%</td></tr>"
         )
 
-    def _bias_impact(lbl: str, ch: str) -> float:
-        return 100 * _safe_improvement(
-            abs(baseline["bias_pct"][ch]), abs(report.results_[lbl]["bias_pct"][ch])
-        )
-
-    def _b_impact(lbl: str, ch: str) -> float:
-        r = report.results_[lbl]
-        return 100 * _safe_improvement(
-            _range_width((baseline["b_p10"][ch], baseline["b_p90"][ch])),
-            _range_width((r["b_p10"][ch], r["b_p90"][ch])),
-        )
-
-    def _lam_impact(lbl: str, ch: str) -> float:
-        r = report.results_[lbl]
-        return 100 * _safe_improvement(
-            _range_width((baseline["lam_p10"][ch], baseline["lam_p90"][ch])),
-            _range_width((r["lam_p10"][ch], r["lam_p90"][ch])),
-        )
-
-    def _short_lever_label(lbl: str) -> str:
-        return (
-            lbl.replace(" (edge, balanced)", " edge")
-            .replace(" (uniform)", " unif.")
-            .replace("+/-", "\u00b1")
-        )
-
-    lever_tick_labels = [_short_lever_label(lbl) for lbl in lever_labels]
-
-    def _impact_svg(metric_fn, y_label: str) -> str:
-        return _svg_multiline(
-            _lever_series(metric_fn),
-            colors,
+    # Channel summary, part (c): recommended pacing -- as-supplied vs the
+    # winner's own phased schedule, one small chart per channel. Both
+    # series already share plan_df's shape (every lever's schedule is
+    # plan-period only), so no history slicing needed here the way the
+    # appendix spend chart needs it. Grey/black matches the before/after
+    # convention sections 3-5's forest-chart legends already use.
+    plan_week_labels = [d.strftime("%b '%y") for d in report.plan_df.index]
+    pacing_cells_html = "".join(
+        f'<div class="pacing-cell"><div class="pacing-title">{html.escape(ch)}</div>'
+        + _svg_multiline(
+            {
+                "Plan": report.plan_df[ch].to_numpy(),
+                "Recommended": report.winner_schedule_[ch].to_numpy(),
+            },
+            {"Plan": "#9ca3af", "Recommended": "#111827"},
+            width=320,
+            height=170,
             normalize=False,
-            markers=True,
-            y_fmt=lambda v: f"{v:.0f}%",
-            y_label=y_label,
-            x_label="Phasing lever",
-            x_tick_labels=lever_tick_labels,
-            n_x_ticks=len(lever_labels),
+            y_label="Weekly spend",
+            x_label="Plan week",
+            x_tick_labels=plan_week_labels,
+            n_x_ticks=4,
         )
-
-    variance_impact_svg = _impact_svg(_variance_impact, "CV reduction vs unphased")
-    bias_impact_svg = _impact_svg(_bias_impact, "Error reduction vs unphased")
-    saturation_impact_svg = _impact_svg(_b_impact, "Saturation range narrowed")
-    adstock_impact_svg = _impact_svg(_lam_impact, "Adstock range narrowed")
-
-    table_rows_html = "".join(
-        f'<tr data-lever="{html.escape(lbl)}"><td>{html.escape(ch)}</td>'
-        f"<td>{_fmt_gbp(report.planned_spend_[ch])}</td>"
-        f"<td>{report.saturation[ch]:.2f}</td>"
-        f"<td>{report.adstock[ch]:.2f}</td>"
-        f"<td>{_fmt_gbp((report.results_[lbl]['revenue_p10'][ch] + report.results_[lbl]['revenue_p90'][ch]) / 2)}</td>"
-        f"<td>{_fmt_gbp(report.results_[lbl]['revenue_p10'][ch])} &ndash; {_fmt_gbp(report.results_[lbl]['revenue_p90'][ch])}</td>"
-        f"<td>{100 * report.results_[lbl]['variance_cv'][ch]:.1f}%</td>"
-        f"<td>{lever_cost_pct[lbl][ch]:.2f}%</td></tr>"
-        for lbl in lever_labels
+        + "</div>"
         for ch in channels
     )
 
@@ -1510,69 +1505,38 @@ the three problems below (dominance check, else worst-axis).</div>
   <div class="s-label">Section 1</div>
   <h2>Channel summary</h2>
   <p>Every channel, its planned spend, and the saturation and adstock it's
-  assumed to respond with -- against the modelled range under <b>{winner}</b>,
-  the report's recommended strategy, and what phasing costs in revenue to
-  get there. Use the dropdown to see any other candidate's numbers instead
-  -- the best strategy on your own data may not match the winner here.</p>
-  <label for="lever-select"><b>Strategy:</b></label>
-  <select id="lever-select">{options_html}</select>
+  assumed to respond with -- what you gave us, nothing modelled yet.</p>
   <div class="table-scroll">
   <table class="cross-table">
-    <thead><tr><th>Channel</th><th>Spend</th><th>Saturation</th><th>Adstock</th><th>Central estimate</th><th>Model-estimated range</th><th>CV</th><th>Cost</th></tr></thead>
-    <tbody id="cross-table-body"></tbody>
+    <thead><tr><th>Channel</th><th>Spend</th><th>Saturation</th><th>Adstock</th></tr></thead>
+    <tbody>{channel_summary_rows_html}</tbody>
   </table>
   </div>
-  <table class="hidden" id="cross-table-source">{table_rows_html}</table>
-  <p class="fig-cap">Cost is the share of that channel's true plan-period
-  revenue given up by phasing under its assumed response curve -- zero
-  when saturation is linear (b = 1.0), and largest for the strategies that
-  push spend hardest into the curve's steepest region (Blackout's dark
-  weeks probe closest to zero spend).</p>
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Variance: CV reduction, by lever</div>
-      <div class="fig-sub">Every candidate strategy, not just {
-        winner
-    } -- shows whether a modest lever already captures most of the benefit</div>
-    </div>
-    <div class="fig-body">
-      <div class="legend">{legend}</div>
-      {variance_impact_svg}
-    </div>
-    <p class="fig-cap">A curve that's already flat by the second or third
-    point isn't gaining much from a stronger lever; one still climbing at
-    the right is a case for going further.</p>
+
+  <h3>Strategy impact</h3>
+  <p>Every candidate lever, swept from doing nothing through to
+  <b>Blackout</b>, scored on the three reliability problems this package
+  diagnoses plus what phasing costs in revenue to get there. <b>{winner}</b>
+  is highlighted below -- the candidate that most improves on the unphased
+  plan without tanking any of the three (dominance check, else worst-axis).</p>
+  <div class="table-scroll">
+  <table class="cross-table">
+    <thead><tr><th>Strategy</th><th>Variance impact</th><th>Bias impact</th><th>Identifiability impact</th><th>Cost</th></tr></thead>
+    <tbody>{impact_table_rows_html}</tbody>
+  </table>
   </div>
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Bias: error reduction, by lever</div>
-      <div class="fig-sub">Every candidate strategy, not just {winner}</div>
-    </div>
-    <div class="fig-body">
-      <div class="legend">{legend}</div>
-      {bias_impact_svg}
-    </div>
-  </div>
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Saturation: range narrowed, by lever</div>
-      <div class="fig-sub">Every candidate strategy, not just {winner}</div>
-    </div>
-    <div class="fig-body">
-      <div class="legend">{legend}</div>
-      {saturation_impact_svg}
-    </div>
-  </div>
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Adstock: range narrowed, by lever</div>
-      <div class="fig-sub">Every candidate strategy, not just {winner}</div>
-    </div>
-    <div class="fig-body">
-      <div class="legend">{legend}</div>
-      {adstock_impact_svg}
-    </div>
-  </div>
+  <p class="fig-cap">Impact is the % improvement over doing nothing,
+  averaged across channels -- the same numbers that pick the winning row.
+  Cost is the share of true plan-period revenue given up by phasing under
+  each channel's assumed response curve, also averaged across channels --
+  zero when saturation is linear, largest for the strategies that push
+  spend hardest into the curve's steepest region.</p>
+
+  <h3>Recommended pacing</h3>
+  <p>As supplied (grey) vs. the recommended weekly pacing under
+  <b>{winner}</b> (black), one chart per channel -- same monthly totals
+  both sides, only the within-month timing changes.</p>
+  <div class="pacing-grid">{pacing_cells_html}</div>
 </section>
 
 <section>
@@ -1774,22 +1738,6 @@ the three problems below (dominance check, else worst-axis).</div>
 
 </main>
 </div>
-<script>
-(function () {{
-  var source = document.getElementById('cross-table-source');
-  var body = document.getElementById('cross-table-body');
-  var select = document.getElementById('lever-select');
-  var allRows = Array.prototype.slice.call(source.querySelectorAll('tr[data-lever]'));
-  function render(lever) {{
-    body.innerHTML = '';
-    allRows
-      .filter(function (r) {{ return r.getAttribute('data-lever') === lever; }})
-      .forEach(function (r) {{ body.appendChild(r.cloneNode(true)); }});
-  }}
-  select.addEventListener('change', function () {{ render(this.value); }});
-  render(select.value);
-}})();
-</script>
 </body>
 </html>
 """
@@ -1827,6 +1775,7 @@ p { margin-bottom: 1.05rem; max-width: 64ch; font-size: .98rem; }
 section { margin-top: 2.75rem; padding-top: 2rem; border-top: 1px solid var(--border); }
 .s-label { font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: .4rem; }
 h2 { font-size: 1.3rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.25; margin-bottom: .9rem; }
+h3 { font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em; margin: 1.75rem 0 .5rem; }
 .fig { margin: 1.5rem 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .fig-hdr { padding: .75rem 1.1rem; background: var(--bg); border-bottom: 1px solid var(--border); }
 .fig-title { font-size: .95rem; font-weight: 700; }
@@ -1844,6 +1793,10 @@ svg.chart { display: block; width: 100%; }
 table.corr-table, table.cross-table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .85rem; }
 table.corr-table th, table.corr-table td, table.cross-table th, table.cross-table td { border: 1px solid var(--border); padding: .4rem .6rem; text-align: center; }
 table.cross-table th { background: var(--bg); }
-table.hidden { display: none; }
-select { font-size: .95rem; padding: .3rem .5rem; margin: .5rem 0 1rem; }
+tr.winner-row td { background: #ecfdf5; font-weight: 700; }
+.winner-tag { display: inline-block; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--good); background: #d1fae5; border-radius: 4px; padding: .1rem .4rem; margin-left: .35rem; }
+.pacing-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin: 1rem 0; }
+@media (max-width: 620px) { .pacing-grid { grid-template-columns: 1fr; } }
+.pacing-cell { border: 1px solid var(--border); border-radius: 8px; padding: .75rem .75rem .3rem; }
+.pacing-title { font-size: .82rem; font-weight: 700; margin-bottom: .3rem; }
 """
