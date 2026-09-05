@@ -102,21 +102,32 @@ from how_wrong_is_your_mmm._report import _channel_colors
 # fresh choice made here. Each entry is
 # (label, per-channel spec, nudge_shape, balance_signs).
 def _default_levers(channels: list[str]) -> list[tuple[str, dict, str, bool]]:
+    """The full sweep: unphased, then every +/-20/40/60/80% intensity
+    split by nudge shape (uniform, unbalanced -- vs edge, balanced), then
+    Blackout. 10 candidates total (session 49: widened from a 5-candidate
+    spot-check of only 80%-uniform/40%+80%-edge, which Ryan flagged as
+    reading like "the" sweep when it wasn't actually every intensity)."""
+
     def all_channels(nominal: float) -> dict[str, float]:
         return {ch: nominal for ch in channels}
 
-    return [
-        ("unphased", all_channels(0.0), "uniform", False),
-        ("+/-80% (uniform)", all_channels(80.0), "uniform", False),
-        ("+/-40% (edge, balanced)", all_channels(40.0), "edge", True),
-        ("+/-80% (edge, balanced)", all_channels(80.0), "edge", True),
+    levers: list[tuple[str, dict, str, bool]] = [
+        ("unphased", all_channels(0.0), "uniform", False)
+    ]
+    for pct in (20.0, 40.0, 60.0, 80.0):
+        levers.append((f"+/-{pct:.0f}% (uniform)", all_channels(pct), "uniform", False))
+        levers.append(
+            (f"+/-{pct:.0f}% (edge, balanced)", all_channels(pct), "edge", True)
+        )
+    levers.append(
         (
             "Blackout",
             {ch: Blackout(max_dark_weeks_per_month=1) for ch in channels},
             "uniform",
             False,
-        ),
-    ]
+        )
+    )
+    return levers
 
 
 def _is_unphased(spec: dict) -> bool:
@@ -436,6 +447,19 @@ def _fmt_gbp(v: float) -> str:
     if a < 1_000_000:
         return f"£{round(v / 1_000):,.0f}k"
     return f"£{v / 1_000_000:.2f}m"
+
+
+def _lighten_hex(hex_color: str, amount: float = 0.65) -> str:
+    """Blend a #rrggbb colour toward white by `amount` (0 = unchanged, 1 =
+    white) -- a pale-vs-solid pair in the SAME hue, matching the
+    opacity=0.35 "before" convention _svg_forest uses, for a chart type
+    (_svg_multiline) whose polylines have no opacity knob of their own.
+    Used by the recommended-pacing chart so "as supplied" and the winning
+    schedule read as two shades of that channel's own colour rather than
+    a channel-blind grey/black pair."""
+    r, g, b = (int(hex_color[i : i + 2], 16) for i in (1, 3, 5))
+    r, g, b = (round(c + (255 - c) * amount) for c in (r, g, b))
+    return f"#{r:02x}{g:02x}{b:02x}"
 
 
 def _nice_tick_step(max_val: float, target_ticks: int = 6) -> float:
@@ -780,12 +804,15 @@ class DiscoveryReport:
     levers:
         The candidate strategies to sweep, as a list of
         (label, per-channel max_weekly_deviation_pct spec, nudge_shape,
-        balance_signs) tuples. Defaults to notebooks/11's own LEVERS list
-        (unphased, +/-80% uniform, +/-40% and +/-80% edge+balanced,
-        Blackout) -- see _default_levers. The first entry is expected to
-        be the unphased baseline every other candidate is compared
-        against; pass your own list to add or narrow candidates, keeping
-        an unphased baseline entry first.
+        balance_signs) tuples. Defaults to unphased, then +/-20/40/60/80%
+        at each of two nudge shapes (uniform, unbalanced -- vs edge,
+        balanced), then Blackout -- 10 candidates total, see
+        _default_levers (session 49 widened this from a 5-candidate
+        spot-check that didn't actually sweep every intensity; no longer
+        matches notebooks/11's own narrower LEVERS list). The first entry
+        is expected to be the unphased baseline every other candidate is
+        compared against; pass your own list to add or narrow candidates,
+        keeping an unphased baseline entry first.
     client_name, plan_year:
         Free-text labels shown on the report cover, same convention as
         ReportBuilder.
@@ -1556,8 +1583,10 @@ def _render_html(report: DiscoveryReport) -> str:
     # winner's own phased schedule, one small chart per channel. Both
     # series already share plan_df's shape (every lever's schedule is
     # plan-period only), so no history slicing needed here the way the
-    # appendix spend chart needs it. Grey/black matches the before/after
-    # convention sections 3-5's forest-chart legends already use.
+    # appendix spend chart needs it. Each channel's OWN colour, pale vs
+    # solid (via _lighten_hex), not a channel-blind grey/black pair --
+    # grey in particular read as too faint against the page background
+    # (session 49 feedback).
     plan_week_labels = [d.strftime("%b '%y") for d in report.plan_df.index]
     pacing_cells_html = "".join(
         f'<div class="pacing-cell"><div class="pacing-title">{html.escape(ch)}</div>'
@@ -1566,7 +1595,7 @@ def _render_html(report: DiscoveryReport) -> str:
                 "Plan": report.plan_df[ch].to_numpy(),
                 "Recommended": report.winner_schedule_[ch].to_numpy(),
             },
-            {"Plan": "#9ca3af", "Recommended": "#111827"},
+            {"Plan": _lighten_hex(colors[ch]), "Recommended": colors[ch]},
             width=320,
             height=170,
             normalize=False,
@@ -2021,9 +2050,10 @@ the three problems below (dominance check, else worst-axis).</div>
 <section>
   <div class="s-label">Section 4</div>
   <h2>Phased spend</h2>
-  <p>As supplied (grey) vs. the recommended weekly pacing under
-  <b>{winner}</b> (black), one chart per channel -- same monthly totals
-  both sides, only the within-month timing changes.</p>
+  <p>As supplied (pale) vs. the recommended weekly pacing under
+  <b>{winner}</b> (solid), one chart per channel in that channel's own
+  colour -- same monthly totals both sides, only the within-month timing
+  changes.</p>
   <div class="pacing-grid">{pacing_cells_html}</div>
 </section>
 

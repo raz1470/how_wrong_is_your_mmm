@@ -11,6 +11,7 @@ from how_wrong_is_your_mmm._discovery_report import (
     DiscoveryReport,
     _default_levers,
     _is_unphased,
+    _lighten_hex,
     _nice_axis_bounds,
     _safe_improvement,
     _svg_dotplot,
@@ -19,7 +20,7 @@ from how_wrong_is_your_mmm._discovery_report import (
 )
 from how_wrong_is_your_mmm._phaser import Blackout
 
-# Small fixtures -- DiscoveryReport sweeps 5 levers x several diagnostics
+# Small fixtures -- DiscoveryReport sweeps 10 levers x several diagnostics
 # each, so tests lean on fast_mode plus a tiny identifiability grid.
 HISTORY_DF = simulate_spend(n_obs=52, correlation=0.6, seed=0, start_date="2020-01-06")
 PLAN_DF = simulate_spend(n_obs=26, correlation=0.6, seed=1, start_date="2021-01-04")
@@ -49,8 +50,17 @@ class TestDefaultLevers:
         assert levers[0][0] == "unphased"
         assert _is_unphased(levers[0][1])
 
-    def test_five_candidates(self):
-        assert len(_default_levers(CHANNELS)) == 5
+    def test_ten_candidates(self):
+        # unphased + 4 intensities x 2 shapes + Blackout (session 49:
+        # widened from a 5-candidate spot-check to a full sweep).
+        assert len(_default_levers(CHANNELS)) == 10
+
+    def test_every_intensity_gets_both_shapes(self):
+        levers = _default_levers(CHANNELS)
+        labels = {label for label, *_ in levers}
+        for pct in ("20", "40", "60", "80"):
+            assert f"+/-{pct}% (uniform)" in labels
+            assert f"+/-{pct}% (edge, balanced)" in labels
 
     def test_blackout_entry_uses_blackout_spec(self):
         levers = _default_levers(CHANNELS)
@@ -180,6 +190,22 @@ class TestSvgDotplot:
         assert "<rect" in svg
 
 
+class TestLightenHex:
+    def test_zero_amount_returns_the_same_colour(self):
+        assert _lighten_hex("#2563eb", amount=0.0) == "#2563eb"
+
+    def test_full_amount_returns_white(self):
+        assert _lighten_hex("#2563eb", amount=1.0) == "#ffffff"
+
+    def test_partial_amount_lightens_every_channel(self):
+        lightened = _lighten_hex("#2563eb", amount=0.65)
+        r, g, b = (int(lightened[i : i + 2], 16) for i in (1, 3, 5))
+        orig_r, orig_g, orig_b = (int("2563eb"[i : i + 2], 16) for i in (0, 2, 4))
+        assert r > orig_r
+        assert g > orig_g
+        assert b > orig_b
+
+
 class TestNiceAxisBounds:
     def test_positive_range_brackets_the_data(self):
         lo, hi, step = _nice_axis_bounds(3.0, 83.0)
@@ -228,7 +254,7 @@ class TestConstruction:
 
     def test_default_levers_used_when_not_supplied(self):
         report = make_report()
-        assert len(report.levers_) == 5
+        assert len(report.levers_) == 10
 
     def test_custom_levers_respected(self):
         custom = [("unphased", {ch: 0.0 for ch in CHANNELS}, "uniform", False)]
@@ -487,6 +513,27 @@ class TestToHtml:
         assert html_out.count('class="pacing-cell"') == len(CHANNELS)
         for ch in CHANNELS:
             assert f'<div class="pacing-title">{ch}</div>' in html_out
+
+    def test_recommended_pacing_uses_channel_colour_not_grey(self):
+        # Session 49: grey read as too faint -- pacing chart now uses each
+        # channel's own colour (pale for "as supplied", solid for the
+        # winner's schedule) instead of a channel-blind grey/black pair.
+        from how_wrong_is_your_mmm._report import _channel_colors
+
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        colors = _channel_colors(CHANNELS)
+        phased_spend_block = html_out[
+            html_out.index("<h2>Phased spend</h2>") : html_out.index(
+                "<h2>Appendix: every strategy compared</h2>"
+            )
+        ]
+        # Axis labels/gridlines still use #9ca3af/#e5e7eb -- only the
+        # polyline strokes are the thing that changed.
+        assert 'stroke="#9ca3af"' not in phased_spend_block
+        assert 'stroke="#111827"' not in phased_spend_block
+        for ch in CHANNELS:
+            assert f'stroke="{colors[ch]}"' in phased_spend_block
 
     def test_implied_contribution_chart_present_with_baseline_band(self):
         report = fit_small(make_report())
