@@ -516,12 +516,31 @@ class TestToHtml:
         html_out = report.to_html()
         assert "Adstock, by channel" in html_out
 
-    def test_scenario_inputs_shows_spend_and_demand_series(self):
+    def test_scenario_inputs_shows_spend_series(self):
         report = fit_small(make_report())
         html_out = report.to_html()
         assert "Spend, history + plan" in html_out
-        assert "Demand (standardised)" in html_out
         assert "Sales / revenue, weekly -- by source" in html_out
+
+    def test_no_standalone_demand_chart(self):
+        # Session 47: dropped -- a zero-mean synthetic series with no
+        # interpretive hook on its own; its effect on sales is already
+        # visible in Implied Contribution's Baseline band.
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert "Demand (standardised)" not in html_out
+
+    def test_spend_chart_comes_before_response_curves(self):
+        # Session 47: ground in the actual data first, then show what was
+        # assumed about how it responds -- not the other way round.
+        report = fit_small(make_report(saturation=0.7, adstock=0.3))
+        html_out = report.to_html()
+        assert html_out.index("Spend, history + plan") < html_out.index(
+            "Adstock, by channel"
+        )
+        assert html_out.index("Adstock, by channel") < html_out.index(
+            "Saturation, by channel"
+        )
 
     def test_no_marginal_return_dotplot_duplicate_of_roi_column(self):
         # Session 47: dropped as a duplicate of the channel-summary ROI

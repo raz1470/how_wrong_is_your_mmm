@@ -19,14 +19,17 @@ vs "what should I do about it" -- no dropdown, no JS anywhere on the
 page):
 
 1. Scenario inputs -- everything the report is built on, in one section:
-   a plain per-channel input table (spend, ROI, saturation, adstock);
-   the assumed response curves (adstock decay, saturation); the actual
-   weekly spend and demand series behind the plan; and an "implied
-   contribution" stacked-area chart (baseline + each channel's modelled
-   contribution, summing to weekly sales) -- the package's own synthetic
-   outcome from the assumptions above, explicitly not something supplied.
-   Reproducible from these inputs alone, in a notebook, without this
-   report class.
+   a plain per-channel input table (spend, ROI, saturation, adstock); the
+   actual weekly spend behind the plan and the assumed response curves
+   (adstock decay, saturation) that explain those numbers; and an
+   "implied contribution" stacked-area chart (baseline, incl. demand, +
+   each channel's modelled contribution, summing to weekly sales) -- the
+   package's own synthetic outcome from the assumptions above, explicitly
+   not something supplied. No standalone demand chart (session 47,
+   dropped -- a zero-mean synthetic series with no interpretive hook on
+   its own; its effect is already visible in Implied Contribution's
+   Baseline band). Reproducible from these inputs alone, in a notebook,
+   without this report class.
 2. Phasing strategy -- a strategy-impact table, one row per candidate
    lever, variance/bias/identifiability improvement over unphased plus
    phasing's revenue cost, winning row highlighted; then a
@@ -1590,15 +1593,12 @@ def _render_html(report: DiscoveryReport) -> str:
         x_tick_labels=week_labels,
     )
 
-    demand_series_svg = _svg_multiline(
-        {"demand": report.demand_},
-        {"demand": "#111827"},
-        normalize=False,
-        y_fmt=lambda v: f"{v:.1f}",
-        y_label="Demand (standardised)",
-        x_label="Week",
-        x_tick_labels=week_labels,
-    )
+    # No standalone demand chart -- it's a zero-mean synthetic series with
+    # no interpretive hook on its own, and its actual effect on sales is
+    # already visible in Implied Contribution's Baseline band below
+    # (baseline level + demand fluctuation combined). Session 47: dropped
+    # per Ryan, same reasoning as the other duplicates above.
+    #
     # No separate "Sales / revenue, weekly" total-line chart any more --
     # the Implied Contribution stacked-area chart above already shows
     # this same total (it's the top edge of the stack), broken down by
@@ -1654,24 +1654,19 @@ the three problems below (dominance check, else worst-axis).</div>
   <h2>Scenario inputs</h2>
   <p>Everything this report is built on: each channel's planned spend,
   ROI, and the saturation and adstock it's assumed to respond with; the
-  shape of those response curves; the actual weekly spend and demand
-  behind the plan; and what it all implies for weekly sales. Background
-  demand accounts for {meta["baseline_share"]:.0%} of sales in this
-  scenario -- the {1 - meta["baseline_share"]:.0%} left over is what
-  these channels are trying to explain, which is why the reliability
-  problems in the sections that follow matter. Everything below is
-  reproducible from these inputs alone, in a notebook, without this
-  report class.</p>
+  actual weekly spend behind the plan and the shape of those response
+  curves; and what it all implies for weekly sales. Background demand
+  accounts for {meta["baseline_share"]:.0%} of sales in this scenario --
+  the {1 - meta["baseline_share"]:.0%} left over is what these channels
+  are trying to explain, which is why the reliability problems in the
+  sections that follow matter. Everything below is reproducible from
+  these inputs alone, in a notebook, without this report class.</p>
   <div class="table-scroll">
   <table class="cross-table">
     <thead><tr><th>Channel</th><th>Spend</th><th>ROI</th><th>Saturation</th><th>Adstock</th></tr></thead>
     <tbody>{channel_summary_rows_html}</tbody>
   </table>
   </div>
-
-  {adstock_fig_html}
-
-  {saturation_fig_html}
 
   <div class="fig">
     <div class="fig-hdr">
@@ -1684,13 +1679,9 @@ the three problems below (dominance check, else worst-axis).</div>
     </div>
   </div>
 
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Demand</div>
-      <div class="fig-sub">The one latent demand series driving every simulated sales column in this report</div>
-    </div>
-    <div class="fig-body">{demand_series_svg}</div>
-  </div>
+  {adstock_fig_html}
+
+  {saturation_fig_html}
 
   <h3>Implied contribution</h3>
   <p>What these inputs produce, week by week -- background demand plus
