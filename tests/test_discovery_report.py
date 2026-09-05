@@ -406,11 +406,23 @@ class TestToHtml:
         report = fit_small(make_report())
         html_out = report.to_html()
         assert (
-            "<th>Channel</th><th>Spend</th><th>Saturation</th><th>Adstock</th></tr>"
-            in html_out
+            "<th>Channel</th><th>Spend</th><th>ROI</th><th>Saturation</th>"
+            "<th>Adstock</th></tr>" in html_out
         )
         for ch in CHANNELS:
             assert html_out.count(f"<td>{ch}</td>") >= 1
+
+    def test_channel_summary_shows_roi(self):
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        for ch in CHANNELS:
+            assert f"<td>£{report.true_marginal_returns[ch]:.2f}</td>" in html_out
+
+    def test_channel_summary_mentions_demand_share(self):
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert f"{report.baseline_share:.0%}" in html_out
+        assert f"{1 - report.baseline_share:.0%}" in html_out
 
     def test_impact_table_headers_and_winner_highlighted(self):
         report = fit_small(make_report())

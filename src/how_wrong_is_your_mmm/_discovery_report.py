@@ -1222,14 +1222,17 @@ def _render_html(report: DiscoveryReport) -> str:
 
     lever_labels = [label for label, *_ in report.levers_]
 
-    # Channel summary, part (a): plain per-channel inputs -- spend,
+    # Channel summary, part (a): plain per-channel inputs -- spend, ROI,
     # saturation, adstock, nothing modelled and nothing lever-dependent, so
     # no dropdown, no JS. Session 46: the old combined table conflated
     # "what you gave us" with "what the model estimates under a strategy",
-    # which read as confusing -- split apart, this half is the intro.
+    # which read as confusing -- split apart, this half is the intro. ROI
+    # is true_marginal_returns[ch], the same £-per-£1-at-the-margin figure
+    # the appendix dot-plot already shows -- no new computation.
     channel_summary_rows_html = "".join(
         f"<tr><td>{html.escape(ch)}</td>"
         f"<td>{_fmt_gbp(report.planned_spend_[ch])}</td>"
+        f"<td>£{report.true_marginal_returns[ch]:.2f}</td>"
         f"<td>{report.saturation[ch]:.2f}</td>"
         f"<td>{report.adstock[ch]:.2f}</td></tr>"
         for ch in channels
@@ -1504,11 +1507,15 @@ the three problems below (dominance check, else worst-axis).</div>
 <section>
   <div class="s-label">Section 1</div>
   <h2>Channel summary</h2>
-  <p>Every channel, its planned spend, and the saturation and adstock it's
-  assumed to respond with -- what you gave us, nothing modelled yet.</p>
+  <p>Every channel, its planned spend, ROI, and the saturation and adstock
+  it's assumed to respond with -- what you gave us, nothing modelled yet.
+  Background demand accounts for {meta["baseline_share"]:.0%} of sales in
+  this scenario -- the {1 - meta["baseline_share"]:.0%} left over is what
+  these channels are trying to explain, which is why the reliability
+  problems below matter.</p>
   <div class="table-scroll">
   <table class="cross-table">
-    <thead><tr><th>Channel</th><th>Spend</th><th>Saturation</th><th>Adstock</th></tr></thead>
+    <thead><tr><th>Channel</th><th>Spend</th><th>ROI</th><th>Saturation</th><th>Adstock</th></tr></thead>
     <tbody>{channel_summary_rows_html}</tbody>
   </table>
   </div>
