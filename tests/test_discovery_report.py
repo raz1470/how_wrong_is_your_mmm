@@ -15,6 +15,7 @@ from how_wrong_is_your_mmm._discovery_report import (
     _nice_axis_bounds,
     _safe_improvement,
     _svg_dotplot,
+    _svg_forest,
     _svg_multiline,
     _svg_stacked_area,
 )
@@ -204,6 +205,40 @@ class TestLightenHex:
         assert r > orig_r
         assert g > orig_g
         assert b > orig_b
+
+
+class TestSvgForest:
+    def test_row_label_margin_grows_for_long_channel_names(self):
+        # Session 49: a fixed 100px left margin (sized for "search")
+        # clipped a longer real-world name ("search_generic") against the
+        # SVG's own left edge -- caught testing a 6-channel scenario.
+        short = _svg_forest(
+            [{"name": "tv", "color": "#000", "before": 1.0, "after": 2.0}]
+        )
+        long = _svg_forest(
+            [
+                {
+                    "name": "search_generic",
+                    "color": "#000",
+                    "before": 1.0,
+                    "after": 2.0,
+                }
+            ]
+        )
+
+        def label_x(svg: str) -> float:
+            m = re.search(r'<text x="([\d.]+)" y="[\d.]+" text-anchor="end"', svg)
+            return float(m.group(1))
+
+        assert label_x(long) > label_x(short)
+
+    def test_single_mode_draws_one_mark_and_no_after_key_needed(self):
+        svg = _svg_forest(
+            [{"name": "tv", "color": "#000", "value": 1.5, "truth": 1.0}],
+            single=True,
+        )
+        assert svg.startswith("<svg")
+        assert "tv" in svg
 
 
 class TestNiceAxisBounds:
@@ -451,6 +486,15 @@ class TestToHtml:
         html_out = report.to_html()
         ids = re.findall(r'id="([^"]+)"', html_out)
         assert len(ids) == len(set(ids))
+
+    def test_corr_col_can_shrink_and_scroll_rather_than_overflow(self):
+        # Session 49: a wide before/after correlation table (many
+        # channels, long names) forced its grid column past the page
+        # edge -- .corr-col needs min-width:0 (to actually shrink to its
+        # 1fr track) plus overflow-x:auto (to scroll instead of overflow).
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert ".corr-col { min-width: 0; overflow-x: auto; }" in html_out
 
     def test_impact_table_has_one_row_per_lever(self):
         report = fit_small(make_report())

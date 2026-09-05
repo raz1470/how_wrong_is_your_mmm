@@ -536,7 +536,12 @@ def _svg_forest(
     the variance/bias sections' convention; pass a plain "{:.2f}".format
     for a non-£ quantity like the identifiability section's b/lambda).
     """
-    m_top, m_right, m_bottom, m_left = 14, 96, 40, 100
+    # m_left scales with the longest channel name -- the fixed 100px
+    # default (sized for "search") clipped longer real-world names like
+    # "search_generic" against the SVG's own left edge (session 49,
+    # caught testing a 6-channel scenario).
+    longest_name = max(len(ch["name"]) for ch in data)
+    m_top, m_right, m_bottom, m_left = 14, 96, 40, max(100, 20 + 9 * longest_name)
     height = m_top + m_bottom + row_h * len(data)
     pw = width - m_left - m_right
     ph = height - m_top - m_bottom
@@ -2131,6 +2136,11 @@ svg.chart { display: block; width: 100%; }
 .corr-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
 @media (max-width: 620px) { .corr-cols { grid-template-columns: 1fr; } }
 .corr-col-hdr { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: .5rem; text-align: center; }
+/* min-width:0 lets a grid item actually shrink to its 1fr track (the
+   grid default is min-width:auto, which is the content's own width) --
+   without it, a wide table (many channels, long names) forces its
+   column past the page edge instead of scrolling within it. */
+.corr-col { min-width: 0; overflow-x: auto; }
 .table-scroll { overflow-x: auto; }
 table.corr-table, table.cross-table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .85rem; }
 table.corr-table th, table.corr-table td, table.cross-table th, table.cross-table td { border: 1px solid var(--border); padding: .4rem .6rem; text-align: center; }
