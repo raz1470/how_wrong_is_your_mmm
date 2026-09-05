@@ -14,6 +14,7 @@ from how_wrong_is_your_mmm._discovery_report import (
     _safe_improvement,
     _svg_dotplot,
     _svg_multiline,
+    _svg_stacked_area,
 )
 from how_wrong_is_your_mmm._phaser import Blackout
 
@@ -123,6 +124,29 @@ class TestSvgMultiline:
         assert "<circle" not in svg
 
 
+class TestSvgStackedArea:
+    def test_returns_svg_markup_with_one_polygon_per_band(self):
+        svg = _svg_stacked_area(
+            ["base", "a", "b"],
+            {"base": [1, 2, 3], "a": [1, 1, 1], "b": [2, 2, 2]},
+            {"base": "#000", "a": "#111", "b": "#222"},
+        )
+        assert svg.startswith("<svg")
+        assert svg.count("<polygon") == 3
+
+    def test_too_short_series_gives_fallback_text(self):
+        out = _svg_stacked_area(["a"], {"a": [1]}, {"a": "#000"})
+        assert "<svg" not in out
+
+    def test_y_axis_starts_at_zero_even_when_data_does_not(self):
+        # Unlike _svg_multiline (own min/max per series), a stacked area
+        # must anchor at 0 -- the bottom of the first band IS zero.
+        svg = _svg_stacked_area(
+            ["base"], {"base": [100, 200, 300]}, {"base": "#000"}, y_fmt=str
+        )
+        assert "0.0" in svg or ">0<" in svg
+
+
 class TestSvgDotplot:
     def test_returns_svg_markup(self):
         svg = _svg_dotplot([{"name": "tv", "color": "#000", "value": 0.5}])
@@ -139,6 +163,20 @@ class TestSvgDotplot:
     def test_channel_name_appears_as_row_label(self):
         svg = _svg_dotplot([{"name": "search", "color": "#000", "value": 1.2}])
         assert "search" in svg
+
+    def test_multiple_rows_get_zebra_striping(self):
+        # No longer exercised via to_html() (the report's own marginal-
+        # return dot-plot was dropped as a duplicate of the ROI column in
+        # session 47) -- keep the multi-row striping path covered
+        # directly.
+        svg = _svg_dotplot(
+            [
+                {"name": "tv", "color": "#000", "value": 0.5},
+                {"name": "meta", "color": "#111", "value": 1.0},
+                {"name": "search", "color": "#222", "value": 1.5},
+            ]
+        )
+        assert "<rect" in svg
 
 
 class TestNiceAxisBounds:
@@ -449,6 +487,13 @@ class TestToHtml:
         for ch in CHANNELS:
             assert f'<div class="pacing-title">{ch}</div>' in html_out
 
+    def test_implied_contribution_chart_present_with_baseline_band(self):
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert "Implied contribution" in html_out
+        assert "synthetic outcome" in html_out
+        assert 'style="background:#9ca3af"></span>Baseline</div>' in html_out
+
     def test_saturation_curve_omitted_when_linear(self):
         report = fit_small(make_report(saturation=1.0))
         html_out = report.to_html()
@@ -471,27 +516,38 @@ class TestToHtml:
         html_out = report.to_html()
         assert "Adstock, by channel" in html_out
 
-    def test_appendix_shows_marginal_return_per_channel(self):
-        report = fit_small(make_report())
-        html_out = report.to_html()
-        assert "Channel marginal return" in html_out
-        for ch, mr in report.true_marginal_returns.items():
-            assert f"£{mr:.2f}" in html_out
-
-    def test_appendix_shows_spend_and_demand_series(self):
+    def test_scenario_inputs_shows_spend_and_demand_series(self):
         report = fit_small(make_report())
         html_out = report.to_html()
         assert "Spend, history + plan" in html_out
         assert "Demand (standardised)" in html_out
-        assert "Sales / revenue, weekly" in html_out
+        assert "Sales / revenue, weekly -- by source" in html_out
 
-    def test_appendix_spend_chart_uses_supplied_plan_not_winner_schedule(self):
-        # The appendix is "what you supplied" -- it should show history_df
-        # + plan_df as given, not the winner lever's rephased schedule.
+    def test_no_marginal_return_dotplot_duplicate_of_roi_column(self):
+        # Session 47: dropped as a duplicate of the channel-summary ROI
+        # column -- same numbers, no new information.
         report = fit_small(make_report())
         html_out = report.to_html()
-        assert "as supplied" in html_out
-        assert "recommended" not in html_out.split("Appendix: what you supplied")[1]
+        assert "Channel marginal return" not in html_out
+
+    def test_spend_chart_uses_supplied_plan_not_winner_schedule(self):
+        # Session 46 bug, still applies now the chart lives in Section 1:
+        # it should show history_df + plan_df as given, not the winner
+        # lever's rephased schedule.
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert (
+            "Actual weekly spend by channel, as supplied -- before any phasing"
+            in html_out
+        )
+
+    def test_no_separate_total_sales_chart_duplicate_of_contribution(self):
+        # Session 47: the old flat "Baseline + demand + channel
+        # contributions, no noise" single-line chart was dropped as a
+        # duplicate of the Implied Contribution stacked chart's own total.
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert "no noise -- what these inputs imply" not in html_out
 
     def test_client_name_and_plan_year_appear(self):
         report = fit_small(make_report(client_name="Acme Co", plan_year="2024"))

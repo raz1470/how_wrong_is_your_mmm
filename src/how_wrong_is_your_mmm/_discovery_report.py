@@ -14,18 +14,34 @@ the report picks ONE "highest impact" strategy (dominance check, else
 worst-axis -- see _pick_winner) and uses it for every "impact from best
 lever" callout.
 
-Report structure: cover -> channel summary (three parts, no dropdown --
-session 46 simplified this from a per-channel table with a
-strategy-picker: (a) a plain per-channel input table -- spend,
-saturation, adstock, nothing modelled; (b) a strategy-impact table, one
-row per candidate lever, variance/bias/identifiability improvement over
-unphased plus phasing's revenue cost, winning row highlighted; (c) a
-small-multiples chart, one per channel, as-supplied vs the winner's own
-phased schedule) -> spend correlation, before vs after -> variance
-problem + impact -> bias problem + impact -> identifiability problem +
-impact (saturation and adstock each get their own chart) -> appendix
-(every input the client supplied: marginal return, adstock and
-saturation per channel, the spend series, and the shared demand series).
+Report structure (session 47 split Section 1 into "what's this scenario"
+vs "what should I do about it" -- no dropdown, no JS anywhere on the
+page):
+
+1. Scenario inputs -- everything the report is built on, in one section:
+   a plain per-channel input table (spend, ROI, saturation, adstock);
+   the assumed response curves (adstock decay, saturation); the actual
+   weekly spend and demand series behind the plan; and an "implied
+   contribution" stacked-area chart (baseline + each channel's modelled
+   contribution, summing to weekly sales) -- the package's own synthetic
+   outcome from the assumptions above, explicitly not something supplied.
+   Reproducible from these inputs alone, in a notebook, without this
+   report class.
+2. Phasing strategy -- a strategy-impact table, one row per candidate
+   lever, variance/bias/identifiability improvement over unphased plus
+   phasing's revenue cost, winning row highlighted; then a
+   small-multiples "recommended pacing" chart, one per channel,
+   as-supplied vs the winner's own phased schedule.
+3. Spend correlation, before vs after.
+4. Variance problem + impact.
+5. Bias problem + impact.
+6. Identifiability problem + impact (saturation and adstock each get
+   their own chart).
+
+No appendix -- section 1 absorbed it (session 47): the old marginal-
+return dot-plot was dropped as a duplicate of the ROI column, and the
+old flat "sales, weekly" total-line chart was dropped as a duplicate of
+implied contribution's own stacked total.
 
 Follows the package's shared-DGP design (session 44): one demand series
 drives every simulated sales column in this report, and saturation/adstock
@@ -258,6 +274,117 @@ def _svg_multiline(
                 parts.append(
                     f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3" fill="{color}"/>'
                 )
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _svg_stacked_area(
+    band_order: list[str],
+    series: dict[str, np.ndarray],
+    colors: dict[str, str],
+    width: int = 680,
+    height: int = 240,
+    pad_left: int = 58,
+    pad_bottom: int = 36,
+    pad_top: int = 14,
+    pad_right: int = 14,
+    y_fmt=None,
+    y_label: str = "",
+    x_label: str = "Week",
+    x_tick_labels: list[str] | None = None,
+    n_x_ticks: int = 6,
+) -> str:
+    """Render a stacked-area time series as a self-contained inline SVG --
+    same axis/gridline/tick visual language as _svg_multiline, but filled
+    cumulative bands (each series stacked on top of the last) rather than
+    independent lines, for a "what does this add up to" decomposition
+    chart. band_order fixes the stacking order bottom-to-top; series must
+    have one array per name in band_order, all the same length.
+
+    Every band is assumed non-negative (true for a baseline level plus
+    channel contributions built off positive marginal returns under
+    concave saturation) -- the y-axis always starts at 0, unlike
+    _svg_multiline's own min/max scaling, since a stacked area only reads
+    correctly anchored at zero.
+    """
+    n = len(next(iter(series.values())))
+    if n < 2:
+        return "<p><em>Not enough weeks to plot.</em></p>"
+    fmt = y_fmt if y_fmt is not None else _fmt_gbp
+    plot_w = width - pad_left - pad_right
+    plot_h = height - pad_top - pad_bottom
+
+    def x_at(i: int) -> float:
+        return pad_left + plot_w * i / (n - 1)
+
+    arrays = {name: np.asarray(series[name], dtype=float) for name in band_order}
+    cum = np.zeros((len(band_order) + 1, n))
+    for i, name in enumerate(band_order):
+        cum[i + 1] = cum[i] + arrays[name]
+    y_lo, y_hi, y_step = _nice_axis_bounds(0.0, float(cum[-1].max()))
+    y_ticks = list(np.arange(y_lo, y_hi + y_step / 2, y_step))
+
+    def y_at(v: float) -> float:
+        span = y_hi - y_lo if y_hi > y_lo else 1.0
+        return pad_top + plot_h * (1 - (v - y_lo) / span)
+
+    if x_tick_labels is None:
+        x_tick_labels = [f"Wk {i + 1}" for i in range(n)]
+    tick_idx = sorted(set(np.linspace(0, n - 1, min(n_x_ticks, n)).round().astype(int)))
+
+    parts = [
+        f'<svg class="chart" viewBox="0 0 {width} {height}" '
+        f'xmlns="http://www.w3.org/2000/svg">'
+    ]
+    for v in y_ticks:
+        y = y_at(v)
+        parts.append(
+            f'<line x1="{pad_left}" y1="{y:.1f}" x2="{width - pad_right}" y2="{y:.1f}" '
+            f'stroke="#e5e7eb" stroke-width="1"/>'
+        )
+        parts.append(
+            f'<text x="{pad_left - 8}" y="{y + 3.5:.1f}" text-anchor="end" '
+            f'font-size="10" fill="#9ca3af">{fmt(v)}</text>'
+        )
+    for i in tick_idx:
+        x = x_at(i)
+        parts.append(
+            f'<line x1="{x:.1f}" y1="{pad_top + plot_h:.1f}" x2="{x:.1f}" '
+            f'y2="{pad_top + plot_h + 5:.1f}" stroke="#d1d5db" stroke-width="1"/>'
+        )
+        parts.append(
+            f'<text x="{x:.1f}" y="{pad_top + plot_h + 16:.1f}" text-anchor="middle" '
+            f'font-size="10" fill="#9ca3af">{html.escape(x_tick_labels[i])}</text>'
+        )
+    parts.append(
+        f'<line x1="{pad_left}" y1="{pad_top}" x2="{pad_left}" '
+        f'y2="{pad_top + plot_h:.1f}" stroke="#d1d5db" stroke-width="1"/>'
+    )
+    parts.append(
+        f'<line x1="{pad_left}" y1="{pad_top + plot_h:.1f}" x2="{width - pad_right}" '
+        f'y2="{pad_top + plot_h:.1f}" stroke="#d1d5db" stroke-width="1"/>'
+    )
+    if x_label:
+        parts.append(
+            f'<text x="{pad_left + plot_w / 2:.1f}" y="{height - 4}" text-anchor="middle" '
+            f'font-size="10" fill="#9ca3af">{html.escape(x_label)}</text>'
+        )
+    if y_label:
+        cy = pad_top + plot_h / 2
+        parts.append(
+            f'<text x="12" y="{cy:.1f}" text-anchor="middle" font-size="10" fill="#9ca3af" '
+            f'transform="rotate(-90 12 {cy:.1f})">{html.escape(y_label)}</text>'
+        )
+
+    for i, name in enumerate(band_order):
+        top = [(x_at(j), y_at(cum[i + 1, j])) for j in range(n)]
+        bottom = [(x_at(j), y_at(cum[i, j])) for j in range(n)][::-1]
+        points = " ".join(f"{x:.1f},{y:.1f}" for x, y in top + bottom)
+        color = colors.get(name, "#9ca3af")
+        parts.append(
+            f'<polygon points="{points}" fill="{color}" fill-opacity="0.85" '
+            f'stroke="#fff" stroke-width="1"/>'
+        )
     parts.append("</svg>")
     return "".join(parts)
 
@@ -1101,6 +1228,7 @@ def _render_html(report: DiscoveryReport) -> str:
         ch: float(true_contributions[ch].iloc[-len(report.plan_df) :].sum())
         for ch in channels
     }
+    week_labels = [d.strftime("%b '%y") for d in combined_baseline.index]
 
     # Variance section: incremental-revenue forest chart (before/after,
     # £ p10-p90 range per channel) rather than a raw CV bar -- CV is the
@@ -1238,6 +1366,41 @@ def _render_html(report: DiscoveryReport) -> str:
         for ch in channels
     )
 
+    # Scenario inputs, part (b): implied contribution -- the synthetic
+    # OUTCOME these inputs produce, not something supplied (Ryan flagged
+    # this distinction: putting it in the input table above would
+    # misrepresent a modelled number as client data). Stacked area,
+    # baseline at the bottom, each channel on top, summing to weekly
+    # sales/revenue -- same terms channel_contributions/simulate_sales use
+    # internally, exposed directly (true_contributions and
+    # combined_baseline are already computed above for the variance/bias
+    # truth lines). Baseline and demand are combined into one band rather
+    # than split -- ties directly to the baseline_share sentence in the
+    # table's own intro paragraph, and demand still gets its own dedicated
+    # chart just above this one, so nothing is lost by not splitting it
+    # here.
+    contribution_band_order = ["Baseline", *channels]
+    contribution_series = {
+        "Baseline": (
+            report.calibration_.baseline_level
+            + report.calibration_.demand_coef * report.demand_
+        ),
+        **{ch: true_contributions[ch].to_numpy() for ch in channels},
+    }
+    contribution_colors = {"Baseline": "#9ca3af", **colors}
+    contribution_svg = _svg_stacked_area(
+        contribution_band_order,
+        contribution_series,
+        contribution_colors,
+        y_label="Weekly sales / revenue",
+        x_label="Week",
+        x_tick_labels=week_labels,
+    )
+    contribution_legend = (
+        '<div class="li"><span class="sw" style="background:#9ca3af"></span>Baseline</div>'
+        + legend
+    )
+
     # Channel summary, part (b): strategy-impact table, one row per
     # candidate lever -- replaces the four per-channel line charts a
     # single table reads faster for "which lever should I pick" than four
@@ -1326,23 +1489,14 @@ def _render_html(report: DiscoveryReport) -> str:
         for ch in channels
     )
 
-    # Appendix: everything the client supplied as an input to this report,
-    # in the order they'd recognise supplying it -- marginal return,
-    # adstock, saturation (each per channel), the actual spend series, and
-    # the one shared latent demand series. Every chart below reads straight
-    # off report's own public attributes -- nothing here is re-derived.
-    week_labels = [d.strftime("%b '%y") for d in combined_baseline.index]
-
-    mroi_data = [
-        {"name": ch, "color": colors[ch], "value": report.true_marginal_returns[ch]}
-        for ch in channels
-    ]
-    mroi_svg = _svg_dotplot(
-        mroi_data,
-        x_label="Marginal return (£ revenue per £1 of spend)",
-        fmt=lambda v: f"£{v:.2f}",
-    )
-
+    # Scenario inputs, part (c): the assumed response curves (adstock
+    # decay, saturation), then the actual weekly spend and demand series
+    # behind the plan -- everything this report is built on, so anyone
+    # could reproduce every chart in this report from these inputs alone,
+    # in a notebook, without this report class. Marginal return doesn't
+    # get its own chart here -- it's already the ROI column in the
+    # channel-summary table above, a dot-plot of the same numbers would be
+    # a duplicate, not a new fact.
     adstock_values_text = ", ".join(
         f"{ch} {meta['adstock'][ch]:.2f}" for ch in channels
     )
@@ -1427,7 +1581,7 @@ def _render_html(report: DiscoveryReport) -> str:
         )
 
     spend_series = {ch: combined_baseline[ch].to_numpy() for ch in channels}
-    appendix_spend_svg = _svg_multiline(
+    spend_series_svg = _svg_multiline(
         spend_series,
         colors,
         normalize=False,
@@ -1445,20 +1599,11 @@ def _render_html(report: DiscoveryReport) -> str:
         x_label="Week",
         x_tick_labels=week_labels,
     )
-
-    weekly_sales = (
-        report.calibration_.baseline_level
-        + report.calibration_.demand_coef * report.demand_
-        + true_contributions.sum(axis=1).to_numpy()
-    )
-    sales_series_svg = _svg_multiline(
-        {"sales": weekly_sales},
-        {"sales": "#111827"},
-        normalize=False,
-        y_label="Weekly sales / revenue",
-        x_label="Week",
-        x_tick_labels=week_labels,
-    )
+    # No separate "Sales / revenue, weekly" total-line chart any more --
+    # the Implied Contribution stacked-area chart above already shows
+    # this same total (it's the top edge of the stack), broken down by
+    # source rather than flattened into one line, so a second chart here
+    # would just be a strictly-worse duplicate.
 
     def stat_box(label: str, value: str) -> str:
         return (
@@ -1506,19 +1651,67 @@ the three problems below (dominance check, else worst-axis).</div>
 
 <section>
   <div class="s-label">Section 1</div>
-  <h2>Channel summary</h2>
-  <p>Every channel, its planned spend, ROI, and the saturation and adstock
-  it's assumed to respond with -- what you gave us, nothing modelled yet.
-  Background demand accounts for {meta["baseline_share"]:.0%} of sales in
-  this scenario -- the {1 - meta["baseline_share"]:.0%} left over is what
+  <h2>Scenario inputs</h2>
+  <p>Everything this report is built on: each channel's planned spend,
+  ROI, and the saturation and adstock it's assumed to respond with; the
+  shape of those response curves; the actual weekly spend and demand
+  behind the plan; and what it all implies for weekly sales. Background
+  demand accounts for {meta["baseline_share"]:.0%} of sales in this
+  scenario -- the {1 - meta["baseline_share"]:.0%} left over is what
   these channels are trying to explain, which is why the reliability
-  problems below matter.</p>
+  problems in the sections that follow matter. Everything below is
+  reproducible from these inputs alone, in a notebook, without this
+  report class.</p>
   <div class="table-scroll">
   <table class="cross-table">
     <thead><tr><th>Channel</th><th>Spend</th><th>ROI</th><th>Saturation</th><th>Adstock</th></tr></thead>
     <tbody>{channel_summary_rows_html}</tbody>
   </table>
   </div>
+
+  {adstock_fig_html}
+
+  {saturation_fig_html}
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Spend, history + plan</div>
+      <div class="fig-sub">Actual weekly spend by channel, as supplied -- before any phasing</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">{legend}</div>
+      {spend_series_svg}
+    </div>
+  </div>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Demand</div>
+      <div class="fig-sub">The one latent demand series driving every simulated sales column in this report</div>
+    </div>
+    <div class="fig-body">{demand_series_svg}</div>
+  </div>
+
+  <h3>Implied contribution</h3>
+  <p>What these inputs produce, week by week -- background demand plus
+  each channel's modelled contribution, stacking to weekly sales. This is
+  the package's own synthetic outcome from the assumptions above, not
+  something you supplied.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Sales / revenue, weekly -- by source</div>
+      <div class="fig-sub">Baseline (incl. demand) plus each channel's true contribution, history + plan</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">{contribution_legend}</div>
+      {contribution_svg}
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="s-label">Section 2</div>
+  <h2>Phasing strategy</h2>
 
   <h3>Strategy impact</h3>
   <p>Every candidate lever, swept from doing nothing through to
@@ -1547,7 +1740,7 @@ the three problems below (dominance check, else worst-axis).</div>
 </section>
 
 <section>
-  <div class="s-label">Section 2</div>
+  <div class="s-label">Section 3</div>
   <h2>Spend correlation, before vs. after</h2>
   <p>How entangled each channel's spend is with every other channel's, across
   history + plan. The more correlated a pair, the harder it is for a model to
@@ -1575,7 +1768,7 @@ the three problems below (dominance check, else worst-axis).</div>
 </section>
 
 <section>
-  <div class="s-label">Section 3</div>
+  <div class="s-label">Section 4</div>
   <h2>The variance problem</h2>
   <p><b>The problem:</b> spend is locked to a single plan, so channels move
   together and the model can't unpick which one actually earned the
@@ -1608,7 +1801,7 @@ the three problems below (dominance check, else worst-axis).</div>
 </section>
 
 <section>
-  <div class="s-label">Section 4</div>
+  <div class="s-label">Section 5</div>
   <h2>The bias problem</h2>
   <p><b>The problem:</b> even once phasing fixes the collinearity, demand
   is never measured perfectly -- working from a proxy of quality
@@ -1641,7 +1834,7 @@ the three problems below (dominance check, else worst-axis).</div>
 </section>
 
 <section>
-  <div class="s-label">Section 5</div>
+  <div class="s-label">Section 6</div>
   <h2>The identifiability problem</h2>
   <p><b>The problem:</b> the client supplies a plausible saturation and
   adstock per channel, but with demand known and the spend pattern locked
@@ -1692,54 +1885,6 @@ the three problems below (dominance check, else worst-axis).</div>
     <p class="fig-cap">Same idea, for how long each channel's effect carries
     over -- a wide range means this channel's spend pattern doesn't pin down
     HOW LONG the effect lasts.</p>
-  </div>
-</section>
-
-<section>
-  <div class="s-label">Section 6</div>
-  <h2>Appendix: what you supplied</h2>
-  <p>Every input this report is built on, laid out plainly -- so it can be
-  checked against what you actually told us, and so anyone could reproduce
-  every chart above from these inputs alone, in a notebook, without this
-  report class.</p>
-
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Channel marginal return</div>
-      <div class="fig-sub">The plausible ROI supplied per channel -- ground truth throughout this report</div>
-    </div>
-    <div class="fig-body">{mroi_svg}</div>
-  </div>
-
-  {adstock_fig_html}
-
-  {saturation_fig_html}
-
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Spend, history + plan</div>
-      <div class="fig-sub">Actual weekly spend by channel, as supplied -- before any phasing</div>
-    </div>
-    <div class="fig-body">
-      <div class="legend">{legend}</div>
-      {appendix_spend_svg}
-    </div>
-  </div>
-
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Demand</div>
-      <div class="fig-sub">The one latent demand series driving every simulated sales column in this report</div>
-    </div>
-    <div class="fig-body">{demand_series_svg}</div>
-  </div>
-
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Sales / revenue, weekly</div>
-      <div class="fig-sub">Baseline + demand + channel contributions, no noise -- what these inputs imply</div>
-    </div>
-    <div class="fig-body">{sales_series_svg}</div>
   </div>
 </section>
 
