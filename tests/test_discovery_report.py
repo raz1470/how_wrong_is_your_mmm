@@ -1,5 +1,6 @@
 """Tests for _discovery_report.py — DiscoveryReport."""
 
+import html
 import re
 
 import numpy as np
@@ -573,3 +574,42 @@ class TestToHtml:
         html_out = report.to_html()
         assert "Acme Co" in html_out
         assert "2024" in html_out
+
+    def test_diagnostics_section_shows_all_four_problems_unphased_only(self):
+        # Session 48: a new Diagnostics section shows the unphased problem
+        # on its own, ahead of the phasing-strategy numbers.
+        report = fit_small(make_report(saturation=0.7, adstock=0.3))
+        html_out = report.to_html()
+        assert "<h2>Diagnostics</h2>" in html_out
+        assert "Channel correlation, unphased" in html_out
+        assert "Incremental revenue, unphased" in html_out
+        assert "Revenue implied by the biased estimate, unphased" in html_out
+        assert "Recovered saturation, by channel, unphased" in html_out
+        assert "Recovered adstock, by channel, unphased" in html_out
+
+    def test_diagnostics_charts_have_no_after_state(self):
+        # single=True mode: one mark per row, not a before/after pair --
+        # the per-chart legends shouldn't carry a second, winner-labelled
+        # state the way the paired before/after sections do.
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        diagnostics_block = html_out[
+            html_out.index("<h2>Diagnostics</h2>") : html_out.index(
+                "<h2>Phasing strategy</h2>"
+            )
+        ]
+        assert "Unphased (today)" in diagnostics_block
+        assert f", {html.escape(report.winner_)}</span>" not in diagnostics_block
+        assert 'opacity="0.35"' not in diagnostics_block
+
+    def test_sections_renumbered_with_diagnostics_second(self):
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        labels = re.findall(r'<div class="s-label">Section (\d)</div>', html_out)
+        assert labels == ["1", "2", "3", "4", "5", "6", "7"]
+        assert html_out.index("<h2>Scenario inputs</h2>") < html_out.index(
+            "<h2>Diagnostics</h2>"
+        )
+        assert html_out.index("<h2>Diagnostics</h2>") < html_out.index(
+            "<h2>Phasing strategy</h2>"
+        )

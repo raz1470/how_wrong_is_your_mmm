@@ -14,9 +14,8 @@ the report picks ONE "highest impact" strategy (dominance check, else
 worst-axis -- see _pick_winner) and uses it for every "impact from best
 lever" callout.
 
-Report structure (session 47 split Section 1 into "what's this scenario"
-vs "what should I do about it" -- no dropdown, no JS anywhere on the
-page):
+Report structure (session 48 split "how bad is the problem" from "how much
+phasing fixes it" -- still no dropdown, no JS anywhere on the page):
 
 1. Scenario inputs -- everything the report is built on, in one section:
    a plain per-channel input table (spend, ROI, saturation, adstock); the
@@ -30,15 +29,24 @@ page):
    its own; its effect is already visible in Implied Contribution's
    Baseline band). Reproducible from these inputs alone, in a notebook,
    without this report class.
-2. Phasing strategy -- a strategy-impact table, one row per candidate
+2. Diagnostics -- how bad the unphased problem is, full stop, before any
+   fix is shown: spend correlation, variance, bias and identifiability
+   (saturation + adstock), each as the unphased state only, via
+   _svg_forest's single=True mode. Session 48: pulled forward so the
+   reader sees the problem before the phasing numbers in Section 3, ahead
+   of a future Impact section that will carry the "after" half of these
+   same four charts on its own -- until then, sections 4-7 keep their own
+   before/after versions too, so the unphased half is temporarily shown
+   twice.
+3. Phasing strategy -- a strategy-impact table, one row per candidate
    lever, variance/bias/identifiability improvement over unphased plus
    phasing's revenue cost, winning row highlighted; then a
    small-multiples "recommended pacing" chart, one per channel,
    as-supplied vs the winner's own phased schedule.
-3. Spend correlation, before vs after.
-4. Variance problem + impact.
-5. Bias problem + impact.
-6. Identifiability problem + impact (saturation and adstock each get
+4. Spend correlation, before vs after.
+5. Variance problem + impact.
+6. Bias problem + impact.
+7. Identifiability problem + impact (saturation and adstock each get
    their own chart).
 
 No appendix -- section 1 absorbed it (session 47): the old marginal-
@@ -472,6 +480,7 @@ def _svg_forest(
     row_h: int = 62,
     x_label: str = "Incremental revenue",
     fmt=_fmt_gbp,
+    single: bool = False,
 ) -> str:
     """Two-state horizontal chart: each channel gets a pale "before" mark
     and a solid "after" mark, plus a dashed line at the value implied by
@@ -488,6 +497,13 @@ def _svg_forest(
     match shape (a point "before" against a range "after" renders fine),
     though every section built so far uses one shape throughout.
 
+    `single=True` switches to a one-state-per-row rendering, for the
+    Diagnostics section, which only ever shows the unphased problem (no
+    before/after comparison -- that's what the future Impact section is
+    for). Each `data` entry then needs {name, color, value, truth}
+    instead of {before, after}: one mark per row, drawn at the row's
+    centre, with a shorter dashed truth line either side of it.
+
     Values are raw numbers -- tick step is picked at render time from
     whatever range this chart's own numbers span, via _nice_tick_step, and
     every axis/value label goes through `fmt` (defaults to £ formatting,
@@ -500,9 +516,13 @@ def _svg_forest(
     ph = height - m_top - m_bottom
     row = ph / len(data)
 
-    raw_max = max(
-        max(_hi(ch["before"]), _hi(ch["after"]), ch.get("truth") or 0.0) for ch in data
-    )
+    if single:
+        raw_max = max(max(_hi(ch["value"]), ch.get("truth") or 0.0) for ch in data)
+    else:
+        raw_max = max(
+            max(_hi(ch["before"]), _hi(ch["after"]), ch.get("truth") or 0.0)
+            for ch in data
+        )
     step = _nice_tick_step(raw_max)
     x_max = step * math.ceil(raw_max / step) if raw_max > 0 else step
 
@@ -561,10 +581,38 @@ def _svg_forest(
 
     for i, ch in enumerate(data):
         cy = m_top + row * i + row / 2
+        color = ch["color"]
+
+        if single:
+            value = ch["value"]
+            parts.append(mark(value, cy, color))
+            if ch.get("truth") is not None:
+                tx = sc_x(ch["truth"])
+                parts.append(
+                    f'<line x1="{tx:.1f}" y1="{cy - row * 0.3:.1f}" x2="{tx:.1f}" '
+                    f'y2="{cy + row * 0.3:.1f}" stroke="#111827" stroke-width="1.6" '
+                    f'stroke-dasharray="3,2"/>'
+                )
+            value_label = (
+                f"{fmt(value[0])} &ndash; {fmt(value[1])}"
+                if isinstance(value, tuple)
+                else fmt(value)
+            )
+            parts.append(
+                f'<text x="{sc_x(_hi(value)) + 8:.1f}" y="{cy + 4:.1f}" '
+                f'font-size="11.5" fill="{color}" font-weight="700">'
+                f"{value_label}</text>"
+            )
+            parts.append(
+                f'<text x="{m_left - 10}" y="{cy + 4:.1f}" text-anchor="end" '
+                f'font-size="12.5" font-weight="700" fill="{color}">'
+                f"{html.escape(ch['name'])}</text>"
+            )
+            continue
+
         step_y = row * 0.22
         cy_before, cy_after = cy - step_y, cy + step_y
         before, after = ch["before"], ch["after"]
-        color = ch["color"]
 
         parts.append(mark(before, cy_before, color, opacity=0.35))
         parts.append(mark(after, cy_after, color))
@@ -1351,6 +1399,43 @@ def _render_html(report: DiscoveryReport) -> str:
     corr_before_html = _corr_table_html(baseline["correlation"], channels)
     corr_after_html = _corr_table_html(best["correlation"], channels)
 
+    # Diagnostics section (session 48): the unphased "before" half of each
+    # of the four problem charts above, shown on its own ahead of any
+    # phasing solution -- this is "how bad is the problem", full stop,
+    # before the reader has seen a fix. Built by re-shaping the same
+    # baseline-only fields already computed for the before/after sections
+    # (no new numbers), via _svg_forest's single=True mode. The paired
+    # sections below keep their own before/after charts for now -- once a
+    # future Impact section exists to carry the "after" half on its own,
+    # those can drop back to before-only too and point here instead.
+    diag_variance_data = [
+        {k: v for k, v in ch.items() if k != "after"} | {"value": ch["before"]}
+        for ch in variance_forest_data
+    ]
+    diag_variance_svg = _svg_forest(diag_variance_data, single=True)
+
+    diag_bias_data = [
+        {k: v for k, v in ch.items() if k != "after"} | {"value": ch["before"]}
+        for ch in bias_forest_data
+    ]
+    diag_bias_svg = _svg_forest(diag_bias_data, single=True)
+
+    diag_b_data = [
+        {k: v for k, v in ch.items() if k != "after"} | {"value": ch["before"]}
+        for ch in b_forest_data
+    ]
+    diag_b_svg = _svg_forest(
+        diag_b_data, x_label="Saturation exponent (b)", fmt=_fmt_plain, single=True
+    )
+
+    diag_lam_data = [
+        {k: v for k, v in ch.items() if k != "after"} | {"value": ch["before"]}
+        for ch in lam_forest_data
+    ]
+    diag_lam_svg = _svg_forest(
+        diag_lam_data, x_label="Adstock decay (lambda)", fmt=_fmt_plain, single=True
+    )
+
     lever_labels = [label for label, *_ in report.levers_]
 
     # Channel summary, part (a): plain per-channel inputs -- spend, ROI,
@@ -1702,6 +1787,112 @@ the three problems below (dominance check, else worst-axis).</div>
 
 <section>
   <div class="s-label">Section 2</div>
+  <h2>Diagnostics</h2>
+  <p>Before any fix: how entangled, uncertain and unreliable the unphased
+  plan leaves these estimates. Each chart below shows the problem as it
+  stands today, on this history and plan, with no phasing applied --
+  Section 3 shows what phasing under <b>{winner}</b> does about it.</p>
+
+  <h3>Spend correlation</h3>
+  <p>How entangled each channel's spend is with every other channel's,
+  across history + plan. The more correlated a pair, the harder it is for
+  a model to tell their individual contributions apart.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Channel correlation, unphased</div>
+      <div class="fig-sub">Pearson correlation, weekly spend by channel &middot; plan year only</div>
+    </div>
+    <div class="fig-body">
+      {corr_before_html}
+    </div>
+  </div>
+
+  <h3>Variance</h3>
+  <p>Spend is locked to a single plan, so channels move together and the
+  model can't unpick which one actually earned the result -- the range
+  below is how wide the model's incremental-revenue estimate is left as a
+  result.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Incremental revenue, unphased</div>
+      <div class="fig-sub">Model-estimated range per channel, no phasing applied</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Unphased (today)</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Revenue at the true marginal return</span>
+      </div>
+      {diag_variance_svg}
+    </div>
+    <p class="fig-cap">The dashed line marks the revenue implied by the
+    true marginal return -- the gap between it and the bar shows how far a
+    client could be misled by trusting either end of the range.</p>
+  </div>
+
+  <h3>Bias</h3>
+  <p>Demand is never measured perfectly -- working from a proxy of quality
+  {meta["demand_proxy_quality"]:.0%} (not the true series) pulls the
+  model's estimate off the true marginal return, even before phasing is
+  considered.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Revenue implied by the biased estimate, unphased</div>
+      <div class="fig-sub">What a client would believe they got, per channel</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af"/></svg> Believed today (unphased)</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> True revenue</span>
+      </div>
+      {diag_bias_svg}
+    </div>
+    <p class="fig-cap">"Believed" is the revenue a client would expect if
+    they trusted the biased estimate -- the gap to the dashed true-revenue
+    line is the mean error this proxy's remaining confound leaves behind.</p>
+  </div>
+
+  <h3>Identifiability</h3>
+  <p>The client supplies a plausible saturation and adstock per channel,
+  but with spend locked to a single plan, many other curvature values fit
+  the data about equally well -- so what the model recovers can range far
+  from that plausible value.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Recovered saturation, by channel, unphased</div>
+      <div class="fig-sub">Saturation exponent (b): model-recovered range, no phasing applied</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Unphased (today)</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Plausible value supplied</span>
+      </div>
+      {diag_b_svg}
+    </div>
+    <p class="fig-cap">Each row is the p10&ndash;p90 range of that
+    channel's OWN recovered saturation across sims, holding every other
+    channel at its own supplied curvature -- a wide range means this
+    channel's spend pattern doesn't pin down HOW MUCH it saturates.</p>
+  </div>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Recovered adstock, by channel, unphased</div>
+      <div class="fig-sub">Adstock decay (lambda): model-recovered range, no phasing applied</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Unphased (today)</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Plausible value supplied</span>
+      </div>
+      {diag_lam_svg}
+    </div>
+    <p class="fig-cap">Same idea, for how long each channel's effect carries
+    over -- a wide range means this channel's spend pattern doesn't pin down
+    HOW LONG the effect lasts.</p>
+  </div>
+</section>
+
+<section>
+  <div class="s-label">Section 3</div>
   <h2>Phasing strategy</h2>
 
   <h3>Strategy impact</h3>
@@ -1731,7 +1922,7 @@ the three problems below (dominance check, else worst-axis).</div>
 </section>
 
 <section>
-  <div class="s-label">Section 3</div>
+  <div class="s-label">Section 4</div>
   <h2>Spend correlation, before vs. after</h2>
   <p>How entangled each channel's spend is with every other channel's, across
   history + plan. The more correlated a pair, the harder it is for a model to
@@ -1759,7 +1950,7 @@ the three problems below (dominance check, else worst-axis).</div>
 </section>
 
 <section>
-  <div class="s-label">Section 4</div>
+  <div class="s-label">Section 5</div>
   <h2>The variance problem</h2>
   <p><b>The problem:</b> spend is locked to a single plan, so channels move
   together and the model can't unpick which one actually earned the
@@ -1792,7 +1983,7 @@ the three problems below (dominance check, else worst-axis).</div>
 </section>
 
 <section>
-  <div class="s-label">Section 5</div>
+  <div class="s-label">Section 6</div>
   <h2>The bias problem</h2>
   <p><b>The problem:</b> even once phasing fixes the collinearity, demand
   is never measured perfectly -- working from a proxy of quality
@@ -1825,7 +2016,7 @@ the three problems below (dominance check, else worst-axis).</div>
 </section>
 
 <section>
-  <div class="s-label">Section 6</div>
+  <div class="s-label">Section 7</div>
   <h2>The identifiability problem</h2>
   <p><b>The problem:</b> the client supplies a plausible saturation and
   adstock per channel, but with demand known and the spend pattern locked
