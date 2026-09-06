@@ -9,6 +9,7 @@ import pytest
 from how_wrong_is_your_mmm._dgp import simulate_spend
 from how_wrong_is_your_mmm._discovery_report import (
     DiscoveryReport,
+    _corr_table_html,
     _default_levers,
     _is_unphased,
     _lighten_hex,
@@ -250,6 +251,31 @@ class TestLightenHex:
         assert r > orig_r
         assert g > orig_g
         assert b > orig_b
+
+
+class TestCorrTableHtml:
+    def test_no_before_omits_delta(self):
+        matrix = {"a": {"a": 1.0, "b": 0.5}, "b": {"a": 0.5, "b": 1.0}}
+        html_out = _corr_table_html(matrix, ["a", "b"])
+        assert "corr-delta" not in html_out
+
+    def test_before_given_shows_signed_delta_per_cell(self):
+        # Session 50: Ryan asked whether the Impact section's correlation
+        # table should show the delta rather than only the after-phasing
+        # value -- shown inline per cell (not a second table), since
+        # session 49 deliberately dropped the before/after side-by-side
+        # for forcing a horizontal scroll.
+        after = {"a": {"a": 1.0, "b": 0.2}, "b": {"a": 0.2, "b": 1.0}}
+        before = {"a": {"a": 1.0, "b": 0.6}, "b": {"a": 0.6, "b": 1.0}}
+        html_out = _corr_table_html(after, ["a", "b"], before=before)
+        assert '<span class="corr-delta">-0.40</span>' in html_out
+        assert html_out.count('<span class="corr-delta">+0.00</span>') == 2
+
+    def test_positive_delta_gets_explicit_plus_sign(self):
+        after = {"a": {"a": 1.0, "b": 0.8}, "b": {"a": 0.8, "b": 1.0}}
+        before = {"a": {"a": 1.0, "b": 0.3}, "b": {"a": 0.3, "b": 1.0}}
+        html_out = _corr_table_html(after, ["a", "b"], before=before)
+        assert '<span class="corr-delta">+0.50</span>' in html_out
 
 
 class TestSvgForest:
@@ -546,6 +572,23 @@ class TestToHtml:
         assert "corr-cols" not in impact_block
         assert "Channel correlation, after phasing" in impact_block
         assert "Before phasing" not in impact_block
+
+    def test_impact_correlation_shows_delta_diagnostics_does_not(self):
+        # Session 50: Ryan asked for the delta on the Impact correlation
+        # table, without reintroducing the side-by-side session 49 just
+        # removed -- Section 2 (Diagnostics) has nothing to diff against
+        # (it's the unphased state on its own) so it should stay
+        # delta-free either way.
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        diagnostics_block = html_out[
+            html_out.index("<h2>Diagnostics</h2>") : html_out.index("<h2>Impact</h2>")
+        ]
+        impact_block = html_out[
+            html_out.index("<h2>Impact</h2>") : html_out.index("<h2>Phased spend</h2>")
+        ]
+        assert "corr-delta" not in diagnostics_block
+        assert "corr-delta" in impact_block
 
     def test_impact_table_has_one_row_per_lever(self):
         report = fit_small(make_report())

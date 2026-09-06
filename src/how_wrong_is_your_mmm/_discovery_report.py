@@ -427,10 +427,23 @@ def _svg_stacked_area(
     return "".join(parts)
 
 
-def _corr_table_html(matrix: dict, channels: list[str]) -> str:
+def _corr_table_html(
+    matrix: dict, channels: list[str], before: dict | None = None
+) -> str:
     """Static HTML table for a channel-by-channel correlation matrix, cells
     heat-shaded from the correlation value (no JS -- computed at render time,
-    same reasoning as _svg_multiline)."""
+    same reasoning as _svg_multiline).
+
+    before:
+        Session 50 (Ryan: "spend correlation impact -- should we put the
+        delta?"): the matching unphased matrix, same shape as `matrix`.
+        When given, each cell also prints its change from `before` --
+        Section 3 (Impact) passes its own baseline matrix here so the
+        change is readable without scrolling back to Section 2's table,
+        which is why session 49 dropped the before/after side-by-side in
+        the first place. Section 2's own (unphased) table has nothing to
+        diff against, so it calls this without `before`.
+    """
 
     def cell_style(v: float) -> str:
         # White at 0, deepening red towards +1 (collinearity is the risk
@@ -442,11 +455,15 @@ def _corr_table_html(matrix: dict, channels: list[str]) -> str:
     header = "".join(f"<th>{ch}</th>" for ch in channels)
     rows = []
     for a in channels:
-        cells = "".join(
-            f'<td style="{cell_style(matrix[a][b])}">{matrix[a][b]:.2f}</td>'
-            for b in channels
-        )
-        rows.append(f"<tr><th>{a}</th>{cells}</tr>")
+        cells = []
+        for b in channels:
+            v = matrix[a][b]
+            delta_html = ""
+            if before is not None:
+                delta = v - before[a][b]
+                delta_html = f'<br><span class="corr-delta">{delta:+.2f}</span>'
+            cells.append(f'<td style="{cell_style(v)}">{v:.2f}{delta_html}</td>')
+        rows.append(f"<tr><th>{a}</th>{''.join(cells)}</tr>")
     return (
         f'<table class="corr-table"><thead><tr><th></th>{header}</tr></thead>'
         f"<tbody>{''.join(rows)}</tbody></table>"
@@ -1445,7 +1462,9 @@ def _render_html(report: DiscoveryReport) -> str:
     lam_narrowing_text = ", ".join(f"{ch} {lam_narrowing[ch]:.0%}" for ch in channels)
 
     corr_before_html = _corr_table_html(baseline["correlation"], channels)
-    corr_after_html = _corr_table_html(best["correlation"], channels)
+    corr_after_html = _corr_table_html(
+        best["correlation"], channels, before=baseline["correlation"]
+    )
 
     # Diagnostics section (session 48): the unphased "before" half of each
     # of the four problem charts above, shown on its own ahead of any
@@ -1958,11 +1977,11 @@ the three problems below (dominance check, else worst-axis).</div>
   <h3>Spend correlation</h3>
   <p>After phasing under <b>{winner}</b> -- same monthly totals as before,
   only the within-month weekly pattern changes, which is what breaks the
-  collinearity. See Section 2 for the unphased matrix to compare against.</p>
+  collinearity. Each cell below also shows its change from unphased.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Channel correlation, after phasing</div>
-      <div class="fig-sub">Pearson correlation, weekly spend by channel &middot; plan year only, monthly totals unchanged from unphased</div>
+      <div class="fig-sub">Pearson correlation, weekly spend by channel &middot; plan year only &middot; small figure is the change (delta) from unphased</div>
     </div>
     <div class="fig-body">
       {corr_after_html}
@@ -2157,6 +2176,7 @@ svg.chart { display: block; width: 100%; }
 .table-scroll { overflow-x: auto; }
 table.corr-table, table.cross-table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .85rem; }
 table.corr-table th, table.corr-table td, table.cross-table th, table.cross-table td { border: 1px solid var(--border); padding: .4rem .6rem; text-align: center; }
+.corr-delta { font-size: .68rem; color: var(--muted); font-weight: 400; }
 table.cross-table th { background: var(--bg); }
 tr.winner-row td { background: #ecfdf5; font-weight: 700; }
 .winner-tag { display: inline-block; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--good); background: #d1fae5; border-radius: 4px; padding: .1rem .4rem; margin-left: .35rem; }
