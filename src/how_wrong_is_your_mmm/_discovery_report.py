@@ -246,14 +246,21 @@ def _svg_multiline(
             f'<text x="{pad_left - 8}" y="{y + 3.5:.1f}" text-anchor="end" '
             f'font-size="10" fill="#9ca3af">{y_tick_fmt(v)}</text>'
         )
+    # First/last tick sit exactly on the plot's own left/right edge --
+    # text-anchor="middle" there overflows the SVG's own viewBox (bug
+    # found stress-testing longer x-tick labels, session 49: see
+    # NOTES.md). Edge ticks anchor inward instead; interior ticks keep
+    # centring on their own gridline.
+    first_tick, last_tick = tick_idx[0], tick_idx[-1]
     for i in tick_idx:
         x = x_at(i)
         parts.append(
             f'<line x1="{x:.1f}" y1="{pad_top + plot_h:.1f}" x2="{x:.1f}" '
             f'y2="{pad_top + plot_h + 5:.1f}" stroke="#d1d5db" stroke-width="1"/>'
         )
+        anchor = "start" if i == first_tick else "end" if i == last_tick else "middle"
         parts.append(
-            f'<text x="{x:.1f}" y="{pad_top + plot_h + 16:.1f}" text-anchor="middle" '
+            f'<text x="{x:.1f}" y="{pad_top + plot_h + 16:.1f}" text-anchor="{anchor}" '
             f'font-size="10" fill="#9ca3af">{html.escape(x_tick_labels[i])}</text>'
         )
     parts.append(
@@ -370,14 +377,21 @@ def _svg_stacked_area(
             f'<text x="{pad_left - 8}" y="{y + 3.5:.1f}" text-anchor="end" '
             f'font-size="10" fill="#9ca3af">{fmt(v)}</text>'
         )
+    # First/last tick sit exactly on the plot's own left/right edge --
+    # text-anchor="middle" there overflows the SVG's own viewBox (bug
+    # found stress-testing longer x-tick labels, session 49: see
+    # NOTES.md). Edge ticks anchor inward instead; interior ticks keep
+    # centring on their own gridline.
+    first_tick, last_tick = tick_idx[0], tick_idx[-1]
     for i in tick_idx:
         x = x_at(i)
         parts.append(
             f'<line x1="{x:.1f}" y1="{pad_top + plot_h:.1f}" x2="{x:.1f}" '
             f'y2="{pad_top + plot_h + 5:.1f}" stroke="#d1d5db" stroke-width="1"/>'
         )
+        anchor = "start" if i == first_tick else "end" if i == last_tick else "middle"
         parts.append(
-            f'<text x="{x:.1f}" y="{pad_top + plot_h + 16:.1f}" text-anchor="middle" '
+            f'<text x="{x:.1f}" y="{pad_top + plot_h + 16:.1f}" text-anchor="{anchor}" '
             f'font-size="10" fill="#9ca3af">{html.escape(x_tick_labels[i])}</text>'
         )
     parts.append(
@@ -1560,6 +1574,11 @@ def _render_html(report: DiscoveryReport) -> str:
             for ch in channels
         }
 
+    # Winning strategy's own Cost, as a one-line callout at the end of
+    # Section 3 (session 50, Ryan: quote the winner's cost there instead
+    # of leaving it visible only to someone who scrolls to the appendix).
+    winner_cost_pct = float(np.mean(list(lever_cost_pct[winner].values())))
+
     baseline_scores = baseline["scores"]
     impact_table_rows_html = ""
     for lbl in lever_labels:
@@ -2043,6 +2062,15 @@ the three problems below (dominance check, else worst-axis).</div>
     over -- a wide range means this channel's spend pattern doesn't pin down
     HOW LONG the effect lasts.</p>
   </div>
+
+  <h3>Cost</h3>
+  <p>Phasing is not free once a channel's response curve departs from
+  linear: moving spend to a different weekly pattern changes true
+  plan-period revenue relative to the as-supplied schedule, by Jensen's
+  inequality. Under <b>{winner}</b> this gives up {winner_cost_pct:.2f}%
+  of true plan-period revenue, averaged across channels, against the
+  unphased plan. Section 5 reports the same measure for every candidate,
+  from doing nothing through to Blackout.</p>
 </section>
 
 <section>

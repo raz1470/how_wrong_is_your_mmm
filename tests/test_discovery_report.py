@@ -135,6 +135,30 @@ class TestSvgMultiline:
         svg = _svg_multiline({"a": [1, 2, 3]}, {"a": "#000"}, markers=False)
         assert "<circle" not in svg
 
+    def test_edge_x_tick_labels_anchor_inward(self):
+        # Session 50: the rightmost x-axis tick sits exactly on the
+        # plot's own right edge -- text-anchor="middle" there overflowed
+        # the SVG's own viewBox (found in session 49's 6-channel stress
+        # test, fixed here). First/last ticks now anchor inward; interior
+        # ticks are unaffected.
+        svg = _svg_multiline(
+            {"a": list(range(10))},
+            {"a": "#000"},
+            x_tick_labels=[f"Week {i}" for i in range(10)],
+            n_x_ticks=4,
+            x_label="",  # else the default "Week" axis title (always
+            # text-anchor="middle") would also match this test's own
+            # "Week"-prefixed tick-label regex below.
+        )
+        anchors = re.findall(
+            r'<text x="[\d.]+" y="[\d.]+" text-anchor="(\w+)" '
+            r'font-size="10" fill="#9ca3af">Week',
+            svg,
+        )
+        assert anchors[0] == "start"
+        assert anchors[-1] == "end"
+        assert all(a == "middle" for a in anchors[1:-1])
+
 
 class TestSvgStackedArea:
     def test_returns_svg_markup_with_one_polygon_per_band(self):
@@ -157,6 +181,27 @@ class TestSvgStackedArea:
             ["base"], {"base": [100, 200, 300]}, {"base": "#000"}, y_fmt=str
         )
         assert "0.0" in svg or ">0<" in svg
+
+    def test_edge_x_tick_labels_anchor_inward(self):
+        # Same fix, same shared tick-rendering shape as _svg_multiline's
+        # own edge-anchor test above (session 50).
+        svg = _svg_stacked_area(
+            ["a"],
+            {"a": list(range(1, 11))},
+            {"a": "#000"},
+            x_tick_labels=[f"Week {i}" for i in range(10)],
+            n_x_ticks=4,
+            x_label="",  # else the default "Week" axis title would also
+            # match this test's own "Week"-prefixed tick-label regex.
+        )
+        anchors = re.findall(
+            r'<text x="[\d.]+" y="[\d.]+" text-anchor="(\w+)" '
+            r'font-size="10" fill="#9ca3af">Week',
+            svg,
+        )
+        assert anchors[0] == "start"
+        assert anchors[-1] == "end"
+        assert all(a == "middle" for a in anchors[1:-1])
 
 
 class TestSvgDotplot:
@@ -747,3 +792,26 @@ class TestToHtml:
         ]
         assert "<b>The problem:</b>" not in impact_block
         assert "<b>The impact:</b>" in impact_block
+
+    def test_impact_section_ends_with_the_winners_cost(self):
+        # Session 50: Ryan asked for the winning strategy's own Cost
+        # quoted at the end of Section 3, rather than only visible in the
+        # Section 5 appendix table -- computed the same way as that
+        # table's own Cost column (mean %, across channels, of true
+        # plan-period revenue given up under the winner vs unphased).
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        impact_block = html_out[
+            html_out.index("<h2>Impact</h2>") : html_out.index("<h2>Phased spend</h2>")
+        ]
+        assert "<h3>Cost</h3>" in impact_block
+        assert f"<b>{report.winner_}</b>" in impact_block
+
+        appendix_block = html_out[html_out.index("<h2>Appendix") :]
+        row_match = re.search(
+            rf'data-lever="{re.escape(report.winner_)}"[^>]*>.*?'
+            rf"<td>([\d.]+)%</td></tr>",
+            appendix_block,
+        )
+        winner_cost_pct = float(row_match.group(1))
+        assert f"{winner_cost_pct:.2f}%" in impact_block
