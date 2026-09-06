@@ -427,22 +427,18 @@ def _svg_stacked_area(
     return "".join(parts)
 
 
-def _corr_table_html(
-    matrix: dict, channels: list[str], before: dict | None = None
-) -> str:
+def _corr_table_html(matrix: dict, channels: list[str]) -> str:
     """Static HTML table for a channel-by-channel correlation matrix, cells
     heat-shaded from the correlation value (no JS -- computed at render time,
     same reasoning as _svg_multiline).
 
-    before:
-        Session 50 (Ryan: "spend correlation impact -- should we put the
-        delta?"): the matching unphased matrix, same shape as `matrix`.
-        When given, each cell also prints its change from `before` --
-        Section 3 (Impact) passes its own baseline matrix here so the
-        change is readable without scrolling back to Section 2's table,
-        which is why session 49 dropped the before/after side-by-side in
-        the first place. Section 2's own (unphased) table has nothing to
-        diff against, so it calls this without `before`.
+    Session 50: briefly grew an optional `before` matrix to print each
+    cell's change from unphased (Ryan: "spend correlation impact --
+    should we put the delta?"), then dropped it again the same session
+    (Ryan: "info overload, shall we revert to just showing the
+    correlation?") -- see NOTES.md. Column headers render vertically
+    (the .corr-table CSS) so more/longer channel names don't force the
+    table wider than the page, also session 50.
     """
 
     def cell_style(v: float) -> str:
@@ -452,18 +448,14 @@ def _corr_table_html(
         alpha = max(0.0, min(1.0, v))
         return f"background: rgba(220, 38, 38, {alpha * 0.65:.2f});"
 
-    header = "".join(f"<th>{ch}</th>" for ch in channels)
+    header = "".join(f'<th class="col-hdr">{ch}</th>' for ch in channels)
     rows = []
     for a in channels:
-        cells = []
-        for b in channels:
-            v = matrix[a][b]
-            delta_html = ""
-            if before is not None:
-                delta = v - before[a][b]
-                delta_html = f'<br><span class="corr-delta">{delta:+.2f}</span>'
-            cells.append(f'<td style="{cell_style(v)}">{v:.2f}{delta_html}</td>')
-        rows.append(f"<tr><th>{a}</th>{''.join(cells)}</tr>")
+        cells = "".join(
+            f'<td style="{cell_style(matrix[a][b])}">{matrix[a][b]:.2f}</td>'
+            for b in channels
+        )
+        rows.append(f"<tr><th>{a}</th>{cells}</tr>")
     return (
         f'<table class="corr-table"><thead><tr><th></th>{header}</tr></thead>'
         f"<tbody>{''.join(rows)}</tbody></table>"
@@ -1462,9 +1454,7 @@ def _render_html(report: DiscoveryReport) -> str:
     lam_narrowing_text = ", ".join(f"{ch} {lam_narrowing[ch]:.0%}" for ch in channels)
 
     corr_before_html = _corr_table_html(baseline["correlation"], channels)
-    corr_after_html = _corr_table_html(
-        best["correlation"], channels, before=baseline["correlation"]
-    )
+    corr_after_html = _corr_table_html(best["correlation"], channels)
 
     # Diagnostics section (session 48): the unphased "before" half of each
     # of the four problem charts above, shown on its own ahead of any
@@ -1742,14 +1732,26 @@ def _render_html(report: DiscoveryReport) -> str:
             "channel in this report -- no curvature to plot.</em></p>"
         )
 
-    spend_series = {ch: combined_baseline[ch].to_numpy() for ch in channels}
-    spend_series_svg = _svg_multiline(
-        spend_series,
-        colors,
-        normalize=False,
-        y_label="Weekly spend",
-        x_label="Week",
-        x_tick_labels=week_labels,
+    # Session 50 (Ryan: "scenario inputs spend -> shall we show them as
+    # grid plots like the section 4?"): one small chart per channel,
+    # own axis and colour, same pacing-grid/pacing-cell markup Section 4
+    # already uses for its own before/after pacing charts -- rather than
+    # one combined multi-line chart needing a channel legend to read.
+    spend_cells_html = "".join(
+        f'<div class="pacing-cell"><div class="pacing-title">{html.escape(ch)}</div>'
+        + _svg_multiline(
+            {ch: combined_baseline[ch].to_numpy()},
+            {ch: colors[ch]},
+            width=320,
+            height=170,
+            normalize=False,
+            y_label="Weekly spend",
+            x_label="Week",
+            x_tick_labels=week_labels,
+            n_x_ticks=4,
+        )
+        + "</div>"
+        for ch in channels
     )
 
     # No standalone demand chart -- it's a zero-mean synthetic series with
@@ -1803,11 +1805,11 @@ def _render_html(report: DiscoveryReport) -> str:
 </header>
 
 <nav class="toc" aria-label="Report sections">
-  <a href="#scenario-inputs">1&nbsp;Scenario inputs</a>
-  <a href="#diagnostics">2&nbsp;Diagnostics</a>
-  <a href="#impact">3&nbsp;Impact</a>
-  <a href="#phased-spend">4&nbsp;Phased spend</a>
-  <a href="#appendix">5&nbsp;Appendix</a>
+  <a href="#scenario-inputs">1 &middot; Scenario inputs</a>
+  <a href="#diagnostics">2 &middot; Diagnostics</a>
+  <a href="#impact">3 &middot; Impact</a>
+  <a href="#phased-spend">4 &middot; Phased spend</a>
+  <a href="#appendix">5 &middot; Appendix</a>
 </nav>
 
 <div class="headline">Recommended strategy: <b>{winner}</b> &mdash; the
@@ -1841,8 +1843,7 @@ the three problems below (dominance check, else worst-axis).</div>
       <div class="fig-sub">Actual weekly spend by channel, as supplied -- before any phasing</div>
     </div>
     <div class="fig-body">
-      <div class="legend">{legend}</div>
-      {spend_series_svg}
+      <div class="pacing-grid">{spend_cells_html}</div>
     </div>
   </div>
 
@@ -1985,11 +1986,11 @@ the three problems below (dominance check, else worst-axis).</div>
   <h3>Spend correlation</h3>
   <p>After phasing under <b>{winner}</b> -- same monthly totals as before,
   only the within-month weekly pattern changes, which is what breaks the
-  collinearity. Each cell below also shows its change from unphased.</p>
+  collinearity. See Section 2 for the unphased matrix to compare against.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Channel correlation, after phasing</div>
-      <div class="fig-sub">Pearson correlation, weekly spend by channel &middot; plan year only &middot; small figure is the change (delta) from unphased</div>
+      <div class="fig-sub">Pearson correlation, weekly spend by channel &middot; plan year only, monthly totals unchanged from unphased</div>
     </div>
     <div class="fig-body">
       {corr_after_html}
@@ -2163,9 +2164,18 @@ body {
 .meta-box { border: 1px solid var(--border); border-radius: 8px; padding: .85rem 1rem; background: var(--bg); }
 .meta-box .lbl { font-size: .66rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .25rem; }
 .meta-box .val { font-size: 1.1rem; font-weight: 700; }
-.toc { display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; padding: .85rem 2rem; border-bottom: 1px solid var(--border); font-size: .82rem; }
-.toc a { color: var(--muted); text-decoration: none; font-weight: 600; }
-.toc a:hover { color: var(--text); text-decoration: underline; }
+.toc {
+  position: sticky; top: 0; z-index: 20; background: #fff;
+  padding: 0 2rem; border-bottom: 1px solid var(--border);
+  display: flex; overflow-x: auto; gap: 0;
+}
+.toc a {
+  flex-shrink: 0; padding: .75rem 0; margin-right: 1.75rem;
+  text-decoration: none; font-size: .82rem; font-weight: 500;
+  color: var(--muted); border-bottom: 2px solid transparent;
+  white-space: nowrap; transition: color .15s, border-color .15s;
+}
+.toc a:hover { color: var(--text); border-bottom-color: var(--light); }
 .headline { margin: 2rem 2rem 0; padding: 1.1rem 1.4rem; border-left: 3px solid var(--good); background: var(--bg); border-radius: 0 6px 6px 0; font-size: 1.05rem; font-weight: 600; color: #1f2937; }
 .headline b { color: var(--good); }
 main { padding: 0 2rem 3rem; }
@@ -2187,7 +2197,7 @@ svg.chart { display: block; width: 100%; }
 .table-scroll { overflow-x: auto; }
 table.corr-table, table.cross-table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .85rem; }
 table.corr-table th, table.corr-table td, table.cross-table th, table.cross-table td { border: 1px solid var(--border); padding: .4rem .6rem; text-align: center; }
-.corr-delta { font-size: .68rem; color: var(--muted); font-weight: 400; }
+table.corr-table th.col-hdr { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; padding: .5rem .35rem; }
 table.cross-table th { background: var(--bg); }
 tr.winner-row td { background: #ecfdf5; font-weight: 700; }
 .winner-tag { display: inline-block; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--good); background: #d1fae5; border-radius: 4px; padding: .1rem .4rem; margin-left: .35rem; }

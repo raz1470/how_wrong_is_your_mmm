@@ -254,28 +254,26 @@ class TestLightenHex:
 
 
 class TestCorrTableHtml:
-    def test_no_before_omits_delta(self):
+    def test_renders_plain_correlation_value_per_cell(self):
+        # Session 50: briefly grew a delta feature, then Ryan asked to
+        # drop it again the same session ("info overload, shall we
+        # revert to just showing the correlation?") -- see NOTES.md.
         matrix = {"a": {"a": 1.0, "b": 0.5}, "b": {"a": 0.5, "b": 1.0}}
         html_out = _corr_table_html(matrix, ["a", "b"])
         assert "corr-delta" not in html_out
+        assert "<td" in html_out
+        assert html_out.count(">0.50<") == 2
 
-    def test_before_given_shows_signed_delta_per_cell(self):
-        # Session 50: Ryan asked whether the Impact section's correlation
-        # table should show the delta rather than only the after-phasing
-        # value -- shown inline per cell (not a second table), since
-        # session 49 deliberately dropped the before/after side-by-side
-        # for forcing a horizontal scroll.
-        after = {"a": {"a": 1.0, "b": 0.2}, "b": {"a": 0.2, "b": 1.0}}
-        before = {"a": {"a": 1.0, "b": 0.6}, "b": {"a": 0.6, "b": 1.0}}
-        html_out = _corr_table_html(after, ["a", "b"], before=before)
-        assert '<span class="corr-delta">-0.40</span>' in html_out
-        assert html_out.count('<span class="corr-delta">+0.00</span>') == 2
-
-    def test_positive_delta_gets_explicit_plus_sign(self):
-        after = {"a": {"a": 1.0, "b": 0.8}, "b": {"a": 0.8, "b": 1.0}}
-        before = {"a": {"a": 1.0, "b": 0.3}, "b": {"a": 0.3, "b": 1.0}}
-        html_out = _corr_table_html(after, ["a", "b"], before=before)
-        assert '<span class="corr-delta">+0.50</span>' in html_out
+    def test_column_headers_get_the_vertical_header_class(self):
+        # Session 50: long/more channel names pushed the table wider than
+        # the page -- column headers render vertically (see the
+        # .corr-table CSS) so column width no longer scales with name
+        # length. Row headers (the left-hand th per row) stay horizontal.
+        matrix = {"a": {"a": 1.0, "b": 0.5}, "b": {"a": 0.5, "b": 1.0}}
+        html_out = _corr_table_html(matrix, ["a", "b"])
+        assert html_out.count('<th class="col-hdr">') == 2
+        assert "<th>a</th>" in html_out
+        assert "<th>b</th>" in html_out
 
 
 class TestSvgForest:
@@ -586,23 +584,6 @@ class TestToHtml:
         assert "Channel correlation, after phasing" in impact_block
         assert "Before phasing" not in impact_block
 
-    def test_impact_correlation_shows_delta_diagnostics_does_not(self):
-        # Session 50: Ryan asked for the delta on the Impact correlation
-        # table, without reintroducing the side-by-side session 49 just
-        # removed -- Section 2 (Diagnostics) has nothing to diff against
-        # (it's the unphased state on its own) so it should stay
-        # delta-free either way.
-        report = fit_small(make_report())
-        html_out = report.to_html()
-        diagnostics_block = html_out[
-            html_out.index("<h2>Diagnostics</h2>") : html_out.index("<h2>Impact</h2>")
-        ]
-        impact_block = html_out[
-            html_out.index("<h2>Impact</h2>") : html_out.index("<h2>Phased spend</h2>")
-        ]
-        assert "corr-delta" not in diagnostics_block
-        assert "corr-delta" in impact_block
-
     def test_impact_table_has_one_row_per_lever(self):
         report = fit_small(make_report())
         html_out = report.to_html()
@@ -659,11 +640,19 @@ class TestToHtml:
         )
 
     def test_recommended_pacing_has_one_cell_per_channel(self):
+        # Session 50: Section 1's own spend chart also adopted the
+        # pacing-grid/pacing-cell markup (see the scenario-inputs test
+        # below), so this counts within Section 4 only.
         report = fit_small(make_report())
         html_out = report.to_html()
-        assert html_out.count('class="pacing-cell"') == len(CHANNELS)
+        phased_spend_block = html_out[
+            html_out.index("<h2>Phased spend</h2>") : html_out.index(
+                "<h2>Appendix: every strategy compared</h2>"
+            )
+        ]
+        assert phased_spend_block.count('class="pacing-cell"') == len(CHANNELS)
         for ch in CHANNELS:
-            assert f'<div class="pacing-title">{ch}</div>' in html_out
+            assert f'<div class="pacing-title">{ch}</div>' in phased_spend_block
 
     def test_recommended_pacing_uses_channel_colour_not_grey(self):
         # Session 49: grey read as too faint -- pacing chart now uses each
@@ -720,6 +709,23 @@ class TestToHtml:
         html_out = report.to_html()
         assert "Spend, history + plan" in html_out
         assert "Sales / revenue, weekly -- by source" in html_out
+
+    def test_scenario_inputs_spend_is_a_per_channel_grid(self):
+        # Session 50 (Ryan: "scenario inputs spend -> shall we show them
+        # as grid plots like the section 4?"): one small chart per
+        # channel, own colour, same pacing-grid/pacing-cell markup
+        # Section 4 uses for its own before/after pacing charts.
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        scenario_block = html_out[
+            html_out.index("<h2>Scenario inputs</h2>") : html_out.index(
+                "<h2>Diagnostics</h2>"
+            )
+        ]
+        spend_fig = scenario_block[scenario_block.index("Spend, history + plan") :]
+        assert spend_fig.count('class="pacing-cell"') == len(CHANNELS)
+        for ch in CHANNELS:
+            assert f'<div class="pacing-title">{ch}</div>' in spend_fig
 
     def test_no_standalone_demand_chart(self):
         # Session 47: dropped -- a zero-mean synthetic series with no
