@@ -1802,13 +1802,21 @@ def _render_html(report: DiscoveryReport) -> str:
   </div>
 </header>
 
+<nav class="toc" aria-label="Report sections">
+  <a href="#scenario-inputs">1&nbsp;Scenario inputs</a>
+  <a href="#diagnostics">2&nbsp;Diagnostics</a>
+  <a href="#impact">3&nbsp;Impact</a>
+  <a href="#phased-spend">4&nbsp;Phased spend</a>
+  <a href="#appendix">5&nbsp;Appendix</a>
+</nav>
+
 <div class="headline">Recommended strategy: <b>{winner}</b> &mdash; the
 candidate that most improves on the unphased plan without tanking any of
 the three problems below (dominance check, else worst-axis).</div>
 
 <main>
 
-<section>
+<section id="scenario-inputs">
   <div class="s-label">Section 1</div>
   <h2>Scenario inputs</h2>
   <p>Everything this report is built on: each channel's planned spend,
@@ -1859,7 +1867,7 @@ the three problems below (dominance check, else worst-axis).</div>
   </div>
 </section>
 
-<section>
+<section id="diagnostics">
   <div class="s-label">Section 2</div>
   <h2>Diagnostics</h2>
   <p>Before any fix: how entangled, uncertain and unreliable the unphased
@@ -1965,7 +1973,7 @@ the three problems below (dominance check, else worst-axis).</div>
   </div>
 </section>
 
-<section>
+<section id="impact">
   <div class="s-label">Section 3</div>
   <h2>Impact</h2>
   <p>Section 2 showed how bad each of these four problems is left unphased.
@@ -2092,7 +2100,7 @@ the three problems below (dominance check, else worst-axis).</div>
   from doing nothing through to Blackout.</p>
 </section>
 
-<section>
+<section id="phased-spend">
   <div class="s-label">Section 4</div>
   <h2>Phased spend</h2>
   <p>As supplied (pale) vs. the recommended weekly pacing under
@@ -2102,7 +2110,7 @@ the three problems below (dominance check, else worst-axis).</div>
   <div class="pacing-grid">{pacing_cells_html}</div>
 </section>
 
-<section>
+<section id="appendix">
   <div class="s-label">Section 5</div>
   <h2>Appendix: every strategy compared</h2>
   <p>Every candidate lever, swept from doing nothing through to
@@ -2155,6 +2163,9 @@ body {
 .meta-box { border: 1px solid var(--border); border-radius: 8px; padding: .85rem 1rem; background: var(--bg); }
 .meta-box .lbl { font-size: .66rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .25rem; }
 .meta-box .val { font-size: 1.1rem; font-weight: 700; }
+.toc { display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; padding: .85rem 2rem; border-bottom: 1px solid var(--border); font-size: .82rem; }
+.toc a { color: var(--muted); text-decoration: none; font-weight: 600; }
+.toc a:hover { color: var(--text); text-decoration: underline; }
 .headline { margin: 2rem 2rem 0; padding: 1.1rem 1.4rem; border-left: 3px solid var(--good); background: var(--bg); border-radius: 0 6px 6px 0; font-size: 1.05rem; font-weight: 600; color: #1f2937; }
 .headline b { color: var(--good); }
 main { padding: 0 2rem 3rem; }

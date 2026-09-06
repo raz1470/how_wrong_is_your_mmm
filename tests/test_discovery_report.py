@@ -538,6 +538,19 @@ class TestToHtml:
         assert html_out.startswith("<!DOCTYPE html>")
         assert "</html>" in html_out
 
+    def test_toc_links_match_section_ids(self):
+        # Session 50: Ryan asked for hyperlinks to each section at the
+        # top of the report -- every href in the cover's nav must land on
+        # a section that actually exists further down the page.
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        anchors = re.findall(r'<nav class="toc"[^>]*>(.*?)</nav>', html_out, re.S)
+        assert len(anchors) == 1
+        hrefs = re.findall(r'href="#([\w-]+)"', anchors[0])
+        assert len(hrefs) == 5
+        for anchor_id in hrefs:
+            assert f'<section id="{anchor_id}">' in html_out
+
     def test_fast_mode_shows_draft_banner(self):
         report = fit_small(make_report())
         assert '<div class="draft-banner">' in report.to_html()
