@@ -25,3 +25,7 @@ notes_archive/
 
 # Grid sweep raw output (8.8MB) -- regenerate with tools/grid_sweep/grid_sweep.py
 tools/grid_sweep/grid_raw.csv
+
+# Scratch preview/demo reports rebuilt each session -- not for the repo,
+# docs/example-report.html is hand-copied from here for the live public one
+Claude outputs/

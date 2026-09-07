@@ -600,6 +600,93 @@ def apply_adstock(spend: np.ndarray, decay: float) -> np.ndarray:
     return out
 
 
+def channel_contributions(
+    spend_df: pd.DataFrame,
+    true_marginal_returns: dict[str, float] | None = None,
+    saturation: dict[str, float] | float | None = None,
+    adstock: dict[str, float] | float | None = None,
+    reference_spend: dict[str, float] | None = None,
+) -> pd.DataFrame:
+    """Per-channel, per-week TRUE contribution to sales -- no noise, no
+    base_sales, no demand, just the same per-channel term simulate_sales
+    sums into its noisy sales column, exposed directly.
+
+    simulate_sales answers "what does a noisy sales column driven by this
+    spend look like". This answers the question underneath it: "how much
+    revenue does this spend pattern actually generate, per channel, per
+    week, under a known or assumed response curve" -- useful on its own
+    for pricing a real or hypothetical future plan (sum a column, or a
+    slice of one, to get that channel's total true revenue over any
+    period) without having to draw a noisy sales series to get there.
+
+    Parameters
+    ----------
+    spend_df:
+        DataFrame with one column per channel. Can be synthetic or real.
+    true_marginal_returns:
+        Dict mapping channel name to true marginal return (£ revenue per
+        £ spend). Defaults to {"tv": 0.5, "meta": 1.0, "search": 1.5}.
+        All columns in spend_df must have an entry.
+    saturation, adstock, reference_spend:
+        Same meaning as simulate_sales's own parameters of the same name
+        -- see that docstring. Applied identically here; this function
+        and simulate_sales share one implementation of the response
+        curve (see simulate_sales's own body) so the two can never drift
+        apart.
+
+    Returns
+    -------
+    pd.DataFrame, same index as spend_df, one column per channel -- that
+    channel's true £ contribution to sales each week.
+    """
+    if true_marginal_returns is None:
+        true_marginal_returns = _DEFAULT_MARGINAL_RETURNS
+
+    contributions: dict[str, np.ndarray] = {}
+    for ch in spend_df.columns:
+        if ch not in true_marginal_returns:
+            raise ValueError(
+                f"Channel '{ch}' in spend_df has no entry in "
+                "true_marginal_returns. Provide true_marginal_returns for "
+                f"all channels: {list(spend_df.columns)}"
+            )
+        x = spend_df[ch].to_numpy()
+        lam = _adstock_for(adstock, ch)
+        b = _saturation_for(saturation, ch)
+        if lam == 0.0 and b == 1.0:
+            # Same expression as before either transform existed, so the
+            # default reproduces earlier output digit for digit.
+            contributions[ch] = true_marginal_returns[ch] * x
+            continue
+        # Adstock first, then saturation -- the order Robyn, Meridian and
+        # PyMC-Marketing all use. apply_adstock is the identity at lam == 0.
+        x = apply_adstock(x, lam)
+        if b == 1.0:
+            contributions[ch] = true_marginal_returns[ch] * x
+        else:
+            x_ref = (
+                float(x.mean())
+                if reference_spend is None
+                else float(reference_spend[ch])
+            )
+            if x_ref <= 0:
+                raise ValueError(
+                    f"reference_spend for '{ch}' must be positive to calibrate "
+                    f"a saturating response, got {x_ref}"
+                )
+            if (x < 0).any():
+                raise ValueError(
+                    f"channel '{ch}' has negative spend, which a saturating "
+                    "response is not defined for"
+                )
+            # k chosen so d(contribution)/dx at x_ref equals the supplied
+            # marginal return: k * b * x_ref**(b-1) == mr.
+            k = true_marginal_returns[ch] / (b * x_ref ** (b - 1.0))
+            contributions[ch] = k * x**b
+
+    return pd.DataFrame(contributions, index=spend_df.index)
+
+
 def simulate_sales(
     spend_df: pd.DataFrame,
     true_marginal_returns: dict[str, float] | None = None,
@@ -738,45 +825,9 @@ def simulate_sales(
             )
         sales = sales + demand_coef * demand_arr
 
-    for ch in spend_df.columns:
-        if ch not in true_marginal_returns:
-            raise ValueError(
-                f"Channel '{ch}' in spend_df has no entry in "
-                "true_marginal_returns. Provide true_marginal_returns for "
-                f"all channels: {list(spend_df.columns)}"
-            )
-        x = spend_df[ch].to_numpy()
-        lam = _adstock_for(adstock, ch)
-        b = _saturation_for(saturation, ch)
-        if lam == 0.0 and b == 1.0:
-            # Same expression as before either transform existed, so the
-            # default reproduces earlier output digit for digit.
-            sales = sales + true_marginal_returns[ch] * x
-            continue
-        # Adstock first, then saturation -- the order Robyn, Meridian and
-        # PyMC-Marketing all use. apply_adstock is the identity at lam == 0.
-        x = apply_adstock(x, lam)
-        if b == 1.0:
-            sales = sales + true_marginal_returns[ch] * x
-        else:
-            x_ref = (
-                float(x.mean())
-                if reference_spend is None
-                else float(reference_spend[ch])
-            )
-            if x_ref <= 0:
-                raise ValueError(
-                    f"reference_spend for '{ch}' must be positive to calibrate "
-                    f"a saturating response, got {x_ref}"
-                )
-            if (x < 0).any():
-                raise ValueError(
-                    f"channel '{ch}' has negative spend, which a saturating "
-                    "response is not defined for"
-                )
-            # k chosen so d(contribution)/dx at x_ref equals the supplied
-            # marginal return: k * b * x_ref**(b-1) == mr.
-            k = true_marginal_returns[ch] / (b * x_ref ** (b - 1.0))
-            sales = sales + k * x**b
+    contributions = channel_contributions(
+        spend_df, true_marginal_returns, saturation, adstock, reference_spend
+    )
+    sales = sales + contributions.sum(axis=1).to_numpy()
 
     return pd.Series(sales, name="sales")

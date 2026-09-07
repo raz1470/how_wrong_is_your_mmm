@@ -105,21 +105,26 @@ phaser.recommended_schedule_  # 52-week DataFrame, monthly totals guaranteed to 
 
 ### 3. Build a client-ready report
 
-Package the diagnosis and the phased schedule into one self-contained HTML report:
+Sweep candidate phasing strategies (or pin one directly, with per-channel
+overrides) and package the diagnosis into one self-contained HTML report,
+plus the resulting weekly schedule as a CSV:
 
 ```python
-from how_wrong_is_your_mmm import ReportBuilder
+from how_wrong_is_your_mmm import DiscoveryReport
 
-rb = ReportBuilder(
+report = DiscoveryReport(
     history_df=history,
     plan_df=plan,
     true_marginal_returns={"tv": 1.8, "paid_social": 2.4, "search": 4.1},  # your own numbers
     revenue_noise_std=my_residual_std,  # from your own model's residuals
     client_name="Example Brand",
+    # optional: pin a strategy instead of sweeping for one, with per-channel overrides
+    # strategy_pct=60.0,
+    # channel_constraints={"paid_social": 20.0},
 )
-rb.fit()
-rb.to_html("reports/example_brand.html")  # self-contained HTML, open it in a browser
-rb.schedule_csv(
+report.fit()
+report.to_html("reports/example_brand.html")  # self-contained HTML, open it in a browser
+report.schedule_csv(
     "reports/example_brand_schedule.csv"
 )  # the recommended weekly schedule as a CSV
 ```
@@ -156,7 +161,7 @@ always supply your own values.
 
 **Does phasing help identify adstock and saturation too?** This package targets cross-channel collinearity in marginal returns. There's planned research into whether phasing also helps identify adstock decay and saturation curvature. See the ["Does this help with adstock and saturation too?"](https://raz1470.github.io/how_wrong_is_your_mmm/overview.html#faq) FAQ on the overview page for the reasoning so far.
 
-**Bring-your-own-estimator.** `ReportBuilder` currently fits with OLS internally. A hook to swap in your own estimator instead (Bayesian, regularised, whatever your team already trusts) while still returning the same diagnostics and phased schedule is on the list.
+**Bring-your-own-estimator.** `DiscoveryReport` currently fits with OLS internally. A hook to swap in your own estimator instead (Bayesian, regularised, whatever your team already trusts) while still returning the same diagnostics and phased schedule is on the list.
 
 ---
 

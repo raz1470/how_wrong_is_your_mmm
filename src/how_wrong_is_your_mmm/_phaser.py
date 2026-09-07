@@ -1244,8 +1244,7 @@ class BudgetPhaser:
         channel_sensitivity(): it doesn't capture interaction effects from
         phasing several channels at once. Typical use: feed this method's
         output straight into a subsequent BudgetPhaser's own
-        max_weekly_deviation_pct (ReportBuilder does this automatically by
-        default — see its auto_lever parameter).
+        max_weekly_deviation_pct.
 
         Parameters
         ----------
@@ -1275,9 +1274,8 @@ class BudgetPhaser:
         n_sims, n_phasing_seeds:
             Same meaning as channel_sensitivity()/fit(). n_phasing_seeds
             defaults to 10 here (not fit()'s own default of 3) specifically
-            so the lever decision above is stable enough to trust on its
-            own, not just when called through ReportBuilder (which already
-            passes 10, so this change doesn't alter its behaviour).
+            so the lever decision above is stable enough to trust on
+            its own.
         fast_mode:
             If True, uses n_sims=10, n_phasing_seeds=1 — cheap, for
             iterating on the report itself, not a lever choice to actually
@@ -1375,10 +1373,9 @@ class BudgetPhaser:
             helper (the source of overview.html's published £ figures),
             which always prices against the plan's own fixed annual total
             regardless of horizon — "same plan, £0 extra spend, just a
-            tighter range" is the intended story throughout this package,
-            and ReportBuilder's Impact section is meant to echo it. Without
-            this parameter, only CV is returned (CV is dimensionless and
-            was never affected by this).
+            tighter range" is the intended story throughout this package.
+            Without this parameter, only CV is returned (CV is
+            dimensionless and was never affected by this).
 
         Returns
         -------

@@ -3,841 +3,494 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MMM Reliability &amp; Phasing Report</title>
+<title>MMM Discovery Report</title>
 <style>
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 :root {
-  --text:   #111827;
-  --muted:  #6b7280;
-  --light:  #d1d5db;
-  --border: #e5e7eb;
-  --bg:     #f9fafb;
-  --good:   #059669;
-  --w:      760px;
+  --text: #111827; --muted: #6b7280; --light: #d1d5db; --border: #e5e7eb;
+  --bg: #f9fafb; --good: #059669; --w: 760px;
 }
-
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  color: var(--text);
-  background: #f3f4f6;
-  line-height: 1.7;
-  font-size: 17px;
+  color: var(--text); background: #f3f4f6; line-height: 1.7; font-size: 17px;
 }
-
-.page {
-  max-width: var(--w);
-  margin: 0 auto;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,.08);
-}
-
-/* -- Header -- */
-.cover {
-  padding: 2.75rem 2rem 2.25rem;
-  border-bottom: 3px solid var(--text);
-}
-.cover-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-}
+.page { max-width: var(--w); margin: 0 auto; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.draft-banner { background: #fef3c7; color: #92400e; text-align: center; padding: .5rem; font-weight: 700; font-size: .85rem; }
+.cover { padding: 2.75rem 2rem 2.25rem; border-bottom: 3px solid var(--text); }
+.cover-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
 .brand { font-size: .8rem; font-weight: 700; letter-spacing: .02em; }
 .brand span { color: var(--muted); font-weight: 500; }
 .gen-date { font-size: .78rem; color: var(--muted); text-align: right; }
-.report-title-eyebrow {
-  font-size: .75rem;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: .6rem;
-}
+.report-title-eyebrow { font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: .6rem; }
 .report-title { font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; margin-bottom: .5rem; }
 .report-sub { color: var(--muted); font-size: 1.02rem; max-width: 56ch; }
-
-.cover-meta {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: .75rem;
-  margin-top: 2rem;
-}
+.cover-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem; margin-top: 2rem; }
 @media (max-width: 620px) { .cover-meta { grid-template-columns: repeat(2, 1fr); } }
 .meta-box { border: 1px solid var(--border); border-radius: 8px; padding: .85rem 1rem; background: var(--bg); }
 .meta-box .lbl { font-size: .66rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .25rem; }
-.meta-box .val { font-size: 1.15rem; font-weight: 700; }
-
-/* -- Headline callout -- */
-.headline {
-  margin: 2rem 2rem 0;
-  padding: 1.1rem 1.4rem;
-  border-left: 3px solid var(--good);
-  background: var(--bg);
-  border-radius: 0 6px 6px 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: #1f2937;
+.meta-box .val { font-size: 1.1rem; font-weight: 700; }
+.toc {
+  position: sticky; top: 0; z-index: 20; background: #fff;
+  padding: 0 2rem; border-bottom: 1px solid var(--border);
+  display: flex; overflow-x: auto; gap: 0;
 }
+.toc a {
+  flex-shrink: 0; padding: .75rem 0; margin-right: 1.75rem;
+  text-decoration: none; font-size: .82rem; font-weight: 500;
+  color: var(--muted); border-bottom: 2px solid transparent;
+  white-space: nowrap; transition: color .15s, border-color .15s;
+}
+.toc a:hover { color: var(--text); border-bottom-color: var(--light); }
+.headline { margin: 2rem 2rem 0; padding: 1.1rem 1.4rem; border-left: 3px solid var(--good); background: var(--bg); border-radius: 0 6px 6px 0; font-size: 1.05rem; font-weight: 600; color: #1f2937; }
 .headline b { color: var(--good); }
-
 main { padding: 0 2rem 3rem; }
-
 p { margin-bottom: 1.05rem; max-width: 64ch; font-size: .98rem; }
-
 section { margin-top: 2.75rem; padding-top: 2rem; border-top: 1px solid var(--border); }
-
 .s-label { font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: .4rem; }
 h2 { font-size: 1.3rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.25; margin-bottom: .9rem; }
-
-/* -- Figure -- */
-.fig { margin: 1.5rem 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; page-break-inside: avoid; }
+h3 { font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em; margin: 1.75rem 0 .5rem; }
+.fig { margin: 1.5rem 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .fig-hdr { padding: .75rem 1.1rem; background: var(--bg); border-bottom: 1px solid var(--border); }
 .fig-title { font-size: .95rem; font-weight: 700; }
-.fig-sub   { font-size: .8rem; color: var(--muted); margin-top: .15rem; }
-.fig-body  { padding: 1.1rem 1.1rem .3rem; }
-.fig-cap   { padding: .6rem 1.1rem .95rem; font-size: .82rem; color: var(--muted); line-height: 1.55; max-width: none; }
-
+.fig-sub { font-size: .8rem; color: var(--muted); margin-top: .15rem; }
+.fig-body { padding: 1.1rem 1.1rem .3rem; }
+.fig-cap { padding: .6rem 1.1rem .95rem; font-size: .82rem; color: var(--muted); }
 svg.chart { display: block; width: 100%; }
-
-.legend { display: flex; flex-wrap: wrap; gap: .85rem; padding: .1rem 0 .5rem; font-size: .78rem; color: var(--text); }
+.legend { display: flex; flex-wrap: wrap; gap: .85rem; padding: .1rem 1.1rem .95rem; font-size: .78rem; }
 .li { display: flex; align-items: center; gap: .35rem; }
-
-/* -- Table -- */
-table.rpt { width: 100%; border-collapse: collapse; font-size: .88rem; margin: 1.25rem 0; }
-table.rpt th, table.rpt td { padding: .55rem .7rem; text-align: left; border-bottom: 1px solid var(--border); }
-table.rpt th { font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 700; }
-table.rpt td.num { text-align: right; font-variant-numeric: tabular-nums; }
-table.rpt th.num { text-align: right; }
-table.rpt .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: .45rem; }
-table.rpt tr:last-child td { border-bottom: none; }
-
-/* -- Key numbers -- */
-.knums { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin: 1.5rem 0 .5rem; }
-@media (max-width: 560px) { .knums { grid-template-columns: 1fr; } }
-.kbox { border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.1rem; background: var(--bg); text-align: center; }
-.kbox .lbl { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .3rem; }
-.kbox .num { font-size: 1.6rem; font-weight: 800; line-height: 1; margin-bottom: .3rem; color: var(--text); }
-.kbox .lab { font-size: .74rem; color: var(--muted); line-height: 1.4; }
-
-.corr-wrap { display: flex; justify-content: center; padding: 1.3rem 1.1rem 1.5rem; overflow-x: auto; }
-table.corr { border-collapse: collapse; }
-table.corr th { font-size: .76rem; font-weight: 700; color: var(--muted); padding: 0 .5rem .5rem; text-align: center; }
-table.corr th.rh { text-align: right; padding-right: .7rem; }
-table.corr td { width: 58px; height: 40px; text-align: center; font-size: .84rem; font-weight: 700; font-variant-numeric: tabular-nums; border-radius: 4px; }
-table.corr td.diag { background: repeating-linear-gradient(45deg, #f3f4f6, #f3f4f6 4px, #e5e7eb 4px, #e5e7eb 8px); color: var(--muted); font-weight: 500; }
-
-.caveat { display: flex; gap: .65rem; align-items: flex-start; border: 1px solid #fde68a; background: #fffbeb; border-radius: 8px; padding: .85rem 1.1rem; margin: 1.5rem 0 0; font-size: .84rem; color: #78350f; line-height: 1.55; }
-.caveat .icon { flex: none; font-size: 1rem; color: #b45309; line-height: 1.5; }
-.caveat b { color: #78350f; }
-.caveat p { margin: 0; max-width: none; font-size: inherit; color: inherit; }
-
-/* -- Draft/fast-mode watermark -- shown only when the report was built with
-   fast_mode=True, so a quick preview run can never be mistaken for a real
-   one further down the line (this is what happened before this banner
-   existed — see fit()'s fast_mode docstring). Deliberately alarming (red,
-   not the amber used for the marginal-return caveat above) and kept visible in
-   print, since the whole point is that it must survive a PDF export too. */
-.draft-banner { display: none; }
-.draft-banner.show {
-  display: flex; gap: .6rem; align-items: center;
-  background: #dc2626; color: #fff; font-weight: 700; font-size: .82rem;
-  letter-spacing: .02em; padding: .65rem 1.1rem; text-align: center;
-  justify-content: center;
+.sw { width: .7rem; height: .7rem; border-radius: 2px; display: inline-block; }
+.table-scroll { overflow-x: auto; }
+table.corr-table, table.cross-table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .85rem; }
+table.corr-table th, table.corr-table td, table.cross-table th, table.cross-table td { border: 1px solid var(--border); padding: .4rem .6rem; text-align: center; }
+table.corr-table { table-layout: fixed; }
+table.corr-table tr > th:first-child { width: 9rem; }
+table.corr-table th.col-hdr {
+  height: 7.75rem; width: 2.1rem; min-width: 2.1rem; max-width: 2.1rem;
+  padding: 0 0 .5rem 0; vertical-align: bottom; text-align: center;
 }
-@media print { .draft-banner.show { display: flex; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-
-.appendix { font-size: .84rem; color: var(--muted); }
-.appendix code { background: var(--bg); padding: .1rem .35rem; border-radius: 4px; font-size: .82rem; }
-
-footer { margin-top: 2.5rem; padding: 1.5rem 2rem 2rem; border-top: 1px solid var(--border); font-size: .8rem; color: var(--muted); }
-
-/* -- Page 2 -- */
-.page2 { margin-top: 1.75rem; padding: 2.25rem 2rem 1rem; }
-.page2-hdr { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 3px solid var(--text); padding-bottom: 1.1rem; margin-bottom: .5rem; }
-.page2-hdr h1 { font-size: 1.55rem; font-weight: 800; letter-spacing: -.02em; }
-.page2-hdr .page-tag { font-size: .74rem; color: var(--muted); font-weight: 600; }
-.page2-sub { color: var(--muted); font-size: .95rem; max-width: 60ch; margin: .9rem 0 0; }
-.insight { border: 1px solid var(--border); border-radius: 8px; padding: .9rem 1.1rem; margin: 1.25rem 0; background: var(--bg); }
-.insight-row { display: flex; gap: .7rem; align-items: baseline; padding: .35rem 0; border-bottom: 1px dashed var(--border); font-size: .87rem; }
-.insight-row:last-child { border-bottom: none; }
-.insight-row .swatch { width: 9px; height: 9px; border-radius: 2px; flex: none; margin-top: .35rem; }
-.insight-row b { font-size: .87rem; }
-.insight-row .verdict { color: var(--muted); }
-
-@media print {
-  .page2 { break-before: page; }
-  body { background: #fff; }
-  .page { box-shadow: none; }
-  section { break-inside: avoid-page; }
+table.corr-table td { width: 2.1rem; }
+table.corr-table th.col-hdr .col-hdr-label {
+  display: inline-block; writing-mode: vertical-rl; transform: rotate(180deg);
+  white-space: nowrap; font-weight: 600;
 }
+table.cross-table th { background: var(--bg); }
+tr.winner-row td { background: #ecfdf5; font-weight: 700; }
+.winner-tag { display: inline-block; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--good); background: #d1fae5; border-radius: 4px; padding: .1rem .4rem; margin-left: .35rem; }
+.pacing-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin: 1rem 0; }
+@media (max-width: 620px) { .pacing-grid { grid-template-columns: 1fr; } }
+.pacing-cell { border: 1px solid var(--border); border-radius: 8px; padding: .75rem .75rem .3rem; }
+.pacing-title { font-size: .82rem; font-weight: 700; margin-bottom: .3rem; }
+
 </style>
 </head>
 <body>
-
 <div class="page">
 
-<div class="draft-banner" id="draftBanner">&#9888; DRAFT &mdash; generated in fast mode. Not for client use; re-run with fast_mode=False for real numbers.</div>
-
-<div class="cover">
+<header class="cover">
   <div class="cover-top">
-    <div class="brand"><span>how_wrong_is_your_mmm</span> &middot; MMM Reliability &amp; Phasing Report</div>
-    <div class="gen-date" id="genDate"></div>
+    <div class="brand">how_wrong_is_your_mmm <span>Discovery Report</span></div>
+    <div class="gen-date">Generated 2026-09-06</div>
   </div>
-  <p class="report-title-eyebrow">Prepared for</p>
-  <h1 class="report-title" id="clientName"></h1>
-  <p class="report-sub" id="reportSub"></p>
-
+  <div class="report-title-eyebrow">Discovery</div>
+  <h1 class="report-title">Which phasing strategy is worth pursuing?</h1>
+  <p class="report-sub">A phasing strategy changes when the plan's spend
+  lands week to week. It does not touch the total budget or how it splits
+  across channels. This report sweeps 10 such strategies,
+  each applied the same way to every channel, and picks the one that does
+  the most to fix three separate ways a model can misread this plan: how
+  wide its revenue estimate is, how biased that estimate is, and whether
+  saturation and adstock can be recovered at all.</p>
   <div class="cover-meta">
-    <div class="meta-box"><div class="lbl">Plan year</div><div class="val" id="metaPlanYear"></div></div>
-    <div class="meta-box"><div class="lbl">Channels</div><div class="val" id="metaChannels"></div></div>
-    <div class="meta-box"><div class="lbl">Annual plan</div><div class="val" id="metaAnnualPlan"></div></div>
-    <div class="meta-box"><div class="lbl">Extra spend needed</div><div class="val">&pound;0</div></div>
+    <div class="meta-box"><div class="lbl">Client</div><div class="val">Acme Retail</div></div>
+    <div class="meta-box"><div class="lbl">Plan year</div><div class="val">2027</div></div>
+    <div class="meta-box"><div class="lbl">Plan weeks</div><div class="val">52</div></div>
+    <div class="meta-box"><div class="lbl">Recommended</div><div class="val">+/-80% (edge, balanced)</div></div>
   </div>
-</div>
+</header>
 
-<div class="headline" id="headline"></div>
+<nav class="toc" aria-label="Report sections">
+  <a href="#scenario-inputs">1 &middot; Scenario inputs</a>
+  <a href="#diagnostics">2 &middot; Diagnostics</a>
+  <a href="#impact">3 &middot; Impact</a>
+  <a href="#phased-spend">4 &middot; Phased spend</a>
+  <a href="#appendix">5 &middot; Appendix</a>
+</nav>
+
+<div class="headline">Recommended strategy: <b>+/-80% (edge, balanced)</b>. It is the candidate that improves on the unphased plan across all three problems below; when no candidate manages that, the report falls back to whichever improves the worst-affected problem the most.</div>
 
 <main>
 
-<!-- SECTION 1: DIAGNOSE -->
-<section id="diagnose">
-  <p class="s-label">1 &middot; Diagnose</p>
-  <h2>How reliable is your current plan?</h2>
-  <p>Here's why: how correlated your channels have actually been over your supplied spend history. The higher the number, the more two channels move together week to week &mdash; and the harder it is for the model to tell their effects apart.</p>
-
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Historical spend correlation</div>
-      <div class="fig-sub">Pearson correlation, weekly spend by channel</div>
-    </div>
-    <div class="fig-body corr-wrap">
-      <div id="corrMatrix"></div>
-    </div>
-    <p class="fig-cap" id="corrCaption"></p>
+<section id="scenario-inputs">
+  <div class="s-label">Section 1</div>
+  <h2>Scenario inputs</h2>
+  <p>This section lays out everything the report is built on: each
+  channel's planned spend and ROI, the saturation and adstock it is
+  assumed to respond with, the actual weekly spend behind the plan, and
+  what all of that implies for weekly sales. Background demand accounts
+  for 70% of sales in this scenario, leaving the
+  remaining 30% for these channels to
+  explain, which is why the reliability problems in the sections that
+  follow matter. Everything here is reproducible from these inputs alone,
+  in a notebook, with no need for this report class.</p>
+  <div class="table-scroll">
+  <table class="cross-table">
+    <thead><tr><th>Channel</th><th>Spend</th><th>ROI</th><th>Saturation</th><th>Adstock</th></tr></thead>
+    <tbody><tr><td>tv</td><td>£5.08m</td><td>£0.50</td><td>0.60</td><td>0.50</td></tr><tr><td>meta</td><td>£4.05m</td><td>£1.00</td><td>0.75</td><td>0.30</td></tr><tr><td>search_generic</td><td>£4.14m</td><td>£1.50</td><td>0.90</td><td>0.10</td></tr><tr><td>tiktok</td><td>£3.95m</td><td>£1.20</td><td>0.70</td><td>0.20</td></tr></tbody>
+  </table>
   </div>
 
-  <p>We simulated many equally plausible versions of your spend history consistent with this correlation structure, refitting the model on each one. Here's the model-estimated range of incremental revenue each channel could support as a result.</p>
-
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Today's model-estimated range, before any change</div>
-      <div class="fig-sub">Incremental revenue, 10th&ndash;90th percentile across simulated histories</div>
+      <div class="fig-title">Spend, history + plan</div>
+      <div class="fig-sub">Actual weekly spend by channel, as supplied, before any phasing</div>
     </div>
     <div class="fig-body">
-      <svg class="chart" id="chartDiagnose" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
+      <div class="pacing-grid"><div class="pacing-cell"><div class="pacing-title">tv</div><svg class="chart" viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="137.5" text-anchor="end" font-size="10" fill="#9ca3af">£0</text><line x1="58" y1="104.0" x2="306" y2="104.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="107.5" text-anchor="end" font-size="10" fill="#9ca3af">£50k</text><line x1="58" y1="74.0" x2="306" y2="74.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="77.5" text-anchor="end" font-size="10" fill="#9ca3af">£100k</text><line x1="58" y1="44.0" x2="306" y2="44.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="47.5" text-anchor="end" font-size="10" fill="#9ca3af">£150k</text><line x1="58" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">£200k</text><line x1="58.0" y1="134.0" x2="58.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="58.0" y="150.0" text-anchor="start" font-size="10" fill="#9ca3af">Jan &#x27;26</text><line x1="139.9" y1="134.0" x2="139.9" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="139.9" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">Aug &#x27;26</text><line x1="224.1" y1="134.0" x2="224.1" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="224.1" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">May &#x27;27</text><line x1="306.0" y1="134.0" x2="306.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="150.0" text-anchor="end" font-size="10" fill="#9ca3af">Dec &#x27;27</text><line x1="58" y1="14" x2="58" y2="134.0" stroke="#d1d5db" stroke-width="1"/><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#d1d5db" stroke-width="1"/><text x="182.0" y="166" text-anchor="middle" font-size="10" fill="#9ca3af">Week</text><text x="12" y="74.0" text-anchor="middle" font-size="10" fill="#9ca3af" transform="rotate(-90 12 74.0)">Weekly spend</text><polyline points="58.0,72.5 60.4,69.2 62.8,78.9 65.2,68.9 67.6,76.2 70.0,62.8 72.4,70.0 74.9,69.1 77.3,86.7 79.7,100.6 82.1,64.4 84.5,78.4 86.9,98.7 89.3,79.2 91.7,73.4 94.1,69.9 96.5,74.3 98.9,99.4 101.3,68.6 103.7,54.8 106.2,65.7 108.6,63.7 111.0,64.1 113.4,82.7 115.8,69.6 118.2,63.7 120.6,82.4 123.0,65.4 125.4,77.6 127.8,77.6 130.2,89.8 132.6,87.2 135.0,88.4 137.5,61.3 139.9,65.7 142.3,57.1 144.7,89.2 147.1,59.0 149.5,67.4 151.9,40.7 154.3,93.3 156.7,63.0 159.1,55.4 161.5,54.5 163.9,69.2 166.3,83.5 168.8,69.6 171.2,64.2 173.6,47.5 176.0,48.5 178.4,71.3 180.8,99.0 183.2,62.7 185.6,69.1 188.0,61.4 190.4,100.1 192.8,54.2 195.2,68.8 197.7,92.7 200.1,70.1 202.5,69.1 204.9,67.8 207.3,83.3 209.7,78.3 212.1,80.9 214.5,80.5 216.9,77.5 219.3,59.4 221.7,89.7 224.1,75.0 226.5,71.4 229.0,80.0 231.4,81.8 233.8,69.9 236.2,56.0 238.6,53.1 241.0,109.9 243.4,111.2 245.8,77.2 248.2,83.4 250.6,63.8 253.0,69.5 255.4,64.6 257.8,99.1 260.3,69.9 262.7,42.8 265.1,72.5 267.5,66.1 269.9,75.8 272.3,89.2 274.7,63.4 277.1,70.2 279.5,89.7 281.9,84.7 284.3,64.5 286.7,107.4 289.1,76.5 291.6,72.5 294.0,87.5 296.4,76.8 298.8,73.3 301.2,54.9 303.6,71.4 306.0,77.3" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div><div class="pacing-cell"><div class="pacing-title">meta</div><svg class="chart" viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="137.5" text-anchor="end" font-size="10" fill="#9ca3af">£20k</text><line x1="58" y1="110.0" x2="306" y2="110.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="113.5" text-anchor="end" font-size="10" fill="#9ca3af">£40k</text><line x1="58" y1="86.0" x2="306" y2="86.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="89.5" text-anchor="end" font-size="10" fill="#9ca3af">£60k</text><line x1="58" y1="62.0" x2="306" y2="62.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="65.5" text-anchor="end" font-size="10" fill="#9ca3af">£80k</text><line x1="58" y1="38.0" x2="306" y2="38.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="41.5" text-anchor="end" font-size="10" fill="#9ca3af">£100k</text><line x1="58" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">£120k</text><line x1="58.0" y1="134.0" x2="58.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="58.0" y="150.0" text-anchor="start" font-size="10" fill="#9ca3af">Jan &#x27;26</text><line x1="139.9" y1="134.0" x2="139.9" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="139.9" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">Aug &#x27;26</text><line x1="224.1" y1="134.0" x2="224.1" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="224.1" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">May &#x27;27</text><line x1="306.0" y1="134.0" x2="306.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="150.0" text-anchor="end" font-size="10" fill="#9ca3af">Dec &#x27;27</text><line x1="58" y1="14" x2="58" y2="134.0" stroke="#d1d5db" stroke-width="1"/><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#d1d5db" stroke-width="1"/><text x="182.0" y="166" text-anchor="middle" font-size="10" fill="#9ca3af">Week</text><text x="12" y="74.0" text-anchor="middle" font-size="10" fill="#9ca3af" transform="rotate(-90 12 74.0)">Weekly spend</text><polyline points="58.0,46.9 60.4,83.2 62.8,61.0 65.2,51.0 67.6,104.7 70.0,49.8 72.4,47.1 74.9,43.3 77.3,75.8 79.7,81.8 82.1,63.0 84.5,72.4 86.9,83.0 89.3,55.3 91.7,72.0 94.1,58.1 96.5,60.2 98.9,55.3 101.3,53.5 103.7,64.2 106.2,66.3 108.6,48.7 111.0,94.9 113.4,51.9 115.8,54.1 118.2,75.4 120.6,90.7 123.0,74.6 125.4,65.0 127.8,38.6 130.2,80.4 132.6,50.5 135.0,44.3 137.5,35.4 139.9,92.9 142.3,37.5 144.7,68.8 147.1,58.1 149.5,42.4 151.9,29.5 154.3,80.0 156.7,40.0 159.1,65.7 161.5,49.5 163.9,69.1 166.3,51.8 168.8,40.0 171.2,25.5 173.6,42.1 176.0,45.8 178.4,55.7 180.8,105.6 183.2,37.9 185.6,41.6 188.0,68.9 190.4,107.7 192.8,19.9 195.2,55.6 197.7,81.8 200.1,49.4 202.5,58.3 204.9,44.2 207.3,61.0 209.7,52.0 212.1,85.8 214.5,58.0 216.9,85.9 219.3,41.4 221.7,38.9 224.1,89.7 226.5,112.3 229.0,57.6 231.4,24.4 233.8,81.7 236.2,57.1 238.6,35.2 241.0,123.2 243.4,103.4 245.8,70.3 248.2,61.8 250.6,64.1 253.0,54.0 255.4,26.5 257.8,94.4 260.3,73.5 262.7,39.2 265.1,50.3 267.5,66.6 269.9,87.3 272.3,70.3 274.7,59.8 277.1,60.8 279.5,76.6 281.9,80.5 284.3,66.7 286.7,72.8 289.1,59.6 291.6,77.3 294.0,49.1 296.4,79.8 298.8,66.8 301.2,59.2 303.6,62.0 306.0,52.8" fill="none" stroke="#d97706" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div><div class="pacing-cell"><div class="pacing-title">search_generic</div><svg class="chart" viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="137.5" text-anchor="end" font-size="10" fill="#9ca3af">£0</text><line x1="58" y1="94.0" x2="306" y2="94.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="97.5" text-anchor="end" font-size="10" fill="#9ca3af">£50k</text><line x1="58" y1="54.0" x2="306" y2="54.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="57.5" text-anchor="end" font-size="10" fill="#9ca3af">£100k</text><line x1="58" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">£150k</text><line x1="58.0" y1="134.0" x2="58.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="58.0" y="150.0" text-anchor="start" font-size="10" fill="#9ca3af">Jan &#x27;26</text><line x1="139.9" y1="134.0" x2="139.9" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="139.9" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">Aug &#x27;26</text><line x1="224.1" y1="134.0" x2="224.1" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="224.1" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">May &#x27;27</text><line x1="306.0" y1="134.0" x2="306.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="150.0" text-anchor="end" font-size="10" fill="#9ca3af">Dec &#x27;27</text><line x1="58" y1="14" x2="58" y2="134.0" stroke="#d1d5db" stroke-width="1"/><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#d1d5db" stroke-width="1"/><text x="182.0" y="166" text-anchor="middle" font-size="10" fill="#9ca3af">Week</text><text x="12" y="74.0" text-anchor="middle" font-size="10" fill="#9ca3af" transform="rotate(-90 12 74.0)">Weekly spend</text><polyline points="58.0,65.5 60.4,72.6 62.8,73.9 65.2,92.2 67.6,71.4 70.0,68.6 72.4,59.5 74.9,60.9 77.3,60.6 79.7,85.7 82.1,76.6 84.5,84.1 86.9,81.8 89.3,63.6 91.7,74.5 94.1,78.3 96.5,67.5 98.9,70.2 101.3,59.1 103.7,59.0 106.2,86.0 108.6,43.5 111.0,96.9 113.4,68.1 115.8,61.2 118.2,79.1 120.6,72.9 123.0,83.0 125.4,79.8 127.8,62.3 130.2,86.8 132.6,58.9 135.0,68.5 137.5,68.2 139.9,86.5 142.3,78.5 144.7,67.2 147.1,72.1 149.5,63.4 151.9,36.0 154.3,97.7 156.7,57.6 159.1,58.5 161.5,54.9 163.9,73.3 166.3,79.8 168.8,68.2 171.2,39.3 173.6,40.5 176.0,58.9 178.4,64.1 180.8,97.2 183.2,77.4 185.6,58.6 188.0,87.0 190.4,85.7 192.8,50.3 195.2,67.0 197.7,82.6 200.1,60.8 202.5,58.8 204.9,60.0 207.3,50.3 209.7,61.4 212.1,84.6 214.5,73.2 216.9,76.5 219.3,61.7 221.7,69.8 224.1,71.8 226.5,95.8 229.0,65.0 231.4,75.5 233.8,84.8 236.2,48.2 238.6,45.0 241.0,97.7 243.4,91.1 245.8,81.2 248.2,46.9 250.6,58.8 253.0,78.6 255.4,52.2 257.8,82.5 260.3,89.8 262.7,43.8 265.1,66.7 267.5,50.0 269.9,66.7 272.3,116.3 274.7,67.6 277.1,84.5 279.5,73.9 281.9,76.6 284.3,65.5 286.7,91.8 289.1,53.3 291.6,49.1 294.0,80.0 296.4,72.4 298.8,69.5 301.2,59.5 303.6,78.6 306.0,61.5" fill="none" stroke="#059669" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div><div class="pacing-cell"><div class="pacing-title">tiktok</div><svg class="chart" viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="137.5" text-anchor="end" font-size="10" fill="#9ca3af">£0</text><line x1="58" y1="94.0" x2="306" y2="94.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="97.5" text-anchor="end" font-size="10" fill="#9ca3af">£50k</text><line x1="58" y1="54.0" x2="306" y2="54.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="57.5" text-anchor="end" font-size="10" fill="#9ca3af">£100k</text><line x1="58" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">£150k</text><line x1="58.0" y1="134.0" x2="58.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="58.0" y="150.0" text-anchor="start" font-size="10" fill="#9ca3af">Jan &#x27;26</text><line x1="139.9" y1="134.0" x2="139.9" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="139.9" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">Aug &#x27;26</text><line x1="224.1" y1="134.0" x2="224.1" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="224.1" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">May &#x27;27</text><line x1="306.0" y1="134.0" x2="306.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="150.0" text-anchor="end" font-size="10" fill="#9ca3af">Dec &#x27;27</text><line x1="58" y1="14" x2="58" y2="134.0" stroke="#d1d5db" stroke-width="1"/><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#d1d5db" stroke-width="1"/><text x="182.0" y="166" text-anchor="middle" font-size="10" fill="#9ca3af">Week</text><text x="12" y="74.0" text-anchor="middle" font-size="10" fill="#9ca3af" transform="rotate(-90 12 74.0)">Weekly spend</text><polyline points="58.0,73.1 60.4,58.1 62.8,61.0 65.2,46.1 67.6,84.1 70.0,60.0 72.4,56.3 74.9,53.1 77.3,78.5 79.7,90.7 82.1,86.0 84.5,39.5 86.9,98.7 89.3,92.4 91.7,91.3 94.1,72.1 96.5,81.4 98.9,60.5 101.3,55.2 103.7,59.0 106.2,76.2 108.6,63.4 111.0,84.8 113.4,80.2 115.8,47.4 118.2,53.3 120.6,91.2 123.0,92.6 125.4,92.8 127.8,76.8 130.2,112.6 132.6,83.7 135.0,59.2 137.5,66.9 139.9,59.1 142.3,70.5 144.7,60.6 147.1,69.6 149.5,64.3 151.9,27.1 154.3,88.3 156.7,63.8 159.1,51.9 161.5,61.0 163.9,56.4 166.3,82.8 168.8,44.6 171.2,38.1 173.6,54.9 176.0,52.6 178.4,73.9 180.8,61.5 183.2,75.3 185.6,63.0 188.0,61.1 190.4,92.0 192.8,61.5 195.2,70.2 197.7,77.8 200.1,74.5 202.5,69.9 204.9,68.5 207.3,72.9 209.7,62.9 212.1,81.7 214.5,64.6 216.9,79.0 219.3,64.2 221.7,76.0 224.1,78.7 226.5,91.8 229.0,68.0 231.4,81.1 233.8,80.6 236.2,51.0 238.6,54.0 241.0,106.5 243.4,112.5 245.8,68.0 248.2,72.5 250.6,81.3 253.0,59.8 255.4,51.5 257.8,94.4 260.3,73.6 262.7,47.2 265.1,60.3 267.5,77.8 269.9,58.4 272.3,95.7 274.7,83.1 277.1,62.6 279.5,88.2 281.9,75.0 284.3,74.2 286.7,81.9 289.1,68.8 291.6,76.2 294.0,62.9 296.4,80.7 298.8,71.4 301.2,58.6 303.6,61.8 306.0,82.1" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div></div>
     </div>
-    <p class="fig-cap">Each channel's model-estimated range, given how your channels have actually moved together. Wider bars mean a less identifiable marginal-return estimate for that channel &mdash; not necessarily a less accurate one; see the Methodology note on scope.</p>
   </div>
 
-  <table class="rpt">
-    <thead><tr><th>Channel</th><th class="num">Spend</th><th class="num">Central estimate</th><th class="num">Model-estimated range</th><th class="num">CV</th></tr></thead>
-    <tbody id="diagnoseTable"></tbody>
-  </table>
-</section>
-
-<!-- SECTION 2: PHASE -->
-<section id="phase">
-  <p class="s-label">2 &middot; Phase</p>
-  <h2>Recommended weekly schedule</h2>
-  <p>A recommended weekly pacing for your plan, with monthly totals preserved exactly per channel &mdash; only which week the money lands in changes.</p>
-
+  
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Original plan vs. recommended pacing</div>
-      <div class="fig-sub" id="phaseSub"></div>
+      <div class="fig-title">Adstock, by channel</div>
+      <div class="fig-sub">Share of a week's spend still driving sales, by weeks since it ran &middot; decay: tv 0.50, meta 0.30, search_generic 0.10, tiktok 0.20</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend"><div class="li"><span class="sw" style="background:#2563eb"></span>tv</div><div class="li"><span class="sw" style="background:#d97706"></span>meta</div><div class="li"><span class="sw" style="background:#059669"></span>search_generic</div><div class="li"><span class="sw" style="background:#7c3aed"></span>tiktok</div></div>
+      <svg class="chart" viewBox="0 0 680 200" xmlns="http://www.w3.org/2000/svg"><line x1="58" y1="164.0" x2="666" y2="164.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="167.5" text-anchor="end" font-size="10" fill="#9ca3af">0%</text><line x1="58" y1="134.0" x2="666" y2="134.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="137.5" text-anchor="end" font-size="10" fill="#9ca3af">20%</text><line x1="58" y1="104.0" x2="666" y2="104.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="107.5" text-anchor="end" font-size="10" fill="#9ca3af">40%</text><line x1="58" y1="74.0" x2="666" y2="74.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="77.5" text-anchor="end" font-size="10" fill="#9ca3af">60%</text><line x1="58" y1="44.0" x2="666" y2="44.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="47.5" text-anchor="end" font-size="10" fill="#9ca3af">80%</text><line x1="58" y1="14.0" x2="666" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">100%</text><line x1="58.0" y1="164.0" x2="58.0" y2="169.0" stroke="#d1d5db" stroke-width="1"/><text x="58.0" y="180.0" text-anchor="start" font-size="10" fill="#9ca3af">+0</text><line x1="260.7" y1="164.0" x2="260.7" y2="169.0" stroke="#d1d5db" stroke-width="1"/><text x="260.7" y="180.0" text-anchor="middle" font-size="10" fill="#9ca3af">+2</text><line x1="362.0" y1="164.0" x2="362.0" y2="169.0" stroke="#d1d5db" stroke-width="1"/><text x="362.0" y="180.0" text-anchor="middle" font-size="10" fill="#9ca3af">+3</text><line x1="463.3" y1="164.0" x2="463.3" y2="169.0" stroke="#d1d5db" stroke-width="1"/><text x="463.3" y="180.0" text-anchor="middle" font-size="10" fill="#9ca3af">+4</text><line x1="666.0" y1="164.0" x2="666.0" y2="169.0" stroke="#d1d5db" stroke-width="1"/><text x="666.0" y="180.0" text-anchor="end" font-size="10" fill="#9ca3af">+6</text><line x1="58" y1="14" x2="58" y2="164.0" stroke="#d1d5db" stroke-width="1"/><line x1="58" y1="164.0" x2="666" y2="164.0" stroke="#d1d5db" stroke-width="1"/><text x="362.0" y="196" text-anchor="middle" font-size="10" fill="#9ca3af">Weeks after spend</text><text x="12" y="89.0" text-anchor="middle" font-size="10" fill="#9ca3af" transform="rotate(-90 12 89.0)">Share of effect remaining</text><polyline points="58.0,14.0 159.3,89.0 260.7,126.5 362.0,145.2 463.3,154.6 564.7,159.3 666.0,161.7" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><polyline points="58.0,14.0 159.3,119.0 260.7,150.5 362.0,159.9 463.3,162.8 564.7,163.6 666.0,163.9" fill="none" stroke="#d97706" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><polyline points="58.0,14.0 159.3,149.0 260.7,162.5 362.0,163.8 463.3,164.0 564.7,164.0 666.0,164.0" fill="none" stroke="#059669" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><polyline points="58.0,14.0 159.3,134.0 260.7,158.0 362.0,162.8 463.3,163.8 564.7,164.0 666.0,164.0" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+
+  
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Saturation, by channel</div>
+      <div class="fig-sub">Assumed response curve, spend to revenue &middot; exponent (b): tv 0.60, meta 0.75, search_generic 0.90, tiktok 0.70</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend"><div class="li"><span class="sw" style="background:#2563eb"></span>tv</div><div class="li"><span class="sw" style="background:#d97706"></span>meta</div><div class="li"><span class="sw" style="background:#059669"></span>search_generic</div><div class="li"><span class="sw" style="background:#7c3aed"></span>tiktok</div></div>
+      <svg class="chart" viewBox="0 0 680 200" xmlns="http://www.w3.org/2000/svg"><line x1="58" y1="164.0" x2="666" y2="164.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="167.5" text-anchor="end" font-size="10" fill="#9ca3af">£0</text><line x1="58" y1="134.0" x2="666" y2="134.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="137.5" text-anchor="end" font-size="10" fill="#9ca3af">£50k</text><line x1="58" y1="104.0" x2="666" y2="104.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="107.5" text-anchor="end" font-size="10" fill="#9ca3af">£100k</text><line x1="58" y1="74.0" x2="666" y2="74.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="77.5" text-anchor="end" font-size="10" fill="#9ca3af">£150k</text><line x1="58" y1="44.0" x2="666" y2="44.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="47.5" text-anchor="end" font-size="10" fill="#9ca3af">£200k</text><line x1="58" y1="14.0" x2="666" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">£250k</text><line x1="58.0" y1="164.0" x2="58.0" y2="169.0" stroke="#d1d5db" stroke-width="1"/><text x="58.0" y="180.0" text-anchor="start" font-size="10" fill="#9ca3af">£0</text><line x1="212.6" y1="164.0" x2="212.6" y2="169.0" stroke="#d1d5db" stroke-width="1"/><text x="212.6" y="180.0" text-anchor="middle" font-size="10" fill="#9ca3af">£37k</text><line x1="367.2" y1="164.0" x2="367.2" y2="169.0" stroke="#d1d5db" stroke-width="1"/><text x="367.2" y="180.0" text-anchor="middle" font-size="10" fill="#9ca3af">£75k</text><line x1="511.4" y1="164.0" x2="511.4" y2="169.0" stroke="#d1d5db" stroke-width="1"/><text x="511.4" y="180.0" text-anchor="middle" font-size="10" fill="#9ca3af">£109k</text><line x1="666.0" y1="164.0" x2="666.0" y2="169.0" stroke="#d1d5db" stroke-width="1"/><text x="666.0" y="180.0" text-anchor="end" font-size="10" fill="#9ca3af">£147k</text><line x1="58" y1="14" x2="58" y2="164.0" stroke="#d1d5db" stroke-width="1"/><line x1="58" y1="164.0" x2="666" y2="164.0" stroke="#d1d5db" stroke-width="1"/><text x="362.0" y="196" text-anchor="middle" font-size="10" fill="#9ca3af">Weekly spend</text><text x="12" y="89.0" text-anchor="middle" font-size="10" fill="#9ca3af" transform="rotate(-90 12 89.0)">Weekly revenue</text><polyline points="58.0,164.0 68.3,158.6 78.6,155.8 88.9,153.6 99.2,151.6 109.5,149.8 119.8,148.2 130.1,146.6 140.4,145.2 150.7,143.8 161.1,142.5 171.4,141.2 181.7,140.0 192.0,138.8 202.3,137.7 212.6,136.6 222.9,135.5 233.2,134.5 243.5,133.4 253.8,132.4 264.1,131.4 274.4,130.5 284.7,129.5 295.0,128.6 305.3,127.7 315.6,126.8 325.9,125.9 336.2,125.0 346.5,124.1 356.8,123.3 367.2,122.5 377.5,121.6 387.8,120.8 398.1,120.0 408.4,119.2 418.7,118.4 429.0,117.6 439.3,116.9 449.6,116.1 459.9,115.4 470.2,114.6 480.5,113.9 490.8,113.2 501.1,112.4 511.4,111.7 521.7,111.0 532.0,110.3 542.3,109.6 552.6,108.9 562.9,108.2 573.3,107.5 583.6,106.9 593.9,106.2 604.2,105.5 614.5,104.9 624.8,104.2 635.1,103.6 645.4,102.9 655.7,102.3 666.0,101.7" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><polyline points="58.0,164.0 68.3,159.3 78.6,156.1 88.9,153.3 99.2,150.7 109.5,148.3 119.8,146.0 130.1,143.8 140.4,141.6 150.7,139.6 161.1,137.5 171.4,135.6 181.7,133.7 192.0,131.8 202.3,129.9 212.6,128.1 222.9,126.4 233.2,124.6 243.5,122.9 253.8,121.2 264.1,119.5 274.4,117.8 284.7,116.2 295.0,114.6 305.3,113.0 315.6,111.4 325.9,109.8 336.2,108.3 346.5,106.7 356.8,105.2 367.2,103.7 377.5,102.2 387.8,100.7 398.1,99.2 408.4,97.8 418.7,96.3 429.0,94.9 439.3,93.4 449.6,92.0 459.9,90.6 470.2,89.2 480.5,87.8 490.8,86.4 501.1,85.0 511.4,83.6 521.7,82.3 532.0,80.9 542.3,79.5 552.6,78.2 562.9,76.9 573.3,75.5 583.6,74.2 593.9,72.9 604.2,71.6 614.5,70.3 624.8,69.0 635.1,67.7 645.4,66.4 655.7,65.1 666.0,63.8" fill="none" stroke="#d97706" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><polyline points="58.0,164.0 68.3,160.5 78.6,157.4 88.9,154.6 99.2,151.8 109.5,149.0 119.8,146.4 130.1,143.7 140.4,141.2 150.7,138.6 161.1,136.1 171.4,133.6 181.7,131.1 192.0,128.6 202.3,126.2 212.6,123.8 222.9,121.4 233.2,119.0 243.5,116.6 253.8,114.2 264.1,111.9 274.4,109.6 284.7,107.2 295.0,104.9 305.3,102.6 315.6,100.3 325.9,98.0 336.2,95.7 346.5,93.5 356.8,91.2 367.2,88.9 377.5,86.7 387.8,84.5 398.1,82.2 408.4,80.0 418.7,77.8 429.0,75.6 439.3,73.4 449.6,71.2 459.9,69.0 470.2,66.8 480.5,64.6 490.8,62.4 501.1,60.2 511.4,58.1 521.7,55.9 532.0,53.7 542.3,51.6 552.6,49.4 562.9,47.3 573.3,45.1 583.6,43.0 593.9,40.9 604.2,38.7 614.5,36.6 624.8,34.5 635.1,32.4 645.4,30.3 655.7,28.2 666.0,26.1" fill="none" stroke="#059669" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><polyline points="58.0,164.0 68.3,156.9 78.6,152.4 88.9,148.6 99.2,145.2 109.5,142.0 119.8,139.0 130.1,136.2 140.4,133.4 150.7,130.8 161.1,128.3 171.4,125.8 181.7,123.4 192.0,121.0 202.3,118.8 212.6,116.5 222.9,114.3 233.2,112.2 243.5,110.1 253.8,108.0 264.1,105.9 274.4,103.9 284.7,101.9 295.0,100.0 305.3,98.0 315.6,96.1 325.9,94.2 336.2,92.4 346.5,90.5 356.8,88.7 367.2,86.9 377.5,85.1 387.8,83.3 398.1,81.5 408.4,79.8 418.7,78.1 429.0,76.4 439.3,74.7 449.6,73.0 459.9,71.3 470.2,69.7 480.5,68.0 490.8,66.4 501.1,64.8 511.4,63.2 521.7,61.6 532.0,60.0 542.3,58.4 552.6,56.8 562.9,55.3 573.3,53.7 583.6,52.2 593.9,50.6 604.2,49.1 614.5,47.6 624.8,46.1 635.1,44.6 645.4,43.1 655.7,41.6 666.0,40.2" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+
+  <h3>Implied contribution</h3>
+  <p>The chart below is the one place these inputs are combined into an
+  outcome rather than listed on their own: background demand plus each
+  channel's modelled contribution, stacked week by week into weekly
+  sales. Nothing here was supplied directly. It follows entirely from the
+  assumptions already given, which makes it a check on those assumptions
+  rather than a separate fact about the scenario.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Sales / revenue, weekly, by source</div>
+      <div class="fig-sub">Baseline (incl. demand) plus each channel's true contribution, history + plan</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend"><div class="li"><span class="sw" style="background:#9ca3af"></span>Baseline</div><div class="li"><span class="sw" style="background:#2563eb"></span>tv</div><div class="li"><span class="sw" style="background:#d97706"></span>meta</div><div class="li"><span class="sw" style="background:#059669"></span>search_generic</div><div class="li"><span class="sw" style="background:#7c3aed"></span>tiktok</div></div>
+      <svg class="chart" viewBox="0 0 680 240" xmlns="http://www.w3.org/2000/svg"><line x1="58" y1="204.0" x2="666" y2="204.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="207.5" text-anchor="end" font-size="10" fill="#9ca3af">£0</text><line x1="58" y1="140.7" x2="666" y2="140.7" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="144.2" text-anchor="end" font-size="10" fill="#9ca3af">£500k</text><line x1="58" y1="77.3" x2="666" y2="77.3" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="80.8" text-anchor="end" font-size="10" fill="#9ca3af">£1.00m</text><line x1="58" y1="14.0" x2="666" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">£1.50m</text><line x1="58.0" y1="204.0" x2="58.0" y2="209.0" stroke="#d1d5db" stroke-width="1"/><text x="58.0" y="220.0" text-anchor="start" font-size="10" fill="#9ca3af">Jan &#x27;26</text><line x1="182.0" y1="204.0" x2="182.0" y2="209.0" stroke="#d1d5db" stroke-width="1"/><text x="182.0" y="220.0" text-anchor="middle" font-size="10" fill="#9ca3af">Jun &#x27;26</text><line x1="300.0" y1="204.0" x2="300.0" y2="209.0" stroke="#d1d5db" stroke-width="1"/><text x="300.0" y="220.0" text-anchor="middle" font-size="10" fill="#9ca3af">Oct &#x27;26</text><line x1="424.0" y1="204.0" x2="424.0" y2="209.0" stroke="#d1d5db" stroke-width="1"/><text x="424.0" y="220.0" text-anchor="middle" font-size="10" fill="#9ca3af">Mar &#x27;27</text><line x1="542.0" y1="204.0" x2="542.0" y2="209.0" stroke="#d1d5db" stroke-width="1"/><text x="542.0" y="220.0" text-anchor="middle" font-size="10" fill="#9ca3af">Aug &#x27;27</text><line x1="666.0" y1="204.0" x2="666.0" y2="209.0" stroke="#d1d5db" stroke-width="1"/><text x="666.0" y="220.0" text-anchor="end" font-size="10" fill="#9ca3af">Dec &#x27;27</text><line x1="58" y1="14" x2="58" y2="204.0" stroke="#d1d5db" stroke-width="1"/><line x1="58" y1="204.0" x2="666" y2="204.0" stroke="#d1d5db" stroke-width="1"/><text x="362.0" y="236" text-anchor="middle" font-size="10" fill="#9ca3af">Week</text><text x="12" y="109.0" text-anchor="middle" font-size="10" fill="#9ca3af" transform="rotate(-90 12 109.0)">Weekly sales / revenue</text><polygon points="58.0,102.0 63.9,103.4 69.8,99.3 75.7,102.1 81.6,105.5 87.5,100.8 93.4,95.7 99.3,97.6 105.2,106.4 111.1,109.4 117.0,106.0 122.9,102.5 128.8,115.1 134.7,103.8 140.6,109.3 146.5,106.6 152.4,105.6 158.3,104.4 164.3,100.5 170.2,97.1 176.1,103.4 182.0,95.4 187.9,106.2 193.8,100.8 199.7,97.9 205.6,102.2 211.5,106.6 217.4,107.6 223.3,105.1 229.2,101.5 235.1,108.1 241.0,103.8 246.9,103.5 252.8,99.8 258.7,101.5 264.6,100.8 270.5,106.2 276.4,103.4 282.3,98.5 288.2,94.7 294.1,109.4 300.0,94.6 305.9,95.5 311.8,98.5 317.7,101.3 323.6,104.4 329.5,94.9 335.4,92.2 341.3,93.1 347.2,95.7 353.1,100.8 359.0,109.1 365.0,102.7 370.9,99.2 376.8,109.5 382.7,100.6 388.6,100.4 394.5,99.0 400.4,109.0 406.3,106.2 412.2,105.0 418.1,108.9 424.0,93.4 429.9,105.3 435.8,100.9 441.7,104.1 447.6,94.2 453.5,95.6 459.4,99.3 465.3,114.4 471.2,102.4 477.1,99.0 483.0,97.3 488.9,106.0 494.8,93.0 500.7,109.7 506.6,106.2 512.5,97.7 518.4,102.4 524.3,92.0 530.2,101.7 536.1,106.0 542.0,104.7 547.9,108.5 553.8,109.5 559.7,99.3 565.7,99.6 571.6,95.8 577.5,106.7 583.4,93.7 589.3,104.2 595.2,94.3 601.1,105.0 607.0,106.6 612.9,101.3 618.8,97.2 624.7,101.8 630.6,105.8 636.5,109.8 642.4,110.1 648.3,100.0 654.2,97.4 660.1,103.6 666.0,108.4 666.0,204.0 660.1,204.0 654.2,204.0 648.3,204.0 642.4,204.0 636.5,204.0 630.6,204.0 624.7,204.0 618.8,204.0 612.9,204.0 607.0,204.0 601.1,204.0 595.2,204.0 589.3,204.0 583.4,204.0 577.5,204.0 571.6,204.0 565.7,204.0 559.7,204.0 553.8,204.0 547.9,204.0 542.0,204.0 536.1,204.0 530.2,204.0 524.3,204.0 518.4,204.0 512.5,204.0 506.6,204.0 500.7,204.0 494.8,204.0 488.9,204.0 483.0,204.0 477.1,204.0 471.2,204.0 465.3,204.0 459.4,204.0 453.5,204.0 447.6,204.0 441.7,204.0 435.8,204.0 429.9,204.0 424.0,204.0 418.1,204.0 412.2,204.0 406.3,204.0 400.4,204.0 394.5,204.0 388.6,204.0 382.7,204.0 376.8,204.0 370.9,204.0 365.0,204.0 359.0,204.0 353.1,204.0 347.2,204.0 341.3,204.0 335.4,204.0 329.5,204.0 323.6,204.0 317.7,204.0 311.8,204.0 305.9,204.0 300.0,204.0 294.1,204.0 288.2,204.0 282.3,204.0 276.4,204.0 270.5,204.0 264.6,204.0 258.7,204.0 252.8,204.0 246.9,204.0 241.0,204.0 235.1,204.0 229.2,204.0 223.3,204.0 217.4,204.0 211.5,204.0 205.6,204.0 199.7,204.0 193.8,204.0 187.9,204.0 182.0,204.0 176.1,204.0 170.2,204.0 164.3,204.0 158.3,204.0 152.4,204.0 146.5,204.0 140.6,204.0 134.7,204.0 128.8,204.0 122.9,204.0 117.0,204.0 111.1,204.0 105.2,204.0 99.3,204.0 93.4,204.0 87.5,204.0 81.6,204.0 75.7,204.0 69.8,204.0 63.9,204.0 58.0,204.0" fill="#9ca3af" fill-opacity="0.85" stroke="#fff" stroke-width="1"/><polygon points="58.0,91.4 63.9,92.6 69.8,88.9 75.7,91.4 81.6,95.1 87.5,89.7 93.4,84.8 99.3,86.7 105.2,96.4 111.1,100.6 117.0,95.8 122.9,92.4 128.8,106.2 134.7,94.4 140.6,99.3 146.5,96.1 152.4,95.1 158.3,95.3 164.3,90.4 170.2,85.9 176.1,92.1 182.0,84.0 187.9,94.8 193.8,90.3 199.7,87.2 205.6,91.1 211.5,96.3 217.4,96.7 223.3,94.6 229.2,91.2 235.1,98.5 241.0,94.5 246.9,94.5 252.8,89.3 258.7,90.6 264.6,89.3 270.5,95.9 276.4,92.3 282.3,87.4 288.2,82.3 294.1,98.9 300.0,83.6 305.9,83.8 311.8,86.5 317.7,89.8 323.6,93.8 329.5,84.2 335.4,81.2 341.3,81.0 347.2,83.2 353.1,89.1 359.0,99.4 365.0,92.0 370.9,88.3 376.8,98.3 382.7,91.1 388.6,89.4 394.5,88.0 400.4,99.2 406.3,95.9 412.2,94.4 418.1,98.0 424.0,83.2 429.9,95.2 435.8,91.0 441.7,94.2 447.6,84.3 453.5,84.7 459.4,89.4 465.3,104.3 471.2,92.0 477.1,88.9 483.0,87.5 488.9,95.6 494.8,81.6 500.7,97.8 506.6,96.9 512.5,90.0 518.4,93.4 524.3,82.8 530.2,91.3 536.1,95.4 542.0,93.6 547.9,99.1 553.8,99.3 559.7,87.4 565.7,88.3 571.6,84.5 577.5,95.9 583.4,83.9 589.3,93.5 595.2,83.5 601.1,95.2 607.0,97.1 612.9,90.8 618.8,88.6 624.7,92.4 630.6,95.8 636.5,100.3 642.4,100.3 648.3,89.8 654.2,86.1 660.1,92.5 666.0,97.8 666.0,108.4 660.1,103.6 654.2,97.4 648.3,100.0 642.4,110.1 636.5,109.8 630.6,105.8 624.7,101.8 618.8,97.2 612.9,101.3 607.0,106.6 601.1,105.0 595.2,94.3 589.3,104.2 583.4,93.7 577.5,106.7 571.6,95.8 565.7,99.6 559.7,99.3 553.8,109.5 547.9,108.5 542.0,104.7 536.1,106.0 530.2,101.7 524.3,92.0 518.4,102.4 512.5,97.7 506.6,106.2 500.7,109.7 494.8,93.0 488.9,106.0 483.0,97.3 477.1,99.0 471.2,102.4 465.3,114.4 459.4,99.3 453.5,95.6 447.6,94.2 441.7,104.1 435.8,100.9 429.9,105.3 424.0,93.4 418.1,108.9 412.2,105.0 406.3,106.2 400.4,109.0 394.5,99.0 388.6,100.4 382.7,100.6 376.8,109.5 370.9,99.2 365.0,102.7 359.0,109.1 353.1,100.8 347.2,95.7 341.3,93.1 335.4,92.2 329.5,94.9 323.6,104.4 317.7,101.3 311.8,98.5 305.9,95.5 300.0,94.6 294.1,109.4 288.2,94.7 282.3,98.5 276.4,103.4 270.5,106.2 264.6,100.8 258.7,101.5 252.8,99.8 246.9,103.5 241.0,103.8 235.1,108.1 229.2,101.5 223.3,105.1 217.4,107.6 211.5,106.6 205.6,102.2 199.7,97.9 193.8,100.8 187.9,106.2 182.0,95.4 176.1,103.4 170.2,97.1 164.3,100.5 158.3,104.4 152.4,105.6 146.5,106.6 140.6,109.3 134.7,103.8 128.8,115.1 122.9,102.5 117.0,106.0 111.1,109.4 105.2,106.4 99.3,97.6 93.4,95.7 87.5,100.8 81.6,105.5 75.7,102.1 69.8,99.3 63.9,103.4 58.0,102.0" fill="#2563eb" fill-opacity="0.85" stroke="#fff" stroke-width="1"/><polygon points="58.0,76.4 63.9,80.3 69.8,75.7 75.7,77.3 81.6,84.7 87.5,76.3 93.4,70.3 99.3,71.6 105.2,83.5 111.1,88.9 117.0,83.0 122.9,79.9 128.8,94.6 134.7,81.1 140.6,86.7 146.5,82.7 152.4,81.6 158.3,81.4 164.3,76.2 170.2,72.4 176.1,79.0 182.0,69.7 187.9,83.6 193.8,76.8 199.7,73.1 205.6,78.5 211.5,85.3 217.4,85.0 223.3,81.9 229.2,76.3 235.1,86.0 241.0,80.5 246.9,79.6 252.8,73.6 258.7,78.8 264.6,74.5 270.5,82.6 276.4,78.6 282.3,72.5 288.2,66.1 294.1,85.9 300.0,68.7 305.9,70.2 311.8,72.1 317.7,76.6 323.6,79.8 329.5,69.0 335.4,64.6 341.3,65.2 347.2,67.9 353.1,74.7 359.0,88.9 365.0,77.7 370.9,73.2 376.8,84.8 382.7,81.2 388.6,73.9 394.5,73.5 400.4,87.0 406.3,81.9 412.2,80.5 418.1,83.2 424.0,69.3 429.9,80.9 435.8,79.1 441.7,80.9 447.6,72.7 453.5,70.3 459.4,74.1 465.3,92.3 471.2,82.9 477.1,76.4 483.0,71.6 488.9,82.9 494.8,68.1 500.7,82.4 506.6,87.6 512.5,81.0 518.4,81.9 524.3,69.9 530.2,78.2 536.1,81.5 542.0,77.6 547.9,87.2 553.8,87.2 559.7,72.8 565.7,73.7 571.6,71.1 577.5,84.4 583.4,71.6 589.3,80.3 595.2,70.1 601.1,82.9 607.0,85.3 612.9,78.3 618.8,76.2 624.7,79.1 630.6,83.5 636.5,86.3 642.4,88.0 648.3,77.1 654.2,72.7 660.1,79.1 666.0,83.7 666.0,97.8 660.1,92.5 654.2,86.1 648.3,89.8 642.4,100.3 636.5,100.3 630.6,95.8 624.7,92.4 618.8,88.6 612.9,90.8 607.0,97.1 601.1,95.2 595.2,83.5 589.3,93.5 583.4,83.9 577.5,95.9 571.6,84.5 565.7,88.3 559.7,87.4 553.8,99.3 547.9,99.1 542.0,93.6 536.1,95.4 530.2,91.3 524.3,82.8 518.4,93.4 512.5,90.0 506.6,96.9 500.7,97.8 494.8,81.6 488.9,95.6 483.0,87.5 477.1,88.9 471.2,92.0 465.3,104.3 459.4,89.4 453.5,84.7 447.6,84.3 441.7,94.2 435.8,91.0 429.9,95.2 424.0,83.2 418.1,98.0 412.2,94.4 406.3,95.9 400.4,99.2 394.5,88.0 388.6,89.4 382.7,91.1 376.8,98.3 370.9,88.3 365.0,92.0 359.0,99.4 353.1,89.1 347.2,83.2 341.3,81.0 335.4,81.2 329.5,84.2 323.6,93.8 317.7,89.8 311.8,86.5 305.9,83.8 300.0,83.6 294.1,98.9 288.2,82.3 282.3,87.4 276.4,92.3 270.5,95.9 264.6,89.3 258.7,90.6 252.8,89.3 246.9,94.5 241.0,94.5 235.1,98.5 229.2,91.2 223.3,94.6 217.4,96.7 211.5,96.3 205.6,91.1 199.7,87.2 193.8,90.3 187.9,94.8 182.0,84.0 176.1,92.1 170.2,85.9 164.3,90.4 158.3,95.3 152.4,95.1 146.5,96.1 140.6,99.3 134.7,94.4 128.8,106.2 122.9,92.4 117.0,95.8 111.1,100.6 105.2,96.4 99.3,86.7 93.4,84.8 87.5,89.7 81.6,95.1 75.7,91.4 69.8,88.9 63.9,92.6 58.0,91.4" fill="#d97706" fill-opacity="0.85" stroke="#fff" stroke-width="1"/><polygon points="58.0,58.5 63.9,63.8 69.8,59.7 75.7,65.3 81.6,68.6 87.5,59.2 93.4,51.2 99.3,52.6 105.2,64.4 111.1,75.1 117.0,67.8 122.9,66.2 128.8,80.6 134.7,63.1 140.6,70.6 146.5,67.6 152.4,64.4 158.3,64.5 164.3,57.0 170.2,52.9 176.1,65.3 182.0,47.6 187.9,72.0 193.8,60.0 199.7,54.4 205.6,63.3 211.5,69.2 217.4,71.0 223.3,67.5 229.2,58.0 235.1,72.6 241.0,61.6 246.9,62.2 252.8,56.3 258.7,65.4 264.6,59.8 270.5,65.4 276.4,62.1 282.3,54.2 288.2,42.0 294.1,74.3 300.0,49.7 305.9,50.7 311.8,51.8 317.7,60.1 323.6,65.0 329.5,52.0 335.4,41.3 341.3,41.5 347.2,47.9 353.1,56.2 359.0,77.8 365.0,63.0 370.9,54.1 376.8,71.4 382.7,68.0 388.6,53.2 394.5,55.6 400.4,72.7 406.3,63.3 412.2,61.1 418.1,63.9 424.0,48.0 429.9,61.8 435.8,65.2 441.7,65.0 447.6,57.3 453.5,51.8 459.4,57.0 465.3,75.8 471.2,71.7 477.1,59.0 483.0,55.9 488.9,69.3 494.8,46.9 500.7,59.8 506.6,76.2 512.5,69.3 518.4,68.0 524.3,48.5 530.2,58.5 536.1,66.1 542.0,57.1 547.9,72.7 553.8,74.9 559.7,50.8 565.7,55.6 571.6,49.9 577.5,66.4 583.4,65.0 589.3,63.9 595.2,56.4 601.1,67.1 607.0,70.0 612.9,60.6 618.8,64.0 624.7,59.1 630.6,61.9 636.5,71.1 642.4,71.8 648.3,60.2 654.2,53.6 660.1,63.8 666.0,65.2 666.0,83.7 660.1,79.1 654.2,72.7 648.3,77.1 642.4,88.0 636.5,86.3 630.6,83.5 624.7,79.1 618.8,76.2 612.9,78.3 607.0,85.3 601.1,82.9 595.2,70.1 589.3,80.3 583.4,71.6 577.5,84.4 571.6,71.1 565.7,73.7 559.7,72.8 553.8,87.2 547.9,87.2 542.0,77.6 536.1,81.5 530.2,78.2 524.3,69.9 518.4,81.9 512.5,81.0 506.6,87.6 500.7,82.4 494.8,68.1 488.9,82.9 483.0,71.6 477.1,76.4 471.2,82.9 465.3,92.3 459.4,74.1 453.5,70.3 447.6,72.7 441.7,80.9 435.8,79.1 429.9,80.9 424.0,69.3 418.1,83.2 412.2,80.5 406.3,81.9 400.4,87.0 394.5,73.5 388.6,73.9 382.7,81.2 376.8,84.8 370.9,73.2 365.0,77.7 359.0,88.9 353.1,74.7 347.2,67.9 341.3,65.2 335.4,64.6 329.5,69.0 323.6,79.8 317.7,76.6 311.8,72.1 305.9,70.2 300.0,68.7 294.1,85.9 288.2,66.1 282.3,72.5 276.4,78.6 270.5,82.6 264.6,74.5 258.7,78.8 252.8,73.6 246.9,79.6 241.0,80.5 235.1,86.0 229.2,76.3 223.3,81.9 217.4,85.0 211.5,85.3 205.6,78.5 199.7,73.1 193.8,76.8 187.9,83.6 182.0,69.7 176.1,79.0 170.2,72.4 164.3,76.2 158.3,81.4 152.4,81.6 146.5,82.7 140.6,86.7 134.7,81.1 128.8,94.6 122.9,79.9 117.0,83.0 111.1,88.9 105.2,83.5 99.3,71.6 93.4,70.3 87.5,76.3 81.6,84.7 75.7,77.3 69.8,75.7 63.9,80.3 58.0,76.4" fill="#059669" fill-opacity="0.85" stroke="#fff" stroke-width="1"/><polygon points="58.0,42.0 63.9,45.1 69.8,41.0 75.7,44.5 81.6,52.8 87.5,40.9 93.4,31.8 99.3,32.6 105.2,48.0 111.1,61.4 117.0,53.9 122.9,45.3 128.8,67.1 134.7,50.3 140.6,57.8 146.5,51.7 152.4,49.2 158.3,46.3 164.3,37.6 170.2,33.7 176.1,48.7 182.0,29.6 187.9,57.0 193.8,44.9 199.7,34.4 205.6,43.2 211.5,54.8 217.4,58.0 223.3,54.8 229.2,42.8 235.1,63.1 241.0,48.1 246.9,44.1 252.8,38.5 258.7,46.6 264.6,42.5 270.5,46.8 276.4,44.6 282.3,36.2 288.2,18.7 294.1,58.7 300.0,32.0 305.9,30.9 311.8,32.8 317.7,40.6 323.6,49.4 329.5,31.5 335.4,19.0 341.3,21.2 347.2,27.7 353.1,39.1 359.0,59.5 365.0,46.4 370.9,36.1 376.8,52.8 382.7,54.0 388.6,35.5 394.5,38.3 400.4,56.7 406.3,47.1 412.2,44.1 418.1,46.6 424.0,31.3 429.9,43.7 435.8,49.6 441.7,47.4 447.6,41.5 453.5,34.1 459.4,40.7 465.3,60.2 471.2,58.3 477.1,42.3 483.0,40.6 488.9,54.2 494.8,27.4 500.7,39.9 506.6,64.3 512.5,60.5 518.4,52.1 524.3,32.0 530.2,43.2 536.1,47.9 542.0,37.1 547.9,58.8 553.8,58.9 559.7,30.6 565.7,36.4 571.6,33.5 577.5,47.7 583.4,51.6 589.3,49.5 595.2,38.7 601.1,52.7 607.0,54.2 612.9,44.4 618.8,48.9 624.7,42.2 630.6,45.8 636.5,53.1 642.4,56.2 648.3,43.6 654.2,34.9 660.1,45.2 666.0,49.6 666.0,65.2 660.1,63.8 654.2,53.6 648.3,60.2 642.4,71.8 636.5,71.1 630.6,61.9 624.7,59.1 618.8,64.0 612.9,60.6 607.0,70.0 601.1,67.1 595.2,56.4 589.3,63.9 583.4,65.0 577.5,66.4 571.6,49.9 565.7,55.6 559.7,50.8 553.8,74.9 547.9,72.7 542.0,57.1 536.1,66.1 530.2,58.5 524.3,48.5 518.4,68.0 512.5,69.3 506.6,76.2 500.7,59.8 494.8,46.9 488.9,69.3 483.0,55.9 477.1,59.0 471.2,71.7 465.3,75.8 459.4,57.0 453.5,51.8 447.6,57.3 441.7,65.0 435.8,65.2 429.9,61.8 424.0,48.0 418.1,63.9 412.2,61.1 406.3,63.3 400.4,72.7 394.5,55.6 388.6,53.2 382.7,68.0 376.8,71.4 370.9,54.1 365.0,63.0 359.0,77.8 353.1,56.2 347.2,47.9 341.3,41.5 335.4,41.3 329.5,52.0 323.6,65.0 317.7,60.1 311.8,51.8 305.9,50.7 300.0,49.7 294.1,74.3 288.2,42.0 282.3,54.2 276.4,62.1 270.5,65.4 264.6,59.8 258.7,65.4 252.8,56.3 246.9,62.2 241.0,61.6 235.1,72.6 229.2,58.0 223.3,67.5 217.4,71.0 211.5,69.2 205.6,63.3 199.7,54.4 193.8,60.0 187.9,72.0 182.0,47.6 176.1,65.3 170.2,52.9 164.3,57.0 158.3,64.5 152.4,64.4 146.5,67.6 140.6,70.6 134.7,63.1 128.8,80.6 122.9,66.2 117.0,67.8 111.1,75.1 105.2,64.4 99.3,52.6 93.4,51.2 87.5,59.2 81.6,68.6 75.7,65.3 69.8,59.7 63.9,63.8 58.0,58.5" fill="#7c3aed" fill-opacity="0.85" stroke="#fff" stroke-width="1"/></svg>
+    </div>
+  </div>
+</section>
+
+<section id="diagnostics">
+  <div class="s-label">Section 2</div>
+  <h2>Diagnostics</h2>
+  <p>The next four charts describe the unphased plan exactly as supplied,
+  before any strategy has touched it. Each one isolates a different way a
+  model fit to this history and plan could go wrong: spend correlation,
+  the width of the resulting revenue estimate, bias from an imperfect read
+  of demand, and whether saturation and adstock can be told apart from
+  noise. Section 3 returns to the same four problems once <b>+/-80% (edge, balanced)</b>
+  has been applied, so the scale of the improvement is comparable line for
+  line.</p>
+
+  <h3>Spend correlation</h3>
+  <p>Two channels whose spend rises and falls together give a regression
+  model very little to separate them with. The matrix below measures
+  exactly that: the Pearson correlation between each pair's weekly spend
+  across the plan year. The closer a cell is to 1, the more those two
+  channels' individual contributions have been confounded before the
+  model sees a single week of sales.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Channel correlation, unphased</div>
+      <div class="fig-sub">Pearson correlation, weekly spend by channel &middot; plan year only</div>
+    </div>
+    <div class="fig-body">
+      <table class="corr-table"><thead><tr><th></th><th class="col-hdr"><span class="col-hdr-label">tv</span></th><th class="col-hdr"><span class="col-hdr-label">meta</span></th><th class="col-hdr"><span class="col-hdr-label">search_generic</span></th><th class="col-hdr"><span class="col-hdr-label">tiktok</span></th></tr></thead><tbody><tr><th>tv</th><td style="background: rgba(220, 38, 38, 0.65);">1.00</td><td style="background: rgba(220, 38, 38, 0.34);">0.52</td><td style="background: rgba(220, 38, 38, 0.35);">0.54</td><td style="background: rgba(220, 38, 38, 0.39);">0.60</td></tr><tr><th>meta</th><td style="background: rgba(220, 38, 38, 0.34);">0.52</td><td style="background: rgba(220, 38, 38, 0.65);">1.00</td><td style="background: rgba(220, 38, 38, 0.40);">0.61</td><td style="background: rgba(220, 38, 38, 0.36);">0.55</td></tr><tr><th>search_generic</th><td style="background: rgba(220, 38, 38, 0.35);">0.54</td><td style="background: rgba(220, 38, 38, 0.40);">0.61</td><td style="background: rgba(220, 38, 38, 0.65);">1.00</td><td style="background: rgba(220, 38, 38, 0.33);">0.51</td></tr><tr><th>tiktok</th><td style="background: rgba(220, 38, 38, 0.39);">0.60</td><td style="background: rgba(220, 38, 38, 0.36);">0.55</td><td style="background: rgba(220, 38, 38, 0.33);">0.51</td><td style="background: rgba(220, 38, 38, 0.65);">1.00</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <h3>Variance</h3>
+  <p>When two channels' spend moves together, a model cannot fully credit
+  either one for the sales that followed. That is what an unphased plan
+  does: spend is locked to a single fixed schedule, so any two correlated
+  channels move in lockstep for the whole plan. The chart below shows what
+  this leaves behind: the range of incremental revenue the model would
+  estimate for each channel, wide enough that either end of it could pass
+  for the truth.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Incremental revenue, unphased</div>
+      <div class="fig-sub">Model-estimated range per channel, no phasing applied</div>
     </div>
     <div class="fig-body">
       <div class="legend">
-        <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#9ca3af" stroke-width="2.5"/></svg> Original plan</span>
-        <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#111827" stroke-width="2.5"/></svg> Recommended pacing</span>
-        <span class="li"><svg width="10" height="10"><circle cx="5" cy="5" r="3.6" fill="#111827"/></svg> Dark week (&pound;0)</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Unphased (today), range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Revenue at the true marginal return</span>
       </div>
-      <svg class="chart" id="chartPhase" viewBox="0 0 700 700" preserveAspectRatio="xMinYMin meet"></svg>
+      <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£0</text><line x1="237.6" y1="14" x2="237.6" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="237.6" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£2.00m</text><line x1="329.2" y1="14" x2="329.2" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="329.2" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£4.00m</text><line x1="420.8" y1="14" x2="420.8" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="420.8" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£6.00m</text><line x1="512.4" y1="14" x2="512.4" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="512.4" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£8.00m</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£10.00m</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Incremental revenue</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="258.9" y1="45.0" x2="492.3" y2="45.0" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="375.2" cy="45.0" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="339.3" y1="26.4" x2="339.3" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="500.3" y="49.0" font-size="11.5" fill="#2563eb" font-weight="700">£2.47m &ndash; £7.56m</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="307.7" y1="107.0" x2="487.4" y2="107.0" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="394.3" cy="107.0" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="392.2" y1="88.4" x2="392.2" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="495.4" y="111.0" font-size="11.5" fill="#d97706" font-weight="700">£3.53m &ndash; £7.45m</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="411.2" y1="169.0" x2="528.7" y2="169.0" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="472.5" cy="169.0" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="460.8" y1="150.4" x2="460.8" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="536.7" y="173.0" font-size="11.5" fill="#059669" font-weight="700">£5.79m &ndash; £8.36m</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="356.7" y1="231.0" x2="508.0" y2="231.0" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="438.7" cy="231.0" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="455.4" y1="212.4" x2="455.4" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="516.0" y="235.0" font-size="11.5" fill="#7c3aed" font-weight="700">£4.60m &ndash; £7.90m</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
     </div>
-    <p class="fig-cap">Channels on a continuous nudge vary smoothly and never hit &pound;0. Channels on <code>Blackout</code> go fully dark on the weeks marked, with the remaining weeks in that month absorbing the difference so the monthly total is untouched.</p>
+    <p class="fig-cap">The dashed line marks the revenue implied by the
+    channel's true marginal return. The ring is the model's mean
+    incremental-revenue estimate, and the bar behind it is its p10 to p90
+    range across simulations. The further that range sits from the dashed
+    line, the more wrong a client relying on the model alone would be.</p>
   </div>
 
+  <h3>Bias</h3>
+  <p>A model can only regress on the demand signal it is given, not on
+  demand itself. Here that signal is a proxy at
+  80% quality rather than the true series,
+  and the gap between the two pulls every channel's estimate away from its
+  true marginal return before phasing is even considered.</p>
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Channel correlation, before vs. after</div>
-      <div class="fig-sub">Pearson correlation, weekly spend by channel &middot; plan year only, monthly totals identical in both</div>
+      <div class="fig-title">Revenue implied by the biased estimate, unphased</div>
+      <div class="fig-sub">What a client would believe they got, per channel</div>
     </div>
-    <div class="fig-body corr-wrap" style="gap:2.5rem;">
-      <div>
-        <div style="text-align:center;font-size:.78rem;font-weight:700;color:var(--muted);margin-bottom:.5rem;">Before phasing</div>
-        <div id="corrBeforeMatrix"></div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Believed today (unphased), range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> True revenue</span>
       </div>
-      <div>
-        <div style="text-align:center;font-size:.78rem;font-weight:700;color:var(--muted);margin-bottom:.5rem;">After phasing</div>
-        <div id="corrAfterMatrix"></div>
-      </div>
+      <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£0</text><line x1="237.6" y1="14" x2="237.6" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="237.6" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£2.00m</text><line x1="329.2" y1="14" x2="329.2" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="329.2" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£4.00m</text><line x1="420.8" y1="14" x2="420.8" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="420.8" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£6.00m</text><line x1="512.4" y1="14" x2="512.4" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="512.4" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£8.00m</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£10.00m</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Incremental revenue</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="270.7" y1="45.0" x2="499.0" y2="45.0" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="386.2" cy="45.0" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="339.3" y1="26.4" x2="339.3" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="507.0" y="49.0" font-size="11.5" fill="#2563eb" font-weight="700">£2.72m &ndash; £7.71m</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="373.4" y1="107.0" x2="548.1" y2="107.0" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="455.4" cy="107.0" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="392.2" y1="88.4" x2="392.2" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="556.1" y="111.0" font-size="11.5" fill="#d97706" font-weight="700">£4.97m &ndash; £8.78m</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="426.7" y1="169.0" x2="541.1" y2="169.0" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="488.9" cy="169.0" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="460.8" y1="150.4" x2="460.8" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="549.1" y="173.0" font-size="11.5" fill="#059669" font-weight="700">£6.13m &ndash; £8.63m</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="431.5" y1="231.0" x2="584.6" y2="231.0" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="514.2" cy="231.0" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="455.4" y1="212.4" x2="455.4" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="592.6" y="235.0" font-size="11.5" fill="#7c3aed" font-weight="700">£6.23m &ndash; £9.58m</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
     </div>
-    <p class="fig-cap" id="corrBeforeAfterCaption"></p>
+    <p class="fig-cap">"Believed" revenue is what a client would expect if
+    they took the biased estimate at face value. The ring marks that
+    figure, and the bar around it is the p10&ndash;p90 spread of the same
+    bias across simulations. The gap between the bar and the dashed
+    true-revenue line is the size of the error a client would never see
+    without this diagnostic.</p>
   </div>
 
-  <table class="rpt">
-    <thead><tr><th>Channel</th><th>Lever</th><th class="num">Amplitude</th><th class="num">Max dark weeks / month</th></tr></thead>
-    <tbody id="phaseTable"></tbody>
-  </table>
+  <h3>Identifiability</h3>
+  <p>A saturation curve and an adstock decay can only be recovered from
+  spend that varies enough, in the right ways, to tell one curvature from
+  another. Locked to a single plan, spend does not vary that way: many
+  different saturation and adstock values fit the observed data about
+  equally well. The client's plausible value is one point in that space,
+  and the chart below shows the whole range the model could just as
+  easily have recovered instead.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Recovered saturation, by channel, unphased</div>
+      <div class="fig-sub">Saturation exponent (b): model-recovered range, no phasing applied</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Unphased (today), range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Plausible value supplied</span>
+      </div>
+      <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.00</text><line x1="237.6" y1="14" x2="237.6" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="237.6" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.20</text><line x1="329.2" y1="14" x2="329.2" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="329.2" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.40</text><line x1="420.8" y1="14" x2="420.8" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="420.8" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.60</text><line x1="512.4" y1="14" x2="512.4" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="512.4" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.80</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">1.00</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Saturation exponent (b)</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="237.6" y1="45.0" x2="604.0" y2="45.0" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="412.8" cy="45.0" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="420.8" y1="26.4" x2="420.8" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="612.0" y="49.0" font-size="11.5" fill="#2563eb" font-weight="700">0.20 &ndash; 1.00</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="237.6" y1="107.0" x2="604.0" y2="107.0" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="413.9" cy="107.0" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="489.5" y1="88.4" x2="489.5" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="612.0" y="111.0" font-size="11.5" fill="#d97706" font-weight="700">0.20 &ndash; 1.00</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="363.6" y1="169.0" x2="604.0" y2="169.0" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="518.1" cy="169.0" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="558.2" y1="150.4" x2="558.2" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="612.0" y="173.0" font-size="11.5" fill="#059669" font-weight="700">0.48 &ndash; 1.00</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="289.1" y1="231.0" x2="604.0" y2="231.0" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="440.9" cy="231.0" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="466.6" y1="212.4" x2="466.6" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="612.0" y="235.0" font-size="11.5" fill="#7c3aed" font-weight="700">0.31 &ndash; 1.00</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
+    </div>
+    <p class="fig-cap">Each row is one channel's own recovered saturation,
+    holding every other channel at its own supplied curvature. The bar is
+    the p10&ndash;p90 range across simulations and the ring its mean. A
+    wide bar means this channel's spend pattern does not pin down how
+    strongly it saturates, regardless of what value was assumed going
+    in.</p>
+  </div>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Recovered adstock, by channel, unphased</div>
+      <div class="fig-sub">Adstock decay (lambda): model-recovered range, no phasing applied</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Unphased (today), range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Plausible value supplied</span>
+      </div>
+      <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.00</text><line x1="260.5" y1="14" x2="260.5" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="260.5" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.20</text><line x1="375.0" y1="14" x2="375.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="375.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.40</text><line x1="489.5" y1="14" x2="489.5" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="489.5" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.60</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.80</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Adstock decay (lambda)</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="226.7" y1="45.0" x2="592.5" y2="45.0" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="408.8" cy="45.0" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="432.2" y1="26.4" x2="432.2" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="600.5" y="49.0" font-size="11.5" fill="#2563eb" font-weight="700">0.14 &ndash; 0.78</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="176.9" y1="107.0" x2="441.4" y2="107.0" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="308.3" cy="107.0" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="317.8" y1="88.4" x2="317.8" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="449.4" y="111.0" font-size="11.5" fill="#d97706" font-weight="700">0.05 &ndash; 0.52</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="146.0" y1="169.0" x2="283.4" y2="169.0" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="198.4" cy="169.0" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="203.2" y1="150.4" x2="203.2" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="291.4" y="173.0" font-size="11.5" fill="#059669" font-weight="700">0.00 &ndash; 0.24</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="176.9" y1="231.0" x2="389.9" y2="231.0" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="269.7" cy="231.0" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="260.5" y1="212.4" x2="260.5" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="397.9" y="235.0" font-size="11.5" fill="#7c3aed" font-weight="700">0.05 &ndash; 0.43</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
+    </div>
+    <p class="fig-cap">Adstock asks a different question of the same data:
+    not how strongly a channel's spend translates into effect, but how
+    long that effect persists once spend stops. The same limitation
+    applies here. A wide bar means the plan's spend pattern leaves the
+    decay rate just as unresolved as the saturation curve above.</p>
+  </div>
 </section>
 
-<!-- SECTION 3: RETRAIN / IMPACT -->
 <section id="impact">
-  <p class="s-label">3 &middot; Retrain</p>
-  <h2>What this buys you</h2>
-  <p>Refitting on the phased schedule instead of the original plan, averaged across many equally-valid ways the schedule could land, not just one draw.</p>
+  <div class="s-label">Section 3</div>
+  <h2>Impact</h2>
+  <p>Section 2 showed how bad each of these four problems is before any
+  fix. What follows is what phasing under <b>+/-80% (edge, balanced)</b> does to each of
+  them in turn, using the same charts and the same axes, so the
+  improvement is visible in place rather than asserted.</p>
 
+  <h3>Spend correlation</h3>
+  <p>Phasing under <b>+/-80% (edge, balanced)</b> leaves each month's total spend
+  untouched and only reshapes the weekly pattern within it. That
+  reshaping is what breaks the collinearity: the matrix below is the same
+  one from Section 2, recomputed on the phased plan, and should be read
+  directly against it.</p>
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title" id="impactFigTitle"></div>
-      <div class="fig-sub">Incremental revenue, model-estimated range</div>
+      <div class="fig-title">Channel correlation, after phasing</div>
+      <div class="fig-sub">Pearson correlation, weekly spend by channel &middot; plan year only, monthly totals unchanged from unphased</div>
+    </div>
+    <div class="fig-body">
+      <table class="corr-table"><thead><tr><th></th><th class="col-hdr"><span class="col-hdr-label">tv</span></th><th class="col-hdr"><span class="col-hdr-label">meta</span></th><th class="col-hdr"><span class="col-hdr-label">search_generic</span></th><th class="col-hdr"><span class="col-hdr-label">tiktok</span></th></tr></thead><tbody><tr><th>tv</th><td style="background: rgba(220, 38, 38, 0.65);">1.00</td><td style="background: rgba(220, 38, 38, 0.00);">-0.00</td><td style="background: rgba(220, 38, 38, 0.07);">0.10</td><td style="background: rgba(220, 38, 38, 0.03);">0.04</td></tr><tr><th>meta</th><td style="background: rgba(220, 38, 38, 0.00);">-0.00</td><td style="background: rgba(220, 38, 38, 0.65);">1.00</td><td style="background: rgba(220, 38, 38, 0.09);">0.14</td><td style="background: rgba(220, 38, 38, 0.04);">0.07</td></tr><tr><th>search_generic</th><td style="background: rgba(220, 38, 38, 0.07);">0.10</td><td style="background: rgba(220, 38, 38, 0.09);">0.14</td><td style="background: rgba(220, 38, 38, 0.65);">1.00</td><td style="background: rgba(220, 38, 38, 0.00);">0.01</td></tr><tr><th>tiktok</th><td style="background: rgba(220, 38, 38, 0.03);">0.04</td><td style="background: rgba(220, 38, 38, 0.04);">0.07</td><td style="background: rgba(220, 38, 38, 0.00);">0.01</td><td style="background: rgba(220, 38, 38, 0.65);">1.00</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <h3>Variance</h3>
+  <p>Under <b>+/-80% (edge, balanced)</b>, the incremental-revenue range from Section 2
+  narrows for every channel: tv 67%, meta 72%, search_generic 74%, tiktok 71%.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">The range tightens</div>
+      <div class="fig-sub">Incremental revenue, the model-estimated range: unphased vs +/-80% (edge, balanced)</div>
     </div>
     <div class="fig-body">
       <div class="legend">
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.4"/></svg> Today</span>
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> <span id="impactAfterLegend">After phasing</span></span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Unphased (today), range</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> +/-80% (edge, balanced), range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Revenue at the true marginal return</span>
       </div>
-      <svg class="chart" id="chartImpact" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
+      <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£0</text><line x1="237.6" y1="14" x2="237.6" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="237.6" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£2.00m</text><line x1="329.2" y1="14" x2="329.2" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="329.2" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£4.00m</text><line x1="420.8" y1="14" x2="420.8" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="420.8" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£6.00m</text><line x1="512.4" y1="14" x2="512.4" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="512.4" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£8.00m</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£10.00m</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Incremental revenue</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="258.9" y1="31.4" x2="492.3" y2="31.4" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="375.2" cy="31.4" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8" opacity="0.35"/><line x1="306.7" y1="58.6" x2="384.8" y2="58.6" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="345.0" cy="58.6" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="339.3" y1="26.4" x2="339.3" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="392.8" y="61.6" font-size="11.5" fill="#2563eb" font-weight="700">£3.51m &ndash; £5.21m</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="307.7" y1="93.4" x2="487.4" y2="93.4" stroke="#d97706" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="394.3" cy="93.4" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8" opacity="0.35"/><line x1="362.3" y1="120.6" x2="411.7" y2="120.6" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="387.6" cy="120.6" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="392.2" y1="88.4" x2="392.2" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="419.7" y="123.6" font-size="11.5" fill="#d97706" font-weight="700">£4.72m &ndash; £5.80m</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="411.2" y1="155.4" x2="528.7" y2="155.4" stroke="#059669" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="472.5" cy="155.4" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8" opacity="0.35"/><line x1="439.8" y1="182.6" x2="470.0" y2="182.6" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="454.6" cy="182.6" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="460.8" y1="150.4" x2="460.8" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="478.0" y="185.6" font-size="11.5" fill="#059669" font-weight="700">£6.42m &ndash; £7.08m</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="356.7" y1="217.4" x2="508.0" y2="217.4" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="438.7" cy="217.4" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8" opacity="0.35"/><line x1="420.7" y1="244.6" x2="464.1" y2="244.6" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="442.8" cy="244.6" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="455.4" y1="212.4" x2="455.4" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="472.1" y="247.6" font-size="11.5" fill="#7c3aed" font-weight="700">£6.00m &ndash; £6.94m</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
     </div>
-    <p class="fig-cap">Every channel narrows. The channel that was least reliable today typically sees the biggest gain when it's on the stronger <code>Blackout</code> lever.</p>
+    <p class="fig-cap">The dashed line marks the revenue implied by the
+    true marginal return. The ring, the model's mean estimate, barely
+    moves, because the centre was never what phasing needed to fix; the
+    range around it is what narrows.</p>
   </div>
 
-  <div class="knums" id="impactKnums"></div>
-
-  <div class="caveat">
-    <span class="icon">&#9888;</span>
-    <p><b>These &pound; figures depend on the marginal returns you supplied</b> &mdash; plausible, not proven. The specific pound amounts above, and where the range sits, will move if your assumed marginal returns turn out to be off &mdash; and this diagnostic can't tell you whether they're right, only how precisely they'd be estimated if they are. The percentage CV reduction from phasing is unaffected by an across-the-board misjudgement of scale (say, if every channel's true return is actually double what you assumed) &mdash; but it can shift if what's off is the returns' proportions <i>relative to each other</i>, since that changes which channel looks least identified and therefore which phasing intensity gets recommended for it. See <a href="#method">Methodology</a>.</p>
-  </div>
-</section>
-
-<!-- APPENDIX -->
-<section id="method">
-  <p class="s-label">Appendix</p>
-  <h2>Methodology</h2>
-  <p class="appendix" id="methodologyText"></p>
-</section>
-
-</main>
-
-<footer>
-  <p>This report is a simulation-based diagnostic, not a guarantee &mdash; treat the ranges as your model's honest uncertainty, not a forecast. Source: <a href="https://github.com/raz1470/how_wrong_is_your_mmm">github.com/raz1470/how_wrong_is_your_mmm</a></p>
-</footer>
-
-</div>
-
-<div class="page page2">
-
-  <div class="page2-hdr">
-    <h1>Scenario exploration</h1>
-    <div class="page-tag">Page 2 of 2</div>
-  </div>
-  <p class="page2-sub">Supporting detail for the decisions behind page 1's recommendation &mdash; which channels actually need the stronger lever, and how fast it pays off once you've picked one. Background for the DS/marketing conversation, not headline numbers.</p>
-
-<main style="padding: 0;">
-
-<!-- SECTION 4: WHICH CHANNELS NEED MORE RANDOMNESS -->
-<section id="sensitivity" style="margin-top: 2rem;">
-  <p class="s-label">4 &middot; Channel sensitivity</p>
-  <h2>Which channels need more randomness?</h2>
-  <p>This is what decides the lever on page 1. For each channel, how much reliability keeps improving as you widen the amplitude, all the way through to <code>Blackout</code>, with every other channel left untouched. A curve that flattens early means that channel doesn't need much perturbation. A curve still climbing at the far right means the channel is more tightly locked to the planning cycle, and needs the strongest lever available to break it.</p>
-
+  <h3>Bias</h3>
+  <p>Under <b>+/-80% (edge, balanced)</b>, the mean estimation error shrinks for every channel: tv 24% &rarr; 22%, meta 26% &rarr; 9%, search_generic 9% &rarr; 2%, tiktok 19% &rarr; 7%.</p>
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">CV reduction vs. phasing amplitude</div>
-      <div class="fig-sub">Continuous nudge 0% &rarr; 100%, then Blackout &mdash; every other channel locked</div>
+      <div class="fig-title">The estimate moves toward the truth</div>
+      <div class="fig-sub">Revenue implied by the biased estimate: unphased vs +/-80% (edge, balanced)</div>
     </div>
     <div class="fig-body">
-      <div class="legend" id="sensitivityLegend"></div>
-      <svg class="chart" id="chartSensitivity" viewBox="0 0 700 260" preserveAspectRatio="xMinYMin meet"></svg>
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Believed today (unphased), range</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Believed, +/-80% (edge, balanced), range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> True revenue</span>
+      </div>
+      <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£0</text><line x1="237.6" y1="14" x2="237.6" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="237.6" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£2.00m</text><line x1="329.2" y1="14" x2="329.2" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="329.2" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£4.00m</text><line x1="420.8" y1="14" x2="420.8" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="420.8" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£6.00m</text><line x1="512.4" y1="14" x2="512.4" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="512.4" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£8.00m</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£10.00m</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Incremental revenue</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="270.7" y1="31.4" x2="499.0" y2="31.4" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="386.2" cy="31.4" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8" opacity="0.35"/><line x1="341.1" y1="58.6" x2="421.1" y2="58.6" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="381.5" cy="58.6" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="339.3" y1="26.4" x2="339.3" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="429.1" y="61.6" font-size="11.5" fill="#2563eb" font-weight="700">£4.26m &ndash; £6.01m</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="373.4" y1="93.4" x2="548.1" y2="93.4" stroke="#d97706" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="455.4" cy="93.4" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8" opacity="0.35"/><line x1="387.1" y1="120.6" x2="438.8" y2="120.6" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="413.9" cy="120.6" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="392.2" y1="88.4" x2="392.2" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="446.8" y="123.6" font-size="11.5" fill="#d97706" font-weight="700">£5.26m &ndash; £6.39m</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="426.7" y1="155.4" x2="541.1" y2="155.4" stroke="#059669" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="488.9" cy="155.4" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8" opacity="0.35"/><line x1="451.0" y1="182.6" x2="482.0" y2="182.6" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="466.2" cy="182.6" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="460.8" y1="150.4" x2="460.8" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="490.0" y="185.6" font-size="11.5" fill="#059669" font-weight="700">£6.66m &ndash; £7.34m</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="431.5" y1="217.4" x2="584.6" y2="217.4" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="514.2" cy="217.4" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8" opacity="0.35"/><line x1="453.6" y1="244.6" x2="500.6" y2="244.6" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="477.3" cy="244.6" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="455.4" y1="212.4" x2="455.4" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="508.6" y="247.6" font-size="11.5" fill="#7c3aed" font-weight="700">£6.72m &ndash; £7.74m</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
     </div>
-    <p class="fig-cap">Compare the shape of each curve, not just its endpoint: an early plateau means a continuous nudge already captures most of the benefit; a curve still rising at the right needs <code>Blackout</code> to reach its full potential.</p>
+    <p class="fig-cap">"Believed" revenue is what a client would expect if
+    they took the biased estimate at face value. As phasing reduces the
+    proxy's remaining confound, the ring moves toward the dashed
+    true-revenue line and the p10&ndash;p90 band around it narrows with
+    it.</p>
   </div>
 
-  <div class="insight" id="sensitivityInsight"></div>
-</section>
-
-<!-- SECTION 5: TIME TO BENEFIT -->
-<section id="ttb">
-  <p class="s-label">5 &middot; Time to benefit</p>
-  <h2>How fast does each intensity pay off?</h2>
-  <p id="ttbIntro"></p>
-
+  <h3>Identifiability</h3>
+  <p>Under <b>+/-80% (edge, balanced)</b>, saturation ranges narrow by tv 5%, meta 34%, search_generic 57%, tiktok 23%
+  and adstock ranges narrow by tv 47%, meta 52%, search_generic 60%, tiktok 65%. The RSS valley itself
+  shrinks, from 35% to 11% of the
+  (b, lambda) grid within 1% of the best fit and averaged
+  across channels: the region of curvature values indistinguishable from
+  the true one is smaller, not just re-centred.</p>
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title" id="ttbFigTitle"></div>
-      <div class="fig-sub" id="ttbFigSub"></div>
+      <div class="fig-title">Saturation range tightens, by channel</div>
+      <div class="fig-sub">Recovered saturation exponent (b): unphased vs +/-80% (edge, balanced)</div>
     </div>
     <div class="fig-body">
-      <div class="legend" id="ttbLegend"></div>
-      <svg class="chart" id="chartTTB" viewBox="0 0 700 260" preserveAspectRatio="xMinYMin meet"></svg>
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Unphased (today), range</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> +/-80% (edge, balanced), range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Plausible value supplied</span>
+      </div>
+      <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.00</text><line x1="237.6" y1="14" x2="237.6" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="237.6" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.20</text><line x1="329.2" y1="14" x2="329.2" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="329.2" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.40</text><line x1="420.8" y1="14" x2="420.8" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="420.8" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.60</text><line x1="512.4" y1="14" x2="512.4" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="512.4" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.80</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">1.00</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Saturation exponent (b)</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="237.6" y1="31.4" x2="604.0" y2="31.4" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="412.8" cy="31.4" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8" opacity="0.35"/><line x1="256.1" y1="58.6" x2="604.0" y2="58.6" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="430.5" cy="58.6" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="420.8" y1="26.4" x2="420.8" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="612.0" y="61.6" font-size="11.5" fill="#2563eb" font-weight="700">0.24 &ndash; 1.00</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="237.6" y1="93.4" x2="604.0" y2="93.4" stroke="#d97706" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="413.9" cy="93.4" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8" opacity="0.35"/><line x1="360.6" y1="120.6" x2="604.0" y2="120.6" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="490.8" cy="120.6" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="489.5" y1="88.4" x2="489.5" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="612.0" y="123.6" font-size="11.5" fill="#d97706" font-weight="700">0.47 &ndash; 1.00</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="363.6" y1="155.4" x2="604.0" y2="155.4" stroke="#059669" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="518.1" cy="155.4" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8" opacity="0.35"/><line x1="499.6" y1="182.6" x2="604.0" y2="182.6" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="562.3" cy="182.6" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="558.2" y1="150.4" x2="558.2" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="612.0" y="185.6" font-size="11.5" fill="#059669" font-weight="700">0.77 &ndash; 1.00</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="289.1" y1="217.4" x2="604.0" y2="217.4" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="440.9" cy="217.4" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8" opacity="0.35"/><line x1="348.0" y1="244.6" x2="589.3" y2="244.6" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="462.3" cy="244.6" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="466.6" y1="212.4" x2="466.6" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="597.3" y="247.6" font-size="11.5" fill="#7c3aed" font-weight="700">0.44 &ndash; 0.97</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
     </div>
-    <p class="fig-cap">Every intensity keeps improving the longer it runs; the strongest lever gets there both higher and faster. This isolates the channel above from the rest of the schedule &mdash; the joint recommended schedule on page 1 (which phases every channel together) typically pays off faster still.</p>
+    <p class="fig-cap">Each row is one channel's own recovered saturation,
+    holding every other channel at its own supplied curvature. The bar is
+    the p10&ndash;p90 range across simulations and the ring its mean. A
+    wide bar means this channel's spend pattern does not pin down how
+    strongly it saturates, regardless of what value was assumed going
+    in.</p>
+  </div>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Adstock range tightens, by channel</div>
+      <div class="fig-sub">Recovered adstock decay (lambda): unphased vs +/-80% (edge, balanced)</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Unphased (today), range</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> +/-80% (edge, balanced), range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Plausible value supplied</span>
+      </div>
+      <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.00</text><line x1="260.5" y1="14" x2="260.5" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="260.5" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.20</text><line x1="375.0" y1="14" x2="375.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="375.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.40</text><line x1="489.5" y1="14" x2="489.5" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="489.5" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.60</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.80</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Adstock decay (lambda)</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="226.7" y1="31.4" x2="592.5" y2="31.4" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="408.8" cy="31.4" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8" opacity="0.35"/><line x1="332.2" y1="58.6" x2="525.2" y2="58.6" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="426.6" cy="58.6" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="432.2" y1="26.4" x2="432.2" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="533.2" y="61.6" font-size="11.5" fill="#2563eb" font-weight="700">0.33 &ndash; 0.66</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="176.9" y1="93.4" x2="441.4" y2="93.4" stroke="#d97706" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="308.3" cy="93.4" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8" opacity="0.35"/><line x1="264.9" y1="120.6" x2="390.9" y2="120.6" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="319.6" cy="120.6" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="317.8" y1="88.4" x2="317.8" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="398.9" y="123.6" font-size="11.5" fill="#d97706" font-weight="700">0.21 &ndash; 0.43</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="146.0" y1="155.4" x2="283.4" y2="155.4" stroke="#059669" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="198.4" cy="155.4" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8" opacity="0.35"/><line x1="169.7" y1="182.6" x2="225.3" y2="182.6" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="200.4" cy="182.6" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="203.2" y1="150.4" x2="203.2" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="233.3" y="185.6" font-size="11.5" fill="#059669" font-weight="700">0.04 &ndash; 0.14</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="176.9" y1="217.4" x2="389.9" y2="217.4" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="269.7" cy="217.4" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8" opacity="0.35"/><line x1="217.1" y1="244.6" x2="291.3" y2="244.6" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="257.1" cy="244.6" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="260.5" y1="212.4" x2="260.5" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="299.3" y="247.6" font-size="11.5" fill="#7c3aed" font-weight="700">0.12 &ndash; 0.25</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
+    </div>
+    <p class="fig-cap">Adstock asks a different question of the same data:
+    not how strongly a channel's spend translates into effect, but how
+    long that effect persists once spend stops. The same limitation
+    applies here. A wide bar means the plan's spend pattern leaves the
+    decay rate just as unresolved as the saturation curve above.</p>
   </div>
 
-  <table class="rpt" id="ttbTableWrap">
-    <thead><tr><th>Intensity</th></tr></thead>
-    <tbody id="ttbTable"></tbody>
+  <h3>Cost</h3>
+  <p>Phasing is not free once a channel's response curve departs from
+  linear. By Jensen's inequality, reshaping spend within the plan changes
+  true plan-period revenue relative to the as-supplied schedule, even
+  though the monthly totals are unchanged. Under <b>+/-80% (edge, balanced)</b> this
+  costs 3.11% of true plan-period revenue, averaged
+  across channels, against the unphased plan; Section 5 reports the same
+  measure for every candidate, from doing nothing through to
+  Blackout.</p>
+</section>
+
+<section id="phased-spend">
+  <div class="s-label">Section 4</div>
+  <h2>Phased spend</h2>
+  <p>Each chart below shows one channel's weekly spend as supplied, in
+  pale, against its recommended pacing under <b>+/-80% (edge, balanced)</b>, in solid.
+  The monthly totals are identical on both sides; only the timing within
+  each month has moved.</p>
+  <div class="pacing-grid"><div class="pacing-cell"><div class="pacing-title">tv</div><svg class="chart" viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="137.5" text-anchor="end" font-size="10" fill="#9ca3af">£0</text><line x1="58" y1="110.0" x2="306" y2="110.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="113.5" text-anchor="end" font-size="10" fill="#9ca3af">£50k</text><line x1="58" y1="86.0" x2="306" y2="86.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="89.5" text-anchor="end" font-size="10" fill="#9ca3af">£100k</text><line x1="58" y1="62.0" x2="306" y2="62.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="65.5" text-anchor="end" font-size="10" fill="#9ca3af">£150k</text><line x1="58" y1="38.0" x2="306" y2="38.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="41.5" text-anchor="end" font-size="10" fill="#9ca3af">£200k</text><line x1="58" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">£250k</text><line x1="58.0" y1="134.0" x2="58.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="58.0" y="150.0" text-anchor="start" font-size="10" fill="#9ca3af">Jan &#x27;27</text><line x1="140.7" y1="134.0" x2="140.7" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="140.7" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">May &#x27;27</text><line x1="223.3" y1="134.0" x2="223.3" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="223.3" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">Aug &#x27;27</text><line x1="306.0" y1="134.0" x2="306.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="150.0" text-anchor="end" font-size="10" fill="#9ca3af">Dec &#x27;27</text><line x1="58" y1="14" x2="58" y2="134.0" stroke="#d1d5db" stroke-width="1"/><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#d1d5db" stroke-width="1"/><text x="182.0" y="166" text-anchor="middle" font-size="10" fill="#9ca3af">Plan week</text><text x="12" y="74.0" text-anchor="middle" font-size="10" fill="#9ca3af" transform="rotate(-90 12 74.0)">Weekly spend</text><polyline points="58.0,76.9 62.9,82.0 67.7,75.9 72.6,106.9 77.5,70.1 82.3,81.9 87.2,100.9 92.0,82.9 96.9,82.1 101.8,81.0 106.6,93.4 111.5,89.4 116.4,91.5 121.2,91.2 126.1,88.8 130.9,74.3 135.8,98.5 140.7,86.8 145.5,83.9 150.4,90.8 155.3,92.3 160.1,82.7 165.0,71.6 169.8,69.3 174.7,114.7 179.6,115.7 184.4,88.5 189.3,93.5 194.2,77.9 199.0,82.4 203.9,78.5 208.7,106.0 213.6,82.7 218.5,61.1 223.3,84.8 228.2,79.6 233.1,87.4 237.9,98.1 242.8,77.5 247.6,82.9 252.5,98.5 257.4,94.6 262.2,78.4 267.1,112.7 272.0,88.0 276.8,84.8 281.7,96.8 286.5,88.3 291.4,85.4 296.3,70.7 301.1,83.9 306.0,88.6" fill="none" stroke="#b3c8f8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><polyline points="58.0,44.6 62.9,125.0 67.7,43.0 72.6,129.3 77.5,16.1 82.3,123.3 87.2,73.0 92.0,123.5 96.9,43.4 101.8,82.7 106.6,126.1 111.5,125.4 116.4,59.9 121.2,125.7 126.1,125.2 130.9,29.8 135.8,72.1 140.7,86.9 145.5,43.9 150.4,56.3 155.3,125.7 160.1,123.8 165.0,21.0 169.8,121.0 174.7,99.1 179.6,130.3 184.4,124.9 189.3,61.0 194.2,32.8 199.0,123.7 203.9,19.5 208.7,76.4 213.6,122.2 218.5,117.3 223.3,77.7 228.2,122.7 233.1,124.3 237.9,67.1 242.8,28.6 247.6,123.8 252.5,70.3 257.4,126.1 262.2,34.2 267.1,130.3 272.0,93.9 276.8,56.8 281.7,127.5 286.5,62.2 291.4,123.6 296.3,120.5 301.1,37.7 306.0,46.8" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div><div class="pacing-cell"><div class="pacing-title">meta</div><svg class="chart" viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="137.5" text-anchor="end" font-size="10" fill="#9ca3af">£0</text><line x1="58" y1="104.0" x2="306" y2="104.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="107.5" text-anchor="end" font-size="10" fill="#9ca3af">£50k</text><line x1="58" y1="74.0" x2="306" y2="74.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="77.5" text-anchor="end" font-size="10" fill="#9ca3af">£100k</text><line x1="58" y1="44.0" x2="306" y2="44.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="47.5" text-anchor="end" font-size="10" fill="#9ca3af">£150k</text><line x1="58" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">£200k</text><line x1="58.0" y1="134.0" x2="58.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="58.0" y="150.0" text-anchor="start" font-size="10" fill="#9ca3af">Jan &#x27;27</text><line x1="140.7" y1="134.0" x2="140.7" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="140.7" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">May &#x27;27</text><line x1="223.3" y1="134.0" x2="223.3" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="223.3" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">Aug &#x27;27</text><line x1="306.0" y1="134.0" x2="306.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="150.0" text-anchor="end" font-size="10" fill="#9ca3af">Dec &#x27;27</text><line x1="58" y1="14" x2="58" y2="134.0" stroke="#d1d5db" stroke-width="1"/><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#d1d5db" stroke-width="1"/><text x="182.0" y="166" text-anchor="middle" font-size="10" fill="#9ca3af">Plan week</text><text x="12" y="74.0" text-anchor="middle" font-size="10" fill="#9ca3af" transform="rotate(-90 12 74.0)">Weekly spend</text><polyline points="58.0,73.9 62.9,75.8 67.7,89.5 72.6,108.9 77.5,65.0 82.3,82.8 87.2,95.9 92.0,79.7 96.9,84.1 101.8,77.1 106.6,85.5 111.5,81.0 116.4,97.9 121.2,84.0 126.1,97.9 130.9,75.7 135.8,74.4 140.7,99.8 145.5,111.2 150.4,83.8 155.3,67.2 160.1,95.8 165.0,83.5 169.8,72.6 174.7,116.6 179.6,106.7 184.4,90.1 189.3,85.9 194.2,87.1 199.0,82.0 203.9,68.2 208.7,102.2 213.6,91.7 218.5,74.6 223.3,80.1 228.2,88.3 233.1,98.7 237.9,90.1 242.8,84.9 247.6,85.4 252.5,93.3 257.4,95.2 262.2,88.3 267.1,91.4 272.0,84.8 276.8,93.7 281.7,79.6 286.5,94.9 291.4,88.4 296.3,84.6 301.1,86.0 306.0,81.4" fill="none" stroke="#f2cfa8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><polyline points="58.0,118.9 62.9,119.3 67.7,32.9 72.6,76.9 77.5,118.6 82.3,122.6 87.2,57.4 92.0,24.8 96.9,123.4 101.8,73.5 106.6,41.1 111.5,122.7 116.4,64.8 121.2,49.1 126.1,127.2 130.9,123.0 135.8,32.8 140.7,67.3 145.5,109.2 150.4,36.0 155.3,119.5 160.1,125.7 165.0,32.4 169.8,120.3 174.7,98.9 179.6,127.9 184.4,51.8 189.3,124.0 194.2,46.1 199.0,123.2 203.9,64.7 208.7,73.7 213.6,125.1 218.5,121.5 223.3,31.9 228.2,46.9 233.1,66.7 237.9,124.7 242.8,123.6 247.6,123.6 252.5,55.4 257.4,59.1 262.2,124.2 267.1,125.1 272.0,123.7 276.8,58.1 281.7,77.1 286.5,60.4 291.4,125.1 296.3,124.3 301.1,49.5 306.0,41.5" fill="none" stroke="#d97706" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div><div class="pacing-cell"><div class="pacing-title">search_generic</div><svg class="chart" viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="137.5" text-anchor="end" font-size="10" fill="#9ca3af">£0</text><line x1="58" y1="104.0" x2="306" y2="104.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="107.5" text-anchor="end" font-size="10" fill="#9ca3af">£50k</text><line x1="58" y1="74.0" x2="306" y2="74.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="77.5" text-anchor="end" font-size="10" fill="#9ca3af">£100k</text><line x1="58" y1="44.0" x2="306" y2="44.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="47.5" text-anchor="end" font-size="10" fill="#9ca3af">£150k</text><line x1="58" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">£200k</text><line x1="58.0" y1="134.0" x2="58.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="58.0" y="150.0" text-anchor="start" font-size="10" fill="#9ca3af">Jan &#x27;27</text><line x1="140.7" y1="134.0" x2="140.7" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="140.7" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">May &#x27;27</text><line x1="223.3" y1="134.0" x2="223.3" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="223.3" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">Aug &#x27;27</text><line x1="306.0" y1="134.0" x2="306.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="150.0" text-anchor="end" font-size="10" fill="#9ca3af">Dec &#x27;27</text><line x1="58" y1="14" x2="58" y2="134.0" stroke="#d1d5db" stroke-width="1"/><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#d1d5db" stroke-width="1"/><text x="182.0" y="166" text-anchor="middle" font-size="10" fill="#9ca3af">Plan week</text><text x="12" y="74.0" text-anchor="middle" font-size="10" fill="#9ca3af" transform="rotate(-90 12 74.0)">Weekly spend</text><polyline points="58.0,91.5 62.9,77.4 67.7,98.7 72.6,97.7 77.5,71.2 82.3,83.7 87.2,95.5 92.0,79.1 96.9,77.6 101.8,78.5 106.6,71.2 111.5,79.5 116.4,97.0 121.2,88.4 126.1,90.9 130.9,79.8 135.8,85.9 140.7,87.4 145.5,105.3 150.4,82.2 155.3,90.2 160.1,97.1 165.0,69.7 169.8,67.3 174.7,106.8 179.6,101.8 184.4,94.4 189.3,68.7 194.2,77.6 199.0,92.4 203.9,72.7 208.7,95.4 213.6,100.8 218.5,66.4 223.3,83.6 228.2,71.0 233.1,83.6 237.9,120.8 242.8,84.2 247.6,96.9 252.5,88.9 257.4,90.9 262.2,82.6 267.1,102.3 272.0,73.4 276.8,70.3 281.7,93.5 286.5,87.8 291.4,85.6 296.3,78.2 301.1,92.4 306.0,79.6" fill="none" stroke="#a8daca" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><polyline points="58.0,126.1 62.9,38.9 67.7,127.4 72.6,73.0 77.5,119.9 82.3,32.1 87.2,55.9 92.0,121.6 96.9,122.9 101.8,123.1 106.6,22.8 111.5,37.5 116.4,97.6 121.2,50.7 126.1,125.2 130.9,123.0 135.8,46.0 140.7,87.4 145.5,128.3 150.4,123.7 155.3,55.2 160.1,67.7 165.0,121.5 169.8,17.5 174.7,128.7 179.6,77.8 184.4,59.6 189.3,120.4 194.2,27.9 199.0,125.3 203.9,119.7 208.7,88.9 213.6,64.2 218.5,118.2 223.3,27.9 228.2,117.7 233.1,120.9 237.9,103.1 242.8,17.8 247.6,126.6 252.5,52.7 257.4,56.3 262.2,123.7 267.1,68.9 272.0,64.8 276.8,119.4 281.7,50.8 286.5,123.5 291.4,124.0 296.3,122.4 301.1,56.6 306.0,32.8" fill="none" stroke="#059669" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div><div class="pacing-cell"><div class="pacing-title">tiktok</div><svg class="chart" viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="137.5" text-anchor="end" font-size="10" fill="#9ca3af">£0</text><line x1="58" y1="104.0" x2="306" y2="104.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="107.5" text-anchor="end" font-size="10" fill="#9ca3af">£50k</text><line x1="58" y1="74.0" x2="306" y2="74.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="77.5" text-anchor="end" font-size="10" fill="#9ca3af">£100k</text><line x1="58" y1="44.0" x2="306" y2="44.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="47.5" text-anchor="end" font-size="10" fill="#9ca3af">£150k</text><line x1="58" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">£200k</text><line x1="58.0" y1="134.0" x2="58.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="58.0" y="150.0" text-anchor="start" font-size="10" fill="#9ca3af">Jan &#x27;27</text><line x1="140.7" y1="134.0" x2="140.7" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="140.7" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">May &#x27;27</text><line x1="223.3" y1="134.0" x2="223.3" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="223.3" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">Aug &#x27;27</text><line x1="306.0" y1="134.0" x2="306.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="150.0" text-anchor="end" font-size="10" fill="#9ca3af">Dec &#x27;27</text><line x1="58" y1="14" x2="58" y2="134.0" stroke="#d1d5db" stroke-width="1"/><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#d1d5db" stroke-width="1"/><text x="182.0" y="166" text-anchor="middle" font-size="10" fill="#9ca3af">Plan week</text><text x="12" y="74.0" text-anchor="middle" font-size="10" fill="#9ca3af" transform="rotate(-90 12 74.0)">Weekly spend</text><polyline points="58.0,90.0 62.9,80.8 67.7,79.3 72.6,102.5 77.5,79.6 82.3,86.1 87.2,91.8 92.0,89.4 96.9,85.9 101.8,84.9 106.6,88.2 111.5,80.7 116.4,94.8 121.2,81.9 126.1,92.7 130.9,81.6 135.8,90.5 140.7,92.5 145.5,102.3 150.4,84.5 155.3,94.3 160.1,94.0 165.0,71.7 169.8,74.0 174.7,113.3 179.6,117.8 184.4,84.5 189.3,87.9 194.2,94.5 199.0,78.4 203.9,72.1 208.7,104.3 213.6,88.7 218.5,68.9 223.3,78.7 228.2,91.8 233.1,77.3 237.9,105.3 242.8,95.8 247.6,80.5 252.5,99.7 257.4,89.8 262.2,89.1 267.1,94.9 272.0,85.1 276.8,90.6 281.7,80.7 286.5,94.0 291.4,87.0 296.3,77.4 301.1,79.8 306.0,95.0" fill="none" stroke="#d1baf9" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><polyline points="58.0,59.4 62.9,124.0 67.7,41.2 72.6,128.1 77.5,37.8 82.3,124.6 87.2,59.4 92.0,125.2 96.9,85.5 101.8,124.1 106.6,124.8 111.5,37.2 116.4,62.8 121.2,39.3 126.1,58.9 130.9,123.4 135.8,125.2 140.7,125.4 145.5,74.8 150.4,82.6 155.3,125.8 160.1,59.1 165.0,55.6 169.8,58.4 174.7,131.1 179.6,131.7 184.4,124.1 189.3,124.8 194.2,62.7 199.0,33.7 203.9,29.8 208.7,128.4 213.6,91.6 218.5,121.8 223.3,40.9 228.2,68.2 233.1,45.6 237.9,129.0 242.8,127.4 247.6,122.2 252.5,66.1 257.4,46.5 262.2,124.1 267.1,59.0 272.0,81.8 276.8,124.7 281.7,122.6 286.5,57.2 291.4,40.0 296.3,121.4 301.1,122.0 306.0,56.0" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div></div>
+</section>
+
+<section id="appendix">
+  <div class="s-label">Section 5</div>
+  <h2>Appendix: every strategy compared</h2>
+  <p>The table below scores every candidate lever, from doing nothing
+  through to <b>Blackout</b>, against the three reliability problems this
+  package diagnoses, alongside what phasing costs in revenue to achieve
+  each result. <b>+/-80% (edge, balanced)</b> is highlighted below; every chart in
+  Sections 2 through 4 is built from this one row.</p>
+  <div class="table-scroll">
+  <table class="cross-table">
+    <thead><tr><th>Strategy</th><th>Variance impact</th><th>Bias impact</th><th>Identifiability impact</th><th>Cost</th></tr></thead>
+    <tbody><tr data-lever="unphased"><td>unphased</td><td>0%</td><td>0%</td><td>0%</td><td>0.00%</td></tr><tr data-lever="+/-20% (uniform)"><td>+/-20% (uniform)</td><td>7%</td><td>3%</td><td>-3%</td><td>0.03%</td></tr><tr data-lever="+/-20% (edge, balanced)"><td>+/-20% (edge, balanced)</td><td>24%</td><td>-4%</td><td>8%</td><td>0.21%</td></tr><tr data-lever="+/-40% (uniform)"><td>+/-40% (uniform)</td><td>22%</td><td>7%</td><td>7%</td><td>0.16%</td></tr><tr data-lever="+/-40% (edge, balanced)"><td>+/-40% (edge, balanced)</td><td>48%</td><td>11%</td><td>33%</td><td>0.74%</td></tr><tr data-lever="+/-60% (uniform)"><td>+/-60% (uniform)</td><td>36%</td><td>15%</td><td>20%</td><td>0.40%</td></tr><tr data-lever="+/-60% (edge, balanced)"><td>+/-60% (edge, balanced)</td><td>62%</td><td>32%</td><td>53%</td><td>1.66%</td></tr><tr data-lever="+/-80% (uniform)"><td>+/-80% (uniform)</td><td>47%</td><td>26%</td><td>36%</td><td>0.76%</td></tr><tr data-lever="+/-80% (edge, balanced)" class="winner-row"><td>+/-80% (edge, balanced) <span class="winner-tag">Recommended</span></td><td>71%</td><td>49%</td><td>69%</td><td>3.11%</td></tr><tr data-lever="Blackout"><td>Blackout</td><td>61%</td><td>35%</td><td>56%</td><td>1.52%</td></tr></tbody>
   </table>
+  </div>
+  <p class="fig-cap">Impact is the percentage improvement over doing
+  nothing, averaged across channels; these are the same numbers used to
+  pick the winning row. Cost is the share of true plan-period revenue
+  given up to phasing, under each channel's assumed response curve and
+  again averaged across channels. It is zero when saturation is linear,
+  and largest for the strategies that push spend hardest into the
+  steepest part of the curve.</p>
+  
 </section>
 
 </main>
-
-<footer>
-  <p>Page 2 is exploratory detail generated alongside the main report &mdash; same simulation basis as page 1, run at additional amplitude/horizon settings.</p>
-</footer>
-
 </div>
-
-<script>
-const REPORT = {"meta": {"client_name": "Example Brand", "plan_year": "Next year", "generated_date": "23 Aug 2026", "package_version": "0.1.0", "n_weeks": 52, "fast_mode": false, "auto_lever_applied": true}, "channels": [{"key": "tv", "name": "TV", "hex": "#2563eb", "spend": 5097605.9662214145, "lever": "blackout", "amplitude_pct": null, "dark_cap": 1}, {"key": "meta", "name": "META", "hex": "#d97706", "spend": 4065889.4475514875, "lever": "blackout", "amplitude_pct": null, "dark_cap": 1}, {"key": "search", "name": "Search", "hex": "#059669", "spend": 3100269.1292637996, "lever": "blackout", "amplitude_pct": null, "dark_cap": 1}], "annual_plan_total": 12263764.543036701, "least_reliable_channel": "tv", "correlation_matrix": {"tv": {"tv": 1.0, "meta": 0.6954, "search": 0.6883}, "meta": {"tv": 0.6954, "meta": 1.0, "search": 0.699}, "search": {"tv": 0.6883, "meta": 0.699, "search": 1.0}}, "correlation_before_after": {"before": {"tv": {"tv": 1.0, "meta": 0.6844, "search": 0.6802}, "meta": {"tv": 0.6844, "meta": 1.0, "search": 0.6702}, "search": {"tv": 0.6802, "meta": 0.6702, "search": 1.0}}, "after": {"tv": {"tv": 1.0, "meta": 0.2394, "search": -0.0041}, "meta": {"tv": 0.2394, "meta": 1.0, "search": 0.1646}, "search": {"tv": -0.0041, "meta": 0.1646, "search": 1.0}}}, "diagnose_today": {"tv": {"spend": 5097605.9662214145, "central": 2514139.262540402, "p10": 1789119.709, "p90": 3281485.9092, "cv": 0.2499}, "meta": {"spend": 4065889.4475514875, "central": 4049625.8897612817, "p10": 3250599.3565, "p90": 4768827.5157, "cv": 0.1533}, "search": {"spend": 3100269.1292637996, "central": 4751472.467509699, "p10": 3963570.6204, "p90": 5488987.1595, "cv": 0.1261}}, "schedule": {"plan": {"tv": [116491.26, 109866.97, 118119.66, 59903.86, 130080.3, 108664.8, 72910.97, 107512.45, 107999.81, 109454.33, 87708.58, 96435.34, 87884.09, 90630.61, 93441.11, 121921.37, 79206.75, 97481.59, 100396.22, 90960.61, 89546.79, 104337.13, 129199.67, 131864.35, 41256.82, 42818.18, 95064.18, 85718.93, 114424.23, 106881.69, 121003.95, 62111.23, 104019.41, 149755.65, 104551.31, 113247.54, 95553.8, 73171.35, 114822.0, 105538.47, 74211.36, 82946.35, 112382.04, 51634.37, 96219.18, 102341.73, 82049.53, 94231.72, 103347.69, 129115.39, 104772.58, 92396.67], "meta": [97152.57, 96084.57, 76357.15, 45582.33, 110798.23, 85602.75, 65184.13, 90133.35, 83588.96, 92779.86, 80759.5, 88335.71, 61936.16, 82167.42, 62615.84, 95521.6, 95560.6, 60641.03, 44053.48, 82199.75, 105141.99, 66037.07, 87129.37, 100884.42, 31076.84, 46695.73, 73959.97, 78891.3, 79224.65, 85988.58, 110034.06, 55025.18, 71195.29, 101308.83, 89764.52, 78909.8, 61557.89, 69585.95, 81989.71, 81105.9, 66612.91, 65618.87, 76675.17, 70003.6, 81299.22, 70048.18, 88717.06, 66607.67, 78535.73, 84525.01, 80977.65, 83706.32], "search": [54912.18, 71116.95, 47170.83, 44349.8, 77931.12, 63497.3, 48612.45, 68792.13, 69875.15, 68743.18, 75836.51, 68203.74, 46508.67, 57055.41, 53645.03, 68040.38, 60240.77, 57857.17, 37491.16, 63431.13, 55582.64, 47476.61, 80538.84, 82429.4, 31339.2, 38597.88, 50579.36, 77492.3, 69478.89, 53657.74, 79289.35, 47339.05, 43255.01, 85837.99, 64154.04, 77590.15, 61390.46, 18923.66, 62337.19, 48601.6, 53988.92, 53121.89, 63443.66, 40295.53, 73184.62, 77015.18, 52062.36, 56853.28, 61835.62, 70508.84, 53907.53, 64849.24]}, "recommended": {"tv": [159947.63, 0.0, 162183.48, 82250.64, 174954.3, 146151.05, 98063.18, 0.0, 0.0, 149716.99, 119972.1, 131908.98, 127283.69, 131261.51, 135331.98, 0.0, 98857.81, 121666.6, 125304.36, 0.0, 111763.19, 152922.17, 0.0, 193267.56, 60468.23, 54453.33, 0.0, 109011.66, 145517.16, 135925.06, 0.0, 85903.66, 143865.27, 207121.3, 147878.05, 0.0, 135151.91, 103494.03, 0.0, 137846.76, 96929.55, 108338.56, 146785.35, 68567.44, 127773.48, 135903.88, 0.0, 134472.12, 147480.95, 0.0, 149514.31, 92396.67], "meta": [128214.92, 126805.44, 0.0, 60156.25, 148975.54, 115098.55, 87644.37, 0.0, 112305.72, 124654.12, 108504.2, 0.0, 85060.85, 0.0, 85994.3, 131185.86, 107814.59, 68417.19, 0.0, 92740.44, 118624.63, 74115.07, 97787.49, 113225.14, 0.0, 58571.97, 0.0, 98955.93, 99374.06, 107858.28, 0.0, 81635.58, 105625.61, 150302.18, 121828.95, 0.0, 83546.75, 94442.48, 103276.51, 102163.24, 83907.46, 82655.34, 0.0, 98060.91, 113883.79, 98123.35, 0.0, 89144.72, 0.0, 113124.49, 108376.85, 83706.32], "search": [68973.07, 89327.25, 59249.45, 0.0, 95952.3, 78180.74, 0.0, 84699.97, 95496.63, 93949.6, 0.0, 93212.36, 62285.51, 0.0, 71842.69, 91121.28, 75528.59, 72540.08, 47005.61, 79528.59, 0.0, 71190.26, 0.0, 123601.28, 46992.52, 38597.88, 50579.36, 77492.3, 69478.89, 53657.74, 119352.35, 71258.33, 65110.73, 0.0, 98609.53, 0.0, 94361.7, 29087.08, 76837.56, 59906.91, 66547.38, 0.0, 78201.41, 0.0, 87764.77, 92358.47, 62434.44, 76247.35, 0.0, 94561.17, 72296.74, 64849.24]}, "dark": {"tv": [false, true, false, false, false, false, false, true, true, false, false, false, false, false, false, true, false, false, false, true, false, false, true, false, false, false, true, false, false, false, true, false, false, false, false, true, false, false, true, false, false, false, false, false, false, false, true, false, false, true, false, false], "meta": [false, false, true, false, false, false, false, true, false, false, false, true, false, true, false, false, false, false, true, false, false, false, false, false, true, false, true, false, false, false, true, false, false, false, false, true, false, false, false, false, false, false, true, false, false, false, true, false, true, false, false, false], "search": [false, false, false, true, false, false, true, false, false, false, true, false, false, true, false, false, false, false, false, false, true, false, true, false, false, false, false, false, false, false, false, false, false, true, false, true, false, false, false, false, false, true, false, true, false, false, false, false, true, false, false, false]}}, "primary_horizon_weeks": 52, "impact_horizons": [{"weeks": 13, "label": "3 months", "channels": {"tv": {"cv_today": 0.2499, "cv_after": 0.1878, "reduction_pct": 24.84, "revenue_today_p10": 1781917.8814, "revenue_today_p90": 3276484.1342, "revenue_after_p10": 2045132.6332699999, "revenue_after_p90": 3021554.88717}, "meta": {"cv_today": 0.1623, "cv_after": 0.1129, "reduction_pct": 30.47, "revenue_today_p10": 3296917.2818, "revenue_today_p90": 4877902.8116, "revenue_after_p10": 3550858.0691, "revenue_after_p90": 4631581.923660001}, "search": {"cv_today": 0.1484, "cv_after": 0.1068, "reduction_pct": 28.05, "revenue_today_p10": 3890947.7531, "revenue_today_p90": 5722942.0465, "revenue_after_p10": 4137882.3600899996, "revenue_after_p90": 5258107.841980001}}}, {"weeks": 52, "label": "1 year", "channels": {"tv": {"cv_today": 0.2499, "cv_after": 0.1275, "reduction_pct": 48.98, "revenue_today_p10": 1789119.709, "revenue_today_p90": 3281485.9092, "revenue_after_p10": 2194038.7924699998, "revenue_after_p90": 2918893.68169}, "meta": {"cv_today": 0.1533, "cv_after": 0.0784, "reduction_pct": 48.85, "revenue_today_p10": 3250599.3565, "revenue_today_p90": 4768827.5157, "revenue_after_p10": 3673565.73331, "revenue_after_p90": 4415795.90535}, "search": {"cv_today": 0.1261, "cv_after": 0.0675, "reduction_pct": 46.47, "revenue_today_p10": 3963570.6204, "revenue_today_p90": 5488987.1595, "revenue_after_p10": 4324275.569379999, "revenue_after_p90": 5043388.073110001}}}, {"weeks": 104, "label": "2 years", "channels": {"tv": {"cv_today": 0.2332, "cv_after": 0.0989, "reduction_pct": 57.61, "revenue_today_p10": 1873463.6527, "revenue_today_p90": 3036361.134, "revenue_after_p10": 2260928.93088, "revenue_after_p90": 2805917.00889}, "meta": {"cv_today": 0.1381, "cv_after": 0.0541, "reduction_pct": 60.83, "revenue_today_p10": 3380831.8775, "revenue_today_p90": 4694543.9584, "revenue_after_p10": 3833101.90217, "revenue_after_p90": 4366811.203129999}, "search": {"cv_today": 0.1111, "cv_after": 0.0504, "reduction_pct": 54.61, "revenue_today_p10": 4101360.2901, "revenue_today_p90": 5364584.7401, "revenue_after_p10": 4381815.9088200005, "revenue_after_p90": 4939367.41299}}}], "sensitivity": {"tv": [{"label": "0%", "magnitude_pct": 0.0, "is_blackout": false, "cv": 0.2499}, {"label": "10%", "magnitude_pct": 10.0, "is_blackout": false, "cv": 0.2475}, {"label": "20%", "magnitude_pct": 20.0, "is_blackout": false, "cv": 0.2406}, {"label": "40%", "magnitude_pct": 40.0, "is_blackout": false, "cv": 0.2139}, {"label": "80%", "magnitude_pct": 80.0, "is_blackout": false, "cv": 0.1425}, {"label": "Blackout", "magnitude_pct": NaN, "is_blackout": true, "cv": 0.1092}], "meta": [{"label": "0%", "magnitude_pct": 0.0, "is_blackout": false, "cv": 0.1533}, {"label": "10%", "magnitude_pct": 10.0, "is_blackout": false, "cv": 0.1498}, {"label": "20%", "magnitude_pct": 20.0, "is_blackout": false, "cv": 0.1449}, {"label": "40%", "magnitude_pct": 40.0, "is_blackout": false, "cv": 0.1284}, {"label": "80%", "magnitude_pct": 80.0, "is_blackout": false, "cv": 0.0914}, {"label": "Blackout", "magnitude_pct": NaN, "is_blackout": true, "cv": 0.0716}], "search": [{"label": "0%", "magnitude_pct": 0.0, "is_blackout": false, "cv": 0.1261}, {"label": "10%", "magnitude_pct": 10.0, "is_blackout": false, "cv": 0.1262}, {"label": "20%", "magnitude_pct": 20.0, "is_blackout": false, "cv": 0.1202}, {"label": "40%", "magnitude_pct": 40.0, "is_blackout": false, "cv": 0.1092}, {"label": "80%", "magnitude_pct": 80.0, "is_blackout": false, "cv": 0.0768}, {"label": "Blackout", "magnitude_pct": NaN, "is_blackout": true, "cv": 0.0601}]}, "ttb": {"channel": "tv", "month_labels": ["Today", "3 months", "6 months", "1 year", "2 years"], "series": {"\u00b120% continuous": [0.0, 0.1, 1.4, 3.3, 6.9], "\u00b140% continuous": [0.0, 2.7, 7.6, 13.8, 23.3], "\u00b180% continuous": [0.0, 13.0, 26.5, 38.1, 52.0], "Blackout": [0.0, 30.0, 46.0, 55.8, 65.1]}}};
-
-function el(tag, attrs, text) {
-  const ns = 'http://www.w3.org/2000/svg';
-  const e = document.createElementNS(ns, tag);
-  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
-  if (text !== undefined) e.textContent = text;
-  return e;
-}
-function fmtGBP(v) {
-  const abs = Math.abs(v);
-  if (abs < 1000) return `£${Math.round(v)}`;
-  if (abs < 1e6) return `£${Math.round(v / 1000)}k`;
-  return `£${(v / 1e6).toFixed(2)}m`;
-}
-function fmtPct(v) { return `${Math.round(v * 100)}%`; }
-function chName(ch) {
-  const found = REPORT.channels.find((c) => c.key === ch);
-  return found ? found.name : ch;
-}
-function chColor(ch) {
-  const found = REPORT.channels.find((c) => c.key === ch);
-  return found ? found.hex : '#6b7280';
-}
-
-// -- Cover / static text ------------------------------------------------------
-if (REPORT.meta.fast_mode) {
-  document.getElementById('draftBanner').classList.add('show');
-}
-document.getElementById('genDate').innerHTML = `Generated ${REPORT.meta.generated_date}<br>v${REPORT.meta.package_version}`;
-document.getElementById('clientName').textContent = REPORT.meta.client_name;
-document.getElementById('reportSub').textContent =
-  `A diagnosis of how precisely your ${REPORT.meta.plan_year} marketing mix model can identify each channel's marginal return, and a recommended weekly spend schedule to tighten that — same budget, same monthly totals.`;
-document.getElementById('metaPlanYear').textContent = REPORT.meta.plan_year;
-document.getElementById('metaChannels').textContent = REPORT.channels.length;
-document.getElementById('metaAnnualPlan').textContent = fmtGBP(REPORT.annual_plan_total);
-
-const leastReliable = REPORT.least_reliable_channel;
-const todayCvLeast = REPORT.diagnose_today[leastReliable].cv;
-const primaryImpact = REPORT.impact_horizons.find((h) => h.weeks === REPORT.primary_horizon_weeks);
-const afterCvLeast = primaryImpact.channels[leastReliable].cv_after;
-const reductionLeast = primaryImpact.channels[leastReliable].reduction_pct;
-
-document.getElementById('headline').innerHTML =
-  `Today, your least reliable channel (<b>${chName(leastReliable)}</b>) could be off by <b>±${Math.round(todayCvLeast * 100)}%</b>. ` +
-  `Phasing your ${REPORT.meta.plan_year} schedule as recommended below could narrow that to <b>±${Math.round(afterCvLeast * 100)}%</b> within ${primaryImpact.label} — without changing a single monthly total.`;
-
-document.getElementById('methodologyText').innerHTML =
-  `Generated with <code>how_wrong_is_your_mmm v${REPORT.meta.package_version}</code>. ` +
-  `Diagnostic: OLS refit across simulated sales consistent with your supplied spend history, using marginal returns (£ revenue per £ spend) you supplied. ` +
-  `Phasing: grid search over amplitude per lever, minimising the worst-case channel CV, then re-confirmed independently on a larger sample before being recommended, to avoid favouring a setting that only looked best by chance. ` +
-  (REPORT.meta.auto_lever_applied
-    ? `Lever choice: each channel's own lever (continuous range vs. a harder on/off Blackout) was picked automatically from how much that channel individually benefits from each option. `
-    : ``) +
-  `<br><br><b>Scope:</b> the ranges above measure how precisely your spend design can identify each channel's marginal return under a model that is correctly specified by construction &mdash; sampling variance, not model error. They are silent on misspecification: an omitted driver (seasonality, adstock, saturation, a competitor event) can leave this diagnostic looking healthy while the underlying point estimate is badly biased, because the same omission that inflates the estimate typically inflates it more than it widens the range. Read a narrow range as "well-identified by this design," not as "correct." ` +
-  `Full method: <a href="https://raz1470.github.io/how_wrong_is_your_mmm/collinearity_research.html">raz1470.github.io/how_wrong_is_your_mmm/collinearity_research.html</a>.`;
-
-document.getElementById('phaseSub').textContent =
-  `${REPORT.meta.n_weeks}-week schedule, monthly totals unchanged per channel`;
-
-// -- Correlation matrix -------------------------------------------------------
-function corrColor(v) {
-  const t = Math.max(0, Math.min(1, v));
-  const lo = [249, 250, 251], hi = [17, 24, 39];
-  const mix = lo.map((c, i) => Math.round(c + (hi[i] - c) * (t * 0.92)));
-  return `rgb(${mix.join(',')})`;
-}
-function renderCorrTable(targetId, matrix, channels) {
-  let html = '<table class="corr"><tr><th></th>';
-  for (const ch of channels) html += `<th>${ch.name}</th>`;
-  html += '</tr>';
-  for (const rowCh of channels) {
-    html += `<tr><th class="rh" style="color:${rowCh.hex}">${rowCh.name}</th>`;
-    for (const colCh of channels) {
-      const v = matrix[rowCh.key][colCh.key];
-      if (rowCh.key === colCh.key) {
-        html += `<td class="diag">${v.toFixed(2)}</td>`;
-      } else {
-        const textColor = v >= 0.6 ? '#fff' : '#111827';
-        html += `<td style="background:${corrColor(v)};color:${textColor}">${v.toFixed(2)}</td>`;
-      }
-    }
-    html += '</tr>';
-  }
-  html += '</table>';
-  document.getElementById(targetId).innerHTML = html;
-}
-
-(function drawCorrMatrix() {
-  renderCorrTable('corrMatrix', REPORT.correlation_matrix, REPORT.channels);
-})();
-
-(function drawCorrBeforeAfter() {
-  if (!REPORT.correlation_before_after) return;
-  const channels = REPORT.channels;
-  renderCorrTable('corrBeforeMatrix', REPORT.correlation_before_after.before, channels);
-  renderCorrTable('corrAfterMatrix', REPORT.correlation_before_after.after, channels);
-
-  function meanPairwise(m) {
-    let sum = 0, n = 0;
-    for (let i = 0; i < channels.length; i++) {
-      for (let j = i + 1; j < channels.length; j++) {
-        sum += m[channels[i].key][channels[j].key];
-        n++;
-      }
-    }
-    return n ? sum / n : 0;
-  }
-  const beforeMean = meanPairwise(REPORT.correlation_before_after.before);
-  const afterMean = meanPairwise(REPORT.correlation_before_after.after);
-  document.getElementById('corrBeforeAfterCaption').textContent =
-    `Mean pairwise correlation drops from ${beforeMean.toFixed(2)} to ${afterMean.toFixed(2)} once the recommended schedule replaces the original plan, across the ${REPORT.meta.n_weeks}-week plan year — monthly totals are identical in both.`;
-})();
-
-(function corrCaption() {
-  const entries = [];
-  const channels = REPORT.channels.map((c) => c.key);
-  for (let i = 0; i < channels.length; i++) {
-    for (let j = i + 1; j < channels.length; j++) {
-      entries.push({ pair: [channels[i], channels[j]], v: REPORT.correlation_matrix[channels[i]][channels[j]] });
-    }
-  }
-  entries.sort((a, b) => b.v - a.v);
-  const top = entries[0];
-  document.getElementById('corrCaption').textContent = top
-    ? `${chName(top.pair[0])} and ${chName(top.pair[1])} are the most entangled in your spend history, at ${top.v.toFixed(2)} correlation — the harder that pair is to tell apart, the more phasing helps.`
-    : '';
-})();
-
-// -- Diagnose table + forest chart --------------------------------------------
-const diagBody = document.getElementById('diagnoseTable');
-for (const ch of REPORT.channels) {
-  const d = REPORT.diagnose_today[ch.key];
-  const tr = document.createElement('tr');
-  tr.innerHTML = `<td><span class="swatch" style="background:${ch.hex}"></span>${ch.name}</td>
-    <td class="num">${fmtGBP(d.spend)}</td>
-    <td class="num">${fmtGBP(d.central)}</td>
-    <td class="num">${fmtGBP(d.p10)} &ndash; ${fmtGBP(d.p90)}</td>
-    <td class="num">${fmtPct(d.cv)}</td>`;
-  diagBody.appendChild(tr);
-}
-
-const phaseBody = document.getElementById('phaseTable');
-for (const ch of REPORT.channels) {
-  const tr = document.createElement('tr');
-  const leverLabel = ch.lever === 'continuous' ? 'Continuous nudge' : 'Blackout';
-  const amp = ch.lever === 'continuous' ? `±${Math.round(ch.amplitude_pct)}%` : '—';
-  const darkCap = ch.lever === 'blackout' ? (ch.dark_cap ?? 'unlimited') : '—';
-  tr.innerHTML = `<td><span class="swatch" style="background:${ch.hex}"></span>${ch.name}</td>
-    <td>${leverLabel}</td>
-    <td class="num">${amp}</td>
-    <td class="num">${darkCap}</td>`;
-  phaseBody.appendChild(tr);
-}
-
-function drawForest(svgId, rows, xMax, twoState) {
-  const svg = document.getElementById(svgId);
-  if (!svg) return;
-  const W = 700, H = 240;
-  const m = { top: 14, right: 98, bottom: 42, left: 66 };
-  const pw = W - m.left - m.right;
-  const ph = H - m.top - m.bottom;
-  const scX = (v) => m.left + (v / xMax) * pw;
-  const rowH = ph / rows.length;
-  const rowCy = (i) => m.top + rowH * i + rowH / 2;
-  const g = el('g', {});
-
-  for (let i = 0; i < rows.length; i++) {
-    if (i % 2 === 1) g.appendChild(el('rect', { x: m.left, y: m.top + rowH * i, width: pw, height: rowH, fill: '#f9fafb' }));
-  }
-
-  const step = xMax <= 1.2 ? xMax / 6 : Math.ceil(xMax / 6 * 2) / 2;
-  for (let v = 0; v <= xMax + 1e-6; v += step) {
-    const x = scX(v);
-    g.appendChild(el('line', { x1: x, y1: m.top, x2: x, y2: m.top + ph, stroke: '#e5e7eb', 'stroke-width': 1 }));
-    g.appendChild(el('text', { x, y: m.top + ph + 16, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, fmtGBP(v)));
-  }
-  g.appendChild(el('text', { x: m.left + pw / 2, y: m.top + ph + 30, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, 'Incremental revenue'));
-  g.appendChild(el('rect', { x: m.left, y: m.top, width: pw, height: ph, fill: 'none', stroke: '#e5e7eb', 'stroke-width': 1 }));
-
-  for (let i = 0; i < rows.length; i++) {
-    const r = rows[i];
-    const cy = rowCy(i);
-    if (twoState) {
-      const s2 = rowH * 0.22;
-      g.appendChild(el('line', { x1: scX(r.today[0]), y1: cy - s2, x2: scX(r.today[1]), y2: cy - s2, stroke: r.color, 'stroke-width': 6, 'stroke-linecap': 'round', opacity: 0.4 }));
-      g.appendChild(el('line', { x1: scX(r.after[0]), y1: cy + s2, x2: scX(r.after[1]), y2: cy + s2, stroke: r.color, 'stroke-width': 6, 'stroke-linecap': 'round' }));
-      g.appendChild(el('text', { x: scX(r.after[1]) + 8, y: cy + s2 + 3, 'font-size': 9.5, fill: r.color, 'font-weight': '700' }, `${fmtGBP(r.after[0])}–${fmtGBP(r.after[1])}`));
-    } else {
-      g.appendChild(el('line', { x1: scX(r.p10), y1: cy, x2: scX(r.p90), y2: cy, stroke: r.color, 'stroke-width': 7, 'stroke-linecap': 'round' }));
-      g.appendChild(el('text', { x: scX(r.p90) + 8, y: cy + 4, 'font-size': 11.5, fill: r.color, 'font-weight': '700' }, `${fmtGBP(r.p10)} – ${fmtGBP(r.p90)}`));
-    }
-    g.appendChild(el('text', { x: m.left - 10, y: cy - 2, 'text-anchor': 'end', 'font-size': 12.5, 'font-weight': '700', fill: r.color }, r.name));
-    g.appendChild(el('text', { x: m.left - 10, y: cy + 12, 'text-anchor': 'end', 'font-size': 9.5, fill: '#9ca3af' }, `${fmtGBP(r.spend)} spend`));
-  }
-  svg.appendChild(g);
-}
-
-(function () {
-  const rows = REPORT.channels.map((ch) => {
-    const d = REPORT.diagnose_today[ch.key];
-    return { name: ch.name, color: ch.hex, spend: d.spend, p10: d.p10, p90: d.p90 };
-  });
-  const xMax = Math.max(...rows.map((r) => r.p90)) * 1.15;
-  drawForest('chartDiagnose', rows, xMax);
-})();
-
-document.getElementById('impactFigTitle').textContent = `Before vs. after ${primaryImpact.label} of phasing`;
-document.getElementById('impactAfterLegend').textContent = `After ${primaryImpact.label} of phasing`;
-
-(function () {
-  const rows = REPORT.channels.map((ch) => {
-    const d = REPORT.diagnose_today[ch.key];
-    const imp = primaryImpact.channels[ch.key];
-    return {
-      name: ch.name, color: ch.hex, spend: d.spend,
-      today: [imp.revenue_today_p10, imp.revenue_today_p90],
-      after: [imp.revenue_after_p10, imp.revenue_after_p90],
-    };
-  });
-  const xMax = Math.max(...rows.map((r) => Math.max(r.today[1], r.after[1]))) * 1.15;
-  drawForest('chartImpact', rows, xMax, true);
-})();
-
-(function () {
-  const box = document.getElementById('impactKnums');
-  box.innerHTML = `
-    <div class="kbox">
-      <div class="lbl">Annual plan</div>
-      <div class="num">${fmtGBP(REPORT.annual_plan_total)}</div>
-      <div class="lab">Unchanged — same monthly totals throughout</div>
-    </div>
-    <div class="kbox">
-      <div class="lbl">Least reliable channel today</div>
-      <div class="num">±${Math.round(todayCvLeast * 100)}%</div>
-      <div class="lab">${chName(leastReliable)}, 10th&ndash;90th percentile CV</div>
-    </div>
-    <div class="kbox">
-      <div class="lbl">Least reliable channel, after ${primaryImpact.label}</div>
-      <div class="num" style="color:var(--good)">±${Math.round(afterCvLeast * 100)}%</div>
-      <div class="lab">${chName(leastReliable)} again — ${Math.round(reductionLeast)}% narrower</div>
-    </div>`;
-})();
-
-// -- Phase: stacked weekly schedule, one row per channel ----------------------
-(function drawPhase() {
-  const svg = document.getElementById('chartPhase');
-  const channels = REPORT.channels;
-  const nWeeks = REPORT.meta.n_weeks;
-  const W = 700, H = 175 * channels.length;
-  svg.setAttribute('viewBox', `0 0 700 ${H}`);
-  const rowH = H / channels.length;
-  const m = { top: 26, right: 16, bottom: 14, left: 58 };
-  const pw = W - m.left - m.right;
-  const ph = rowH - m.top - m.bottom;
-  const g = el('g', {});
-
-  channels.forEach((ch, idx) => {
-    const offsetY = idx * rowH;
-    const pg = el('g', { transform: `translate(0,${offsetY})` });
-    const plan = REPORT.schedule.plan[ch.key];
-    const rec = REPORT.schedule.recommended[ch.key];
-    const dark = REPORT.schedule.dark[ch.key];
-    const yMax = Math.max(...plan, ...rec) * 1.15;
-    const scX = (i) => m.left + (i / (nWeeks - 1)) * pw;
-    const scY = (v) => m.top + ph - (v / yMax) * ph;
-    const pathD = (data) => data.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
-
-    const leverLabel = ch.lever === 'continuous' ? `continuous ±${Math.round(ch.amplitude_pct)}%` : `Blackout, cap ${ch.dark_cap ?? 'unlimited'}/mo`;
-    pg.appendChild(el('text', { x: m.left, y: 14, 'font-size': 12.5, 'font-weight': '700', fill: ch.hex }, `${ch.name} — ${leverLabel}`));
-
-    [0, yMax].forEach((v) => {
-      const y = scY(v);
-      pg.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
-      pg.appendChild(el('text', { x: m.left - 8, y: y + 3, 'text-anchor': 'end', 'font-size': 9.5, fill: '#9ca3af' }, fmtGBP(v)));
-    });
-    pg.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-    pg.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-    pg.appendChild(el('text', { x: m.left, y: m.top + ph + 13, 'font-size': 9.5, fill: '#9ca3af' }, 'Wk 1'));
-    pg.appendChild(el('text', { x: m.left + pw, y: m.top + ph + 13, 'text-anchor': 'end', 'font-size': 9.5, fill: '#9ca3af' }, `Wk ${nWeeks}`));
-
-    pg.appendChild(el('path', { d: pathD(plan), fill: 'none', stroke: '#9ca3af', 'stroke-width': 1.75, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.9 }));
-    pg.appendChild(el('path', { d: pathD(rec), fill: 'none', stroke: '#111827', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
-
-    rec.forEach((v, i) => {
-      if (dark[i]) pg.appendChild(el('circle', { cx: scX(i), cy: scY(0), r: 3, fill: '#111827' }));
-    });
-
-    g.appendChild(pg);
-  });
-
-  svg.appendChild(g);
-})();
-
-// -- Page 2, Section 4: channel sensitivity -----------------------------------
-(function () {
-  const legend = document.getElementById('sensitivityLegend');
-  legend.innerHTML = REPORT.channels.map((ch) =>
-    `<span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="${ch.hex}" stroke-width="2.5"/></svg> ${ch.name}</span>`
-  ).join('');
-})();
-
-(function drawSensitivity() {
-  const svg = document.getElementById('chartSensitivity');
-  const channels = REPORT.channels;
-  const first = REPORT.sensitivity[channels[0].key];
-  const levels = first.map((r) => r.label);
-  const W = 700, H = 260;
-  const m = { top: 16, right: 96, bottom: 34, left: 46 };
-  const pw = W - m.left - m.right;
-  const ph = H - m.top - m.bottom;
-  const allCv = channels.flatMap((ch) => REPORT.sensitivity[ch.key].map((r) => r.cv * 100));
-  const yMax = Math.max(...allCv) * 1.15;
-  const scX = (i) => m.left + (i / (levels.length - 1)) * pw;
-  const scY = (v) => m.top + ph - (v / yMax) * ph;
-  const g = el('g', {});
-
-  const yStep = Math.ceil(yMax / 4 / 5) * 5;
-  for (let v = 0; v <= yMax; v += yStep) {
-    const y = scY(v);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
-    g.appendChild(el('text', { x: m.left - 8, y: y + 3, 'text-anchor': 'end', 'font-size': 10, fill: '#9ca3af' }, `${Math.round(v)}%`));
-  }
-  levels.forEach((label, i) => {
-    g.appendChild(el('text', { x: scX(i), y: m.top + ph + 18, 'text-anchor': 'middle', 'font-size': 9.5, fill: '#9ca3af' }, label));
-  });
-  const dividerX = scX(levels.length - 1.5);
-  g.appendChild(el('line', { x1: dividerX, y1: m.top, x2: dividerX, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1, 'stroke-dasharray': '3,3' }));
-  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-
-  const endLabels = [];
-  for (const ch of channels) {
-    const rows = REPORT.sensitivity[ch.key];
-    const d = rows.map((r, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(r.cv * 100).toFixed(1)}`).join(' ');
-    g.appendChild(el('path', { d, fill: 'none', stroke: ch.hex, 'stroke-width': 2.25, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
-    rows.forEach((r, i) => {
-      const isBlackout = r.is_blackout;
-      g.appendChild(el(isBlackout ? 'rect' : 'circle', isBlackout
-        ? { x: scX(i) - 3.2, y: scY(r.cv * 100) - 3.2, width: 6.4, height: 6.4, transform: `rotate(45 ${scX(i)} ${scY(r.cv * 100)})`, fill: ch.hex }
-        : { cx: scX(i), cy: scY(r.cv * 100), r: 2.75, fill: ch.hex }));
-    });
-    const last = rows[rows.length - 1];
-    endLabels.push({ y: scY(last.cv * 100), x: scX(rows.length - 1) + 9, text: `${ch.name} · ${Math.round(last.cv * 100)}%`, color: ch.hex });
-  }
-  endLabels.sort((a, b) => a.y - b.y);
-  for (let i = 1; i < endLabels.length; i++) {
-    if (endLabels[i].y - endLabels[i - 1].y < 13) endLabels[i].y = endLabels[i - 1].y + 13;
-  }
-  endLabels.forEach((l) => g.appendChild(el('text', { x: l.x, y: l.y + 3.5, 'font-size': 10.5, 'font-weight': '700', fill: l.color }, l.text)));
-  svg.appendChild(g);
-})();
-
-(function fillSensitivityInsight() {
-  const box = document.getElementById('sensitivityInsight');
-  for (const ch of REPORT.channels) {
-    const rows = REPORT.sensitivity[ch.key];
-    const continuous = rows.filter((r) => !r.is_blackout);
-    const blackoutRow = rows.find((r) => r.is_blackout);
-    const midIdx = Math.floor(continuous.length / 2);
-    const lateGain = continuous[continuous.length - 1].cv > 0
-      ? (continuous[midIdx].cv - continuous[continuous.length - 1].cv) / continuous[continuous.length - 1].cv
-      : 0;
-    let verdict;
-    if (blackoutRow && blackoutRow.cv < continuous[continuous.length - 1].cv * 0.85) {
-      verdict = `Still improving well past the midpoint of the continuous range — <code>Blackout</code> reaches ${Math.round(blackoutRow.cv * 100)}% CV, clearly lower than the continuous ceiling.`;
-    } else if (Math.abs(lateGain) < 0.1) {
-      verdict = `Plateaus roughly halfway through the continuous range — a moderate nudge captures most of the benefit; the harder lever adds little.`;
-    } else {
-      verdict = `Keeps improving through the continuous range; check whether ${blackoutRow ? 'Blackout adds a further gain worth the disruption' : 'a wider continuous amplitude is worth considering'}.`;
-    }
-    const row = document.createElement('div');
-    row.className = 'insight-row';
-    row.innerHTML = `<span class="swatch" style="background:${ch.hex}"></span><div><b>${ch.name}:</b> <span class="verdict">${verdict}</span></div>`;
-    box.appendChild(row);
-  }
-})();
-
-// -- Page 2, Section 5: time to benefit ---------------------------------------
-const TTB_COLORS = ['#bfdbfe', '#60a5fa', '#1d4ed8', '#111827'];
-
-document.getElementById('ttbIntro').innerHTML =
-  `Once the lever's picked, this is the follow-up question: how long before it shows. Shown for <b>${chName(REPORT.ttb.channel)}</b>, today's least reliable channel, isolated from the other channels.`;
-document.getElementById('ttbFigTitle').textContent = `CV reduction over time, by phasing intensity — ${chName(REPORT.ttb.channel)}`;
-document.getElementById('ttbFigSub').textContent = `${REPORT.ttb.month_labels.join(' vs ')} of phasing`;
-
-(function () {
-  const legend = document.getElementById('ttbLegend');
-  legend.innerHTML = Object.keys(REPORT.ttb.series).map((name, i) =>
-    `<span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="${TTB_COLORS[i % TTB_COLORS.length]}" stroke-width="3"/></svg> ${name}</span>`
-  ).join('');
-})();
-
-(function drawTTB() {
-  const svg = document.getElementById('chartTTB');
-  const months = REPORT.ttb.month_labels;
-  const series = REPORT.ttb.series;
-  const W = 700, H = 260;
-  const m = { top: 16, right: 92, bottom: 34, left: 46 };
-  const pw = W - m.left - m.right;
-  const ph = H - m.top - m.bottom;
-  const allPts = Object.values(series).flat();
-  const yMax = Math.max(...allPts) * 1.15;
-  const scX = (i) => m.left + (i / (months.length - 1)) * pw;
-  const scY = (v) => m.top + ph - (v / yMax) * ph;
-  const g = el('g', {});
-
-  const yStep = Math.ceil(yMax / 4 / 5) * 5;
-  for (let v = 0; v <= yMax; v += yStep) {
-    const y = scY(v);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
-    g.appendChild(el('text', { x: m.left - 8, y: y + 3, 'text-anchor': 'end', 'font-size': 10, fill: '#9ca3af' }, `${Math.round(v)}%`));
-  }
-  months.forEach((label, i) => {
-    g.appendChild(el('text', { x: scX(i), y: m.top + ph + 18, 'text-anchor': 'middle', 'font-size': 10, fill: '#9ca3af' }, label));
-  });
-  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-
-  const endLabels = [];
-  Object.entries(series).forEach(([name, pts], si) => {
-    const color = TTB_COLORS[si % TTB_COLORS.length];
-    const d = pts.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
-    g.appendChild(el('path', { d, fill: 'none', stroke: color, 'stroke-width': 2.25, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
-    pts.forEach((v, i) => g.appendChild(el('circle', { cx: scX(i), cy: scY(v), r: 2.75, fill: color })));
-    const lastI = pts.length - 1;
-    endLabels.push({ y: scY(pts[lastI]), x: scX(lastI) + 8, text: `${Math.round(pts[lastI])}%`, color });
-  });
-  endLabels.sort((a, b) => a.y - b.y);
-  for (let i = 1; i < endLabels.length; i++) {
-    if (endLabels[i].y - endLabels[i - 1].y < 13) endLabels[i].y = endLabels[i - 1].y + 13;
-  }
-  endLabels.forEach((l) => g.appendChild(el('text', { x: l.x, y: l.y + 3.5, 'font-size': 10.5, 'font-weight': '700', fill: l.color }, l.text)));
-  svg.appendChild(g);
-})();
-
-(function fillTTBTable() {
-  const thead = document.querySelector('#ttbTableWrap thead tr');
-  const months = REPORT.ttb.month_labels.slice(1); // drop "Today" (always 0%)
-  for (const label of months) thead.innerHTML += `<th class="num">${label}</th>`;
-
-  const body = document.getElementById('ttbTable');
-  Object.entries(REPORT.ttb.series).forEach(([name, pts], si) => {
-    const color = TTB_COLORS[si % TTB_COLORS.length];
-    const tr = document.createElement('tr');
-    const cells = pts.slice(1).map((v) => `<td class="num">${Math.round(v)}%</td>`).join('');
-    tr.innerHTML = `<td><span class="swatch" style="background:${color}"></span>${name}</td>${cells}`;
-    body.appendChild(tr);
-  });
-})();
-</script>
-
 </body>
 </html>
