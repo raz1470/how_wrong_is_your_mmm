@@ -26,7 +26,7 @@ pip install how-wrong-is-your-mmm  # coming to PyPI
 | [`CollinearityDiagnostic`](api/diagnostic.md) | Quantifies how identifiable OLS marginal returns are, given your spend data. |
 | [`BudgetPhaser`](api/phaser.md) | Recommends a de-correlated weekly spend schedule, monthly totals preserved exactly. |
 | [`Blackout`](api/phaser.md#how_wrong_is_your_mmm.Blackout) | A harder on/off phasing lever for `BudgetPhaser`, in place of a continuous weekly range. |
-| [`ReportBuilder`](api/report.md) | Packages `CollinearityDiagnostic` + `BudgetPhaser` into a single client-ready HTML report. |
+| [`DiscoveryReport`](api/discovery_report.md) | Sweeps candidate phasing strategies (or pins one directly, with per-channel overrides) into a single client-ready HTML report, plus the resulting schedule as a CSV. |
 
 Two lower-level building blocks — [`simulate_spend`/`simulate_sales`](api/dgp.md)
 and [`fit_ols`](api/mmm.md) — are also exported, mainly useful if you're
@@ -35,7 +35,7 @@ extending the package rather than just using it.
 ## Minimal example
 
 ```python
-from how_wrong_is_your_mmm import CollinearityDiagnostic, BudgetPhaser, ReportBuilder
+from how_wrong_is_your_mmm import CollinearityDiagnostic, BudgetPhaser, DiscoveryReport
 
 diag = CollinearityDiagnostic(spend_df=my_spend_df)
 diag.fit()
@@ -45,9 +45,10 @@ phaser = BudgetPhaser(history_df=history, plan_df=plan)
 phaser.fit()
 phaser.recommended_schedule_
 
-report = ReportBuilder(history_df=history, plan_df=plan, client_name="Example Brand")
+report = DiscoveryReport(history_df=history, plan_df=plan, client_name="Example Brand")
 report.fit()
 report.to_html("reports/example_brand.html")
+report.schedule_csv("reports/example_brand_schedule.csv")
 ```
 
 Source: [github.com/raz1470/how_wrong_is_your_mmm](https://github.com/raz1470/how_wrong_is_your_mmm)

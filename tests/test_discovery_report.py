@@ -14,6 +14,7 @@ from how_wrong_is_your_mmm._discovery_report import (
     _is_unphased,
     _lighten_hex,
     _nice_axis_bounds,
+    _pinned_strategy_label,
     _safe_improvement,
     _svg_dotplot,
     _svg_forest,
@@ -309,6 +310,62 @@ class TestSvgForest:
         assert svg.startswith("<svg")
         assert "tv" in svg
 
+    def test_combined_range_and_point_mark_draws_both(self):
+        # Session 50: variance/saturation/adstock want a point estimate
+        # alongside their existing range, bias wants a band around its
+        # existing point -- one shape, {"range": (lo, hi), "point": p},
+        # drawn as a range bar (<line>) plus a ring (<circle>) on top.
+        svg = _svg_forest(
+            [
+                {
+                    "name": "tv",
+                    "color": "#000",
+                    "before": 1.0,
+                    "after": {"range": (1.0, 3.0), "point": 2.0},
+                }
+            ]
+        )
+        assert svg.count("<line") >= 1  # the range bar
+        # a white-fill ring (the point marker), distinct from the
+        # solid-fill dot a plain point mark would draw
+        assert "<circle cx=" in svg
+        assert 'fill="#fff"' in svg
+
+    def test_combined_mark_label_shows_the_range_only_not_the_point(self):
+        # Ryan: keep the point estimate/band on the chart, but don't
+        # also spell out "(point X)" in the text label -- the ring
+        # already carries that visually.
+        svg = _svg_forest(
+            [
+                {
+                    "name": "tv",
+                    "color": "#000",
+                    "value": {"range": (10.0, 30.0), "point": 20.0},
+                    "truth": None,
+                }
+            ],
+            single=True,
+            fmt=lambda v: f"{v:.0f}",
+        )
+        assert "10 &ndash; 30" in svg
+        assert "point" not in svg.lower()
+
+    def test_combined_mark_axis_scales_to_the_wider_of_range_or_point(self):
+        # A point estimate outside its own range shouldn't get clipped --
+        # _hi() must consider both.
+        svg = _svg_forest(
+            [
+                {
+                    "name": "tv",
+                    "color": "#000",
+                    "value": {"range": (1.0, 2.0), "point": 5.0},
+                    "truth": None,
+                }
+            ],
+            single=True,
+        )
+        assert svg.startswith("<svg")
+
 
 class TestNiceAxisBounds:
     def test_positive_range_brackets_the_data(self):
@@ -398,6 +455,30 @@ class TestFit:
         for label in report.results_:
             assert set(report.results_[label]["variance_cv"]) == set(CHANNELS)
             assert set(report.results_[label]["bias_pct"]) == set(CHANNELS)
+
+    def test_revenue_mean_sits_inside_its_own_p10_p90(self):
+        # Session 50: a point estimate for the Variance section's forest
+        # chart, alongside the range it already had.
+        report = fit_small(make_report())
+        for label in report.results_:
+            r = report.results_[label]
+            for ch in CHANNELS:
+                assert (
+                    r["revenue_p10"][ch]
+                    <= r["revenue_mean"][ch]
+                    <= r["revenue_p90"][ch]
+                )
+
+    def test_bias_pct_p10_p90_bracket_the_mean(self):
+        # Session 50: an uncertainty band for the Bias section's forest
+        # chart, around the mean error it already had.
+        report = fit_small(make_report())
+        for label in report.results_:
+            r = report.results_[label]
+            for ch in CHANNELS:
+                assert (
+                    r["bias_pct_p10"][ch] <= r["bias_pct"][ch] <= r["bias_pct_p90"][ch]
+                )
 
     def test_identifiability_summary_keys(self):
         # identifiability is now keyed by channel (IdentifiabilityDiagnostic
@@ -584,6 +665,26 @@ class TestToHtml:
         assert "Channel correlation, after phasing" in impact_block
         assert "Before phasing" not in impact_block
 
+    def test_variance_bias_saturation_adstock_show_point_estimates(self):
+        # Session 50: variance/saturation/adstock each gained a point
+        # estimate alongside their existing range; bias gained a range
+        # around its existing point. All four now render the combined
+        # mark's white-fill ring (fill="#fff") -- both in Diagnostics
+        # (single-state) and Impact (before/after) sections. The ring is
+        # visual only -- Ryan asked that the value labels NOT also spell
+        # out "(point X)" in text.
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        diagnostics_block = html_out[
+            html_out.index("<h2>Diagnostics</h2>") : html_out.index("<h2>Impact</h2>")
+        ]
+        impact_block = html_out[
+            html_out.index("<h2>Impact</h2>") : html_out.index("<h2>Phased spend</h2>")
+        ]
+        for block in (diagnostics_block, impact_block):
+            assert block.count('fill="#fff"') >= 4  # one ring per problem, at least
+        assert "(point" not in html_out.lower()
+
     def test_impact_table_has_one_row_per_lever(self):
         report = fit_small(make_report())
         html_out = report.to_html()
@@ -658,7 +759,7 @@ class TestToHtml:
         # Session 49: grey read as too faint -- pacing chart now uses each
         # channel's own colour (pale for "as supplied", solid for the
         # winner's schedule) instead of a channel-blind grey/black pair.
-        from how_wrong_is_your_mmm._report import _channel_colors
+        from how_wrong_is_your_mmm._discovery_report import _channel_colors
 
         report = fit_small(make_report())
         html_out = report.to_html()
@@ -679,7 +780,7 @@ class TestToHtml:
         report = fit_small(make_report())
         html_out = report.to_html()
         assert "Implied contribution" in html_out
-        assert "synthetic outcome" in html_out
+        assert "check on those assumptions" in html_out
         assert 'style="background:#9ca3af"></span>Baseline</div>' in html_out
 
     def test_saturation_curve_omitted_when_linear(self):
@@ -708,7 +809,7 @@ class TestToHtml:
         report = fit_small(make_report())
         html_out = report.to_html()
         assert "Spend, history + plan" in html_out
-        assert "Sales / revenue, weekly -- by source" in html_out
+        assert "Sales / revenue, weekly, by source" in html_out
 
     def test_scenario_inputs_spend_is_a_per_channel_grid(self):
         # Session 50 (Ryan: "scenario inputs spend -> shall we show them
@@ -761,7 +862,7 @@ class TestToHtml:
         report = fit_small(make_report())
         html_out = report.to_html()
         assert (
-            "Actual weekly spend by channel, as supplied -- before any phasing"
+            "Actual weekly spend by channel, as supplied, before any phasing"
             in html_out
         )
 
@@ -853,7 +954,11 @@ class TestToHtml:
             html_out.index("<h2>Impact</h2>") : html_out.index("<h2>Phased spend</h2>")
         ]
         assert "<b>The problem:</b>" not in impact_block
-        assert "<b>The impact:</b>" in impact_block
+        # Session 50's prose rewrite dropped the "<b>The impact:</b>" label
+        # in favour of full sentences, but the section should still open
+        # by pointing back at Section 2 rather than re-explaining the
+        # problem from scratch.
+        assert "Section 2 showed how bad each of these four problems is" in impact_block
 
     def test_impact_section_ends_with_the_winners_cost(self):
         # Session 50: Ryan asked for the winning strategy's own Cost
@@ -877,3 +982,167 @@ class TestToHtml:
         )
         winner_cost_pct = float(row_match.group(1))
         assert f"{winner_cost_pct:.2f}%" in impact_block
+
+
+class TestPinnedStrategyLabel:
+    def test_float_strategy_labelled_like_a_default_lever(self):
+        label = _pinned_strategy_label(60.0, "edge", True, None)
+        assert label == "Pinned: +/-60% (edge, balanced)"
+
+    def test_unbalanced_uniform_strategy(self):
+        label = _pinned_strategy_label(40.0, "uniform", False, None)
+        assert label == "Pinned: +/-40% (uniform)"
+
+    def test_blackout_strategy(self):
+        label = _pinned_strategy_label(Blackout(), "edge", True, None)
+        assert label == "Pinned: Blackout"
+
+    def test_channel_overrides_appended_singular(self):
+        label = _pinned_strategy_label(60.0, "edge", True, {"meta": 20.0})
+        assert label == "Pinned: +/-60% (edge, balanced), 1 channel override"
+
+    def test_channel_overrides_appended_plural(self):
+        label = _pinned_strategy_label(
+            60.0, "edge", True, {"meta": 20.0, "search": 10.0}
+        )
+        assert label == "Pinned: +/-60% (edge, balanced), 2 channel overrides"
+
+
+class TestPinnedStrategyConstruction:
+    # Session 51 (Ryan: "we want to be able to use this class and pick a
+    # strategy and set channel constraints" -- the feature that replaced
+    # the separate ReportBuilder class).
+    def test_strategy_pct_none_leaves_levers_unchanged(self):
+        report = make_report()
+        assert report.pinned_label_ is None
+        assert report.channel_constraints_ == {}
+        assert len(report.levers_) == 10
+
+    def test_strategy_pct_adds_one_lever_on_top_of_the_default_sweep(self):
+        report = make_report(strategy_pct=60.0)
+        assert len(report.levers_) == 11
+        assert report.pinned_label_ == "Pinned: +/-60% (edge, balanced)"
+        assert report.levers_[-1][0] == report.pinned_label_
+
+    def test_strategy_pct_applies_to_every_channel_by_default(self):
+        report = make_report(strategy_pct=60.0)
+        _, spec, _, _ = report.levers_[-1]
+        assert spec == {ch: 60.0 for ch in CHANNELS}
+
+    def test_channel_constraints_override_specific_channels(self):
+        report = make_report(strategy_pct=60.0, channel_constraints={"meta": 20.0})
+        _, spec, _, _ = report.levers_[-1]
+        assert spec == {"tv": 60.0, "meta": 20.0, "search": 60.0}
+        assert report.channel_constraints_ == {"meta": 20.0}
+
+    def test_channel_constraints_can_pin_a_channel_to_blackout(self):
+        blackout = Blackout(max_dark_weeks_per_month=1)
+        report = make_report(
+            strategy_pct=60.0, channel_constraints={"search": blackout}
+        )
+        _, spec, _, _ = report.levers_[-1]
+        assert spec["search"] is blackout
+        assert spec["tv"] == 60.0
+
+    def test_channel_constraints_without_strategy_pct_raises(self):
+        with pytest.raises(ValueError, match="strategy_pct"):
+            make_report(channel_constraints={"meta": 20.0})
+
+    def test_channel_constraints_unknown_channel_raises(self):
+        with pytest.raises(ValueError, match="unknown channel"):
+            make_report(strategy_pct=60.0, channel_constraints={"radio": 20.0})
+
+    def test_strategy_shape_and_balance_forwarded(self):
+        report = make_report(
+            strategy_pct=40.0, strategy_nudge_shape="uniform", strategy_balanced=False
+        )
+        label, _, nudge_shape, balance_signs = report.levers_[-1]
+        assert nudge_shape == "uniform"
+        assert balance_signs is False
+        assert label == "Pinned: +/-40% (uniform)"
+
+
+class TestPinnedStrategyFit:
+    def test_pinned_strategy_becomes_the_winner_without_dominance_check(self):
+        # A deliberately weak pinned strategy (a tiny 1% nudge) would never
+        # win _pick_winner's dominance/worst-axis check on its own merits --
+        # if it's still the winner, fit() took the pin rather than scoring.
+        report = fit_small(make_report(strategy_pct=1.0))
+        assert report.winner_ == report.pinned_label_
+        assert report.winner_schedule_ is not None
+
+    def test_unpinned_report_still_uses_pick_winner(self):
+        report = fit_small(make_report())
+        assert report.pinned_label_ is None
+        assert report.winner_ in [label for label, *_ in report.levers_]
+
+    def test_pinned_result_scored_like_every_other_lever(self):
+        report = fit_small(make_report(strategy_pct=60.0))
+        assert report.pinned_label_ in report.results_
+        assert "scores" in report.results_[report.pinned_label_]
+
+
+class TestScheduleCsv:
+    def test_raises_before_fit(self):
+        report = make_report()
+        with pytest.raises(RuntimeError, match="Call fit"):
+            report.schedule_csv()
+
+    def test_columns_per_channel(self):
+        report = fit_small(make_report())
+        table = report.schedule_csv()
+        for ch in CHANNELS:
+            assert f"{ch}_original_plan" in table.columns
+            assert f"{ch}_recommended" in table.columns
+            assert f"{ch}_dark_week" in table.columns
+
+    def test_matches_winner_schedule_not_just_any_lever(self):
+        report = fit_small(make_report(strategy_pct=60.0))
+        table = report.schedule_csv()
+        for ch in CHANNELS:
+            np.testing.assert_allclose(
+                table[f"{ch}_recommended"].to_numpy(),
+                report.winner_schedule_[ch].round(2).to_numpy(),
+            )
+
+    def test_writes_to_path(self, tmp_path):
+        report = fit_small(make_report())
+        path = tmp_path / "schedule.csv"
+        report.schedule_csv(path=str(path))
+        assert path.exists()
+
+
+class TestPinnedStrategyHtml:
+    def test_headline_says_pinned_not_recommended(self):
+        report = fit_small(make_report(strategy_pct=60.0))
+        html_out = report.to_html()
+        assert "Pinned strategy:" in html_out
+        assert "Recommended strategy:" not in html_out
+
+    def test_unpinned_headline_unchanged(self):
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert "Recommended strategy:" in html_out
+        assert "Pinned strategy:" not in html_out
+
+    def test_channel_constraints_table_shown_when_constraints_set(self):
+        report = fit_small(
+            make_report(strategy_pct=60.0, channel_constraints={"meta": 20.0})
+        )
+        html_out = report.to_html()
+        assert "<h3>Channel constraints</h3>" in html_out
+        assert "<td>meta</td>" in html_out
+        assert "+/-20%</td>" in html_out
+
+    def test_channel_constraints_table_hidden_without_constraints(self):
+        report = fit_small(make_report(strategy_pct=60.0))
+        html_out = report.to_html()
+        assert "<h3>Channel constraints</h3>" not in html_out
+
+    def test_pinned_lever_appears_in_appendix_comparison_table(self):
+        # Session 51 Q&A (Ryan: "keep both tables"): the sweep-comparison
+        # table stays even when a strategy is pinned, with the pinned
+        # strategy as one more row in it.
+        report = fit_small(make_report(strategy_pct=60.0))
+        html_out = report.to_html()
+        assert f'data-lever="{report.pinned_label_}"' in html_out

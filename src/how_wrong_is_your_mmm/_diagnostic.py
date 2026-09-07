@@ -69,7 +69,7 @@ def _validate_spend_data(spend_df: pd.DataFrame) -> None:
 
     Called from every path that fits real spend: CollinearityDiagnostic's
     own real-spend entry point, and (via the combined history + phased
-    plan DataFrame it builds internally) BudgetPhaser and ReportBuilder.
+    plan DataFrame it builds internally) BudgetPhaser.
     """
     channels = list(spend_df.columns)
 
@@ -693,6 +693,13 @@ class CollinearityDiagnostic:
                 mean_estimated=("estimated_marginal_return", "mean"),
                 std_estimated=("estimated_marginal_return", "std"),
                 mean_error_pct=("error_pct", "mean"),
+                # p10/p90 of the same per-sim error the mean above
+                # averages -- lets a caller show bias as a band around
+                # its point estimate, the way variance's own
+                # incremental_revenue_p10/p90 already do (session 50,
+                # discovery report's Bias section: see NOTES.md).
+                error_pct_p10=("error_pct", lambda s: s.quantile(0.1)),
+                error_pct_p90=("error_pct", lambda s: s.quantile(0.9)),
             )
             .reset_index()
         )
@@ -736,13 +743,13 @@ class CollinearityDiagnostic:
             )
             revenue_range = (
                 revenue.groupby("channel")["incremental_revenue"]
-                .quantile([0.1, 0.9])
-                .unstack()
-                .rename(
-                    columns={
-                        0.1: "incremental_revenue_p10",
-                        0.9: "incremental_revenue_p90",
-                    }
+                .agg(
+                    # Mean alongside the existing p10/p90 -- a point
+                    # estimate to show next to the range (session 50,
+                    # discovery report's Variance section: see NOTES.md).
+                    incremental_revenue_mean="mean",
+                    incremental_revenue_p10=lambda s: s.quantile(0.1),
+                    incremental_revenue_p90=lambda s: s.quantile(0.9),
                 )
                 .reset_index()
             )

@@ -15,7 +15,6 @@ from how_wrong_is_your_mmm._discovery_report import DiscoveryReport
 from how_wrong_is_your_mmm._identifiability import IdentifiabilityDiagnostic
 from how_wrong_is_your_mmm._mmm import fit_ols
 from how_wrong_is_your_mmm._phaser import Blackout, BudgetPhaser
-from how_wrong_is_your_mmm._report import ReportBuilder
 
 __version__ = "0.1.0"
 
@@ -27,7 +26,6 @@ __all__ = [
     "CollinearityDiagnostic",
     "DiscoveryReport",
     "IdentifiabilityDiagnostic",
-    "ReportBuilder",
     "apply_adstock",
     "calibrate_baseline",
     "fit_ols",

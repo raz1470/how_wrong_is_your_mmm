@@ -18,6 +18,8 @@ SUMMARY_COLS = {
     "mean_estimated",
     "std_estimated",
     "mean_error_pct",
+    "error_pct_p10",
+    "error_pct_p90",
     "coef_of_variation",
 }
 
@@ -267,6 +269,20 @@ class TestPlannedSpend:
             assert row["incremental_revenue_p10"] == round(direct.loc[channel, 0.1], 4)
             assert row["incremental_revenue_p90"] == round(direct.loc[channel, 0.9], 4)
 
+    def test_incremental_revenue_mean_is_a_point_estimate_in_the_range(self):
+        # Session 50: a point estimate alongside the range, for the
+        # discovery report's Variance section to show both in one mark.
+        summary = self.diag.summary(
+            planned_spend={"tv": 1_000_000, "meta": 800_000, "search": 600_000}
+        )
+        assert "incremental_revenue_mean" in summary.columns
+        assert (
+            summary["incremental_revenue_p10"] <= summary["incremental_revenue_mean"]
+        ).all()
+        assert (
+            summary["incremental_revenue_mean"] <= summary["incremental_revenue_p90"]
+        ).all()
+
     def test_scaling_is_linear(self):
         base = {"tv": 100_000, "meta": 100_000, "search": 100_000}
         scaled = {k: v * 3 for k, v in base.items()}
@@ -492,6 +508,24 @@ class TestDemandAndControls:
             controlled.summary().set_index("channel").loc["tv", "mean_error_pct"]
         )
         assert bias_controlled < bias_omitted / 3
+
+    def test_error_pct_p10_p90_bracket_the_mean(self):
+        # Session 50: error_pct_p10/p90 let a caller show bias as a band
+        # around mean_error_pct (discovery report's Bias section), same
+        # spirit as incremental_revenue's own p10/p90 around its mean.
+        diag = CollinearityDiagnostic(
+            correlation=0.7, spend_seed=1, demand_coef=2_000.0
+        ).fit(n_sims=150, controls=False)
+        row = diag.summary().set_index("channel").loc["tv"]
+        assert row["error_pct_p10"] <= row["mean_error_pct"] <= row["error_pct_p90"]
+
+    def test_error_pct_p10_p90_match_direct_quantiles(self):
+        diag = CollinearityDiagnostic(correlation=0.7, spend_seed=1).fit(n_sims=100)
+        direct = diag.results_.groupby("channel")["error_pct"].quantile([0.1, 0.9])
+        summary = diag.summary().set_index("channel")
+        for ch in CHANNELS:
+            assert summary.loc[ch, "error_pct_p10"] == round(direct[ch, 0.1], 4)
+            assert summary.loc[ch, "error_pct_p90"] == round(direct[ch, 0.9], 4)
 
     def test_controls_true_requires_demand(self):
         with pytest.raises(ValueError, match="requires a demand series"):

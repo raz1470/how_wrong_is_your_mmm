@@ -1,26 +1,34 @@
-"""DiscoveryReport: one shared phasing strategy applied to every channel,
-swept across a small grid of candidate strategies, with impact shown
-against each of the three reliability problems this package diagnoses.
+"""DiscoveryReport: sweep candidate phasing strategies, or pin one
+directly with per-channel overrides, and report the impact against each
+of the three reliability problems this package diagnoses.
 
-This is the "which strategy should I even consider?" report -- distinct
-from ReportBuilder, which is the "here's the phased CSV for the % change
-you told me to use" report once a strategy has been picked (session 45's
-two-report split; see NOTES.md).
+Originally split into two classes: this one for "which strategy should I
+even consider?" (sweep a grid, auto-pick a winner), and a separate
+ReportBuilder for "here's the phased CSV for the % change you told me to
+use" once a strategy had been picked elsewhere (session 45's two-report
+split). Session 51 merged them back into this one class, at Ryan's
+request ("we don't really need a second class now, instead we want to be
+able to use this class and pick a strategy and set channel constraints"):
+pass strategy_pct (optionally with channel_constraints) to pin a strategy
+directly instead of sweeping for one, and call schedule_csv() for the
+exportable weekly table -- ReportBuilder is gone, see NOTES.md.
 
-Every candidate strategy is applied identically to every channel (unlike
-ReportBuilder's per-channel max_weekly_deviation_pct dict) -- there is no
-per-channel number to report here, only a single report-wide choice, so
-the report picks ONE "highest impact" strategy (dominance check, else
-worst-axis -- see _pick_winner) and uses it for every "impact from best
-lever" callout.
+Every DEFAULT candidate strategy is applied identically to every channel
+-- there is no per-channel number to report for the swept grid, only a
+single report-wide choice per candidate, so an unpinned report picks ONE
+"highest impact" strategy (dominance check, else worst-axis -- see
+_pick_winner) and uses it for every "impact from best lever" callout. A
+pinned strategy (strategy_pct) skips that selection: it is added to the
+sweep as one more candidate, so it still scores in the Appendix's
+comparison table, and is used directly as the winner, with
+channel_constraints letting specific channels override it individually --
+shown in their own small Appendix table.
 
 Report structure (session 49: "problem, then impact, then what to do about
 it" -- still no dropdown, no JS anywhere on the page). Sections 1-4 are
-all about ONE strategy in play -- today that's always the swept winner,
-but nothing in their construction assumes a sweep happened, which matters
-if a future report ever lets a user hand-pick a strategy (with per-channel
-constraints) instead of sweeping for one -- see ReportBuilder note above.
-Only the appendix is sweep-specific:
+all about ONE strategy in play -- the swept winner, or the pinned strategy
+when one is given -- but nothing in their construction assumes a sweep
+happened. Only the appendix is sweep-specific:
 
 1. Scenario inputs -- everything the report is built on, in one section:
    a plain per-channel input table (spend, ROI, saturation, adstock); the
@@ -92,7 +100,31 @@ from how_wrong_is_your_mmm._phaser import (
     _generate_phased_schedule,
     _get_month_labels,
 )
-from how_wrong_is_your_mmm._report import _channel_colors
+
+# Categorical channel palette (moved here from the now-removed
+# ReportBuilder in session 51 -- this is DiscoveryReport's own chart
+# colouring now, not borrowed from a sibling report). First three slots
+# match the existing overview.html/collinearity_research.html brand
+# colours (tv/meta/search); slot 4 (violet) has been checked for
+# colour-vision-deficiency accessibility and passes, with one WARN band
+# requiring direct labels, which every chart here already has. Slots 5+
+# are a reasonable extension, not yet checked the same way -- fine for
+# now, but if a real report regularly needs more than ~5 channels it's
+# worth re-validating the fuller set rather than assuming it holds.
+_PALETTE = [
+    "#2563eb",  # blue
+    "#d97706",  # amber
+    "#059669",  # green
+    "#7c3aed",  # violet
+    "#dc2626",  # red
+    "#0891b2",  # cyan
+    "#65a30d",  # olive
+    "#c026d3",  # magenta
+]
+
+
+def _channel_colors(channels: list[str]) -> dict[str, str]:
+    return {ch: _PALETTE[i % len(_PALETTE)] for i, ch in enumerate(channels)}
 
 
 # Default combo grid -- mirrors notebooks/11_phasing_strategy.ipynb's own
@@ -132,6 +164,29 @@ def _default_levers(channels: list[str]) -> list[tuple[str, dict, str, bool]]:
 
 def _is_unphased(spec: dict) -> bool:
     return all(isinstance(v, float) and v == 0.0 for v in spec.values())
+
+
+def _pinned_strategy_label(
+    strategy_pct: float | Blackout,
+    nudge_shape: str,
+    balanced: bool,
+    channel_constraints: dict[str, float | Blackout] | None,
+) -> str:
+    """Label for a user-pinned strategy (DiscoveryReport's strategy_pct),
+    formatted like _default_levers' own candidates (e.g. "+/-80% (edge,
+    balanced)") but prefixed "Pinned: " so it can never collide with a
+    swept candidate that happens to share the same numbers, and suffixed
+    with a channel-override count when channel_constraints narrows it
+    further for specific channels."""
+    if isinstance(strategy_pct, Blackout):
+        base = "Blackout"
+    else:
+        shape_bits = nudge_shape + (", balanced" if balanced else "")
+        base = f"+/-{strategy_pct:.0f}% ({shape_bits})"
+    if channel_constraints:
+        n = len(channel_constraints)
+        base += f", {n} channel override" + ("" if n == 1 else "s")
+    return f"Pinned: {base}"
 
 
 def _safe_improvement(before: float, after: float) -> float:
@@ -448,7 +503,10 @@ def _corr_table_html(matrix: dict, channels: list[str]) -> str:
         alpha = max(0.0, min(1.0, v))
         return f"background: rgba(220, 38, 38, {alpha * 0.65:.2f});"
 
-    header = "".join(f'<th class="col-hdr">{ch}</th>' for ch in channels)
+    header = "".join(
+        f'<th class="col-hdr"><span class="col-hdr-label">{ch}</span></th>'
+        for ch in channels
+    )
     rows = []
     for a in channels:
         cells = "".join(
@@ -517,10 +575,22 @@ def _nice_axis_bounds(
     return nice_lo, nice_hi, step
 
 
-def _hi(v: float | tuple[float, float]) -> float:
-    """Upper end of a range mark, or the value itself for a point mark --
-    lets _svg_forest's axis/label code treat both the same way."""
+def _hi(v: float | tuple[float, float] | dict) -> float:
+    """Upper end of a range mark, the value itself for a point mark, or
+    the larger of the range/point for a combined mark (session 50) --
+    lets _svg_forest's axis/label code treat all three the same way."""
+    if isinstance(v, dict):
+        return max(v["range"][1], v["point"])
     return v[1] if isinstance(v, tuple) else v
+
+
+def _label_source(v: float | tuple[float, float] | dict) -> float | tuple[float, float]:
+    """The (lo, hi) or point value a mark's text label is built from.
+    For a combined range+point mark (session 50), that's the range --
+    same label text as before the point estimate was added; the ring
+    drawn on the chart carries the point visually instead (Ryan: keep
+    the point estimate/band, don't also spell it out in the label)."""
+    return v["range"] if isinstance(v, dict) else v
 
 
 def _svg_forest(
@@ -539,12 +609,18 @@ def _svg_forest(
     reasoning as _svg_multiline).
 
     Each `data` entry: {name, color, before, after, truth: float | None}.
-    `before`/`after` are each either a (p10, p90) tuple -- drawn as a
-    rounded range bar, the variance section's shape -- or a single float
-    -- drawn as a dot, for a mean-estimate quantity like the bias section
-    that has no p10/p90 to show. The two states in one chart don't have to
-    match shape (a point "before" against a range "after" renders fine),
-    though every section built so far uses one shape throughout.
+    `before`/`after` are each one of three shapes: a (p10, p90) tuple --
+    drawn as a rounded range bar; a single float -- drawn as a dot, for a
+    mean-estimate quantity with no p10/p90 to show; or a dict
+    {"range": (p10, p90), "point": float} -- drawn as both together, a
+    ring marking the point estimate on top of the range bar (session 50:
+    variance/saturation/adstock show a point estimate alongside their
+    existing range, bias shows a band around its existing point). A
+    combined mark's text label still reads off its range only, matching
+    the plain-range label from before the point estimate existed -- the
+    ring carries the point visually rather than in the label text. The
+    two states in one chart don't have to match shape, though every
+    section built so far uses one shape throughout.
 
     `single=True` switches to a one-state-per-row rendering, for the
     Diagnostics section, which only ever shows the unphased problem (no
@@ -584,12 +660,27 @@ def _svg_forest(
         return m_left + (v / x_max) * pw
 
     def mark(
-        v: float | tuple[float, float],
+        v: float | tuple[float, float] | dict,
         cy: float,
         color: str,
         opacity: float | None = None,
     ) -> str:
         op = f' opacity="{opacity}"' if opacity is not None else ""
+        if isinstance(v, dict):
+            lo, hi = v["range"]
+            bar = (
+                f'<line x1="{sc_x(lo):.1f}" y1="{cy:.1f}" x2="{sc_x(hi):.1f}" '
+                f'y2="{cy:.1f}" stroke="{color}" stroke-width="5.5" '
+                f'stroke-linecap="round"{op}/>'
+            )
+            # White-fill ring rather than a solid dot, so the point
+            # estimate reads as its own mark sitting ON the range bar
+            # instead of being swallowed by it.
+            point = (
+                f'<circle cx="{sc_x(v["point"]):.1f}" cy="{cy:.1f}" r="3.5" '
+                f'fill="#fff" stroke="{color}" stroke-width="1.8"{op}/>'
+            )
+            return bar + point
         if isinstance(v, tuple):
             lo, hi = v
             return (
@@ -647,10 +738,11 @@ def _svg_forest(
                     f'y2="{cy + row * 0.3:.1f}" stroke="#111827" stroke-width="1.6" '
                     f'stroke-dasharray="3,2"/>'
                 )
+            label_src = _label_source(value)
             value_label = (
-                f"{fmt(value[0])} &ndash; {fmt(value[1])}"
-                if isinstance(value, tuple)
-                else fmt(value)
+                f"{fmt(label_src[0])} &ndash; {fmt(label_src[1])}"
+                if isinstance(label_src, tuple)
+                else fmt(label_src)
             )
             parts.append(
                 f'<text x="{sc_x(_hi(value)) + 8:.1f}" y="{cy + 4:.1f}" '
@@ -677,10 +769,11 @@ def _svg_forest(
                 f'y2="{cy_after + 5:.1f}" stroke="#111827" stroke-width="1.6" '
                 f'stroke-dasharray="3,2"/>'
             )
+        after_label_src = _label_source(after)
         after_label = (
-            f"{fmt(after[0])} &ndash; {fmt(after[1])}"
-            if isinstance(after, tuple)
-            else fmt(after)
+            f"{fmt(after_label_src[0])} &ndash; {fmt(after_label_src[1])}"
+            if isinstance(after_label_src, tuple)
+            else fmt(after_label_src)
         )
         parts.append(
             f'<text x="{sc_x(_hi(after)) + 8:.1f}" y="{cy_after + 3:.1f}" '
@@ -841,9 +934,37 @@ class DiscoveryReport:
         is expected to be the unphased baseline every other candidate is
         compared against; pass your own list to add or narrow candidates,
         keeping an unphased baseline entry first.
+    strategy_pct, strategy_nudge_shape, strategy_balanced:
+        Pin a single strategy instead of sweeping for one (session 51,
+        Ryan: "we want to be able to use this class and pick a strategy
+        and set channel constraints" -- this replaced the separate
+        ReportBuilder class, which used to be the "I've picked one, give
+        me the CSV" report once a strategy was chosen elsewhere).
+        strategy_pct is the same per-channel spec _default_levers uses for
+        one candidate: a float (symmetric +/-X% for every channel) or a
+        Blackout. When set, this exact strategy is added to the sweep as
+        one more candidate (labelled "Pinned: ...") and used directly as
+        self.winner_ -- _pick_winner's dominance check never runs, so
+        Sections 1-4, the Appendix's headline callouts and schedule_csv()
+        are all built from the strategy you chose, not one the sweep
+        picked. Left at the default (None), behaviour is unchanged: the
+        sweep runs and picks a winner exactly as before.
+        strategy_nudge_shape ("uniform" or "edge") and strategy_balanced
+        control the pinned strategy's own shape, same meaning as every
+        other lever's nudge_shape/balance_signs. Ignored when strategy_pct
+        is None.
+    channel_constraints:
+        Per-channel overrides applied on top of strategy_pct for specific
+        channels -- e.g. {"meta": 20.0} pins meta to +/-20% regardless of
+        what strategy_pct says for every other channel, or {"meta":
+        Blackout(max_dark_weeks_per_month=1)} switches meta to blackout-mode
+        while the rest of the plan follows strategy_pct. Requires
+        strategy_pct to be set (there is nothing to override otherwise);
+        raises ValueError on an unknown channel name. Shown in the
+        Appendix as its own small table, alongside the pinned strategy's
+        row in the main comparison table.
     client_name, plan_year:
-        Free-text labels shown on the report cover, same convention as
-        ReportBuilder.
+        Free-text labels shown on the report cover.
     seed:
         Base random seed for demand and phasing draws.
     demand_process:
@@ -864,6 +985,10 @@ class DiscoveryReport:
         adstock: dict[str, float] | float = 0.0,
         revenue_noise_std: float = 26_000.0,
         levers: list[tuple[str, dict, str, bool]] | None = None,
+        strategy_pct: float | Blackout | None = None,
+        strategy_nudge_shape: str = "edge",
+        strategy_balanced: bool = True,
+        channel_constraints: dict[str, float | Blackout] | None = None,
         client_name: str = "",
         plan_year: str = "",
         seed: int = 0,
@@ -917,7 +1042,43 @@ class DiscoveryReport:
             lo_inclusive=True,
             hi_inclusive=False,
         )
-        self.levers_ = levers if levers is not None else _default_levers(self.channels_)
+        base_levers = levers if levers is not None else _default_levers(self.channels_)
+        self.pinned_label_: str | None = None
+        self.channel_constraints_: dict[str, float | Blackout] = {}
+        if strategy_pct is not None:
+            pinned_spec: dict[str, float | Blackout] = {
+                ch: strategy_pct for ch in self.channels_
+            }
+            if channel_constraints:
+                unknown = set(channel_constraints) - set(self.channels_)
+                if unknown:
+                    raise ValueError(
+                        "channel_constraints has unknown channel(s): "
+                        f"{sorted(unknown)}. Expected a subset of {self.channels_}."
+                    )
+                pinned_spec.update(channel_constraints)
+                self.channel_constraints_ = dict(channel_constraints)
+            self.pinned_label_ = _pinned_strategy_label(
+                strategy_pct,
+                strategy_nudge_shape,
+                strategy_balanced,
+                channel_constraints,
+            )
+            base_levers = [
+                *base_levers,
+                (
+                    self.pinned_label_,
+                    pinned_spec,
+                    strategy_nudge_shape,
+                    strategy_balanced,
+                ),
+            ]
+        elif channel_constraints is not None:
+            raise ValueError(
+                "channel_constraints requires strategy_pct to be set -- "
+                "there is nothing to override on a swept, unpinned report."
+            )
+        self.levers_ = base_levers
         self._plan_month_labels = _get_month_labels(plan_df)
 
         # Fixed across every candidate so every strategy is priced against
@@ -1028,9 +1189,12 @@ class DiscoveryReport:
             )
 
             variance_draws = []
+            revenue_mean_draws = []
             revenue_p10_draws = []
             revenue_p90_draws = []
             bias_draws = []
+            bias_p10_draws = []
+            bias_p90_draws = []
             id_draws = []
             id_b_p10_draws = []
             id_b_p90_draws = []
@@ -1061,6 +1225,7 @@ class DiscoveryReport:
                     "channel"
                 )
                 variance_draws.append(var_summary["coef_of_variation"])
+                revenue_mean_draws.append(var_summary["incremental_revenue_mean"])
                 revenue_p10_draws.append(var_summary["incremental_revenue_p10"])
                 revenue_p90_draws.append(var_summary["incremental_revenue_p90"])
                 corr_draws.append(diag_var.correlation_matrix)
@@ -1083,6 +1248,8 @@ class DiscoveryReport:
                 )
                 bias_summary = diag_bias.summary().set_index("channel")
                 bias_draws.append(bias_summary["mean_error_pct"])
+                bias_p10_draws.append(bias_summary["error_pct_p10"])
+                bias_p90_draws.append(bias_summary["error_pct_p90"])
 
                 diag_id = IdentifiabilityDiagnostic(
                     spend_df=combined,
@@ -1137,9 +1304,12 @@ class DiscoveryReport:
                 )
 
             variance_cv = pd.concat(variance_draws, axis=1).mean(axis=1)
+            revenue_mean = pd.concat(revenue_mean_draws, axis=1).mean(axis=1)
             revenue_p10 = pd.concat(revenue_p10_draws, axis=1).mean(axis=1)
             revenue_p90 = pd.concat(revenue_p90_draws, axis=1).mean(axis=1)
             bias_pct = pd.concat(bias_draws, axis=1).mean(axis=1)
+            bias_pct_p10 = pd.concat(bias_p10_draws, axis=1).mean(axis=1)
+            bias_pct_p90 = pd.concat(bias_p90_draws, axis=1).mean(axis=1)
             # Per-channel DataFrame (b_mean, b_sd, ..., valley_pct), each
             # draw already indexed by channel -- average across draws
             # channel-by-channel, column-by-column.
@@ -1158,9 +1328,12 @@ class DiscoveryReport:
 
             results[label] = {
                 "variance_cv": variance_cv.to_dict(),
+                "revenue_mean": revenue_mean.to_dict(),
                 "revenue_p10": revenue_p10.to_dict(),
                 "revenue_p90": revenue_p90.to_dict(),
                 "bias_pct": bias_pct.to_dict(),
+                "bias_pct_p10": bias_pct_p10.to_dict(),
+                "bias_pct_p90": bias_pct_p90.to_dict(),
                 "identifiability": identifiability.to_dict(orient="index"),
                 "b_p10": id_b_p10.to_dict(),
                 "b_p90": id_b_p90.to_dict(),
@@ -1177,11 +1350,57 @@ class DiscoveryReport:
 
         self.results_ = results
         self.valley_tol_ = valley_tol
-        self.winner_ = self._pick_winner(results)
+        # A pinned strategy (self.pinned_label_) skips _pick_winner's
+        # dominance check entirely -- session 51, Ryan picked the strategy
+        # himself, there is nothing left to choose between. The sweep
+        # still ran above (so the pinned candidate scores alongside every
+        # other lever for the Appendix comparison table), only the
+        # winner-SELECTION step is bypassed.
+        self.winner_ = self.pinned_label_ or self._pick_winner(results)
         self.winner_schedule_ = schedules[self.winner_]
         self.schedules_ = schedules
         self.report_data_ = self._build_report_data(fast_mode=fast_mode)
         return self
+
+    def schedule_csv(self, path: str | None = None) -> pd.DataFrame:
+        """Return the winning (or pinned) strategy's weekly schedule as a
+        tidy, exportable table.
+
+        Session 51 (Ryan: "the class should also trigger the phased
+        budget csv"): this is DiscoveryReport's replacement for
+        ReportBuilder.schedule_csv(), now that DiscoveryReport can pin a
+        strategy directly instead of needing a second class once one's
+        been picked. Same shape as ReportBuilder's own version: one row
+        per week, three columns per channel (the original plan figure,
+        the recommended figure, and whether that week is a Blackout dark
+        week), both £ columns rounded to the nearest penny.
+
+        Parameters
+        ----------
+        path:
+            If given, also writes the table to this path as a CSV.
+
+        Returns
+        -------
+        pd.DataFrame indexed by week (same DatetimeIndex as plan_df), with
+        columns "{channel}_original_plan", "{channel}_recommended", and
+        "{channel}_dark_week" for every channel.
+        """
+        if self.winner_schedule_ is None:
+            raise RuntimeError("Call fit() before schedule_csv().")
+
+        recommended = self.winner_schedule_
+        table = pd.DataFrame(index=self.plan_df.index)
+        table.index.name = "week"
+        for ch in self.channels_:
+            table[f"{ch}_original_plan"] = self.plan_df[ch].round(2)
+            table[f"{ch}_recommended"] = recommended[ch].round(2)
+            table[f"{ch}_dark_week"] = recommended[ch].to_numpy() == 0.0
+
+        if path is not None:
+            table.to_csv(path)
+
+        return table
 
     def _pick_winner(self, results: dict[str, dict]) -> str:
         """Report-wide "highest impact" strategy: dominance check, else
@@ -1309,6 +1528,10 @@ def _render_html(report: DiscoveryReport) -> str:
     winner = meta["winner"]
     baseline = report.results_[baseline_label]
     best = report.results_[winner]
+    # Session 51: a pinned strategy (report.pinned_label_) skips
+    # _pick_winner entirely, so the headline needs different wording --
+    # there was no dominance check to describe.
+    pinned = report.pinned_label_ is not None
 
     draft_banner = (
         '<div class="draft-banner">DRAFT -- fast_mode was used, numbers are '
@@ -1342,13 +1565,22 @@ def _render_html(report: DiscoveryReport) -> str:
     # £ p10-p90 range per channel) rather than a raw CV bar -- CV is the
     # metric the diagnostic optimizes, but £ revenue range is the number a
     # client actually feels, and matches docs/overview.html's own framing
-    # of this same problem.
+    # of this same problem. Session 50 (Ryan: "for variance I think have
+    # the point estimate makes sense too"): each mark now also carries
+    # its mean incremental revenue as a point estimate, drawn as a ring
+    # on the range bar rather than only the p10-p90 ends.
     variance_forest_data = [
         {
             "name": ch,
             "color": colors[ch],
-            "before": (baseline["revenue_p10"][ch], baseline["revenue_p90"][ch]),
-            "after": (best["revenue_p10"][ch], best["revenue_p90"][ch]),
+            "before": {
+                "range": (baseline["revenue_p10"][ch], baseline["revenue_p90"][ch]),
+                "point": baseline["revenue_mean"][ch],
+            },
+            "after": {
+                "range": (best["revenue_p10"][ch], best["revenue_p90"][ch]),
+                "point": best["revenue_mean"][ch],
+            },
             "truth": true_revenue[ch],
         }
         for ch in channels
@@ -1370,19 +1602,34 @@ def _render_html(report: DiscoveryReport) -> str:
     )
 
     # Bias section: same chart family as variance (£ revenue, dashed true
-    # line) but a point per state, not a range -- bias_pct is a mean error
-    # averaged across draws, there's no p10/p90 to show. "Believed revenue"
-    # is what a client would think they got if they trusted the biased
-    # estimate: true revenue inflated/deflated by that mean error %.
+    # line). "Believed revenue" is what a client would think they got if
+    # they trusted the biased estimate: true revenue inflated/deflated by
+    # the mean error %. Session 50 (Ryan: "for bias I wonder whether we
+    # have the uncertainty bands"): bias_pct_p10/p90 (CollinearityDiagnostic
+    # now exposes these alongside its existing mean_error_pct, see
+    # _diagnostic.py) give a real band around that point, the same
+    # combined range+point mark variance's own section now uses.
     def _believed_revenue(ch: str, results: dict) -> float:
         return true_revenue[ch] * (1.0 + results["bias_pct"][ch] / 100.0)
+
+    def _believed_revenue_range(ch: str, results: dict) -> tuple[float, float]:
+        return (
+            true_revenue[ch] * (1.0 + results["bias_pct_p10"][ch] / 100.0),
+            true_revenue[ch] * (1.0 + results["bias_pct_p90"][ch] / 100.0),
+        )
 
     bias_forest_data = [
         {
             "name": ch,
             "color": colors[ch],
-            "before": _believed_revenue(ch, baseline),
-            "after": _believed_revenue(ch, best),
+            "before": {
+                "range": _believed_revenue_range(ch, baseline),
+                "point": _believed_revenue(ch, baseline),
+            },
+            "after": {
+                "range": _believed_revenue_range(ch, best),
+                "point": _believed_revenue(ch, best),
+            },
             "truth": true_revenue[ch],
         }
         for ch in channels
@@ -1405,12 +1652,22 @@ def _render_html(report: DiscoveryReport) -> str:
     def _fmt_plain(v: float) -> str:
         return f"{v:.2f}"
 
+    # Session 50 (Ryan: "for ad stock and saturation I wonder if we have
+    # the point estimates too"): IdentifiabilityDiagnostic's own summary
+    # already carries b_mean/lam_mean averaged across sims (see
+    # `identifiability` above) -- no new draws needed, just read it.
     b_forest_data = [
         {
             "name": ch,
             "color": colors[ch],
-            "before": (baseline["b_p10"][ch], baseline["b_p90"][ch]),
-            "after": (best["b_p10"][ch], best["b_p90"][ch]),
+            "before": {
+                "range": (baseline["b_p10"][ch], baseline["b_p90"][ch]),
+                "point": baseline["identifiability"][ch]["b_mean"],
+            },
+            "after": {
+                "range": (best["b_p10"][ch], best["b_p90"][ch]),
+                "point": best["identifiability"][ch]["b_mean"],
+            },
             "truth": report.saturation[ch],
         }
         for ch in channels
@@ -1423,8 +1680,14 @@ def _render_html(report: DiscoveryReport) -> str:
         {
             "name": ch,
             "color": colors[ch],
-            "before": (baseline["lam_p10"][ch], baseline["lam_p90"][ch]),
-            "after": (best["lam_p10"][ch], best["lam_p90"][ch]),
+            "before": {
+                "range": (baseline["lam_p10"][ch], baseline["lam_p90"][ch]),
+                "point": baseline["identifiability"][ch]["lam_mean"],
+            },
+            "after": {
+                "range": (best["lam_p10"][ch], best["lam_p90"][ch]),
+                "point": best["identifiability"][ch]["lam_mean"],
+            },
             "truth": report.adstock[ch],
         }
         for ch in channels
@@ -1588,6 +1851,33 @@ def _render_html(report: DiscoveryReport) -> str:
     # of leaving it visible only to someone who scrolls to the appendix).
     winner_cost_pct = float(np.mean(list(lever_cost_pct[winner].values())))
 
+    # Session 51 (Ryan: "in the appendix we need to show channel
+    # constraints too"): only rendered when the pinned strategy actually
+    # overrides specific channels -- an unpinned, swept report has no
+    # per-channel overrides to show, and a pinned strategy with none set
+    # doesn't need an empty table either.
+    channel_constraints_html = ""
+    if report.channel_constraints_:
+        rows = ""
+        for ch, override in report.channel_constraints_.items():
+            value_text = (
+                "Blackout" if isinstance(override, Blackout) else f"+/-{override:.0f}%"
+            )
+            rows += (
+                f"<tr><td>{html.escape(ch)}</td><td>{html.escape(value_text)}</td></tr>"
+            )
+        channel_constraints_html = f"""
+  <h3>Channel constraints</h3>
+  <p>These channels were pinned to their own value, overriding what
+  <b>{winner}</b> would otherwise apply. Every other channel follows that
+  strategy as supplied.</p>
+  <div class="table-scroll">
+  <table class="cross-table">
+    <thead><tr><th>Channel</th><th>Override</th></tr></thead>
+    <tbody>{rows}</tbody>
+  </table>
+  </div>"""
+
     baseline_scores = baseline["scores"]
     impact_table_rows_html = ""
     for lbl in lever_labels:
@@ -1692,7 +1982,8 @@ def _render_html(report: DiscoveryReport) -> str:
     else:
         adstock_fig_html = (
             "<p><em>Adstock was assumed instantaneous (decay = 0) for "
-            "every channel in this report -- no carryover to plot.</em></p>"
+            "every channel in this report, so there is no carryover to "
+            "plot.</em></p>"
         )
 
     saturation_values_text = ", ".join(
@@ -1729,7 +2020,8 @@ def _render_html(report: DiscoveryReport) -> str:
     else:
         saturation_fig_html = (
             "<p><em>Saturation was assumed linear (b = 1.0) for every "
-            "channel in this report -- no curvature to plot.</em></p>"
+            "channel in this report, so there is no curvature to plot."
+            "</em></p>"
         )
 
     # Session 50 (Ryan: "scenario inputs spend -> shall we show them as
@@ -1792,10 +2084,13 @@ def _render_html(report: DiscoveryReport) -> str:
   </div>
   <div class="report-title-eyebrow">Discovery</div>
   <h1 class="report-title">Which phasing strategy is worth pursuing?</h1>
-  <p class="report-sub">One strategy applied identically to every channel, swept
-  across {len(lever_labels)} candidates and scored on the three reliability
-  problems this package diagnoses: ROI-interval variance, omitted-variable
-  bias, and saturation/adstock identifiability.</p>
+  <p class="report-sub">A phasing strategy changes when the plan's spend
+  lands week to week. It does not touch the total budget or how it splits
+  across channels. This report sweeps {len(lever_labels)} such strategies,
+  each applied the same way to every channel, and picks the one that does
+  the most to fix three separate ways a model can misread this plan: how
+  wide its revenue estimate is, how biased that estimate is, and whether
+  saturation and adstock can be recovered at all.</p>
   <div class="cover-meta">
     {stat_box("Client", meta["client_name"] or "not set")}
     {stat_box("Plan year", meta["plan_year"] or "not set")}
@@ -1812,24 +2107,31 @@ def _render_html(report: DiscoveryReport) -> str:
   <a href="#appendix">5 &middot; Appendix</a>
 </nav>
 
-<div class="headline">Recommended strategy: <b>{winner}</b> &mdash; the
-candidate that most improves on the unphased plan without tanking any of
-the three problems below (dominance check, else worst-axis).</div>
+<div class="headline">{
+        "Pinned strategy: <b>" + winner + "</b>. This strategy was set "
+        "directly rather than picked by the sweep; Section 5 shows how it "
+        "compares to every other candidate."
+        if pinned
+        else "Recommended strategy: <b>" + winner + "</b>. It is the candidate "
+        "that improves on the unphased plan across all three problems below; "
+        "when no candidate manages that, the report falls back to whichever "
+        "improves the worst-affected problem the most."
+    }</div>
 
 <main>
 
 <section id="scenario-inputs">
   <div class="s-label">Section 1</div>
   <h2>Scenario inputs</h2>
-  <p>Everything this report is built on: each channel's planned spend,
-  ROI, and the saturation and adstock it's assumed to respond with; the
-  actual weekly spend behind the plan and the shape of those response
-  curves; and what it all implies for weekly sales. Background demand
-  accounts for {meta["baseline_share"]:.0%} of sales in this scenario --
-  the {1 - meta["baseline_share"]:.0%} left over is what these channels
-  are trying to explain, which is why the reliability problems in the
-  sections that follow matter. Everything below is reproducible from
-  these inputs alone, in a notebook, without this report class.</p>
+  <p>This section lays out everything the report is built on: each
+  channel's planned spend and ROI, the saturation and adstock it is
+  assumed to respond with, the actual weekly spend behind the plan, and
+  what all of that implies for weekly sales. Background demand accounts
+  for {meta["baseline_share"]:.0%} of sales in this scenario, leaving the
+  remaining {1 - meta["baseline_share"]:.0%} for these channels to
+  explain, which is why the reliability problems in the sections that
+  follow matter. Everything here is reproducible from these inputs alone,
+  in a notebook, with no need for this report class.</p>
   <div class="table-scroll">
   <table class="cross-table">
     <thead><tr><th>Channel</th><th>Spend</th><th>ROI</th><th>Saturation</th><th>Adstock</th></tr></thead>
@@ -1840,7 +2142,7 @@ the three problems below (dominance check, else worst-axis).</div>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Spend, history + plan</div>
-      <div class="fig-sub">Actual weekly spend by channel, as supplied -- before any phasing</div>
+      <div class="fig-sub">Actual weekly spend by channel, as supplied, before any phasing</div>
     </div>
     <div class="fig-body">
       <div class="pacing-grid">{spend_cells_html}</div>
@@ -1852,13 +2154,15 @@ the three problems below (dominance check, else worst-axis).</div>
   {saturation_fig_html}
 
   <h3>Implied contribution</h3>
-  <p>What these inputs produce, week by week -- background demand plus
-  each channel's modelled contribution, stacking to weekly sales. This is
-  the package's own synthetic outcome from the assumptions above, not
-  something you supplied.</p>
+  <p>The chart below is the one place these inputs are combined into an
+  outcome rather than listed on their own: background demand plus each
+  channel's modelled contribution, stacked week by week into weekly
+  sales. Nothing here was supplied directly. It follows entirely from the
+  assumptions already given, which makes it a check on those assumptions
+  rather than a separate fact about the scenario.</p>
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Sales / revenue, weekly -- by source</div>
+      <div class="fig-title">Sales / revenue, weekly, by source</div>
       <div class="fig-sub">Baseline (incl. demand) plus each channel's true contribution, history + plan</div>
     </div>
     <div class="fig-body">
@@ -1871,15 +2175,22 @@ the three problems below (dominance check, else worst-axis).</div>
 <section id="diagnostics">
   <div class="s-label">Section 2</div>
   <h2>Diagnostics</h2>
-  <p>Before any fix: how entangled, uncertain and unreliable the unphased
-  plan leaves these estimates. Each chart below shows the problem as it
-  stands today, on this history and plan, with no phasing applied --
-  Section 3 shows what phasing under <b>{winner}</b> does about it.</p>
+  <p>The next four charts describe the unphased plan exactly as supplied,
+  before any strategy has touched it. Each one isolates a different way a
+  model fit to this history and plan could go wrong: spend correlation,
+  the width of the resulting revenue estimate, bias from an imperfect read
+  of demand, and whether saturation and adstock can be told apart from
+  noise. Section 3 returns to the same four problems once <b>{winner}</b>
+  has been applied, so the scale of the improvement is comparable line for
+  line.</p>
 
   <h3>Spend correlation</h3>
-  <p>How entangled each channel's spend is with every other channel's,
-  across history + plan. The more correlated a pair, the harder it is for
-  a model to tell their individual contributions apart.</p>
+  <p>Two channels whose spend rises and falls together give a regression
+  model very little to separate them with. The matrix below measures
+  exactly that: the Pearson correlation between each pair's weekly spend
+  across the plan year. The closer a cell is to 1, the more those two
+  channels' individual contributions have been confounded before the
+  model sees a single week of sales.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Channel correlation, unphased</div>
@@ -1891,10 +2202,13 @@ the three problems below (dominance check, else worst-axis).</div>
   </div>
 
   <h3>Variance</h3>
-  <p>Spend is locked to a single plan, so channels move together and the
-  model can't unpick which one actually earned the result -- the range
-  below is how wide the model's incremental-revenue estimate is left as a
-  result.</p>
+  <p>When two channels' spend moves together, a model cannot fully credit
+  either one for the sales that followed. That is what an unphased plan
+  does: spend is locked to a single fixed schedule, so any two correlated
+  channels move in lockstep for the whole plan. The chart below shows what
+  this leaves behind: the range of incremental revenue the model would
+  estimate for each channel, wide enough that either end of it could pass
+  for the truth.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Incremental revenue, unphased</div>
@@ -1902,21 +2216,25 @@ the three problems below (dominance check, else worst-axis).</div>
     </div>
     <div class="fig-body">
       <div class="legend">
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Unphased (today)</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Unphased (today), range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
         <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Revenue at the true marginal return</span>
       </div>
       {diag_variance_svg}
     </div>
     <p class="fig-cap">The dashed line marks the revenue implied by the
-    true marginal return -- the gap between it and the bar shows how far a
-    client could be misled by trusting either end of the range.</p>
+    channel's true marginal return. The ring is the model's mean
+    incremental-revenue estimate, and the bar behind it is its p10 to p90
+    range across simulations. The further that range sits from the dashed
+    line, the more wrong a client relying on the model alone would be.</p>
   </div>
 
   <h3>Bias</h3>
-  <p>Demand is never measured perfectly -- working from a proxy of quality
-  {meta["demand_proxy_quality"]:.0%} (not the true series) pulls the
-  model's estimate off the true marginal return, even before phasing is
-  considered.</p>
+  <p>A model can only regress on the demand signal it is given, not on
+  demand itself. Here that signal is a proxy at
+  {meta["demand_proxy_quality"]:.0%} quality rather than the true series,
+  and the gap between the two pulls every channel's estimate away from its
+  true marginal return before phasing is even considered.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Revenue implied by the biased estimate, unphased</div>
@@ -1924,21 +2242,28 @@ the three problems below (dominance check, else worst-axis).</div>
     </div>
     <div class="fig-body">
       <div class="legend">
-        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af"/></svg> Believed today (unphased)</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Believed today (unphased), range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
         <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> True revenue</span>
       </div>
       {diag_bias_svg}
     </div>
-    <p class="fig-cap">"Believed" is the revenue a client would expect if
-    they trusted the biased estimate -- the gap to the dashed true-revenue
-    line is the mean error this proxy's remaining confound leaves behind.</p>
+    <p class="fig-cap">"Believed" revenue is what a client would expect if
+    they took the biased estimate at face value. The ring marks that
+    figure, and the bar around it is the p10&ndash;p90 spread of the same
+    bias across simulations. The gap between the bar and the dashed
+    true-revenue line is the size of the error a client would never see
+    without this diagnostic.</p>
   </div>
 
   <h3>Identifiability</h3>
-  <p>The client supplies a plausible saturation and adstock per channel,
-  but with spend locked to a single plan, many other curvature values fit
-  the data about equally well -- so what the model recovers can range far
-  from that plausible value.</p>
+  <p>A saturation curve and an adstock decay can only be recovered from
+  spend that varies enough, in the right ways, to tell one curvature from
+  another. Locked to a single plan, spend does not vary that way: many
+  different saturation and adstock values fit the observed data about
+  equally well. The client's plausible value is one point in that space,
+  and the chart below shows the whole range the model could just as
+  easily have recovered instead.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Recovered saturation, by channel, unphased</div>
@@ -1946,15 +2271,18 @@ the three problems below (dominance check, else worst-axis).</div>
     </div>
     <div class="fig-body">
       <div class="legend">
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Unphased (today)</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Unphased (today), range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
         <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Plausible value supplied</span>
       </div>
       {diag_b_svg}
     </div>
-    <p class="fig-cap">Each row is the p10&ndash;p90 range of that
-    channel's OWN recovered saturation across sims, holding every other
-    channel at its own supplied curvature -- a wide range means this
-    channel's spend pattern doesn't pin down HOW MUCH it saturates.</p>
+    <p class="fig-cap">Each row is one channel's own recovered saturation,
+    holding every other channel at its own supplied curvature. The bar is
+    the p10&ndash;p90 range across simulations and the ring its mean. A
+    wide bar means this channel's spend pattern does not pin down how
+    strongly it saturates, regardless of what value was assumed going
+    in.</p>
   </div>
   <div class="fig">
     <div class="fig-hdr">
@@ -1963,30 +2291,34 @@ the three problems below (dominance check, else worst-axis).</div>
     </div>
     <div class="fig-body">
       <div class="legend">
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Unphased (today)</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Unphased (today), range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
         <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Plausible value supplied</span>
       </div>
       {diag_lam_svg}
     </div>
-    <p class="fig-cap">Same idea, for how long each channel's effect carries
-    over -- a wide range means this channel's spend pattern doesn't pin down
-    HOW LONG the effect lasts.</p>
+    <p class="fig-cap">Adstock asks a different question of the same data:
+    not how strongly a channel's spend translates into effect, but how
+    long that effect persists once spend stops. The same limitation
+    applies here. A wide bar means the plan's spend pattern leaves the
+    decay rate just as unresolved as the saturation curve above.</p>
   </div>
 </section>
 
 <section id="impact">
   <div class="s-label">Section 3</div>
   <h2>Impact</h2>
-  <p>Section 2 showed how bad each of these four problems is left unphased.
-  Here's what phasing under <b>{winner}</b> -- the candidate that most
-  improves on the unphased plan without tanking any of the three
-  reliability scores (dominance check, else worst-axis) -- actually does
-  about each one.</p>
+  <p>Section 2 showed how bad each of these four problems is before any
+  fix. What follows is what phasing under <b>{winner}</b> does to each of
+  them in turn, using the same charts and the same axes, so the
+  improvement is visible in place rather than asserted.</p>
 
   <h3>Spend correlation</h3>
-  <p>After phasing under <b>{winner}</b> -- same monthly totals as before,
-  only the within-month weekly pattern changes, which is what breaks the
-  collinearity. See Section 2 for the unphased matrix to compare against.</p>
+  <p>Phasing under <b>{winner}</b> leaves each month's total spend
+  untouched and only reshapes the weekly pattern within it. That
+  reshaping is what breaks the collinearity: the matrix below is the same
+  one from Section 2, recomputed on the phased plan, and should be read
+  directly against it.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Channel correlation, after phasing</div>
@@ -1998,8 +2330,8 @@ the three problems below (dominance check, else worst-axis).</div>
   </div>
 
   <h3>Variance</h3>
-  <p><b>The impact:</b> incremental-revenue ranges tighten by
-  {variance_narrowing_text}.</p>
+  <p>Under <b>{winner}</b>, the incremental-revenue range from Section 2
+  narrows for every channel: {variance_narrowing_text}.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">The range tightens</div>
@@ -2009,21 +2341,25 @@ the three problems below (dominance check, else worst-axis).</div>
     </div>
     <div class="fig-body">
       <div class="legend">
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Unphased (today)</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Unphased (today), range</span>
         <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> {
         html.escape(winner)
-    }</span>
+    }, range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
         <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Revenue at the true marginal return</span>
       </div>
       {variance_svg}
     </div>
     <p class="fig-cap">The dashed line marks the revenue implied by the
-    true marginal return -- the centre barely moves, because the centre
-    was never the problem. What changes is the width.</p>
+    true marginal return. The ring, the model's mean estimate, barely
+    moves, because the centre was never what phasing needed to fix; the
+    range around it is what narrows.</p>
   </div>
 
   <h3>Bias</h3>
-  <p><b>The impact:</b> mean estimation error narrows: {bias_narrowing_text}.</p>
+  <p>Under <b>{winner}</b>, the mean estimation error shrinks for every channel: {
+        bias_narrowing_text
+    }.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">The estimate moves toward the truth</div>
@@ -2033,24 +2369,29 @@ the three problems below (dominance check, else worst-axis).</div>
     </div>
     <div class="fig-body">
       <div class="legend">
-        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af" opacity="0.35"/></svg> Believed today (unphased)</span>
-        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#9ca3af"/></svg> Believed, {
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Believed today (unphased), range</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Believed, {
         html.escape(winner)
-    }</span>
+    }, range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
         <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> True revenue</span>
       </div>
       {bias_svg}
     </div>
-    <p class="fig-cap">"Believed" is the revenue a client would expect if
-    they trusted the biased estimate -- the dot moves toward the dashed
-    true-revenue line as the proxy's remaining confound shrinks.</p>
+    <p class="fig-cap">"Believed" revenue is what a client would expect if
+    they took the biased estimate at face value. As phasing reduces the
+    proxy's remaining confound, the ring moves toward the dashed
+    true-revenue line and the p10&ndash;p90 band around it narrows with
+    it.</p>
   </div>
 
   <h3>Identifiability</h3>
-  <p><b>The impact:</b> saturation ranges narrow by {b_narrowing_text};
-  adstock ranges narrow by {lam_narrowing_text}. The RSS valley shrinks from
-  {id_valley_before:.0f}% to {id_valley_after:.0f}% of the (b, lambda) grid
-  within {tol_pct:.0f}% of the best fit, averaged across channels.</p>
+  <p>Under <b>{winner}</b>, saturation ranges narrow by {b_narrowing_text}
+  and adstock ranges narrow by {lam_narrowing_text}. The RSS valley itself
+  shrinks, from {id_valley_before:.0f}% to {id_valley_after:.0f}% of the
+  (b, lambda) grid within {tol_pct:.0f}% of the best fit and averaged
+  across channels: the region of curvature values indistinguishable from
+  the true one is smaller, not just re-centred.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Saturation range tightens, by channel</div>
@@ -2058,18 +2399,21 @@ the three problems below (dominance check, else worst-axis).</div>
     </div>
     <div class="fig-body">
       <div class="legend">
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Unphased (today)</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Unphased (today), range</span>
         <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> {
         html.escape(winner)
-    }</span>
+    }, range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
         <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Plausible value supplied</span>
       </div>
       {b_svg}
     </div>
-    <p class="fig-cap">Each row is the p10&ndash;p90 range of that
-    channel's OWN recovered saturation across sims, holding every other
-    channel at its own supplied curvature -- a wide range means this
-    channel's spend pattern doesn't pin down HOW MUCH it saturates.</p>
+    <p class="fig-cap">Each row is one channel's own recovered saturation,
+    holding every other channel at its own supplied curvature. The bar is
+    the p10&ndash;p90 range across simulations and the ring its mean. A
+    wide bar means this channel's spend pattern does not pin down how
+    strongly it saturates, regardless of what value was assumed going
+    in.</p>
   </div>
   <div class="fig">
     <div class="fig-hdr">
@@ -2078,58 +2422,65 @@ the three problems below (dominance check, else worst-axis).</div>
     </div>
     <div class="fig-body">
       <div class="legend">
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Unphased (today)</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Unphased (today), range</span>
         <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> {
         html.escape(winner)
-    }</span>
+    }, range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Point estimate</span>
         <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Plausible value supplied</span>
       </div>
       {lam_svg}
     </div>
-    <p class="fig-cap">Same idea, for how long each channel's effect carries
-    over -- a wide range means this channel's spend pattern doesn't pin down
-    HOW LONG the effect lasts.</p>
+    <p class="fig-cap">Adstock asks a different question of the same data:
+    not how strongly a channel's spend translates into effect, but how
+    long that effect persists once spend stops. The same limitation
+    applies here. A wide bar means the plan's spend pattern leaves the
+    decay rate just as unresolved as the saturation curve above.</p>
   </div>
 
   <h3>Cost</h3>
   <p>Phasing is not free once a channel's response curve departs from
-  linear: moving spend to a different weekly pattern changes true
-  plan-period revenue relative to the as-supplied schedule, by Jensen's
-  inequality. Under <b>{winner}</b> this gives up {winner_cost_pct:.2f}%
-  of true plan-period revenue, averaged across channels, against the
-  unphased plan. Section 5 reports the same measure for every candidate,
-  from doing nothing through to Blackout.</p>
+  linear. By Jensen's inequality, reshaping spend within the plan changes
+  true plan-period revenue relative to the as-supplied schedule, even
+  though the monthly totals are unchanged. Under <b>{winner}</b> this
+  costs {winner_cost_pct:.2f}% of true plan-period revenue, averaged
+  across channels, against the unphased plan; Section 5 reports the same
+  measure for every candidate, from doing nothing through to
+  Blackout.</p>
 </section>
 
 <section id="phased-spend">
   <div class="s-label">Section 4</div>
   <h2>Phased spend</h2>
-  <p>As supplied (pale) vs. the recommended weekly pacing under
-  <b>{winner}</b> (solid), one chart per channel in that channel's own
-  colour -- same monthly totals both sides, only the within-month timing
-  changes.</p>
+  <p>Each chart below shows one channel's weekly spend as supplied, in
+  pale, against its recommended pacing under <b>{winner}</b>, in solid.
+  The monthly totals are identical on both sides; only the timing within
+  each month has moved.</p>
   <div class="pacing-grid">{pacing_cells_html}</div>
 </section>
 
 <section id="appendix">
   <div class="s-label">Section 5</div>
   <h2>Appendix: every strategy compared</h2>
-  <p>Every candidate lever, swept from doing nothing through to
-  <b>Blackout</b>, scored on the three reliability problems this package
-  diagnoses plus what phasing costs in revenue to get there. <b>{winner}</b>
-  is highlighted below -- Sections 2-4 are all built from this row alone.</p>
+  <p>The table below scores every candidate lever, from doing nothing
+  through to <b>Blackout</b>, against the three reliability problems this
+  package diagnoses, alongside what phasing costs in revenue to achieve
+  each result. <b>{winner}</b> is highlighted below; every chart in
+  Sections 2 through 4 is built from this one row.</p>
   <div class="table-scroll">
   <table class="cross-table">
     <thead><tr><th>Strategy</th><th>Variance impact</th><th>Bias impact</th><th>Identifiability impact</th><th>Cost</th></tr></thead>
     <tbody>{impact_table_rows_html}</tbody>
   </table>
   </div>
-  <p class="fig-cap">Impact is the % improvement over doing nothing,
-  averaged across channels -- the same numbers that pick the winning row.
-  Cost is the share of true plan-period revenue given up by phasing under
-  each channel's assumed response curve, also averaged across channels --
-  zero when saturation is linear, largest for the strategies that push
-  spend hardest into the curve's steepest region.</p>
+  <p class="fig-cap">Impact is the percentage improvement over doing
+  nothing, averaged across channels; these are the same numbers used to
+  pick the winning row. Cost is the share of true plan-period revenue
+  given up to phasing, under each channel's assumed response curve and
+  again averaged across channels. It is zero when saturation is linear,
+  and largest for the strategies that push spend hardest into the
+  steepest part of the curve.</p>
+  {channel_constraints_html}
 </section>
 
 </main>
@@ -2197,7 +2548,17 @@ svg.chart { display: block; width: 100%; }
 .table-scroll { overflow-x: auto; }
 table.corr-table, table.cross-table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .85rem; }
 table.corr-table th, table.corr-table td, table.cross-table th, table.cross-table td { border: 1px solid var(--border); padding: .4rem .6rem; text-align: center; }
-table.corr-table th.col-hdr { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; padding: .5rem .35rem; }
+table.corr-table { table-layout: fixed; }
+table.corr-table tr > th:first-child { width: 9rem; }
+table.corr-table th.col-hdr {
+  height: 7.75rem; width: 2.1rem; min-width: 2.1rem; max-width: 2.1rem;
+  padding: 0 0 .5rem 0; vertical-align: bottom; text-align: center;
+}
+table.corr-table td { width: 2.1rem; }
+table.corr-table th.col-hdr .col-hdr-label {
+  display: inline-block; writing-mode: vertical-rl; transform: rotate(180deg);
+  white-space: nowrap; font-weight: 600;
+}
 table.cross-table th { background: var(--bg); }
 tr.winner-row td { background: #ecfdf5; font-weight: 700; }
 .winner-tag { display: inline-block; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--good); background: #d1fae5; border-radius: 4px; padding: .1rem .4rem; margin-left: .35rem; }
