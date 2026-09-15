@@ -29,3 +29,9 @@ tools/grid_sweep/grid_raw.csv
 # Scratch preview/demo reports rebuilt each session -- not for the repo,
 # docs/example-report.html is hand-copied from here for the live public one
 Claude outputs/
+
+# Local scoping/backlog doc, not for distribution
+SCOPE.md
+
+# Local working conventions doc, not for distribution
+PREFERENCES.md
