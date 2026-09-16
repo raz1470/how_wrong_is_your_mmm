@@ -383,18 +383,6 @@ class CollinearityDiagnostic:
             Number of simulations (noise seeds).
         fast_mode:
             If True, overrides n_sims=10 for quick notebook iteration.
-
-        Note on saturation/adstock (set on __init__, not here): when set,
-        fit() does not fit a linear OLS on raw spend -- it transforms each
-        channel's spend the same way simulate_sales does (adstock then
-        saturation, see _curvature_transform) and fits on THAT, converting
-        the resulting coefficient back to a marginal return at
-        reference_spend. This assumes the supplied saturation/adstock are
-        correct, the same assumption simulate_sales makes when generating
-        the truth -- it does not estimate curvature from the data (that is
-        IdentifiabilityDiagnostic's job). At the defaults (None, i.e.
-        linear/no-carryover) this is the identity transform and fit()
-        behaves exactly as it did before saturation/adstock existed.
         controls:
             What the OLS fit controls for, forwarded to fit_ols. None or
             False (default): omit -- reproduces prior behaviour exactly,
@@ -442,6 +430,19 @@ class CollinearityDiagnostic:
         Returns
         -------
         self
+
+        Notes
+        -----
+        Saturation/adstock (set on __init__, not here): when set, fit()
+        does not fit a linear OLS on raw spend -- it transforms each channel's
+        spend the same way simulate_sales does (adstock then saturation, see
+        _curvature_transform) and fits on THAT, converting the resulting
+        coefficient back to a marginal return at reference_spend. This assumes the
+        supplied saturation/adstock are correct, the same assumption simulate_sales
+        makes when generating the truth -- it does not estimate curvature from the
+        data (that is IdentifiabilityDiagnostic's job). At the defaults (None, i.e.
+        linear/no-carryover) this is the identity transform and fit() behaves
+        exactly as it did before saturation/adstock existed.
         """
         if fast_mode:
             n_sims = 10
