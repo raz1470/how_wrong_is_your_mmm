@@ -148,9 +148,19 @@ class Blackout:
         can go dark together, and the survivors absorb correspondingly
         more. If set (e.g. 1), each month independently "activates"
         blackout with probability prob (scaled by alpha), and if it does,
-        exactly min(max_dark_weeks_per_month, n_weeks - 1) weeks in that
-        month are chosen at random to go dark — always leaving at least
-        one week "on".
+        exactly min(max_dark_weeks_per_month, n_weeks - 1) CONSECUTIVE
+        weeks in that month go dark — a single uninterrupted run at a
+        random position, not a scattered subset — always leaving at least
+        one week "on". Consecutive weeks matter for more than the count:
+        a lone dark week surrounded by full-spend weeks never lets an
+        adstock decay curve unfold before next week's spend recontaminates
+        it, while a run of several dark weeks in a row lets that carryover
+        run down cleanly. An internal identifiability sweep found this
+        beats an equal-count scattered selection on both adstock and
+        saturation identifiability at matched cost — e.g. dark=3,
+        prob=0.8 roughly halves saturation_b_sd and adstock_lam_sd
+        relative to +/-80% (edge, balanced) at under 3x the cost, and
+        clearly beats a scattered dark=3 selection at the same settings.
     """
 
     def __init__(
@@ -270,7 +280,7 @@ def _resolve_channel_specs(
     return {ch: _as_spec(max_weekly_deviation_pct, ch) for ch in channels}
 
 
-NUDGE_SHAPES = ("uniform", "annulus", "edge")
+NUDGE_SHAPES = ("uniform", "annulus", "edge", "seesaw")
 
 
 def _validate_nudge_shape(nudge_shape: str) -> str:
@@ -304,6 +314,21 @@ def _shaped_nudge(
       levels rather than parking it at two.
     - "edge": |dev| = cap exactly. Maximises the variation injected per
       unit of cap, and gives up the spread of levels to get it.
+    - "seesaw": |dev| = cap exactly, like "edge", but the sign strictly
+      alternates week to week within the month, instead of being drawn
+      (independently, or balanced-but-randomly-ordered). balance_signs is
+      ignored for this shape -- deterministic alternation is already
+      balanced, and being deterministic rather than merely balanced in
+      aggregate is the point: it is the closest budget-neutral analogue of
+      the Seesaw Test in MSI Report 24-144 ("Your MMM is Broken", cited in
+      docs/overview.html), which alternates spend between historical
+      extremes one period at a time specifically to break the smoothness
+      a curved response's identifiability depends on. An odd week out is
+      left at its plan, same convention as balance_signs=True. An internal
+      sweep found this improves bias over "edge" at every matched
+      intensity, at slightly lower cost, but with worse variance and no
+      identifiability benefit -- a real trade-off, not a strict win, so
+      it is offered as an option rather than a replacement.
 
     sign (balance_signs):
     - False: an independent fair coin per week.
@@ -322,6 +347,19 @@ def _shaped_nudge(
     """
     if cap <= 0.0:
         return np.zeros(n_weeks)
+
+    if nudge_shape == "seesaw":
+        # Always at the cap, sign strictly alternating -- determines
+        # magnitude and sign together, unlike the other three shapes
+        # below (which only determine magnitude; balance_signs picks the
+        # sign). balance_signs is ignored here, see the docstring above.
+        signs = np.zeros(n_weeks)
+        start = rng.choice([1.0, -1.0])
+        n_pairs = n_weeks // 2
+        for i in range(n_pairs):
+            signs[2 * i] = start
+            signs[2 * i + 1] = -start
+        return cap * signs
 
     if nudge_shape == "uniform":
         magnitude = rng.uniform(0.0, cap, size=n_weeks)
@@ -360,7 +398,8 @@ def _generate_phased_schedule(
        either every week is an independent -100% (dark) draw with
        probability alpha x prob, or (if max_dark_weeks_per_month is set)
        the month activates blackout with probability alpha x prob and, if
-       so, exactly that many weeks (chosen at random) go dark.
+       so, exactly that many CONSECUTIVE weeks (a single run, not a
+       scattered subset) go dark.
     2. Rescale so the monthly total is exactly preserved. NOTE: this rescale
        is applied across all weeks in the month together, so Blackout mode
        does not guarantee individual weeks stay within their raw draw after
@@ -388,10 +427,12 @@ def _generate_phased_schedule(
     seed:
         Random seed.
     nudge_shape:
-        How a symmetric range's per-week magnitude is drawn within the cap:
-        "uniform" (default, |dev| ~ U(0, cap) -- the shipped behaviour),
-        "annulus" (|dev| ~ U(cap/2, cap)) or "edge" (|dev| = cap). Ignored
-        by Blackout channels, which are on/off by construction. See
+        How a symmetric range's per-week magnitude (and, for "seesaw",
+        sign) is drawn within the cap: "uniform" (default, |dev| ~
+        U(0, cap) -- the shipped behaviour), "annulus" (|dev| ~
+        U(cap/2, cap)), "edge" (|dev| = cap) or "seesaw" (|dev| = cap,
+        sign strictly alternating -- ignores balance_signs). Ignored by
+        Blackout channels, which are on/off by construction. See
         _shaped_nudge.
     balance_signs:
         If True, each month gets equal numbers of up and down weeks (an odd
@@ -451,13 +492,17 @@ def _generate_phased_schedule(
                     # capped behaviour: the month either activates its
                     # blackout slot (probability p) or doesn't; if it
                     # does, exactly n_dark weeks (never all of them) go
-                    # dark, chosen at random — bounds how much budget any
-                    # one month can divert, and so how large the spike on
-                    # the surviving weeks can get.
+                    # dark as a single CONSECUTIVE run at a random start
+                    # position — not a scattered subset. This bounds how
+                    # much budget any one month can divert (same as
+                    # before), and additionally lets an adstock decay
+                    # curve unfold over an uninterrupted dark stretch
+                    # instead of being recontaminated by an "on" week
+                    # between two scattered dark ones.
                     n_dark = min(cap, n_weeks - 1)
                     if n_dark > 0 and rng.random() < p:
-                        idx = rng.choice(n_weeks, size=n_dark, replace=False)
-                        dark[idx] = True
+                        start = rng.integers(0, n_weeks - n_dark + 1)
+                        dark[start : start + n_dark] = True
                 raw = np.where(dark, -1.0, 0.0)
             else:
                 low_pct, high_pct = spec
@@ -578,12 +623,16 @@ class BudgetPhaser:
         half of it: the mean absolute value of a uniform draw is half its
         range, so a +/-20% setting moves a typical week by roughly 8%.
         "annulus" draws the magnitude from the outer half of the band
-        (U(cap/2, cap)), and "edge" uses the cap exactly. Default "uniform",
-        which is the historical behaviour -- every number published in
-        `docs/overview.html` and the notebooks assumes it. Blackout channels
-        are unaffected; they are on/off by construction. Research option:
-        prefer "annulus" with `balance_signs=True` if you are exploring
-        this, and read the Notes on cost below.
+        (U(cap/2, cap)), "edge" uses the cap exactly, and "seesaw" also
+        uses the cap exactly but with the sign strictly alternating week
+        to week instead of drawn (see _shaped_nudge) -- a real bias/cost
+        vs variance trade-off against "edge", not a strict improvement.
+        Default "uniform", which is the historical behaviour -- every
+        number published in `docs/overview.html` and the notebooks
+        assumes it. Blackout channels are unaffected; they are on/off by
+        construction. Research option: prefer "annulus" with
+        `balance_signs=True` if you are exploring this, and read the
+        Notes on cost below.
     balance_signs:
         If True, each month gets equal numbers of up and down weeks rather
         than an independent coin flip per week, which keeps the

@@ -514,6 +514,57 @@ class TestGeneratePhasedScheduleBlackoutCapped:
         pd.testing.assert_frame_equal(r1, r2)
 
 
+class TestGeneratePhasedScheduleBlackoutContiguous:
+    """dark=3, prob=0.8, contiguous beats a scattered dark=3 selection on
+    identifiability at matched cost (see NOTES.md) -- the whole point is
+    that the dark weeks a capped Blackout picks form a single
+    uninterrupted run, not an arbitrary subset."""
+
+    def setup_method(self):
+        self.month_labels = _get_month_labels(PLAN_DF)
+
+    def _dark_runs(self, cap: int, seed: int) -> list[np.ndarray]:
+        """One boolean dark-mask per month for the 'search' channel."""
+        result = _generate_phased_schedule(
+            PLAN_DF,
+            self.month_labels,
+            alpha=1.0,
+            max_weekly_deviation_pct={
+                "tv": 0.0,
+                "meta": 0.0,
+                "search": Blackout(prob=1.0, max_dark_weeks_per_month=cap),
+            },
+            seed=seed,
+        )
+        masks = []
+        for month in np.unique(self.month_labels):
+            idx = np.where(self.month_labels == month)[0]
+            masks.append(result["search"].to_numpy()[idx] == 0.0)
+        return masks
+
+    @pytest.mark.parametrize("cap", [2, 3])
+    def test_dark_weeks_are_a_single_consecutive_run(self, cap):
+        for seed in range(20):
+            for mask in self._dark_runs(cap, seed):
+                if mask.sum() < 2:
+                    continue  # nothing to check contiguity of
+                dark_idx = np.where(mask)[0]
+                # a single run means the indices are consecutive integers
+                assert np.array_equal(
+                    dark_idx, np.arange(dark_idx[0], dark_idx[0] + len(dark_idx))
+                ), f"cap={cap} seed={seed}: dark weeks {dark_idx} are not consecutive"
+
+    def test_run_length_still_respects_the_cap(self):
+        for mask in self._dark_runs(cap=3, seed=0):
+            assert mask.sum() <= 3
+
+    def test_still_always_leaves_one_week_on(self):
+        for cap in (2, 3, 10):
+            for seed in range(10):
+                for mask in self._dark_runs(cap, seed):
+                    assert (~mask).any()
+
+
 class TestGeneratePhasedSchedulePerChannel:
     def setup_method(self):
         self.month_labels = _get_month_labels(PLAN_DF)
@@ -1521,6 +1572,41 @@ class TestShapedNudge:
             (_shaped_nudge(rng, 4, 0.4, "edge", False) > 0).sum() for _ in range(50)
         }
         assert counts != {2}
+
+    def test_seesaw_is_exactly_the_cap_where_nonzero(self):
+        rng = np.random.default_rng(0)
+        out = _shaped_nudge(rng, 200, 0.4, "seesaw", False)
+        nonzero = out[out != 0.0]
+        assert np.allclose(np.abs(nonzero), 0.4)
+
+    def test_seesaw_strictly_alternates(self):
+        rng = np.random.default_rng(0)
+        out = _shaped_nudge(rng, 6, 0.4, "seesaw", False)
+        signs = np.sign(out)
+        assert not np.any(signs[:-1] == signs[1:])  # no two consecutive weeks match
+
+    def test_seesaw_sums_to_zero_for_even_months(self):
+        rng = np.random.default_rng(0)
+        out = _shaped_nudge(rng, 4, 0.4, "seesaw", False)
+        assert np.isclose(out.sum(), 0.0)
+        assert (out > 0).sum() == 2
+        assert (out < 0).sum() == 2
+
+    def test_seesaw_leaves_one_week_flat_for_odd_months(self):
+        rng = np.random.default_rng(0)
+        out = _shaped_nudge(rng, 5, 0.4, "seesaw", False)
+        assert (out > 0).sum() == 2
+        assert (out < 0).sum() == 2
+        assert (out == 0).sum() == 1
+
+    def test_seesaw_ignores_balance_signs(self):
+        # balance_signs is documented as ignored for "seesaw": alternation
+        # is already balanced by construction, whatever the flag says.
+        rng1 = np.random.default_rng(0)
+        rng2 = np.random.default_rng(0)
+        out_false = _shaped_nudge(rng1, 7, 0.4, "seesaw", False)
+        out_true = _shaped_nudge(rng2, 7, 0.4, "seesaw", True)
+        assert np.array_equal(out_false, out_true)
 
 
 class TestGeneratePhasedScheduleNudgeShape:
