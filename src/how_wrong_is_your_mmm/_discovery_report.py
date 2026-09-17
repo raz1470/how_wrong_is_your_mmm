@@ -127,18 +127,52 @@ def _channel_colors(channels: list[str]) -> dict[str, str]:
     return {ch: _PALETTE[i % len(_PALETTE)] for i, ch in enumerate(channels)}
 
 
-# Default combo grid -- mirrors notebooks/11_phasing_strategy.ipynb's own
-# LEVERS list verbatim. That notebook is where "edge+balanced beats
-# Blackout on bias, variance, saturation AND adstock, at lower cost" was
-# established -- this is the grid that finding was measured on, not a
-# fresh choice made here. Each entry is
+# Default combo grid -- mirrors notebooks/05_strategy_comparison.ipynb's
+# own LEVERS list verbatim (the rebuilt notebook that replaced the
+# archived notebooks/archive/11_phasing_strategy.ipynb, session 52). That
+# archived notebook is where "edge+balanced beats Blackout on bias,
+# variance, saturation AND adstock, at lower cost" was first established,
+# on a grid that only ever tried uniform/edge across four intensities plus
+# a single Blackout(dark=1) -- dark=1 is a no-op for the contiguous-run
+# fix below (one week is trivially "consecutive"), so that finding never
+# actually exercised Blackout's stronger settings. Session 56's
+# exploration (NOTES.md, SCOPE.md build-order item 7) found two things
+# this grid was blind to: `nudge_shape="seesaw"` (alternating sign at the
+# cap) is a genuine bias/cost vs variance trade-off against edge, not a
+# strict win; and forcing a capped Blackout's dark weeks into a single
+# consecutive run instead of a scattered subset beats scattered selection
+# on both adstock and saturation identifiability at every matched
+# setting, with dark=3/prob=0.8 roughly halving saturation/adstock
+# identifiability error at ~3x edge+balanced+80%'s cost and dark=4/
+# prob=1.0 reaching the best identifiability found anywhere in that
+# exploration. Both are added below so a real sweep can actually surface
+# them instead of needing to be read out of _phaser.py's source.
+#
+# IMPORTANT: _pick_winner (below) scores rigor only, never operational
+# feasibility, and dark>=3 at prob near 1.0 wins on rigor by forcing
+# whichever single week survives each month to carry ~3-4x its normal
+# budget -- not something a media buyer would actually schedule. Ryan's
+# call, once this widened grid surfaced that gap (session 59): a report's
+# swept report.winner_ is not automatically "the recommendation" once
+# these settings are in the running, and docs/overview.html and the
+# README deliberately keep quoting +/-80% (edge, balanced), the strongest
+# *deployable* shape, rather than whatever _pick_winner literally returns.
+# A feasibility-aware lever (or a cost/feasibility-aware picker) is the
+# real fix and isn't designed yet -- see SCOPE.md's bespoke-lever sketch.
+# Which candidate a given report's winner_ is stays _pick_winner's own
+# dominance/worst-axis call below, not a claim fixed here -- callers that
+# care about deployability should check the Cost column themselves, same
+# as this module's own docs pages now do. Each entry is
 # (label, per-channel spec, nudge_shape, balance_signs).
 def _default_levers(channels: list[str]) -> list[tuple[str, dict, str, bool]]:
     """The full sweep: unphased, then every +/-20/40/60/80% intensity
-    split by nudge shape (uniform, unbalanced -- vs edge, balanced), then
-    Blackout. 10 candidates total (session 49: widened from a 5-candidate
-    spot-check of only 80%-uniform/40%+80%-edge, which Ryan flagged as
-    reading like "the" sweep when it wasn't actually every intensity)."""
+    split by nudge shape (uniform, unbalanced -- vs edge, balanced -- vs
+    seesaw, alternating), then three contiguous-Blackout settings spanning
+    the cost/rigor dial session 56 found (dark=1, the pre-session-56
+    no-op, through dark=4/prob=1.0, session 56's strongest identifiability
+    result). 16 candidates total (session 49: widened from a 5-candidate
+    spot-check to a full 4-intensity x 2-shape sweep; session 56: widened
+    again from 10 to add seesaw and Blackout's stronger settings)."""
 
     def all_channels(nominal: float) -> dict[str, float]:
         return {ch: nominal for ch in channels}
@@ -151,14 +185,23 @@ def _default_levers(channels: list[str]) -> list[tuple[str, dict, str, bool]]:
         levers.append(
             (f"+/-{pct:.0f}% (edge, balanced)", all_channels(pct), "edge", True)
         )
-    levers.append(
-        (
-            "Blackout",
-            {ch: Blackout(max_dark_weeks_per_month=1) for ch in channels},
-            "uniform",
-            False,
+        levers.append((f"+/-{pct:.0f}% (seesaw)", all_channels(pct), "seesaw", False))
+    for label, prob, dark in (
+        ("Blackout (dark=1)", 1.0, 1),
+        ("Blackout (dark=3, prob=0.8)", 0.8, 3),
+        ("Blackout (dark=4, prob=1.0)", 1.0, 4),
+    ):
+        levers.append(
+            (
+                label,
+                {
+                    ch: Blackout(prob=prob, max_dark_weeks_per_month=dark)
+                    for ch in channels
+                },
+                "uniform",
+                False,
+            )
         )
-    )
     return levers
 
 
@@ -926,14 +969,18 @@ class DiscoveryReport:
         The candidate strategies to sweep, as a list of
         (label, per-channel max_weekly_deviation_pct spec, nudge_shape,
         balance_signs) tuples. Defaults to unphased, then +/-20/40/60/80%
-        at each of two nudge shapes (uniform, unbalanced -- vs edge,
-        balanced), then Blackout -- 10 candidates total, see
-        _default_levers (session 49 widened this from a 5-candidate
-        spot-check that didn't actually sweep every intensity; no longer
-        matches notebooks/11's own narrower LEVERS list). The first entry
-        is expected to be the unphased baseline every other candidate is
-        compared against; pass your own list to add or narrow candidates,
-        keeping an unphased baseline entry first.
+        at each of three nudge shapes (uniform, unbalanced -- vs edge,
+        balanced -- vs seesaw, alternating), then three contiguous-Blackout
+        settings (dark=1 through dark=4/prob=1.0) -- 16 candidates total,
+        see _default_levers (session 49 widened the original 5-candidate
+        spot-check to a full 4-intensity x 2-shape sweep; session 56
+        widened it again to surface seesaw and Blackout's stronger
+        settings; no longer matches the archived notebooks/archive/11's
+        own narrower LEVERS list -- notebooks/05_strategy_comparison.ipynb
+        is the live one now). The first entry is expected to be the
+        unphased baseline every other candidate is compared against; pass
+        your own list to add or narrow candidates, keeping an unphased
+        baseline entry first.
     strategy_pct, strategy_nudge_shape, strategy_balanced:
         Pin a single strategy instead of sweeping for one (session 51,
         Ryan: "we want to be able to use this class and pick a strategy

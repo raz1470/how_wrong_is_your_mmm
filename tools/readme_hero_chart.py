@@ -13,7 +13,11 @@ same plan" the README caption promises) and vary only the training
 data fitted before evaluating it against that plan:
   - Today: fit on 208 weeks of natural (unphased, correlated) history.
   - After 1 year: fit on that history plus one more year of phased
-    spend (the report's own winning lever: +/-80%, edge, balanced).
+    spend (the report's own winning lever as of session 56/item 7's
+    widened sweep: Blackout, dark=4 weeks/month, prob=1.0 -- dominates
+    +/-80% edge+balanced on all three rigor axes on this scenario, see
+    notebooks/05_strategy_comparison.ipynb, at a materially higher cost
+    which this chart does not show since it only tracks estimate width).
 Each fit's estimated marginal returns are applied to the *same*
 plan_df via CollinearityDiagnostic.summary(planned_spend=...), which
 is what makes the two bars a range for one £X plan getting more
@@ -27,7 +31,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from how_wrong_is_your_mmm import simulate_spend
+from how_wrong_is_your_mmm import Blackout, simulate_spend
 from how_wrong_is_your_mmm._diagnostic import CollinearityDiagnostic
 from how_wrong_is_your_mmm._phaser import _generate_phased_schedule, _get_month_labels
 
@@ -48,10 +52,12 @@ PERIOD_COLORS = {"Today": "#d1d5db", "After 1 year": "#2563eb"}
 
 
 def phased_year(history: pd.DataFrame, seed: int) -> pd.DataFrame:
-    """One more year of +/-80% edge/balanced phased spend, appended right
-    after `history` ends. seed picks the underlying natural 52-week draw
-    that gets phased (not the phasing draw itself, which _generate_phased_
-    schedule takes care of internally)."""
+    """One more year of Blackout(dark=4, prob=1.0) phased spend, appended
+    right after `history` ends -- the report's own winning lever as of
+    the item-7 sweep widening (see module docstring). seed picks the
+    underlying natural 52-week draw that gets phased (not the phasing
+    draw itself, which _generate_phased_schedule takes care of
+    internally)."""
     start = history.index[-1] + pd.Timedelta(weeks=1)
     natural = simulate_spend(
         n_obs=52,
@@ -65,10 +71,12 @@ def phased_year(history: pd.DataFrame, seed: int) -> pd.DataFrame:
         natural,
         month_labels,
         alpha=1.0,
-        max_weekly_deviation_pct={c: 80.0 for c in CHANNELS},
+        max_weekly_deviation_pct={
+            c: Blackout(prob=1.0, max_dark_weeks_per_month=4) for c in CHANNELS
+        },
         seed=1000 + seed,
-        nudge_shape="edge",
-        balance_signs=True,
+        nudge_shape="uniform",
+        balance_signs=False,
     )
 
 

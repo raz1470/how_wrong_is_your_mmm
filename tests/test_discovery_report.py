@@ -23,7 +23,7 @@ from how_wrong_is_your_mmm._discovery_report import (
 )
 from how_wrong_is_your_mmm._phaser import Blackout
 
-# Small fixtures -- DiscoveryReport sweeps 10 levers x several diagnostics
+# Small fixtures -- DiscoveryReport sweeps 16 levers x several diagnostics
 # each, so tests lean on fast_mode plus a tiny identifiability grid.
 HISTORY_DF = simulate_spend(n_obs=52, correlation=0.6, seed=0, start_date="2020-01-06")
 PLAN_DF = simulate_spend(n_obs=26, correlation=0.6, seed=1, start_date="2021-01-04")
@@ -53,23 +53,45 @@ class TestDefaultLevers:
         assert levers[0][0] == "unphased"
         assert _is_unphased(levers[0][1])
 
-    def test_ten_candidates(self):
-        # unphased + 4 intensities x 2 shapes + Blackout (session 49:
-        # widened from a 5-candidate spot-check to a full sweep).
-        assert len(_default_levers(CHANNELS)) == 10
+    def test_sixteen_candidates(self):
+        # unphased + 4 intensities x 3 shapes + 3 Blackout settings
+        # (session 49: widened from a 5-candidate spot-check to a full
+        # 4x2 sweep; session 56: widened again to add seesaw and
+        # Blackout's stronger contiguous settings -- see SCOPE.md item 7).
+        assert len(_default_levers(CHANNELS)) == 16
 
-    def test_every_intensity_gets_both_shapes(self):
+    def test_every_intensity_gets_all_shapes(self):
         levers = _default_levers(CHANNELS)
         labels = {label for label, *_ in levers}
         for pct in ("20", "40", "60", "80"):
             assert f"+/-{pct}% (uniform)" in labels
             assert f"+/-{pct}% (edge, balanced)" in labels
+            assert f"+/-{pct}% (seesaw)" in labels
 
-    def test_blackout_entry_uses_blackout_spec(self):
+    def test_blackout_entries_use_blackout_spec(self):
         levers = _default_levers(CHANNELS)
-        label, spec, _, _ = levers[-1]
-        assert label == "Blackout"
-        assert all(isinstance(v, Blackout) for v in spec.values())
+        blackout_levers = levers[-3:]
+        labels = [label for label, *_ in blackout_levers]
+        assert labels == [
+            "Blackout (dark=1)",
+            "Blackout (dark=3, prob=0.8)",
+            "Blackout (dark=4, prob=1.0)",
+        ]
+        for _, spec, _, _ in blackout_levers:
+            assert all(isinstance(v, Blackout) for v in spec.values())
+
+    def test_blackout_entries_use_documented_prob_and_dark_settings(self):
+        levers = _default_levers(CHANNELS)
+        blackout_specs = {label: spec for label, spec, _, _ in levers[-3:]}
+        expected = {
+            "Blackout (dark=1)": (1.0, 1),
+            "Blackout (dark=3, prob=0.8)": (0.8, 3),
+            "Blackout (dark=4, prob=1.0)": (1.0, 4),
+        }
+        for label, (prob, dark) in expected.items():
+            spec = blackout_specs[label]["tv"]
+            assert spec.prob == prob
+            assert spec.max_dark_weeks_per_month == dark
 
 
 class TestIsUnphased:
@@ -415,7 +437,7 @@ class TestConstruction:
 
     def test_default_levers_used_when_not_supplied(self):
         report = make_report()
-        assert len(report.levers_) == 10
+        assert len(report.levers_) == 16
 
     def test_custom_levers_respected(self):
         custom = [("unphased", {ch: 0.0 for ch in CHANNELS}, "uniform", False)]
@@ -975,9 +997,15 @@ class TestToHtml:
         assert f"<b>{report.winner_}</b>" in impact_block
 
         appendix_block = html_out[html_out.index("<h2>Appendix") :]
+        # Cost is 0 whenever every channel's saturation is linear (b=1,
+        # the make_report() default -- see the Cost comment above
+        # lever_cost_pct in _discovery_report.py), which floating-point
+        # noise can format as "-0.00%" rather than "0.00%" -- allow an
+        # optional leading sign rather than assuming cost is always
+        # rendered positive.
         row_match = re.search(
             rf'data-lever="{re.escape(report.winner_)}"[^>]*>.*?'
-            rf"<td>([\d.]+)%</td></tr>",
+            rf"<td>(-?[\d.]+)%</td></tr>",
             appendix_block,
         )
         winner_cost_pct = float(row_match.group(1))
@@ -1016,11 +1044,11 @@ class TestPinnedStrategyConstruction:
         report = make_report()
         assert report.pinned_label_ is None
         assert report.channel_constraints_ == {}
-        assert len(report.levers_) == 10
+        assert len(report.levers_) == 16
 
     def test_strategy_pct_adds_one_lever_on_top_of_the_default_sweep(self):
         report = make_report(strategy_pct=60.0)
-        assert len(report.levers_) == 11
+        assert len(report.levers_) == 17
         assert report.pinned_label_ == "Pinned: +/-60% (edge, balanced)"
         assert report.levers_[-1][0] == report.pinned_label_
 
