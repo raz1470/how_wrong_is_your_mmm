@@ -144,7 +144,7 @@ always supply your own values.
 | [`02_channel_scaling`](notebooks/02_channel_scaling.ipynb) | Sweeps channel count (3 to 20) and spend correlation to check the fix holds at realistic scale, not just the 4-channel demo |
 | [`03_time_to_benefit`](notebooks/03_time_to_benefit.ipynb) | How many weeks of phasing it takes to meaningfully reduce marginal-return uncertainty, and how that depends on starting correlation and which lever you use |
 | [`04_adstock_threat`](notebooks/04_adstock_threat.ipynb) | Checks whether phasing's bias reduction survives real carryover (adstock), across four demand-process shapes |
-| [`05_strategy_comparison`](notebooks/05_strategy_comparison.ipynb) | Compares five phasing shapes/intensities on variance, bias, identifiability and cost — the same criteria the live report scores every candidate on |
+| [`05_strategy_comparison`](notebooks/05_strategy_comparison.ipynb) | Compares all 16 of `DiscoveryReport`'s default phasing shapes/intensities on variance, bias, identifiability and cost — the same criteria the live report scores every candidate on |
 
 ---
 

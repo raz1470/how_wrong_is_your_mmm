@@ -616,9 +616,9 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <h3>What lever is best, today</h3>
 
-  <p>&plusmn;80% (edge, balanced) is where this scenario's search lands: the lowest variance, the lowest bias and the tightest identifiability valley of the candidates compared in the cost table in the next section. That is today's default, and the number quoted throughout this page.</p>
+  <p>&plusmn;80% (edge, balanced) is where this scenario's search lands among the deployable shapes, and it is the number quoted throughout the rest of this page. A wider sweep now exists -- 16 candidates: every intensity at uniform/edge/seesaw, plus Blackout at dark=1 through dark=4/prob=1.0, not just the five compared in the cost table below (see <code>notebooks/05_strategy_comparison.ipynb</code>) -- and on pure rigor, <code>Blackout (dark=4, prob=1.0)</code> beats &plusmn;80% (edge, balanced) on all three measures at once.</p>
 
-  <p>It isn't a permanent verdict. It was set before Blackout's dark weeks were made consecutive rather than scattered, and before seesaw existed as a candidate at all, both covered in the table above. Both are still being swept against the full candidate set on this scenario, and the default is expected to move once that lands, not just gain a footnote.</p>
+  <p>It isn't recommended, though. <code>_pick_winner</code> scores rigor only, never operational feasibility, and dark=4/prob=1.0 forces whichever single week survives each month to carry roughly 3-4x its normal budget to make the monthly total whole -- not something a media buyer would actually schedule, whatever the identifiability gain. That gap between "wins the sweep" and "a client could run this" is real, and the fix is a smarter lever, not a smarter sweep: something with the annual cadence of Blackout's discipline but sized so no single week has to absorb a whole dark run's spend, and built to disturb a channel's normal pacing as little as possible outside its own deliberate move. Not designed yet -- see <code>SCOPE.md</code>.</p>
 </section>
 
 <!-- SECTION 4: THE IMPACT -->
