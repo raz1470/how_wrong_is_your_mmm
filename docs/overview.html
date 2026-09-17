@@ -412,20 +412,20 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Problem 2 · Bias: is the number even centred on the truth?</div>
-      <div class="fig-sub">Error vs. true revenue, before any fix</div>
+      <div class="fig-sub">Revenue implied by the biased estimate, before any fix</div>
     </div>
     <div class="fig-body">
       <div class="legend">
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> Model-estimated bias range</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> Believed revenue, model-estimated range</span>
         <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#111827" stroke-width="1.8"/></svg> Point estimate</span>
-        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Zero (unbiased)</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> True revenue</span>
       </div>
       <svg class="chart" id="chartProblemBias" viewBox="0 0 700 210" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Every channel here uses a model that omits the demand signal driving spend, the default for "every real MMM" per this package's own bias diagnostic. The ring marks each channel's mean estimate. TV is systematically overstated, not just noisy about its true value. Meta is the outlier the other direction, its range straddling zero instead.</p>
+    <p class="fig-cap">Every channel here uses a model that omits the demand signal driving spend, the default for "every real MMM" per this package's own bias diagnostic. The ring marks each channel's mean believed revenue; the dashed line is the true revenue a client would actually get. TV is systematically overstated: even its low end sits above the true-revenue line. Meta is the outlier the other direction, its range straddling the true-revenue line instead.</p>
   </div>
 
-  <p>This is the second, separate failure: the demand that drives a good planner's decisions is rarely in the model at all, so the channel coefficients absorb it instead. TV is overstated by more than a jump in variance would explain on its own, while Meta's range straddles zero instead, because its own true marginal return sits closest to the average across channels and left less demand signal for its coefficient to absorb. That's textbook omitted variable bias, and unlike variance it doesn't average out with more data. Refitting the same mis-specified model on more weeks just gets you a tighter estimate of the wrong number.</p>
+  <p>This is the second, separate failure: the demand that drives a good planner's decisions is rarely in the model at all, so the channel coefficients absorb it instead. TV is overstated by more than a jump in variance would explain on its own, while Meta's range straddles the true-revenue line instead, because its own true marginal return sits closest to the average across channels and left less demand signal for its coefficient to absorb. That's textbook omitted variable bias, and unlike variance it doesn't average out with more data. Refitting the same mis-specified model on more weeks just gets you a tighter estimate of the wrong number.</p>
 
   <p>The third failure is different again: not how wide the range is, or where it's centred, but whether the model can even tell what shape your response curve takes. Adstock and saturation are both curvature parameters, decay and diminishing returns, and a model estimated from spend that never varied on its own has no way to pin either one down.</p>
 
@@ -480,7 +480,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
       <div class="fig-sub">Pairwise correlation, before phasing</div>
     </div>
     <div class="fig-body">
-      <svg class="chart" id="chartCorrBefore" viewBox="0 0 288 280" preserveAspectRatio="xMinYMin meet"></svg>
+      <svg class="chart" id="chartCorrBefore" viewBox="0 0 294 298" preserveAspectRatio="xMinYMin meet" style="max-width: 320px; margin: 0 auto;"></svg>
     </div>
     <p class="fig-cap">The 0.70 mean pairwise correlation above is an average. Read the individual cells and TV/Meta, TV/TikTok and Meta/TikTok are all at 0.70 or above; Search Generic is the closest thing to an exception, and even its weakest pair (with TikTok) is still 0.64.</p>
   </div>
@@ -618,7 +618,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
       <div class="fig-sub">Pairwise channel correlation, before and after phasing</div>
     </div>
     <div class="fig-body">
-      <svg class="chart" id="chartCorr" viewBox="0 0 700 290" preserveAspectRatio="xMinYMin meet"></svg>
+      <svg class="chart" id="chartCorr" viewBox="0 0 700 304" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
     <p class="fig-cap">Before, every pair of channels moves together at around 0.70, and that is why your model can't tell them apart on any of the three problems above. After, with every channel on the winning &plusmn;80% (edge, balanced) lever, Search Generic and TikTok have come apart almost completely at 0.02, and Meta/TikTok are the strongest link left at 0.24: still the pair to watch, but a third of what it was. Mean pairwise correlation falls from 0.70 to 0.16. Same channels, same budget, same monthly totals. Only the weekly timing changed.</p>
   </div>
@@ -1230,10 +1230,16 @@ PROBLEM_DATA[2] = { ...PROBLEM_DATA[2], p10: 6.210, p90: 7.881, point: 6.970, tr
 PROBLEM_DATA[3] = { ...PROBLEM_DATA[3], p10: 5.934, p90: 8.104, point: 7.086, truth: 6.814 };
 
 const BIAS_DATA = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c], sub: `£${CH_SPEND[c].toFixed(1)}m spend` }));
-BIAS_DATA[0] = { ...BIAS_DATA[0], p10: 14.1, p90: 98.9, point: 64.8, truth: 0 };
-BIAS_DATA[1] = { ...BIAS_DATA[1], p10: -21.1, p90: 42.2, point: 9.6, truth: 0 };
-BIAS_DATA[2] = { ...BIAS_DATA[2], p10: 5.7, p90: 29.4, point: 17.1, truth: 0 };
-BIAS_DATA[3] = { ...BIAS_DATA[3], p10: 5.8, p90: 36.6, point: 22.0, truth: 0 };
+// Session: bias was shown as % error vs. true revenue, but
+// _discovery_report.py's own bias_svg shows "believed revenue" in £
+// against a true-revenue dashed line (same units as the variance
+// chart), not a percentage at all (Ryan: "you've shown bias as a %, it
+// should be the same as discovery report"). believed = true_revenue *
+// (1 + bias_pct/100); truth reuses the same true_revenue as PROBLEM_DATA.
+BIAS_DATA[0] = { ...BIAS_DATA[0], p10: 4.827, p90: 8.415, point: 6.973, truth: 4.231 };
+BIAS_DATA[1] = { ...BIAS_DATA[1], p10: 4.264, p90: 7.687, point: 5.924, truth: 5.406 };
+BIAS_DATA[2] = { ...BIAS_DATA[2], p10: 7.270, p90: 8.902, point: 8.052, truth: 6.877 };
+BIAS_DATA[3] = { ...BIAS_DATA[3], p10: 7.206, p90: 9.311, point: 8.311, truth: 6.814 };
 
 const ADSTOCK_DATA = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c] }));
 ADSTOCK_DATA[0] = { ...ADSTOCK_DATA[0], sub: 'true 0.50', p10: 0.34, p90: 0.65, point: 0.48, truth: 0.50 };
@@ -1271,8 +1277,8 @@ function renderCharts() {
 }
 
 const REVENUE_OPTS = { xMin: 0, xMax: 9, ticks: [0, 3, 6, 9], fmtVal: fmtGBP, fmtTick: v => `£${v}m`, axisLabel: 'Incremental revenue (£m)' };
-const BIAS_OPTS = { xMin: -30, xMax: 110, ticks: [-20, 0, 20, 40, 60, 80, 100], fmtVal: v => `${v.toFixed(0)}%`, fmtTick: v => `${v}%`, axisLabel: 'Error vs. true revenue (%)' };
-const BIAS_OPTS_NARROW = { ...BIAS_OPTS, ticks: [-20, 0, 50, 100] };
+const BIAS_OPTS = { xMin: 0, xMax: 10, ticks: [0, 5, 10], fmtVal: fmtGBP, fmtTick: v => `£${v}m`, axisLabel: 'Revenue implied by the biased estimate (£m)' };
+const BIAS_OPTS_NARROW = { ...BIAS_OPTS };
 
 chart('chartProblem', '0 0 700 210',
   () => drawForest('chartProblem', PROBLEM_DATA, REVENUE_OPTS),
@@ -1426,11 +1432,13 @@ VARIANCE_IMPACT[1] = { ...VARIANCE_IMPACT[1], before: { p10: 3.508, p90: 6.879, 
 VARIANCE_IMPACT[2] = { ...VARIANCE_IMPACT[2], before: { p10: 6.210, p90: 7.881, point: 6.970 }, after: { p10: 6.390, p90: 7.008, point: 6.692 }, truth: 6.877 };
 VARIANCE_IMPACT[3] = { ...VARIANCE_IMPACT[3], before: { p10: 5.934, p90: 8.104, point: 7.086 }, after: { p10: 6.205, p90: 6.976, point: 6.615 }, truth: 6.814 };
 
+// Same fix as BIAS_DATA above: believed revenue (£m) vs. true revenue,
+// not % error -- matches _discovery_report.py's bias_svg exactly.
 const BIAS_IMPACT = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c], sub: `£${CH_SPEND[c].toFixed(1)}m spend` }));
-BIAS_IMPACT[0] = { ...BIAS_IMPACT[0], before: { p10: 14.1, p90: 98.9, point: 64.8 }, after: { p10: 3.2, p90: 47.7, point: 26.3 }, truth: 0 };
-BIAS_IMPACT[1] = { ...BIAS_IMPACT[1], before: { p10: -21.1, p90: 42.2, point: 9.6 }, after: { p10: 0.9, p90: 18.6, point: 9.9 }, truth: 0 };
-BIAS_IMPACT[2] = { ...BIAS_IMPACT[2], before: { p10: 5.7, p90: 29.4, point: 17.1 }, after: { p10: 1.0, p90: 10.1, point: 5.6 }, truth: 0 };
-BIAS_IMPACT[3] = { ...BIAS_IMPACT[3], before: { p10: 5.8, p90: 36.6, point: 22.0 }, after: { p10: 8.2, p90: 19.9, point: 14.5 }, truth: 0 };
+BIAS_IMPACT[0] = { ...BIAS_IMPACT[0], before: { p10: 4.827, p90: 8.415, point: 6.973 }, after: { p10: 4.365, p90: 6.248, point: 5.344 }, truth: 4.231 };
+BIAS_IMPACT[1] = { ...BIAS_IMPACT[1], before: { p10: 4.264, p90: 7.687, point: 5.924 }, after: { p10: 5.452, p90: 6.411, point: 5.939 }, truth: 5.406 };
+BIAS_IMPACT[2] = { ...BIAS_IMPACT[2], before: { p10: 7.270, p90: 8.902, point: 8.052 }, after: { p10: 6.946, p90: 7.573, point: 7.265 }, truth: 6.877 };
+BIAS_IMPACT[3] = { ...BIAS_IMPACT[3], before: { p10: 7.206, p90: 9.311, point: 8.311 }, after: { p10: 7.374, p90: 8.167, point: 7.804 }, truth: 6.814 };
 
 const SATURATION_IMPACT = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c] }));
 SATURATION_IMPACT[0] = { ...SATURATION_IMPACT[0], sub: 'true 0.60', before: { p10: 0.20, p90: 1.00, point: 0.65 }, after: { p10: 0.20, p90: 0.98, point: 0.60 }, truth: 0.60 };
@@ -1586,7 +1594,7 @@ function drawAdstockImpactNarrow() { drawForestPairedNarrow('chartImpactAdstock'
 // isn't otherwise needed as page state, so hardcoding avoids carrying it.
 function drawCorrMatrixPanels(svg, wide, mode) {
   mode = mode || 'pair';
-  const labels = { tv: 'TV', meta: 'Meta', search_generic: 'Sch Gen', tiktok: 'TikTok' };
+  const labels = { tv: 'TV', meta: 'Meta', search_generic: 'Search Generic', tiktok: 'TikTok' };
   const names = CH_ORDER;
   const meanPairwise = m => {
     let sum = 0, n = 0;
@@ -1594,21 +1602,29 @@ function drawCorrMatrixPanels(svg, wide, mode) {
     return sum / n;
   };
 
-  // labelGutter budgets room for the longest channel label ('Sch Gen')
-  // ending flush against it. The two-panel 'pair' layout used to get away
-  // with a narrower 48/40 because it centres both panels inside a wider
-  // viewBox, so an over-budget label just ate into that centering margin
-  // instead of the SVG's own edge. The single-panel 'before' chart has no
-  // such margin -- its viewBox is sized to the panel exactly -- so the same
-  // label clipped for real. Widened here for both, verified with
-  // tools/check_charts.js against all three (chartCorr wide/narrow,
+  // labelGutter budgets room for the real full label ('Search Generic',
+  // measured at fs.sub bold with a canvas, ~102px wide/13px narrow) ending
+  // flush against it -- Ryan asked for the real name rather than the
+  // 'Sch Gen' abbreviation session 58 introduced to dodge this same sizing
+  // problem. cellSize is also smaller than session 58's 54/44: the single-
+  // panel 'before' chart was rendering nearly square (its viewBox has no
+  // horizontal buffer the way 'pair' mode's centred-in-700 layout does), so
+  // at the page's forced width:100% it stretched to a huge, disproportionate
+  // square (Ryan: "massive, looks silly"). Smaller cells shrink that
+  // directly; #chartCorrBefore's own CSS max-width caps it further. Verified
+  // with tools/check_charts.js against all three (chartCorr wide/narrow,
   // chartCorrBefore wide/narrow).
-  const cellSize = wide ? 54 : 44, labelGutter = wide ? 72 : 60;
+  const cellSize = wide ? 44 : 36, labelGutter = wide ? 118 : 106;
   const gridDim = cellSize * names.length;
   const panelW = labelGutter + gridDim;
   const gap = wide ? 30 : 0;
   const W = wide ? (mode === 'before' ? panelW : 700) : (mode === 'before' ? panelW : 340);
-  const titleY = 14, subY = 30, colLabelY = wide ? 48 : 46, gridTop = wide ? 56 : 54;
+  // Column labels are rotated 40 degrees rather than horizontal: 'Search
+  // Generic' is far wider than one cellSize column, and the row-label
+  // treatment (right-aligned into labelGutter) has no equivalent axis to
+  // budget from for a column header. gridTop/colLabelY carry the extra
+  // vertical room the angled text needs above the grid.
+  const titleY = 14, subY = 30, colLabelY = wide ? 106 : 90, gridTop = wide ? 114 : 96;
   const fs = wide ? FS : FSN;
 
   function colorFor(v, isDiagonal) {
@@ -1623,7 +1639,13 @@ function drawCorrMatrixPanels(svg, wide, mode) {
     g.appendChild(el('text', { x: panelW / 2, y: titleY, 'text-anchor': 'middle', 'font-size': fs.note, 'font-weight': '700', fill: '#374151' }, title));
     g.appendChild(el('text', { x: panelW / 2, y: subY, 'text-anchor': 'middle', 'font-size': fs.sub, fill: '#9ca3af' }, sub));
     names.forEach((c, j) => {
-      g.appendChild(el('text', { x: labelGutter + cellSize * j + cellSize / 2, y: colLabelY, 'text-anchor': 'middle', 'font-size': fs.sub, 'font-weight': '700', fill: '#6b7280' }, labels[c]));
+      // Vertical (rotate -90), not merely angled: at a -40 diagonal,
+      // adjacent long labels ('Search Generic', 'TikTok') still collided --
+      // their rotated bounding boxes are wider than one cellSize column no
+      // matter the angle, short of full vertical. Vertical text's own
+      // horizontal footprint is just its font size, which always fits.
+      const cx = labelGutter + cellSize * j + cellSize / 2;
+      g.appendChild(el('text', { x: cx, y: colLabelY, 'text-anchor': 'start', 'font-size': fs.sub, 'font-weight': '700', fill: '#6b7280', transform: `rotate(-90 ${cx} ${colLabelY})` }, labels[c]));
     });
     names.forEach((r, i) => {
       g.appendChild(el('text', { x: labelGutter - 6, y: gridTop + cellSize * i + cellSize / 2 + 3.5, 'text-anchor': 'end', 'font-size': fs.sub, 'font-weight': '700', fill: '#6b7280' }, labels[r]));
@@ -1646,7 +1668,7 @@ function drawCorrMatrixPanels(svg, wide, mode) {
     g.appendChild(drawGrid(0, 0, CORR_BEFORE, 'Before phasing', `mean pairwise: ${meanPairwise(CORR_BEFORE).toFixed(2)}`));
   } else if (wide) {
     const startX = (W - (panelW * 2 + gap)) / 2;
-    svg.setAttribute('viewBox', `0 0 ${W} 290`);
+    svg.setAttribute('viewBox', `0 0 ${W} ${gridTop + gridDim + 14}`);
     g.appendChild(drawGrid(startX, 0, CORR_BEFORE, 'Before phasing', `mean pairwise: ${meanPairwise(CORR_BEFORE).toFixed(2)}`));
     g.appendChild(drawGrid(startX + panelW + gap, 0, CORR_AFTER, 'After phasing', `mean pairwise: ${meanPairwise(CORR_AFTER).toFixed(2)}`));
   } else {
@@ -2141,8 +2163,8 @@ chart('chartImpactVariance', '0 0 700 210', drawVarianceImpact, drawVarianceImpa
 chart('chartImpactBias', '0 0 700 210', drawBiasImpact, drawBiasImpactNarrow);
 chart('chartImpactSaturation', '0 0 700 210', drawSaturationImpact, drawSaturationImpactNarrow);
 chart('chartImpactAdstock', '0 0 700 210', drawAdstockImpact, drawAdstockImpactNarrow);
-chart('chartCorr', '0 0 700 290', drawCorrMatrix, drawCorrMatrixNarrow);
-chart('chartCorrBefore', '0 0 288 280', drawCorrBefore, drawCorrBeforeNarrow);
+chart('chartCorr', '0 0 700 304', drawCorrMatrix, drawCorrMatrixNarrow);
+chart('chartCorrBefore', '0 0 294 298', drawCorrBefore, drawCorrBeforeNarrow);
 chart('chartLever', '0 0 700 280', drawLever, drawLeverNarrow);
 chart('chartGrid', '0 0 700 350', drawGrid, null);
 chart('chartWhen', '0 0 700 270', drawWhen, drawWhenNarrow);
