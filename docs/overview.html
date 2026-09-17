@@ -484,7 +484,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <p>On its own, a correlation of 0.70 doesn't mean much. What matters is what it does to the answer your model gives you back. The clearest illustration is still variance. Holding total spend, the true marginal returns and every channel's response curve fixed, and moving only the correlation between channels, means any change in the result is attributable to correlation alone. Bias and identifiability would each need a real demand signal or a real response curve varied in the same sweep, which this one does not supply.</p>
 
-  <p>The chart below sweeps only TV's correlation with the other three channels, holding total spend and every other setting at the scenario's own values.</p>
+  <p>The chart below sweeps only TV's correlation with the other three channels, holding total spend and every other setting at the scenario's own values. At 0.40 TV's estimate already swings by a quarter of itself, past "noisy but usable"; by 0.87 it's in "largely guesswork" territory, and by 0.95 the typical swing is 57% of the estimate.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -494,7 +494,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <div class="fig-body">
       <svg class="chart" id="chartCorrCost" viewBox="0 0 700 300" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Correlations below about 0.4 aren't representative at this spend scale (the simulator's noise pushes spend negative), so the sweep starts there. At 0.40, TV's estimate already swings by a quarter of itself: past "noisy but usable". By 0.87 it's in "largely guesswork" territory, and by 0.95 the typical swing is 57% of the estimate. Under a curvature-aware fit, correlation turns expensive earlier than a linear-only model would suggest.</p>
+    <p class="fig-cap">Correlations below about 0.4 aren't representative at this spend scale (the simulator's noise pushes spend negative), so the sweep starts there. TV's estimate swings by more of itself the higher correlation climbs, moving from usable to guesswork well before the top of the scale. Under a curvature-aware fit, correlation turns expensive earlier than a linear-only model would suggest.</p>
   </div>
 
   <p>It isn't that the model is badly built. It's that the data it's learning from was never designed to answer any of these three questions.</p>
@@ -859,7 +859,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   </div>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Does phasing's bias fix survive real carryover (adstock)?</p>
-  <p>Mostly, but with a caveat worth stating plainly. Every other result on this page's bias pillar assumes a model that is correct about timing: this week's spend explains this week's sales, no carryover. Real media has carryover, so we re-ran the bias check with adstock supplied to the fit and real decay in the simulated demand, across four demand shapes, in the table below. &plusmn;80% (edge, balanced) still beats unphased and Blackout at every decay and every demand shape tested, but the benefit thins as carryover gets stronger, and faster for some demand shapes than others: two of the four are already under half their no-carryover benefit at a decay most practitioners would call short.</p>
+  <p>Mostly, but with a caveat worth stating plainly. Every other bias result on this page assumes no carryover, so we re-ran the check with real decay supplied to both the fit and the simulated demand, across four demand shapes, in the table below. &plusmn;80% (edge, balanced) still beats unphased and Blackout at every decay and shape tested, but the benefit thins as carryover strengthens, and faster for slower-turning or seasonal demand than for white noise: phasing's fix is inherently fast, and adstock is a low-pass filter that smooths away exactly that kind of fast variation. A client in a slow-turning or seasonal category should be shown the thinner end of the range below, not the white-noise best case.</p>
 
   <div class="dtable-wrap">
     <table class="dtable">
@@ -875,8 +875,6 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
       </tbody>
     </table>
   </div>
-
-  <p>Why demand shape matters: adstock is a low-pass filter, it smooths away fast variation and leaves slow variation alone, and phasing's cure is necessarily fast (it reshuffles spend within a month and must net back to the original total by month end). That puts the cure squarely in the band the filter attacks, and a slower-turning or more seasonal category has more of its real signal sitting in that same band for the filter to smooth away too. None of this makes phasing's bias fix a no-carryover artefact. It does mean a client in a slow-turning or strongly seasonal category should be shown the thinner end of this range, not just the white-noise best case.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Won't this put my channels into learning mode?</p>
   <p>Possibly, in the short term, and that's the real trade-off: how much tighter do you want your results? A channel's reliability gain compounds over a year or two, usually worth more than what a learning-phase reset costs today. This isn't a call the model makes alone: it's a compromise between data science and marketing. Each channel's setting is flexible, from 0% (untouched), through a gentle nudge, all the way up to 100%, to a full on/off switch. Dial each one to wherever that compromise lands.</p>
