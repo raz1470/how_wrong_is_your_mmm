@@ -1108,7 +1108,12 @@ function drawForest(svgId, data, opts) {
   // right margin carries the value-range label at FS.val; left carries
   // the channel name at FS.name over the sub-label at FS.sub. Both are
   // sized for those tokens: raising a token without raising these clips.
-  const m = { top: 14, right: 132, bottom: 50, left: 108 };
+  // left=166: "Search Generic" (the longest channel name) at FS.name/bold
+  // measures ~128 units wide starting at LABEL_X=26, i.e. its right edge
+  // lands at ~154 -- 108 let it run ~46 units into the plot itself, most
+  // visible where a channel's range starts near the axis origin (Ryan:
+  // "search generic crosses the chart").
+  const m = { top: 14, right: 132, bottom: 50, left: 166 };
   const pw = W - m.left - m.right;
   const ph = H - m.top - m.bottom;
 
@@ -1432,7 +1437,9 @@ function drawForestPaired(svgId, data, opts) {
   const { xMin = 0, xMax, ticks, fmtVal = v => v.toFixed(2), fmtTick = v => String(v), axisLabel = '' } = opts;
 
   const W = 700, H = 210;
-  const m = { top: 14, right: 132, bottom: 50, left: 108 };
+  // left=166: matches drawForest's margin above -- same "Search Generic"
+  // label-gutter fix, same reason (Ryan: "search generic crosses the chart").
+  const m = { top: 14, right: 132, bottom: 50, left: 166 };
   const pw = W - m.left - m.right;
   const ph = H - m.top - m.bottom;
 
