@@ -431,8 +431,8 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Problem 3 · Identifiability: does the model know your response curves?</div>
-      <div class="fig-sub">Recovered saturation (curvature) and adstock (decay) ranges, before any fix</div>
+      <div class="fig-title">Problem 3 · Identifiability: saturation (curvature)</div>
+      <div class="fig-sub">Recovered saturation exponent (b), before any fix</div>
     </div>
     <div class="fig-body">
       <div class="legend">
@@ -440,9 +440,25 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
         <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#111827" stroke-width="1.8"/></svg> Point estimate</span>
         <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> True value</span>
       </div>
-      <svg class="chart" id="chartProblemIdent" viewBox="0 0 700 322" preserveAspectRatio="xMinYMin meet"></svg>
+      <svg class="chart" id="chartProblemSaturation" viewBox="0 0 700 210" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Saturation (left) is the worse of the two: every channel's range spans nearly the entire curve shape the diagnostic allows, regardless of where the true value actually sits. It isn't rounding to the true value by luck; it's returning the full range because the data cannot rule any of it out. Adstock (right) is at least centred near the true decay for every channel, if wide.</p>
+    <p class="fig-cap">Every channel's range spans nearly the entire 0.20-1.00 curve shape the diagnostic allows, regardless of where the dashed true value sits. It isn't rounding to the true value by luck; it's returning the full range because the data cannot rule any of it out.</p>
+  </div>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Problem 3 · Identifiability: adstock (decay)</div>
+      <div class="fig-sub">Recovered adstock decay (&lambda;), before any fix</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> Model-estimated range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#111827" stroke-width="1.8"/></svg> Point estimate</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> True value</span>
+      </div>
+      <svg class="chart" id="chartProblemAdstock" viewBox="0 0 700 210" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">At least centred near the dashed true value for every channel, if wide: TV's true decay is 0.50, and the recovered range spans 0.34 to 0.65.</p>
   </div>
 
   <p>Saturation fares worst: every channel's range spans nearly the entire curve shape the diagnostic allows, so the model can't tell a nearly-linear response (TV, Meta) from a sharply diminishing one (Search Generic, TikTok) from the same spend history. Take TV's adstock by contrast: its true decay is 0.50, and the recovered range spans 0.34 to 0.65, wide but at least centred.</p>
@@ -1288,71 +1304,19 @@ chart('chartProblemBias', '0 0 700 210',
   () => drawForest('chartProblemBias', BIAS_DATA, BIAS_OPTS),
   () => drawForestNarrow('chartProblemBias', BIAS_DATA, BIAS_OPTS_NARROW));
 
-// ── Chart: Problem, identifiability (two mini forests: adstock, saturation) ─
-// Bespoke rather than reusing drawForest: this is two independent x-scales
-// side by side in one SVG, not one panel's worth of rows.
-// Right margin is wide (not the usual 8px) because several channels' p90
-// lands exactly on xMax (saturation is unrecoverable at the boundary), which
-// would otherwise push the range-value label past the panel's edge.
-const IDENT_M = { top: 34, right: 78, bottom: 56, left: 8 };
-const IDENT_ROWH = 58;
-function drawIdentPanel(container, x0, panelW, data, xMin, xMax, ticks, title, truthLabel) {
-  const m = IDENT_M;
-  const pw = panelW - m.left - m.right;
-  const rowH = IDENT_ROWH, ph = rowH * data.length;
-  const scX = v => x0 + m.left + ((v - xMin) / (xMax - xMin)) * pw;
+// ── Chart: Problem, identifiability (saturation and adstock, each its own box) ─
+// Was one bespoke two-panel SVG (drawIdentPanel/drawIdent); Ryan asked for
+// each its own box, so this now reuses the same drawForest/drawForestNarrow
+// every other single-state forest on the page uses, with SATURATION_OPTS/
+// ADSTOCK_OPTS shared with the matching Impact-section paired charts below
+// so the axis scale and tick language stay identical across sections.
+chart('chartProblemSaturation', '0 0 700 210',
+  () => drawForest('chartProblemSaturation', SATURATION_DATA, SATURATION_OPTS),
+  () => drawForestNarrow('chartProblemSaturation', SATURATION_DATA, SATURATION_OPTS));
 
-  container.appendChild(el('text', { x: x0 + panelW / 2, y: 16, 'text-anchor': 'middle', 'font-size': FS.note, 'font-weight': '700', fill: '#374151' }, title));
-
-  for (const v of ticks) {
-    const x = scX(v);
-    container.appendChild(el('line', { x1: x, y1: m.top, x2: x, y2: m.top + ph, stroke: '#e5e7eb', 'stroke-width': 1 }));
-    const anchor = v === ticks[0] ? 'start' : v === ticks[ticks.length - 1] ? 'end' : 'middle';
-    container.appendChild(el('text', { x, y: m.top + ph + 16, 'text-anchor': anchor, 'font-size': FS.axis, fill: '#9ca3af' }, v.toFixed(2)));
-  }
-
-  data.forEach((ch, i) => {
-    const cy = m.top + rowH * i + rowH / 2;
-    container.appendChild(el('text', { x: x0, y: cy - 12, 'text-anchor': 'start', 'font-size': FS.sub, 'font-weight': '700', fill: ch.color }, ch.name));
-    container.appendChild(el('line', { x1: scX(ch.p10), y1: cy, x2: scX(ch.p90), y2: cy, stroke: ch.color, 'stroke-width': 7, 'stroke-linecap': 'round' }));
-    if (ch.point !== undefined) {
-      container.appendChild(el('circle', { cx: scX(ch.point), cy, r: 3.5, fill: '#fff', stroke: ch.color, 'stroke-width': 1.8 }));
-    }
-    if (ch.truth !== undefined) {
-      const tx = scX(ch.truth);
-      container.appendChild(el('line', { x1: tx, y1: cy - rowH * 0.3, x2: tx, y2: cy + rowH * 0.3, stroke: '#111827', 'stroke-width': 1.6, 'stroke-dasharray': '3,2' }));
-    }
-    container.appendChild(el('text', { x: scX(ch.p90) + 8, y: cy + 4, 'font-size': FSN.val, 'font-weight': '700', fill: ch.color }, `${ch.p10.toFixed(2)}–${ch.p90.toFixed(2)}`));
-  });
-
-  container.appendChild(el('text', { x: x0 + panelW / 2, y: m.top + ph + 32, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af' }, truthLabel));
-}
-
-function drawIdent(svgId, wide) {
-  const svg = document.getElementById(svgId);
-  if (!svg) return;
-  const W = wide ? 700 : 340;
-  const panelW = wide ? 340 : W;
-  const panelH = IDENT_M.top + IDENT_ROWH * ADSTOCK_DATA.length + IDENT_M.bottom;
-  const g = el('g', {});
-  // Saturation first, adstock second -- matches _discovery_report.py's own
-  // Diagnostics/Impact section order (saturation before adstock), not the
-  // page's earlier adstock-first layout (Ryan: "double check report order
-  // to match").
-  drawIdentPanel(g, 0, panelW, SATURATION_DATA, 0.2, 1.0, [0.2, 0.6, 1.0], 'Saturation (curvature)', 'Recovered b, range vs. true');
-  if (wide) {
-    drawIdentPanel(g, W - panelW, panelW, ADSTOCK_DATA, 0, 0.7, [0, 0.35, 0.7], 'Adstock (decay)', 'Recovered λ, range vs. true');
-    svg.setAttribute('viewBox', `0 0 700 ${panelH}`);
-  } else {
-    const gap = 24;
-    svg.setAttribute('viewBox', `0 0 340 ${panelH * 2 + gap}`);
-    const g2 = el('g', { transform: `translate(0, ${panelH + gap})` });
-    drawIdentPanel(g2, 0, panelW, ADSTOCK_DATA, 0, 0.7, [0, 0.35, 0.7], 'Adstock (decay)', 'Recovered λ, range vs. true');
-    g.appendChild(g2);
-  }
-  svg.appendChild(g);
-}
-chart('chartProblemIdent', '0 0 700 322', () => drawIdent('chartProblemIdent', true), () => drawIdent('chartProblemIdent', false));
+chart('chartProblemAdstock', '0 0 700 210',
+  () => drawForest('chartProblemAdstock', ADSTOCK_DATA, ADSTOCK_OPTS),
+  () => drawForestNarrow('chartProblemAdstock', ADSTOCK_DATA, ADSTOCK_OPTS));
 
 // ── Chart: Cause (correlated spend time series) ─────────────────────────────
 function drawCause() {
@@ -1452,8 +1416,10 @@ ADSTOCK_IMPACT[1] = { ...ADSTOCK_IMPACT[1], sub: 'true 0.30', before: { p10: 0.1
 ADSTOCK_IMPACT[2] = { ...ADSTOCK_IMPACT[2], sub: 'true 0.10', before: { p10: 0.00, p90: 0.20, point: 0.10 }, after: { p10: 0.05, p90: 0.14, point: 0.09 }, truth: 0.10 };
 ADSTOCK_IMPACT[3] = { ...ADSTOCK_IMPACT[3], sub: 'true 0.20', before: { p10: 0.04, p90: 0.31, point: 0.20 }, after: { p10: 0.13, p90: 0.28, point: 0.21 }, truth: 0.20 };
 
-const SATURATION_IMPACT_OPTS = { xMin: 0, xMax: 1.0, ticks: [0, 0.5, 1.0], fmtVal: v => v.toFixed(2), fmtTick: v => v.toFixed(1), axisLabel: 'Saturation exponent (b)' };
-const ADSTOCK_IMPACT_OPTS = { xMin: 0, xMax: 0.7, ticks: [0, 0.35, 0.7], fmtVal: v => v.toFixed(2), fmtTick: v => v.toFixed(2), axisLabel: 'Adstock decay (lambda)' };
+// Shared with the Problem section's own saturation/adstock forests above,
+// so both sections plot the same two parameters on the same scale.
+const SATURATION_OPTS = { xMin: 0, xMax: 1.0, ticks: [0, 0.5, 1.0], fmtVal: v => v.toFixed(2), fmtTick: v => v.toFixed(1), axisLabel: 'Saturation exponent (b)' };
+const ADSTOCK_OPTS = { xMin: 0, xMax: 0.7, ticks: [0, 0.35, 0.7], fmtVal: v => v.toFixed(2), fmtTick: v => v.toFixed(2), axisLabel: 'Adstock decay (lambda)' };
 
 // Paired before/after forest: two marks per channel row (pale "unphased"
 // above, solid winner-lever below), each with its own point-estimate
@@ -1581,10 +1547,10 @@ function drawVarianceImpact() { drawForestPaired('chartImpactVariance', VARIANCE
 function drawVarianceImpactNarrow() { drawForestPairedNarrow('chartImpactVariance', VARIANCE_IMPACT, REVENUE_OPTS); }
 function drawBiasImpact() { drawForestPaired('chartImpactBias', BIAS_IMPACT, BIAS_OPTS); }
 function drawBiasImpactNarrow() { drawForestPairedNarrow('chartImpactBias', BIAS_IMPACT, BIAS_OPTS_NARROW); }
-function drawSaturationImpact() { drawForestPaired('chartImpactSaturation', SATURATION_IMPACT, SATURATION_IMPACT_OPTS); }
-function drawSaturationImpactNarrow() { drawForestPairedNarrow('chartImpactSaturation', SATURATION_IMPACT, SATURATION_IMPACT_OPTS); }
-function drawAdstockImpact() { drawForestPaired('chartImpactAdstock', ADSTOCK_IMPACT, ADSTOCK_IMPACT_OPTS); }
-function drawAdstockImpactNarrow() { drawForestPairedNarrow('chartImpactAdstock', ADSTOCK_IMPACT, ADSTOCK_IMPACT_OPTS); }
+function drawSaturationImpact() { drawForestPaired('chartImpactSaturation', SATURATION_IMPACT, SATURATION_OPTS); }
+function drawSaturationImpactNarrow() { drawForestPairedNarrow('chartImpactSaturation', SATURATION_IMPACT, SATURATION_OPTS); }
+function drawAdstockImpact() { drawForestPaired('chartImpactAdstock', ADSTOCK_IMPACT, ADSTOCK_OPTS); }
+function drawAdstockImpactNarrow() { drawForestPairedNarrow('chartImpactAdstock', ADSTOCK_IMPACT, ADSTOCK_OPTS); }
 
 
 // ── Chart: Correlation matrix, before vs after phasing ─────────────────────
