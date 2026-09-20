@@ -22,9 +22,9 @@ from how_wrong_is_your_mmm._discovery_report import (
     _svg_multiline,
     _svg_stacked_area,
 )
-from how_wrong_is_your_mmm._phaser import Blackout, Redistribute
+from how_wrong_is_your_mmm._phaser import Blackout, MonthStep, Redistribute
 
-# Small fixtures -- DiscoveryReport sweeps 20 levers x several diagnostics
+# Small fixtures -- DiscoveryReport sweeps 24 levers x several diagnostics
 # each, so tests lean on fast_mode plus a tiny identifiability grid.
 HISTORY_DF = simulate_spend(n_obs=52, correlation=0.6, seed=0, start_date="2020-01-06")
 PLAN_DF = simulate_spend(n_obs=26, correlation=0.6, seed=1, start_date="2021-01-04")
@@ -54,13 +54,28 @@ class TestDefaultLevers:
         assert levers[0][0] == "unphased"
         assert _is_unphased(levers[0][1])
 
-    def test_twenty_candidates(self):
+    def test_twenty_four_candidates(self):
         # unphased + 4 intensities x 3 shapes + 4 Redistribute intensities
-        # + 3 Blackout settings (session 49: widened from a 5-candidate
-        # spot-check to a full 4x2 sweep; session 56: widened again to add
-        # seesaw and Blackout's stronger contiguous settings; the
-        # Redistribute family was added after the 20-loop phasing search).
-        assert len(_default_levers(CHANNELS)) == 20
+        # + 4 MonthStep intensities + 3 Blackout settings (session 49:
+        # widened from a 5-candidate spot-check to a full 4x2 sweep;
+        # session 56: widened again to add seesaw and Blackout's stronger
+        # contiguous settings; the Redistribute and MonthStep families were
+        # added after the phasing search).
+        assert len(_default_levers(CHANNELS)) == 24
+
+    def test_month_step_family_at_same_intensities(self):
+        levers = _default_levers(CHANNELS)
+        month_step = [lv for lv in levers if "month step" in lv[0]]
+        assert [lbl for lbl, *_ in month_step] == [
+            f"+/-{pct}% (month step)" for pct in (20, 40, 60, 80)
+        ]
+        for (_, spec, _, _), pct in zip(
+            month_step, (20.0, 40.0, 60.0, 80.0), strict=True
+        ):
+            assert set(spec) == set(CHANNELS)
+            assert all(isinstance(v, MonthStep) for v in spec.values())
+            assert all(v.step_pct == pct for v in spec.values())
+            assert not _is_unphased(spec)
 
     def test_redistribute_family_at_same_intensities(self):
         levers = _default_levers(CHANNELS)
@@ -458,7 +473,7 @@ class TestConstruction:
 
     def test_default_levers_used_when_not_supplied(self):
         report = make_report()
-        assert len(report.levers_) == 20
+        assert len(report.levers_) == 24
 
     def test_custom_levers_respected(self):
         custom = [("unphased", {ch: 0.0 for ch in CHANNELS}, "uniform", False)]
@@ -1071,11 +1086,11 @@ class TestPinnedStrategyConstruction:
         report = make_report()
         assert report.pinned_label_ is None
         assert report.channel_constraints_ == {}
-        assert len(report.levers_) == 20
+        assert len(report.levers_) == 24
 
     def test_strategy_pct_adds_one_lever_on_top_of_the_default_sweep(self):
         report = make_report(strategy_pct=60.0)
-        assert len(report.levers_) == 21
+        assert len(report.levers_) == 25
         assert report.pinned_label_ == "Pinned: +/-60% (edge, balanced)"
         assert report.levers_[-1][0] == report.pinned_label_
 
@@ -1161,6 +1176,53 @@ class TestPeakWeekMultiple:
         html_out = fit_small(make_report()).to_html()
         assert "<th>Cost</th><th>Peak week</th>" in html_out
         assert re.search(r'<tr data-lever="unphased">.*?<td>1\.0x</td></tr>', html_out)
+
+
+class TestMonthStepInReport:
+    def test_pinned_month_step_becomes_winner_and_is_scored(self):
+        report = fit_small(make_report(strategy_pct=MonthStep(step_pct=40.0)))
+        assert report.pinned_label_ == "Pinned: +/-40% (month step)"
+        assert report.winner_ == report.pinned_label_
+        assert report.winner_schedule_.shape == PLAN_DF.shape
+        # annual total preserved per channel (plan is < 12 months: one block)
+        np.testing.assert_allclose(
+            report.winner_schedule_.sum().to_numpy(),
+            PLAN_DF.sum().to_numpy(),
+            rtol=1e-12,
+        )
+
+    def test_pinned_label(self):
+        assert (
+            _pinned_strategy_label(MonthStep(step_pct=60.0), "edge", True, None)
+            == "Pinned: +/-60% (month step)"
+        )
+
+    def test_pinned_month_step_html_does_not_claim_monthly_totals_unchanged(self):
+        html_out = fit_small(
+            make_report(strategy_pct=MonthStep(step_pct=40.0))
+        ).to_html()
+        assert "monthly totals are identical" not in html_out
+        assert "monthly totals unchanged" not in html_out
+        assert "moves budget between months" in html_out
+        assert "each month is stepped up or down" in html_out
+        assert "recipient month" not in html_out.split("<h2>Phased spend</h2>")[1][:600]
+
+    def test_month_step_channel_constraint_shown(self):
+        report = fit_small(
+            make_report(
+                strategy_pct=60.0,
+                channel_constraints={"meta": MonthStep(step_pct=20.0)},
+            )
+        )
+        assert "+/-20% (month step)</td>" in report.to_html()
+
+    def test_default_sweep_scores_every_month_step_row(self):
+        report = fit_small(make_report())
+        for pct in (20, 40, 60, 80):
+            label = f"+/-{pct}% (month step)"
+            assert label in report.results_
+            assert "scores" in report.results_[label]
+            assert report.schedules_[label].shape == PLAN_DF.shape
 
 
 class TestRedistributeInReport:

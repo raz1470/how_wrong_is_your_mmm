@@ -30,6 +30,7 @@ hand to their media agency, with monthly totals unchanged.
 
 from __future__ import annotations
 
+import functools
 import warnings
 
 import numpy as np
@@ -293,8 +294,74 @@ class Redistribute:
         )
 
 
-DeviationSpec = float | Blackout | Redistribute
-ResolvedSpec = tuple[float, float] | Blackout | Redistribute
+class MonthStep:
+    """Marker for month-level step phasing on a channel.
+
+    Each month, the channel's whole month is scaled by (1 +/- step_pct%),
+    the sign taken from a column of a 12 x 12 Hadamard matrix (its 11
+    non-constant columns are balanced, 6 up / 6 down over a 12-month block,
+    and mutually orthogonal across channels). The weekly shape inside a
+    month is unchanged: no weekly noise and no pauses, so a channel's
+    budget changes at most 12 times a year, at month boundaries, and each
+    level is held for about four weeks (longer than any adstock half-life
+    an internal sweep tested). Which Hadamard row goes to which month, and
+    which column to which channel, is shuffled per seed and per block.
+
+    Unlike Blackout and a symmetric range it changes MONTHLY totals. What
+    is preserved exactly, per channel, is the total over each 12-month
+    block (a tiny rescale restores it after the steps), and so over the
+    plan.
+
+    Blocks are 12 calendar months counted from the plan's first month
+    (same rule as Redistribute: a trailing block of fewer than 6 months is
+    merged into the block before it; a plan shorter than 12 months is one
+    block; a partial first or last month counts as a month). Details:
+
+    - A month shorter than 2 weeks is a partial-month stub: it is left at
+      its plan (multiplier 1) and takes no Hadamard row, but still shares
+      in the block rescale.
+    - A block with more than 12 full months (a merged 13-17 month tail)
+      reuses rows cyclically, so its extra months repeat the first months'
+      signs and the block is only approximately balanced. A block of fewer
+      than 12 full months (a 6-11 month tail, or a stub month at the start)
+      uses that many rows, so its columns are no longer exactly balanced or
+      orthogonal.
+    - Up to 11 MonthStep channels get mutually orthogonal sign columns. Any
+      further channels reuse a column with the rows re-shuffled: still
+      balanced (6 up / 6 down) but no longer orthogonal to the others
+      (correlation of the order of +/-0.3), and a UserWarning says so.
+      Orthogonality is among MonthStep channels only.
+
+    alpha scales the step, so alpha = 0 leaves the plan unchanged.
+
+    Parameters
+    ----------
+    step_pct:
+        Size of the monthly step, in percent of the month's planned spend:
+        every full month is scaled by 1 +/- step_pct/100 before the block
+        rescale. Between 0 and 100 (so spend never goes negative). Default
+        40.0. DiscoveryReport sweeps 20/40/60/80. Cost grows with the step,
+        as do variance and bias gains; a smooth dial, so choosing it is a
+        deployability judgment.
+    """
+
+    def __init__(self, step_pct: float = 40.0) -> None:
+        if not 0.0 <= step_pct <= 100.0:
+            raise ValueError(
+                f"MonthStep step_pct must be between 0 and 100 (inclusive), got "
+                f"{step_pct}."
+            )
+        self.step_pct = float(step_pct)
+
+    def __repr__(self) -> str:
+        return f"MonthStep(step_pct={self.step_pct})"
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, MonthStep) and self.step_pct == other.step_pct
+
+
+DeviationSpec = float | Blackout | Redistribute | MonthStep
+ResolvedSpec = tuple[float, float] | Blackout | Redistribute | MonthStep
 
 
 def _resolve_channel_specs(
@@ -334,7 +401,10 @@ def _resolve_channel_specs(
     - a Redistribute instance: one round-robin blackout run per 12-month
       block, its freed budget moved to one recipient month, plus an edge
       layer on top -- see Redistribute. Moves budget between months (only
-      the 12-month block total is preserved), unlike the other two forms.
+      the 12-month block total is preserved), unlike the first two forms.
+    - a MonthStep instance: each month's whole spend scaled up or down by a
+      Hadamard-orthogonal sign pattern -- see MonthStep. Also moves budget
+      between months (only the 12-month block total is preserved).
 
     A dict can mix all forms per channel, e.g.
     {"tv": 0, "meta": 60, "search": Blackout()} — TV locked, Meta free to
@@ -344,20 +414,20 @@ def _resolve_channel_specs(
     Parameters
     ----------
     max_weekly_deviation_pct:
-        Single float, single Blackout/Redistribute, or
-        dict[channel, float | Blackout | Redistribute].
+        Single float, single Blackout/Redistribute/MonthStep, or
+        dict[channel, float | Blackout | Redistribute | MonthStep].
     channels:
         The channels that must be covered (typically plan_df.columns).
 
     Returns
     -------
-    dict[str, tuple[float, float] | Blackout | Redistribute] with one entry
+    dict[str, tuple[float, float] | Blackout | Redistribute | MonthStep] with one entry
     per channel. Raises ValueError if Redistribute channels disagree on
     dark_weeks or min_recipient_weeks.
     """
 
     def _as_spec(spec: DeviationSpec, ch: str) -> ResolvedSpec:
-        if isinstance(spec, Blackout | Redistribute):
+        if isinstance(spec, Blackout | Redistribute | MonthStep):
             return spec
 
         if isinstance(spec, tuple | list):
@@ -608,6 +678,93 @@ def _redistribute_schedule(
     return out
 
 
+@functools.lru_cache(maxsize=1)
+def _month_step_hadamard() -> np.ndarray:
+    """The 12 x 11 non-constant columns of the order-12 Paley type I
+    Hadamard matrix (q = 11, a prime = 3 mod 4). Columns are +/-1, balanced
+    (each sums to 0) and mutually orthogonal; rows are months."""
+    q = 11
+    residues = {(x * x) % q for x in range(1, q)}
+    chi = np.array([0.0] + [1.0 if a in residues else -1.0 for a in range(1, q)])
+    idx = (np.arange(q)[None, :] - np.arange(q)[:, None]) % q
+    h = np.ones((q + 1, q + 1))
+    h[1:, 1:] = chi[idx] - np.eye(q)
+    return h[:, 1:]
+
+
+_MONTH_STEP_MIN_WEEKS = 2  # months shorter than this are left at plan
+
+
+def _month_step_block(
+    values: np.ndarray,
+    block_labels: np.ndarray,
+    step_fracs: np.ndarray,
+    seed: int,
+) -> np.ndarray:
+    """Month-level Hadamard steps for one block.
+
+    values is (n_block_weeks, n_channels): every column is a MonthStep
+    channel. step_fracs holds each column's step as a fraction (already
+    scaled by alpha). Returns a copy with every full month of each channel
+    scaled by 1 +/- step, then each column rescaled so its block total is
+    what it was (a column that sums to 0 is left alone).
+    """
+    rng = np.random.default_rng(seed)
+    n_channels = values.shape[1]
+    h = _month_step_hadamard()
+    months = list(dict.fromkeys(block_labels.tolist()))
+    full = [m for m in months if (block_labels == m).sum() >= _MONTH_STEP_MIN_WEEKS]
+
+    rows = rng.permutation(12)
+    cols = rng.permutation(11)[:n_channels]
+    month_rows = rows[np.arange(len(full)) % 12]
+    signs = np.empty((len(full), n_channels))
+    signs[:, : len(cols)] = h[np.ix_(month_rows, cols)]
+    if n_channels > 11:
+        warnings.warn(
+            f"MonthStep with {n_channels} channels: only 11 sign columns are "
+            "mutually orthogonal in a 12-month block, so channels beyond the "
+            "11th reuse a column with its rows re-shuffled (still balanced, "
+            "but correlated with the others at roughly +/-0.3).",
+            UserWarning,
+            stacklevel=2,
+        )
+        for j in range(11, n_channels):
+            perm = rng.permutation(12)
+            signs[:, j] = h[perm[np.arange(len(full)) % 12], cols[j % 11]]
+
+    out = values.copy()
+    for mi, m in enumerate(full):
+        sel = block_labels == m
+        out[sel] *= 1.0 + step_fracs * signs[mi]
+
+    before = values.sum(axis=0)
+    after = out.sum(axis=0)
+    factor = np.divide(before, after, out=np.ones_like(before), where=after > 0)
+    return out * factor
+
+
+def _month_step_schedule(
+    spend: np.ndarray,
+    month_labels: np.ndarray,
+    columns: list[int],
+    step_fracs: np.ndarray,
+    seed: int,
+) -> np.ndarray:
+    """Apply _month_step_block to `columns` of spend, one 12-month block at a
+    time (fresh shuffle and seed per block; the block rule is shared with
+    Redistribute, see _redistribute_blocks). Returns a copy."""
+    out = spend.copy()
+    for k, rows in enumerate(_redistribute_blocks(month_labels)):
+        out[np.ix_(rows, columns)] = _month_step_block(
+            spend[np.ix_(rows, columns)],
+            month_labels[rows],
+            step_fracs,
+            seed + 1000 * k,
+        )
+    return out
+
+
 def _generate_phased_schedule(
     spend_df: pd.DataFrame,
     month_labels: np.ndarray,
@@ -644,6 +801,10 @@ def _generate_phased_schedule(
     each month's post-redistribution total, and the per-channel 12-month
     block total is preserved exactly. alpha scales the edge layer; any
     alpha > 0 applies the full redistribution, alpha = 0 changes nothing.
+    MonthStep channels are the same kind of exception: their month-level
+    steps (see MonthStep) run first, once per 12-month block, add no weekly
+    noise, and preserve each channel's block total exactly; alpha scales the
+    step.
 
     Parameters
     ----------
@@ -655,9 +816,10 @@ def _generate_phased_schedule(
         Phasing amplitude in [0, 1].
     max_weekly_deviation_pct:
         Maximum per-channel weekly deviation (%) at alpha=1. A single float
-        (symmetric +/-, applied to every channel), a single Blackout or
-        Redistribute, or a
-        dict[channel, float | Blackout | Redistribute] for per-channel specs — e.g. a
+        (symmetric +/-, applied to every channel), a single Blackout,
+        Redistribute or MonthStep, or a
+        dict[channel, float | Blackout | Redistribute | MonthStep] for
+        per-channel specs — e.g. a
         channel an agency won't let move at all gets 0, and one that
         should be a hard on/off switch gets Blackout(). See
         _resolve_channel_specs.
@@ -726,6 +888,26 @@ def _generate_phased_schedule(
             first.min_recipient_weeks,
             seed,
         )
+    # MonthStep channels: month-level Hadamard steps, also run once over the
+    # whole plan (per 12-month block) before the per-month loop, which then
+    # adds no weekly noise for them. alpha scales the step, so alpha=0 is
+    # the identity here.
+    month_step_cols = [
+        ci for ci, ch in enumerate(channels) if isinstance(channel_specs[ch], MonthStep)
+    ]
+    if month_step_cols:
+        base_arr = _month_step_schedule(
+            base_arr,
+            month_labels,
+            month_step_cols,
+            np.array(
+                [
+                    alpha * channel_specs[channels[ci]].step_pct / 100.0
+                    for ci in month_step_cols
+                ]
+            ),
+            seed,
+        )
     # The edge layer has its own stream, so adding or removing other
     # channels' draws doesn't shift it.
     edge_rng = np.random.default_rng(seed + 10_000)
@@ -739,6 +921,8 @@ def _generate_phased_schedule(
                 raw = _shaped_nudge(
                     edge_rng, n_weeks, alpha * spec.edge_cap_pct / 100.0, "edge", True
                 )
+            elif isinstance(spec, MonthStep):
+                raw = np.zeros(n_weeks)  # the step was applied to base_arr
             elif isinstance(spec, Blackout):
                 p = alpha * spec.prob
                 cap = spec.max_dark_weeks_per_month
@@ -853,10 +1037,16 @@ class BudgetPhaser:
           - a Redistribute instance: one round-robin blackout run per
             12-month block with its freed budget moved to a recipient
             month, plus an edge layer on top -- see Redistribute. Unlike
-            the other forms it moves budget BETWEEN months (annual totals
-            are preserved, monthly totals are not), so
+            Blackout and a float it moves budget BETWEEN months (annual
+            totals are preserved, monthly totals are not), so
             max_monthly_deviation_pct in the results is nonzero for it.
-          - a dict[channel, float | Blackout | Redistribute] mixing them, e.g.
+          - a MonthStep instance: each month's whole spend scaled by
+            1 +/- step_pct/100 with a Hadamard-orthogonal sign pattern --
+            see MonthStep. Like Redistribute it moves budget between
+            months (only 12-month block totals are preserved), so
+            max_monthly_deviation_pct is nonzero for it too.
+          - a dict[channel, float | Blackout | Redistribute | MonthStep]
+            mixing them, e.g.
             {"tv": 0, "meta": 60, "search": Blackout()} for an agency that
             won't move TV at all, allows Meta +/-60% either way, and wants
             Search either at plan or fully dark, nothing in between.
