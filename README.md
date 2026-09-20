@@ -20,7 +20,7 @@ This chart shows the impact of the phasing algorithm: the estimated revenue rang
 
 **Part 1 — Diagnose.** Simulate many plausible histories of your market and measure how much your marginal-return estimates swing on three fronts: variance (how much the estimate itself moves), bias (how far a plausible unobserved demand driver could push it), and identifiability (whether adstock and saturation come back as anything more than a guess). (The width of the variance range is what matters; where it's centred depends entirely on the marginal return you assume, and there's no universal default — see Quick start below.)
 
-**Part 2 — Phase.** Recommend a weekly spend schedule that breaks the correlation between channels while keeping monthly totals exactly the same. Choose a continuous nudge to each week's split, or Blackout: a harder on/off switch that takes a channel fully dark some weeks and makes it up on the weeks it stays on. Get the overall scale of your marginal returns wrong but the channels' proportions right, and the percentage reduction phasing buys you barely moves — only the absolute £ figures above shift. Get the *proportions between channels* wrong, though, and the reduction can move too: it changes which channel looks least identified, which changes which phasing intensity gets recommended for it.
+**Part 2 — Phase.** Recommend a weekly spend schedule that breaks the correlation between channels while keeping monthly totals exactly the same. Choose a continuous nudge to each week's split, or Blackout: a harder on/off switch that takes a channel fully dark some weeks and makes it up on the weeks it stays on. A third option, Redistribute, blacks each channel out for a few consecutive weeks in a round-robin month, moves that budget into one recipient month, and layers a light edge nudge on top: it keeps each channel's annual total exactly, but (unlike the other two) moves budget between months. Get the overall scale of your marginal returns wrong but the channels' proportions right, and the percentage reduction phasing buys you barely moves — only the absolute £ figures above shift. Get the *proportions between channels* wrong, though, and the reduction can move too: it changes which channel looks least identified, which changes which phasing intensity gets recommended for it.
 
 **Part 3 — Retrain.** Refit your MMM on the phased data. The de-correlated spend does the work: marginal-return estimates come back measurably tighter on all three fronts, without waiting years for it to accumulate.
 
@@ -32,7 +32,7 @@ This chart shows the impact of the phasing algorithm: the estimated revenue rang
 An overview of how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.
 
 [**API Reference**](https://raz1470.github.io/how_wrong_is_your_mmm/api/)
-Full class and function docs for `CollinearityDiagnostic`, `IdentifiabilityDiagnostic`, `BudgetPhaser`, `Blackout`, and `DiscoveryReport`.
+Full class and function docs for `CollinearityDiagnostic`, `IdentifiabilityDiagnostic`, `BudgetPhaser`, `Blackout`, `Redistribute`, and `DiscoveryReport`.
 
 [**Example report**](https://raz1470.github.io/how_wrong_is_your_mmm/example-report.html)
 A real example report, viewable end to end — built on simulated data, but the exact HTML `to_html()` produces for a client.
@@ -144,7 +144,7 @@ always supply your own values.
 | [`02_channel_scaling`](notebooks/02_channel_scaling.ipynb) | Sweeps channel count (3 to 20) and spend correlation to check the fix holds at realistic scale, not just the 4-channel demo |
 | [`03_time_to_benefit`](notebooks/03_time_to_benefit.ipynb) | How many weeks of phasing it takes to meaningfully reduce marginal-return uncertainty, and how that depends on starting correlation and which lever you use |
 | [`04_adstock_threat`](notebooks/04_adstock_threat.ipynb) | Checks whether phasing's bias reduction survives real carryover (adstock), across four demand-process shapes |
-| [`05_strategy_comparison`](notebooks/05_strategy_comparison.ipynb) | Compares five phasing shapes/intensities on variance, bias, identifiability and cost — the same criteria the live report scores every candidate on |
+| [`05_strategy_comparison`](notebooks/05_strategy_comparison.ipynb) | Compares `DiscoveryReport`'s default phasing shapes/intensities (20 candidates as of the Redistribute family; the committed notebook output predates it and still shows 16 until it is re-run) on variance, bias, identifiability and cost — the same criteria the live report scores every candidate on |
 
 ---
 

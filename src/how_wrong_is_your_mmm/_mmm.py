@@ -3,8 +3,16 @@
 Fits sales ~ intercept + channel_1 + channel_2 + ... using OLS and returns
 estimated channel marginal returns (£ revenue per £ spend, a.k.a. mROAS --
 NOT economic elasticities, since the model is linear in raw £ spend rather
-than log-log). Works for any number of channels. No adstock, no saturation
-— placeholder for PyMC-Marketing in a later phase.
+than log-log). Works for any number of channels.
+
+This function itself never applies adstock or saturation -- callers that
+need curvature (CollinearityDiagnostic, IdentifiabilityDiagnostic) transform
+spend_df through their own supplied saturation/adstock first (see
+_curvature_transform) and convert the resulting coefficient back to a
+marginal return afterwards. That is the correctly-specified fit as of
+session 46, not a placeholder: this package diagnoses a client-supplied MMM
+rather than fitting curvature itself, so there is no later-phase engine
+swap pending here.
 """
 
 import numpy as np
