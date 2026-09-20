@@ -192,8 +192,109 @@ class Blackout:
         )
 
 
-DeviationSpec = float | Blackout
-ResolvedSpec = tuple[float, float] | Blackout
+class Redistribute:
+    """Marker for redistribute-mode phasing on a channel.
+
+    Round-robin blackout, a recipient month, then a light edge layer:
+
+    1. Each 12-month block of the plan (see the multi-year note below) gives
+       every Redistribute channel ONE blackout run of ``dark_weeks``
+       consecutive weeks, in a month assigned round-robin across channels
+       (the assignment order is shuffled per seed), so two channels only
+       share a blackout month once there are more channels than eligible
+       months. A month is eligible to host the blackout if it is longer
+       than ``dark_weeks`` weeks (so at least one week stays on).
+    2. The budget those dark weeks freed is moved, proportionally to that
+       channel's own weekly spend, into ONE recipient month, also assigned
+       round-robin. Recipient months must be at least ``min_recipient_weeks``
+       weeks long: a short partial month would have to absorb the whole
+       top-up in one or two weeks (an internal loop measured worst-case
+       single-week spikes of 4.1x plan with a 2-week floor vs 3.0x with a
+       4-week floor). Even-split redistribution was tested and is worse.
+    3. The existing "edge" nudge shape with balanced signs
+       (+/-``edge_cap_pct`` on every week, equal numbers up and down) is
+       applied on top, preserving each month's post-redistribution total.
+
+    Unlike Blackout and a symmetric range, monthly totals are NOT preserved
+    by step 2: the blackout month loses the freed budget and the recipient
+    month gains it. What is preserved exactly, per channel, is the total
+    over each 12-month block (and so over the plan), and every month other
+    than that channel's blackout and recipient months.
+
+    Multi-year plans are phased one 12-month block at a time (a fresh
+    round-robin per block), not as one giant round-robin. Blocks are counted
+    in calendar months from the plan's first month, so a plan that starts
+    mid-month has a partial first month inside block 1. A trailing block of
+    fewer than 6 months is merged into the block before it (a plan of
+    13-17 months is a single block); a plan shorter than 12 months is one
+    block. In a block where no month is eligible to host a blackout, or
+    where the only eligible recipient month is the blackout month itself,
+    the channel is left at its plan for that block (the edge layer still
+    applies).
+
+    Every Redistribute channel in one specification must share the same
+    ``dark_weeks`` and ``min_recipient_weeks`` (they define one shared
+    round-robin); ``edge_cap_pct`` may differ per channel.
+
+    Parameters
+    ----------
+    dark_weeks:
+        Consecutive weeks blacked out per channel per block. Default 4.
+    min_recipient_weeks:
+        Minimum length, in weeks, of a month eligible to receive the freed
+        budget. Default 4.
+    edge_cap_pct:
+        Intensity of the edge layer: every week is nudged by exactly
+        +/-``edge_cap_pct``% of its (post-redistribution) plan before the
+        monthly rescale. Same meaning as a bare float spec under
+        ``nudge_shape="edge"``, ``balance_signs=True``. Default 15.0, the
+        value the phasing search settled on; DiscoveryReport sweeps
+        20/40/60/80. A smooth rigor / cost / spike dial with no optimum, so
+        picking it is a deployability judgment.
+    """
+
+    def __init__(
+        self,
+        dark_weeks: int = 4,
+        min_recipient_weeks: int = 4,
+        edge_cap_pct: float = 15.0,
+    ) -> None:
+        if int(dark_weeks) != dark_weeks or dark_weeks < 1:
+            raise ValueError(
+                f"Redistribute dark_weeks must be an integer >= 1, got {dark_weeks}."
+            )
+        if int(min_recipient_weeks) != min_recipient_weeks or min_recipient_weeks < 1:
+            raise ValueError(
+                "Redistribute min_recipient_weeks must be an integer >= 1, got "
+                f"{min_recipient_weeks}."
+            )
+        if not 0.0 <= edge_cap_pct <= 100.0:
+            raise ValueError(
+                "Redistribute edge_cap_pct must be between 0 and 100 "
+                f"(inclusive), got {edge_cap_pct}."
+            )
+        self.dark_weeks = int(dark_weeks)
+        self.min_recipient_weeks = int(min_recipient_weeks)
+        self.edge_cap_pct = float(edge_cap_pct)
+
+    def __repr__(self) -> str:
+        return (
+            f"Redistribute(dark_weeks={self.dark_weeks}, "
+            f"min_recipient_weeks={self.min_recipient_weeks}, "
+            f"edge_cap_pct={self.edge_cap_pct})"
+        )
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, Redistribute)
+            and self.dark_weeks == other.dark_weeks
+            and self.min_recipient_weeks == other.min_recipient_weeks
+            and self.edge_cap_pct == other.edge_cap_pct
+        )
+
+
+DeviationSpec = float | Blackout | Redistribute
+ResolvedSpec = tuple[float, float] | Blackout | Redistribute
 
 
 def _resolve_channel_specs(
@@ -230,8 +331,12 @@ def _resolve_channel_specs(
       compatible with the original single-number-for-everyone signature.
     - a Blackout instance: binary per-week on/off instead of a continuous
       range.
+    - a Redistribute instance: one round-robin blackout run per 12-month
+      block, its freed budget moved to one recipient month, plus an edge
+      layer on top -- see Redistribute. Moves budget between months (only
+      the 12-month block total is preserved), unlike the other two forms.
 
-    A dict can mix both forms per channel, e.g.
+    A dict can mix all forms per channel, e.g.
     {"tv": 0, "meta": 60, "search": Blackout()} — TV locked, Meta free to
     move +/-60% either way, Search either at its original plan or fully
     dark in any given week.
@@ -239,17 +344,20 @@ def _resolve_channel_specs(
     Parameters
     ----------
     max_weekly_deviation_pct:
-        Single float, single Blackout, or dict[channel, float | Blackout].
+        Single float, single Blackout/Redistribute, or
+        dict[channel, float | Blackout | Redistribute].
     channels:
         The channels that must be covered (typically plan_df.columns).
 
     Returns
     -------
-    dict[str, tuple[float, float] | Blackout] with one entry per channel.
+    dict[str, tuple[float, float] | Blackout | Redistribute] with one entry
+    per channel. Raises ValueError if Redistribute channels disagree on
+    dark_weeks or min_recipient_weeks.
     """
 
     def _as_spec(spec: DeviationSpec, ch: str) -> ResolvedSpec:
-        if isinstance(spec, Blackout):
+        if isinstance(spec, Blackout | Redistribute):
             return spec
 
         if isinstance(spec, tuple | list):
@@ -275,9 +383,25 @@ def _resolve_channel_specs(
             raise ValueError(
                 f"max_weekly_deviation_pct dict is missing channels: {sorted(missing)}"
             )
-        return {ch: _as_spec(max_weekly_deviation_pct[ch], ch) for ch in channels}
+        resolved = {ch: _as_spec(max_weekly_deviation_pct[ch], ch) for ch in channels}
+    else:
+        resolved = {ch: _as_spec(max_weekly_deviation_pct, ch) for ch in channels}
 
-    return {ch: _as_spec(max_weekly_deviation_pct, ch) for ch in channels}
+    # Redistribute channels share ONE round-robin (blackout months and
+    # recipient months are assigned across them), so the parameters that
+    # define month eligibility must agree.
+    shared = {
+        (spec.dark_weeks, spec.min_recipient_weeks)
+        for spec in resolved.values()
+        if isinstance(spec, Redistribute)
+    }
+    if len(shared) > 1:
+        raise ValueError(
+            "Every Redistribute channel must share the same dark_weeks and "
+            "min_recipient_weeks (they define one shared round-robin); got "
+            f"{sorted(shared)}. edge_cap_pct may differ per channel."
+        )
+    return resolved
 
 
 NUDGE_SHAPES = ("uniform", "annulus", "edge", "seesaw")
@@ -380,6 +504,110 @@ def _shaped_nudge(
     return magnitude * signs
 
 
+_REDISTRIBUTE_BLOCK_MONTHS = 12
+_REDISTRIBUTE_MIN_TAIL_MONTHS = 6
+
+
+def _redistribute_blocks(month_labels: np.ndarray) -> list[np.ndarray]:
+    """Row indices of each 12-month block of the plan, in order.
+
+    Blocks count calendar months from the plan's first month (a partial
+    first or last month counts as a month). A trailing block shorter than
+    _REDISTRIBUTE_MIN_TAIL_MONTHS is merged into the block before it, so a
+    lone stub month is never phased on its own. See Redistribute.
+    """
+    months = list(dict.fromkeys(month_labels.tolist()))
+    groups = [
+        months[i : i + _REDISTRIBUTE_BLOCK_MONTHS]
+        for i in range(0, len(months), _REDISTRIBUTE_BLOCK_MONTHS)
+    ]
+    if len(groups) > 1 and len(groups[-1]) < _REDISTRIBUTE_MIN_TAIL_MONTHS:
+        groups[-2].extend(groups.pop())
+    return [np.where(np.isin(month_labels, g))[0] for g in groups]
+
+
+def _redistribute_block(
+    values: np.ndarray,
+    block_labels: np.ndarray,
+    dark_weeks: int,
+    min_recipient_weeks: int,
+    seed: int,
+) -> np.ndarray:
+    """Round-robin blackout + recipient month for one block.
+
+    values is (n_block_weeks, n_channels): every column is a Redistribute
+    channel, in round-robin order. Returns a copy with each channel's
+    blackout run zeroed and the freed budget added, proportionally to the
+    channel's own weekly spend, to its recipient month. Each column's total
+    is preserved (up to floating-point rounding).
+    """
+    rng = np.random.default_rng(seed)
+    out = values.copy()
+    months = list(dict.fromkeys(block_labels.tolist()))
+    month_rows = {m: np.where(block_labels == m)[0] for m in months}
+
+    blackout_months = [m for m in months if len(month_rows[m]) > dark_weeks]
+    recipient_months = [m for m in months if len(month_rows[m]) >= min_recipient_weeks]
+    if not blackout_months or not recipient_months:
+        return out
+
+    # Round-robin, with the assignment order shuffled once per seed so the
+    # channel -> month mapping isn't the same on every seed.
+    bo_order = rng.permutation(len(blackout_months))
+    re_order = rng.permutation(len(recipient_months))
+
+    for ci in range(values.shape[1]):
+        blackout_month = blackout_months[bo_order[ci % len(blackout_months)]]
+        # Offset the recipient assignment so it doesn't just mirror the
+        # blackout month's round-robin position.
+        pool = [m for m in recipient_months if m != blackout_month]
+        if not pool:
+            continue  # the only eligible recipient is the blackout month
+        recipient_month = pool[
+            re_order[(ci + len(recipient_months) // 2) % len(recipient_months)]
+            % len(pool)
+        ]
+
+        b_rows = month_rows[blackout_month]
+        n_dark = min(dark_weeks, len(b_rows) - 1)
+        start = rng.integers(0, len(b_rows) - n_dark + 1)
+        dark_rows = b_rows[start : start + n_dark]
+
+        freed = values[dark_rows, ci].sum()
+        out[dark_rows, ci] = 0.0
+
+        r_rows = month_rows[recipient_month]
+        r_weeks = values[r_rows, ci]
+        r_total = r_weeks.sum()
+        if r_total > 0:
+            out[r_rows, ci] = r_weeks + freed * (r_weeks / r_total)
+        else:
+            out[r_rows, ci] = r_weeks + freed / len(r_rows)
+    return out
+
+
+def _redistribute_schedule(
+    spend: np.ndarray,
+    month_labels: np.ndarray,
+    columns: list[int],
+    dark_weeks: int,
+    min_recipient_weeks: int,
+    seed: int,
+) -> np.ndarray:
+    """Apply _redistribute_block to `columns` of spend, one 12-month block
+    at a time (a fresh round-robin and seed per block). Returns a copy."""
+    out = spend.copy()
+    for k, rows in enumerate(_redistribute_blocks(month_labels)):
+        out[np.ix_(rows, columns)] = _redistribute_block(
+            spend[np.ix_(rows, columns)],
+            month_labels[rows],
+            dark_weeks,
+            min_recipient_weeks,
+            seed + 1000 * k,
+        )
+    return out
+
+
 def _generate_phased_schedule(
     spend_df: pd.DataFrame,
     month_labels: np.ndarray,
@@ -409,18 +637,27 @@ def _generate_phased_schedule(
        there.
     3. Apply to original spend.
 
+    Redistribute channels are the exception to "monthly total preserved":
+    first, a cross-month round-robin (see Redistribute) moves each channel's
+    blackout budget into a recipient month, once per 12-month block; steps
+    1-3 then run on that redistributed plan, so the edge layer preserves
+    each month's post-redistribution total, and the per-channel 12-month
+    block total is preserved exactly. alpha scales the edge layer; any
+    alpha > 0 applies the full redistribution, alpha = 0 changes nothing.
+
     Parameters
     ----------
     spend_df:
-        NxK DataFrame with DatetimeIndex (the plan year).
+        NxK DataFrame with DatetimeIndex (the plan year, or several years).
     month_labels:
         Array of Period labels (one per week), from _get_month_labels.
     alpha:
         Phasing amplitude in [0, 1].
     max_weekly_deviation_pct:
         Maximum per-channel weekly deviation (%) at alpha=1. A single float
-        (symmetric +/-, applied to every channel), a single Blackout, or a
-        dict[channel, float | Blackout] for per-channel specs — e.g. a
+        (symmetric +/-, applied to every channel), a single Blackout or
+        Redistribute, or a
+        dict[channel, float | Blackout | Redistribute] for per-channel specs — e.g. a
         channel an agency won't let move at all gets 0, and one that
         should be a hard on/off switch gets Blackout(). See
         _resolve_channel_specs.
@@ -468,12 +705,41 @@ def _generate_phased_schedule(
     channel_specs = _resolve_channel_specs(max_weekly_deviation_pct, channels)
     new_spend = spend_df.to_numpy().copy().astype(float)
 
+    # Redistribute channels: the cross-month round-robin runs first, over
+    # the whole plan (per 12-month block), and the per-month loop below then
+    # phases each month around the REDISTRIBUTED weeks -- so the edge layer
+    # preserves each month's post-redistribution total. alpha=0 is "no
+    # change" for every spec, so it skips the redistribution too.
+    base_arr = new_spend.copy()
+    redistribute_cols = [
+        ci
+        for ci, ch in enumerate(channels)
+        if isinstance(channel_specs[ch], Redistribute)
+    ]
+    if redistribute_cols and alpha > 0:
+        first = channel_specs[channels[redistribute_cols[0]]]
+        base_arr = _redistribute_schedule(
+            base_arr,
+            month_labels,
+            redistribute_cols,
+            first.dark_weeks,
+            first.min_recipient_weeks,
+            seed,
+        )
+    # The edge layer has its own stream, so adding or removing other
+    # channels' draws doesn't shift it.
+    edge_rng = np.random.default_rng(seed + 10_000)
+
     for month in np.unique(month_labels):
         mask = np.where(month_labels == month)[0]
         n_weeks = len(mask)
         for ci, ch in enumerate(channels):
             spec = channel_specs[ch]
-            if isinstance(spec, Blackout):
+            if isinstance(spec, Redistribute):
+                raw = _shaped_nudge(
+                    edge_rng, n_weeks, alpha * spec.edge_cap_pct / 100.0, "edge", True
+                )
+            elif isinstance(spec, Blackout):
                 p = alpha * spec.prob
                 cap = spec.max_dark_weeks_per_month
                 dark = np.zeros(n_weeks, dtype=bool)
@@ -522,7 +788,7 @@ def _generate_phased_schedule(
                         rng, n_weeks, high_dev, nudge_shape, balance_signs
                     )
 
-            orig_weeks = spend_df.iloc[mask, ci].to_numpy()
+            orig_weeks = base_arr[mask, ci]
             monthly_total = orig_weeks.sum()
             new_weeks = orig_weeks * (1.0 + raw)
             # rescale to preserve monthly total exactly
@@ -584,7 +850,13 @@ class BudgetPhaser:
           - a Blackout instance: a hard per-week (or, with
             max_dark_weeks_per_month, per-month-capped) on/off switch (0%
             or 100% of plan) instead of a continuous range — see Blackout.
-          - a dict[channel, float | Blackout] mixing both, e.g.
+          - a Redistribute instance: one round-robin blackout run per
+            12-month block with its freed budget moved to a recipient
+            month, plus an edge layer on top -- see Redistribute. Unlike
+            the other forms it moves budget BETWEEN months (annual totals
+            are preserved, monthly totals are not), so
+            max_monthly_deviation_pct in the results is nonzero for it.
+          - a dict[channel, float | Blackout | Redistribute] mixing them, e.g.
             {"tv": 0, "meta": 60, "search": Blackout()} for an agency that
             won't move TV at all, allows Meta +/-60% either way, and wants
             Search either at plan or fully dark, nothing in between.

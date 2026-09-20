@@ -14,6 +14,7 @@ from how_wrong_is_your_mmm._discovery_report import (
     _is_unphased,
     _lighten_hex,
     _nice_axis_bounds,
+    _peak_week_multiple,
     _pinned_strategy_label,
     _safe_improvement,
     _svg_dotplot,
@@ -21,9 +22,9 @@ from how_wrong_is_your_mmm._discovery_report import (
     _svg_multiline,
     _svg_stacked_area,
 )
-from how_wrong_is_your_mmm._phaser import Blackout
+from how_wrong_is_your_mmm._phaser import Blackout, Redistribute
 
-# Small fixtures -- DiscoveryReport sweeps 16 levers x several diagnostics
+# Small fixtures -- DiscoveryReport sweeps 20 levers x several diagnostics
 # each, so tests lean on fast_mode plus a tiny identifiability grid.
 HISTORY_DF = simulate_spend(n_obs=52, correlation=0.6, seed=0, start_date="2020-01-06")
 PLAN_DF = simulate_spend(n_obs=26, correlation=0.6, seed=1, start_date="2021-01-04")
@@ -53,12 +54,32 @@ class TestDefaultLevers:
         assert levers[0][0] == "unphased"
         assert _is_unphased(levers[0][1])
 
-    def test_sixteen_candidates(self):
-        # unphased + 4 intensities x 3 shapes + 3 Blackout settings
-        # (session 49: widened from a 5-candidate spot-check to a full
-        # 4x2 sweep; session 56: widened again to add seesaw and
-        # Blackout's stronger contiguous settings -- see SCOPE.md item 7).
-        assert len(_default_levers(CHANNELS)) == 16
+    def test_twenty_candidates(self):
+        # unphased + 4 intensities x 3 shapes + 4 Redistribute intensities
+        # + 3 Blackout settings (session 49: widened from a 5-candidate
+        # spot-check to a full 4x2 sweep; session 56: widened again to add
+        # seesaw and Blackout's stronger contiguous settings; the
+        # Redistribute family was added after the 20-loop phasing search).
+        assert len(_default_levers(CHANNELS)) == 20
+
+    def test_redistribute_family_at_same_intensities(self):
+        levers = _default_levers(CHANNELS)
+        redistribute = [lv for lv in levers if "redistribute" in lv[0]]
+        assert [lbl for lbl, *_ in redistribute] == [
+            f"+/-{pct}% (redistribute + edge)" for pct in (20, 40, 60, 80)
+        ]
+        for (_, spec, nudge_shape, balanced), pct in zip(
+            redistribute, (20.0, 40.0, 60.0, 80.0), strict=True
+        ):
+            assert set(spec) == set(CHANNELS)
+            assert all(isinstance(v, Redistribute) for v in spec.values())
+            assert all(v.edge_cap_pct == pct for v in spec.values())
+            assert (nudge_shape, balanced) == ("edge", True)
+            assert not _is_unphased(spec)
+
+    def test_labels_are_unique(self):
+        labels = [label for label, *_ in _default_levers(CHANNELS)]
+        assert len(labels) == len(set(labels))
 
     def test_every_intensity_gets_all_shapes(self):
         levers = _default_levers(CHANNELS)
@@ -437,7 +458,7 @@ class TestConstruction:
 
     def test_default_levers_used_when_not_supplied(self):
         report = make_report()
-        assert len(report.levers_) == 16
+        assert len(report.levers_) == 20
 
     def test_custom_levers_respected(self):
         custom = [("unphased", {ch: 0.0 for ch in CHANNELS}, "uniform", False)]
@@ -1005,7 +1026,7 @@ class TestToHtml:
         # rendered positive.
         row_match = re.search(
             rf'data-lever="{re.escape(report.winner_)}"[^>]*>.*?'
-            rf"<td>(-?[\d.]+)%</td></tr>",
+            rf"<td>(-?[\d.]+)%</td><td>[\d.]+x</td></tr>",
             appendix_block,
         )
         winner_cost_pct = float(row_match.group(1))
@@ -1024,6 +1045,12 @@ class TestPinnedStrategyLabel:
     def test_blackout_strategy(self):
         label = _pinned_strategy_label(Blackout(), "edge", True, None)
         assert label == "Pinned: Blackout"
+
+    def test_redistribute_strategy(self):
+        label = _pinned_strategy_label(
+            Redistribute(edge_cap_pct=40.0), "edge", True, None
+        )
+        assert label == "Pinned: +/-40% (redistribute + edge)"
 
     def test_channel_overrides_appended_singular(self):
         label = _pinned_strategy_label(60.0, "edge", True, {"meta": 20.0})
@@ -1044,11 +1071,11 @@ class TestPinnedStrategyConstruction:
         report = make_report()
         assert report.pinned_label_ is None
         assert report.channel_constraints_ == {}
-        assert len(report.levers_) == 16
+        assert len(report.levers_) == 20
 
     def test_strategy_pct_adds_one_lever_on_top_of_the_default_sweep(self):
         report = make_report(strategy_pct=60.0)
-        assert len(report.levers_) == 17
+        assert len(report.levers_) == 21
         assert report.pinned_label_ == "Pinned: +/-60% (edge, balanced)"
         assert report.levers_[-1][0] == report.pinned_label_
 
@@ -1108,6 +1135,76 @@ class TestPinnedStrategyFit:
         report = fit_small(make_report(strategy_pct=60.0))
         assert report.pinned_label_ in report.results_
         assert "scores" in report.results_[report.pinned_label_]
+
+
+class TestPeakWeekMultiple:
+    def test_unchanged_schedule_is_one(self):
+        assert _peak_week_multiple(PLAN_DF, PLAN_DF) == 1.0
+
+    def test_largest_ratio_across_channels(self):
+        sched = PLAN_DF.copy()
+        sched.iloc[3, 1] = PLAN_DF.iloc[3, 1] * 2.5
+        sched.iloc[7, 0] = PLAN_DF.iloc[7, 0] * 1.5
+        assert _peak_week_multiple(PLAN_DF, sched) == pytest.approx(2.5)
+
+    def test_reductions_alone_floor_at_one(self):
+        assert _peak_week_multiple(PLAN_DF, PLAN_DF * 0.5) == 1.0
+
+    def test_zero_planned_weeks_skipped(self):
+        plan = PLAN_DF.copy()
+        plan.iloc[0, 0] = 0.0
+        sched = plan.copy()
+        sched.iloc[0, 0] = 999.0
+        assert _peak_week_multiple(plan, sched) == 1.0
+
+    def test_impact_table_has_peak_week_column_and_unphased_is_1x(self):
+        html_out = fit_small(make_report()).to_html()
+        assert "<th>Cost</th><th>Peak week</th>" in html_out
+        assert re.search(r'<tr data-lever="unphased">.*?<td>1\.0x</td></tr>', html_out)
+
+
+class TestRedistributeInReport:
+    def test_pinned_redistribute_becomes_winner_and_is_scored(self):
+        report = fit_small(make_report(strategy_pct=Redistribute(edge_cap_pct=40.0)))
+        assert report.pinned_label_ == "Pinned: +/-40% (redistribute + edge)"
+        assert report.winner_ == report.pinned_label_
+        assert report.winner_schedule_.shape == PLAN_DF.shape
+        # annual total preserved per channel (plan is < 12 months: one block)
+        np.testing.assert_allclose(
+            report.winner_schedule_.sum().to_numpy(),
+            PLAN_DF.sum().to_numpy(),
+            rtol=1e-12,
+        )
+
+    def test_pinned_redistribute_html_does_not_claim_monthly_totals_unchanged(self):
+        report = fit_small(make_report(strategy_pct=Redistribute(edge_cap_pct=40.0)))
+        html_out = report.to_html()
+        assert "monthly totals are identical" not in html_out
+        assert "monthly totals unchanged" not in html_out
+        assert "moves budget between months" in html_out
+
+    def test_float_strategy_html_still_claims_monthly_totals_unchanged(self):
+        html_out = fit_small(make_report(strategy_pct=60.0)).to_html()
+        assert "monthly totals are identical" in html_out
+        assert "monthly totals unchanged" in html_out
+
+    def test_redistribute_channel_constraint_shown(self):
+        report = fit_small(
+            make_report(
+                strategy_pct=60.0,
+                channel_constraints={"meta": Redistribute(edge_cap_pct=20.0)},
+            )
+        )
+        html_out = report.to_html()
+        assert "+/-20% (redistribute + edge)</td>" in html_out
+
+    def test_default_sweep_scores_every_redistribute_row(self):
+        report = fit_small(make_report())
+        for pct in (20, 40, 60, 80):
+            label = f"+/-{pct}% (redistribute + edge)"
+            assert label in report.results_
+            assert "scores" in report.results_[label]
+            assert report.schedules_[label].shape == PLAN_DF.shape
 
 
 class TestScheduleCsv:

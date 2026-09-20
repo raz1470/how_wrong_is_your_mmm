@@ -97,6 +97,7 @@ from how_wrong_is_your_mmm._identifiability import (
 )
 from how_wrong_is_your_mmm._phaser import (
     Blackout,
+    Redistribute,
     _generate_phased_schedule,
     _get_month_labels,
 )
@@ -167,12 +168,16 @@ def _channel_colors(channels: list[str]) -> dict[str, str]:
 def _default_levers(channels: list[str]) -> list[tuple[str, dict, str, bool]]:
     """The full sweep: unphased, then every +/-20/40/60/80% intensity
     split by nudge shape (uniform, unbalanced -- vs edge, balanced -- vs
-    seesaw, alternating), then three contiguous-Blackout settings spanning
-    the cost/rigor dial session 56 found (dark=1, the pre-session-56
-    no-op, through dark=4/prob=1.0, session 56's strongest identifiability
-    result). 16 candidates total (session 49: widened from a 5-candidate
-    spot-check to a full 4-intensity x 2-shape sweep; session 56: widened
-    again from 10 to add seesaw and Blackout's stronger settings)."""
+    seesaw, alternating), then the Redistribute family (round-robin
+    blackout, freed budget moved to a recipient month, edge layer on top)
+    at the same four intensities, then three contiguous-Blackout settings
+    spanning the cost/rigor dial session 56 found (dark=1, the
+    pre-session-56 no-op, through dark=4/prob=1.0, session 56's strongest
+    identifiability result). 20 candidates total (session 49: widened from
+    a 5-candidate spot-check to a full 4-intensity x 2-shape sweep;
+    session 56: widened again from 10 to add seesaw and Blackout's
+    stronger settings; the Redistribute rows came out of the 20-loop
+    phasing search, see tools/scratch/phasing_strategy_loop.md)."""
 
     def all_channels(nominal: float) -> dict[str, float]:
         return {ch: nominal for ch in channels}
@@ -186,6 +191,18 @@ def _default_levers(channels: list[str]) -> list[tuple[str, dict, str, bool]]:
             (f"+/-{pct:.0f}% (edge, balanced)", all_channels(pct), "edge", True)
         )
         levers.append((f"+/-{pct:.0f}% (seesaw)", all_channels(pct), "seesaw", False))
+    # Redistribute family: same four intensities as uniform/edge/seesaw so
+    # rows compare like-for-like. The edge layer is built into Redistribute
+    # (always edge, balanced), so nudge_shape/balance_signs here just say so.
+    for pct in (20.0, 40.0, 60.0, 80.0):
+        levers.append(
+            (
+                f"+/-{pct:.0f}% (redistribute + edge)",
+                {ch: Redistribute(edge_cap_pct=pct) for ch in channels},
+                "edge",
+                True,
+            )
+        )
     for label, prob, dark in (
         ("Blackout (dark=1)", 1.0, 1),
         ("Blackout (dark=3, prob=0.8)", 0.8, 3),
@@ -205,15 +222,35 @@ def _default_levers(channels: list[str]) -> list[tuple[str, dict, str, bool]]:
     return levers
 
 
+def _moves_budget_between_months(spec: dict) -> bool:
+    """True if any channel's spec (Redistribute) shifts budget between
+    months -- every other spec preserves each month's total exactly."""
+    return any(isinstance(v, Redistribute) for v in spec.values())
+
+
+def _peak_week_multiple(plan_df: pd.DataFrame, schedule: pd.DataFrame) -> float:
+    """Largest single-week spend in `schedule`, as a multiple of that same
+    week's as-supplied plan, across every channel (1.0 = no week is ever
+    above plan). The deployability read on a strategy: a strategy whose
+    peak week is 4x plan needs a media buyer to quadruple one week's
+    spend. Weeks with zero planned spend are skipped."""
+    plan = plan_df.to_numpy(dtype=float)
+    sched = schedule.to_numpy(dtype=float)
+    planned = plan > 0
+    if not planned.any():
+        return 1.0
+    return float(max(1.0, (sched[planned] / plan[planned]).max()))
+
+
 def _is_unphased(spec: dict) -> bool:
     return all(isinstance(v, float) and v == 0.0 for v in spec.values())
 
 
 def _pinned_strategy_label(
-    strategy_pct: float | Blackout,
+    strategy_pct: float | Blackout | Redistribute,
     nudge_shape: str,
     balanced: bool,
-    channel_constraints: dict[str, float | Blackout] | None,
+    channel_constraints: dict[str, float | Blackout | Redistribute] | None,
 ) -> str:
     """Label for a user-pinned strategy (DiscoveryReport's strategy_pct),
     formatted like _default_levers' own candidates (e.g. "+/-80% (edge,
@@ -223,6 +260,8 @@ def _pinned_strategy_label(
     further for specific channels."""
     if isinstance(strategy_pct, Blackout):
         base = "Blackout"
+    elif isinstance(strategy_pct, Redistribute):
+        base = f"+/-{strategy_pct.edge_cap_pct:.0f}% (redistribute + edge)"
     else:
         shape_bits = nudge_shape + (", balanced" if balanced else "")
         base = f"+/-{strategy_pct:.0f}% ({shape_bits})"
@@ -971,8 +1010,10 @@ class DiscoveryReport:
         balance_signs) tuples. Defaults to unphased, then +/-20/40/60/80%
         at each of three nudge shapes (uniform, unbalanced -- vs edge,
         balanced -- vs seesaw, alternating), then three contiguous-Blackout
-        settings (dark=1 through dark=4/prob=1.0) -- 16 candidates total,
-        see _default_levers (session 49 widened the original 5-candidate
+        settings (dark=1 through dark=4/prob=1.0), then the Redistribute
+        family (round-robin blackout + recipient month + edge layer) at
+        +/-20/40/60/80% -- 20 candidates total, see _default_levers
+        (session 49 widened the original 5-candidate
         spot-check to a full 4-intensity x 2-shape sweep; session 56
         widened it again to surface seesaw and Blackout's stronger
         settings; no longer matches the archived notebooks/archive/11's
@@ -988,8 +1029,11 @@ class DiscoveryReport:
         ReportBuilder class, which used to be the "I've picked one, give
         me the CSV" report once a strategy was chosen elsewhere).
         strategy_pct is the same per-channel spec _default_levers uses for
-        one candidate: a float (symmetric +/-X% for every channel) or a
-        Blackout. When set, this exact strategy is added to the sweep as
+        one candidate: a float (symmetric +/-X% for every channel), a
+        Blackout, or a Redistribute (its edge_cap_pct is the intensity;
+        strategy_nudge_shape and strategy_balanced are ignored for it --
+        the edge layer is always edge, balanced). Redistribute moves budget
+        between months, so only annual totals are preserved. When set, this exact strategy is added to the sweep as
         one more candidate (labelled "Pinned: ...") and used directly as
         self.winner_ -- _pick_winner's dominance check never runs, so
         Sections 1-4, the Appendix's headline callouts and schedule_csv()
@@ -1002,8 +1046,8 @@ class DiscoveryReport:
         is None.
     channel_constraints:
         Per-channel overrides applied on top of strategy_pct for specific
-        channels -- e.g. {"meta": 20.0} pins meta to +/-20% regardless of
-        what strategy_pct says for every other channel, or {"meta":
+        channels (a float, Blackout or Redistribute) -- e.g. {"meta": 20.0}
+        pins meta to +/-20% regardless of what strategy_pct says for every other channel, or {"meta":
         Blackout(max_dark_weeks_per_month=1)} switches meta to blackout-mode
         while the rest of the plan follows strategy_pct. Requires
         strategy_pct to be set (there is nothing to override otherwise);
@@ -1032,10 +1076,10 @@ class DiscoveryReport:
         adstock: dict[str, float] | float = 0.0,
         revenue_noise_std: float = 26_000.0,
         levers: list[tuple[str, dict, str, bool]] | None = None,
-        strategy_pct: float | Blackout | None = None,
+        strategy_pct: float | Blackout | Redistribute | None = None,
         strategy_nudge_shape: str = "edge",
         strategy_balanced: bool = True,
-        channel_constraints: dict[str, float | Blackout] | None = None,
+        channel_constraints: dict[str, float | Blackout | Redistribute] | None = None,
         client_name: str = "",
         plan_year: str = "",
         seed: int = 0,
@@ -1091,9 +1135,9 @@ class DiscoveryReport:
         )
         base_levers = levers if levers is not None else _default_levers(self.channels_)
         self.pinned_label_: str | None = None
-        self.channel_constraints_: dict[str, float | Blackout] = {}
+        self.channel_constraints_: dict[str, float | Blackout | Redistribute] = {}
         if strategy_pct is not None:
-            pinned_spec: dict[str, float | Blackout] = {
+            pinned_spec: dict[str, float | Blackout | Redistribute] = {
                 ch: strategy_pct for ch in self.channels_
             }
             if channel_constraints:
@@ -1898,6 +1942,34 @@ def _render_html(report: DiscoveryReport) -> str:
     # of leaving it visible only to someone who scrolls to the appendix).
     winner_cost_pct = float(np.mean(list(lever_cost_pct[winner].values())))
 
+    # Redistribute strategies move budget BETWEEN months (a blackout run's
+    # budget lands in a recipient month); only each channel's 12-month
+    # block total is preserved. Every other strategy preserves each
+    # month's total exactly, which is what the copy below normally says.
+    winner_spec = next(spec for lbl, spec, *_ in report.levers_ if lbl == winner)
+    if _moves_budget_between_months(winner_spec):
+        totals_sub = (
+            "annual totals unchanged from unphased; budget moves between months"
+        )
+        totals_cost = "though each channel's annual total is unchanged"
+        totals_pacing = (
+            "Each channel's annual total is identical on both sides, but "
+            "this strategy also moves budget between months: a blackout "
+            "run's budget lands in a recipient month, so individual "
+            "monthly totals differ."
+        )
+    else:
+        totals_sub = "monthly totals unchanged from unphased"
+        totals_cost = "though the monthly totals are unchanged"
+        totals_pacing = (
+            "The monthly totals are identical on both sides; only the "
+            "timing within each month has moved."
+        )
+    corr_after_sub = (
+        "Pearson correlation, weekly spend by channel &middot; plan year "
+        f"only, {totals_sub}"
+    )
+
     # Session 51 (Ryan: "in the appendix we need to show channel
     # constraints too"): only rendered when the pinned strategy actually
     # overrides specific channels -- an unpinned, swept report has no
@@ -1907,9 +1979,12 @@ def _render_html(report: DiscoveryReport) -> str:
     if report.channel_constraints_:
         rows = ""
         for ch, override in report.channel_constraints_.items():
-            value_text = (
-                "Blackout" if isinstance(override, Blackout) else f"+/-{override:.0f}%"
-            )
+            if isinstance(override, Blackout):
+                value_text = "Blackout"
+            elif isinstance(override, Redistribute):
+                value_text = f"+/-{override.edge_cap_pct:.0f}% (redistribute + edge)"
+            else:
+                value_text = f"+/-{override:.0f}%"
             rows += (
                 f"<tr><td>{html.escape(ch)}</td><td>{html.escape(value_text)}</td></tr>"
             )
@@ -1937,6 +2012,7 @@ def _render_html(report: DiscoveryReport) -> str:
             baseline_scores["identifiability"], scores["identifiability"]
         )
         cost_impact = float(np.mean(list(lever_cost_pct[lbl].values())))
+        peak_week = _peak_week_multiple(report.plan_df, report.schedules_[lbl])
         is_winner = lbl == winner
         row_class = ' class="winner-row"' if is_winner else ""
         winner_tag = ' <span class="winner-tag">Recommended</span>' if is_winner else ""
@@ -1946,7 +2022,8 @@ def _render_html(report: DiscoveryReport) -> str:
             f"<td>{variance_impact:.0f}%</td>"
             f"<td>{bias_impact:.0f}%</td>"
             f"<td>{id_impact:.0f}%</td>"
-            f"<td>{cost_impact:.2f}%</td></tr>"
+            f"<td>{cost_impact:.2f}%</td>"
+            f"<td>{peak_week:.1f}x</td></tr>"
         )
 
     # Channel summary, part (c): recommended pacing -- as-supplied vs the
@@ -2369,7 +2446,7 @@ def _render_html(report: DiscoveryReport) -> str:
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Channel correlation, after phasing</div>
-      <div class="fig-sub">Pearson correlation, weekly spend by channel &middot; plan year only, monthly totals unchanged from unphased</div>
+      <div class="fig-sub">{corr_after_sub}</div>
     </div>
     <div class="fig-body">
       {corr_after_html}
@@ -2489,7 +2566,7 @@ def _render_html(report: DiscoveryReport) -> str:
   <p>Phasing is not free once a channel's response curve departs from
   linear. By Jensen's inequality, reshaping spend within the plan changes
   true plan-period revenue relative to the as-supplied schedule, even
-  though the monthly totals are unchanged. Under <b>{winner}</b> this
+  {totals_cost}. Under <b>{winner}</b> this
   costs {winner_cost_pct:.2f}% of true plan-period revenue, averaged
   across channels, against the unphased plan; Section 5 reports the same
   measure for every candidate, from doing nothing through to
@@ -2501,8 +2578,7 @@ def _render_html(report: DiscoveryReport) -> str:
   <h2>Phased spend</h2>
   <p>Each chart below shows one channel's weekly spend as supplied, in
   pale, against its recommended pacing under <b>{winner}</b>, in solid.
-  The monthly totals are identical on both sides; only the timing within
-  each month has moved.</p>
+  {totals_pacing}</p>
   <div class="pacing-grid">{pacing_cells_html}</div>
 </section>
 
@@ -2516,7 +2592,7 @@ def _render_html(report: DiscoveryReport) -> str:
   Sections 2 through 4 is built from this one row.</p>
   <div class="table-scroll">
   <table class="cross-table">
-    <thead><tr><th>Strategy</th><th>Variance impact</th><th>Bias impact</th><th>Identifiability impact</th><th>Cost</th></tr></thead>
+    <thead><tr><th>Strategy</th><th>Variance impact</th><th>Bias impact</th><th>Identifiability impact</th><th>Cost</th><th>Peak week</th></tr></thead>
     <tbody>{impact_table_rows_html}</tbody>
   </table>
   </div>
@@ -2526,7 +2602,10 @@ def _render_html(report: DiscoveryReport) -> str:
   given up to phasing, under each channel's assumed response curve and
   again averaged across channels. It is zero when saturation is linear,
   and largest for the strategies that push spend hardest into the
-  steepest part of the curve.</p>
+  steepest part of the curve. Peak week is the single biggest week of
+  spend under each strategy, across every channel, as a multiple of that
+  same week's as-supplied plan: the practical check on whether a media
+  buyer can actually deploy it.</p>
   {channel_constraints_html}
 </section>
 
