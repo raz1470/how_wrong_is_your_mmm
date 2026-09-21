@@ -1146,6 +1146,20 @@ class TestPinnedStrategyFit:
         assert "scores" in report.results_[report.pinned_label_]
 
 
+class TestFitDefaults:
+    def test_n_phasing_seeds_default_is_15(self):
+        import inspect
+
+        default = (
+            inspect.signature(DiscoveryReport.fit).parameters["n_phasing_seeds"].default
+        )
+        # Session 63 (Ryan: "we need results to be reliable"): raised from 5
+        # after per-channel bias for higher-marginal-return channels (meta,
+        # search_generic on the canonical scenario) hadn't converged at 5 --
+        # see NOTES.md session 63.
+        assert default == 15
+
+
 class TestPeakWeekMultiple:
     def test_unchanged_schedule_is_one(self):
         assert _peak_week_multiple(PLAN_DF, PLAN_DF) == 1.0
