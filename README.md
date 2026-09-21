@@ -144,7 +144,7 @@ always supply your own values.
 | [`02_channel_scaling`](notebooks/02_channel_scaling.ipynb) | Sweeps channel count (3 to 20) and spend correlation to check the fix holds at realistic scale, not just the 4-channel demo |
 | [`03_time_to_benefit`](notebooks/03_time_to_benefit.ipynb) | How many weeks of phasing it takes to meaningfully reduce marginal-return uncertainty, and how that depends on starting correlation and which lever you use |
 | [`04_adstock_threat`](notebooks/04_adstock_threat.ipynb) | Checks whether phasing's bias reduction survives real carryover (adstock), across four demand-process shapes |
-| [`05_strategy_comparison`](notebooks/05_strategy_comparison.ipynb) | Compares `DiscoveryReport`'s default phasing shapes/intensities (24 candidates as of the MonthStep family; the committed notebook output predates the Redistribute and MonthStep families and still shows 16 until it is re-run) on variance, bias, identifiability and cost — the same criteria the live report scores every candidate on |
+| [`05_strategy_comparison`](notebooks/05_strategy_comparison.ipynb) | Compares `DiscoveryReport`'s default phasing shapes/intensities (7 candidates, all at +/-20%: uniform/edge/seesaw, Redistribute, MonthStep and the original Blackout) on variance, bias, identifiability and cost — the same criteria the live report scores every candidate on |
 
 ---
 
@@ -162,7 +162,7 @@ always supply your own values.
 uv run ruff format . && uv run ruff check . && uv run pytest
 ```
 
-604 tests. Python 3.12+. MIT licence.
+963 tests. Python 3.12+. MIT licence.
 
 The [API reference](https://raz1470.github.io/how_wrong_is_your_mmm/api/) is built with `mkdocs` + `mkdocstrings` from the docstrings in `src/`. A GitHub Actions workflow (`docs-deploy.yml`) rebuilds it and deploys the whole `docs/` site on every push to `main`, so there's nothing to build or commit locally for a release. To preview changes locally:
 

@@ -4,6 +4,7 @@ import html
 import re
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from how_wrong_is_your_mmm._dgp import simulate_spend
@@ -24,11 +25,22 @@ from how_wrong_is_your_mmm._discovery_report import (
 )
 from how_wrong_is_your_mmm._phaser import Blackout, MonthStep, Redistribute
 
-# Small fixtures -- DiscoveryReport sweeps 24 levers x several diagnostics
+# Small fixtures -- DiscoveryReport sweeps 7 levers x several diagnostics
 # each, so tests lean on fast_mode plus a tiny identifiability grid.
 HISTORY_DF = simulate_spend(n_obs=52, correlation=0.6, seed=0, start_date="2020-01-06")
 PLAN_DF = simulate_spend(n_obs=26, correlation=0.6, seed=1, start_date="2021-01-04")
 CHANNELS = ["tv", "meta", "search"]
+
+# Long enough history (4 years) for the multi-year time-to-benefit view.
+LONG_HISTORY_DF = simulate_spend(
+    n_obs=208, correlation=0.6, seed=0, start_date="2016-01-04"
+)
+LONG_PLAN_DF = simulate_spend(
+    n_obs=26,
+    correlation=0.6,
+    seed=1,
+    start_date=LONG_HISTORY_DF.index[-1] + pd.Timedelta(weeks=1),
+)
 
 SMALL_B = np.round(np.linspace(0.4, 1.0, 3), 4)
 SMALL_LAM = np.round(np.linspace(0.0, 0.6, 3), 4)
@@ -40,9 +52,18 @@ def make_report(**kwargs):
     return DiscoveryReport(**defaults)
 
 
+def make_long_report(**kwargs):
+    defaults = dict(history_df=LONG_HISTORY_DF, plan_df=LONG_PLAN_DF)
+    defaults.update(kwargs)
+    return DiscoveryReport(**defaults)
+
+
 def fit_small(report, **kwargs):
     defaults = dict(
-        fast_mode=True, id_b_candidates=SMALL_B, id_lam_candidates=SMALL_LAM
+        fast_mode=True,
+        id_b_candidates=SMALL_B,
+        id_lam_candidates=SMALL_LAM,
+        horizon_years=1,  # the time-to-benefit projection has its own tests
     )
     defaults.update(kwargs)
     return report.fit(**defaults)
@@ -54,80 +75,53 @@ class TestDefaultLevers:
         assert levers[0][0] == "unphased"
         assert _is_unphased(levers[0][1])
 
-    def test_twenty_four_candidates(self):
-        # unphased + 4 intensities x 3 shapes + 4 Redistribute intensities
-        # + 4 MonthStep intensities + 3 Blackout settings (session 49:
-        # widened from a 5-candidate spot-check to a full 4x2 sweep;
-        # session 56: widened again to add seesaw and Blackout's stronger
-        # contiguous settings; the Redistribute and MonthStep families were
-        # added after the phasing search).
-        assert len(_default_levers(CHANNELS)) == 24
+    def test_seven_candidates(self):
+        # unphased + 20% at uniform/edge/seesaw + 20% Redistribute + 20%
+        # MonthStep + the original Blackout(dark=1) (Ryan, 2026-09-21).
+        assert len(_default_levers(CHANNELS)) == 7
 
-    def test_month_step_family_at_same_intensities(self):
-        levers = _default_levers(CHANNELS)
-        month_step = [lv for lv in levers if "month step" in lv[0]]
-        assert [lbl for lbl, *_ in month_step] == [
-            f"+/-{pct}% (month step)" for pct in (20, 40, 60, 80)
+    def test_default_labels(self):
+        assert [label for label, *_ in _default_levers(CHANNELS)] == [
+            "unphased",
+            "+/-20% (uniform)",
+            "+/-20% (edge, balanced)",
+            "+/-20% (seesaw)",
+            "+/-20% (redistribute + edge)",
+            "+/-20% (month step)",
+            "Blackout (dark=1)",
         ]
-        for (_, spec, _, _), pct in zip(
-            month_step, (20.0, 40.0, 60.0, 80.0), strict=True
-        ):
-            assert set(spec) == set(CHANNELS)
-            assert all(isinstance(v, MonthStep) for v in spec.values())
-            assert all(v.step_pct == pct for v in spec.values())
-            assert not _is_unphased(spec)
 
-    def test_redistribute_family_at_same_intensities(self):
-        levers = _default_levers(CHANNELS)
-        redistribute = [lv for lv in levers if "redistribute" in lv[0]]
-        assert [lbl for lbl, *_ in redistribute] == [
-            f"+/-{pct}% (redistribute + edge)" for pct in (20, 40, 60, 80)
-        ]
-        for (_, spec, nudge_shape, balanced), pct in zip(
-            redistribute, (20.0, 40.0, 60.0, 80.0), strict=True
-        ):
-            assert set(spec) == set(CHANNELS)
-            assert all(isinstance(v, Redistribute) for v in spec.values())
-            assert all(v.edge_cap_pct == pct for v in spec.values())
-            assert (nudge_shape, balanced) == ("edge", True)
-            assert not _is_unphased(spec)
+    def test_month_step_default_is_20pct(self):
+        (lever,) = [lv for lv in _default_levers(CHANNELS) if "month step" in lv[0]]
+        _, spec, _, _ = lever
+        assert set(spec) == set(CHANNELS)
+        assert all(
+            isinstance(v, MonthStep) and v.step_pct == 20.0 for v in spec.values()
+        )
+
+    def test_redistribute_default_is_20pct(self):
+        (lever,) = [lv for lv in _default_levers(CHANNELS) if "redistribute" in lv[0]]
+        _, spec, nudge_shape, balanced = lever
+        assert set(spec) == set(CHANNELS)
+        assert all(
+            isinstance(v, Redistribute) and v.edge_cap_pct == 20.0
+            for v in spec.values()
+        )
+        assert (nudge_shape, balanced) == ("edge", True)
 
     def test_labels_are_unique(self):
         labels = [label for label, *_ in _default_levers(CHANNELS)]
         assert len(labels) == len(set(labels))
 
-    def test_every_intensity_gets_all_shapes(self):
+    def test_only_the_original_blackout_is_swept(self):
         levers = _default_levers(CHANNELS)
-        labels = {label for label, *_ in levers}
-        for pct in ("20", "40", "60", "80"):
-            assert f"+/-{pct}% (uniform)" in labels
-            assert f"+/-{pct}% (edge, balanced)" in labels
-            assert f"+/-{pct}% (seesaw)" in labels
-
-    def test_blackout_entries_use_blackout_spec(self):
-        levers = _default_levers(CHANNELS)
-        blackout_levers = levers[-3:]
-        labels = [label for label, *_ in blackout_levers]
-        assert labels == [
-            "Blackout (dark=1)",
-            "Blackout (dark=3, prob=0.8)",
-            "Blackout (dark=4, prob=1.0)",
-        ]
-        for _, spec, _, _ in blackout_levers:
-            assert all(isinstance(v, Blackout) for v in spec.values())
-
-    def test_blackout_entries_use_documented_prob_and_dark_settings(self):
-        levers = _default_levers(CHANNELS)
-        blackout_specs = {label: spec for label, spec, _, _ in levers[-3:]}
-        expected = {
-            "Blackout (dark=1)": (1.0, 1),
-            "Blackout (dark=3, prob=0.8)": (0.8, 3),
-            "Blackout (dark=4, prob=1.0)": (1.0, 4),
-        }
-        for label, (prob, dark) in expected.items():
-            spec = blackout_specs[label]["tv"]
-            assert spec.prob == prob
-            assert spec.max_dark_weeks_per_month == dark
+        (_, spec, _, _) = levers[-1]
+        assert levers[-1][0] == "Blackout (dark=1)"
+        for v in spec.values():
+            assert isinstance(v, Blackout)
+            assert v.prob == 1.0
+            assert v.max_dark_weeks_per_month == 1
+        assert sum("Blackout" in label for label, *_ in levers) == 1
 
 
 class TestIsUnphased:
@@ -473,7 +467,7 @@ class TestConstruction:
 
     def test_default_levers_used_when_not_supplied(self):
         report = make_report()
-        assert len(report.levers_) == 24
+        assert len(report.levers_) == 7
 
     def test_custom_levers_respected(self):
         custom = [("unphased", {ch: 0.0 for ch in CHANNELS}, "uniform", False)]
@@ -785,7 +779,7 @@ class TestToHtml:
         html_out = report.to_html()
         assert (
             "<th>Strategy</th><th>Variance impact</th><th>Bias impact</th>"
-            "<th>Identifiability impact</th><th>Cost</th>" in html_out
+            "<th>Saturation impact</th><th>Adstock impact</th><th>Cost</th>" in html_out
         )
         assert html_out.count('class="winner-row"') == 1
         assert f'data-lever="{report.winner_}" class="winner-row"' in html_out
@@ -795,7 +789,7 @@ class TestToHtml:
         html_out = report.to_html()
         assert (
             '<tr data-lever="unphased"><td>unphased</td>'
-            "<td>0%</td><td>0%</td><td>0%</td>" in html_out
+            "<td>0%</td><td>0%</td><td>0%</td><td>0%</td>" in html_out
         )
 
     def test_recommended_pacing_has_one_cell_per_channel(self):
@@ -1086,11 +1080,11 @@ class TestPinnedStrategyConstruction:
         report = make_report()
         assert report.pinned_label_ is None
         assert report.channel_constraints_ == {}
-        assert len(report.levers_) == 24
+        assert len(report.levers_) == 7
 
     def test_strategy_pct_adds_one_lever_on_top_of_the_default_sweep(self):
         report = make_report(strategy_pct=60.0)
-        assert len(report.levers_) == 25
+        assert len(report.levers_) == 8
         assert report.pinned_label_ == "Pinned: +/-60% (edge, balanced)"
         assert report.levers_[-1][0] == report.pinned_label_
 
@@ -1216,11 +1210,20 @@ class TestMonthStepInReport:
         )
         assert "+/-20% (month step)</td>" in report.to_html()
 
-    def test_default_sweep_scores_every_month_step_row(self):
+    def test_default_sweep_scores_the_20pct_month_step_row(self):
         report = fit_small(make_report())
-        for pct in (20, 40, 60, 80):
-            label = f"+/-{pct}% (month step)"
-            assert label in report.results_
+        label = "+/-20% (month step)"
+        assert label in report.results_
+        assert "scores" in report.results_[label]
+        assert report.schedules_[label].shape == PLAN_DF.shape
+        for pct in (40, 60, 80):
+            assert f"+/-{pct}% (month step)" not in report.results_
+
+    def test_higher_intensity_month_step_is_pinnable(self):
+        for pct in (40.0, 60.0, 80.0):
+            report = fit_small(make_report(strategy_pct=MonthStep(step_pct=pct)))
+            label = f"Pinned: +/-{pct:.0f}% (month step)"
+            assert report.pinned_label_ == label
             assert "scores" in report.results_[label]
             assert report.schedules_[label].shape == PLAN_DF.shape
 
@@ -1260,11 +1263,20 @@ class TestRedistributeInReport:
         html_out = report.to_html()
         assert "+/-20% (redistribute + edge)</td>" in html_out
 
-    def test_default_sweep_scores_every_redistribute_row(self):
+    def test_default_sweep_scores_the_20pct_redistribute_row(self):
         report = fit_small(make_report())
-        for pct in (20, 40, 60, 80):
-            label = f"+/-{pct}% (redistribute + edge)"
-            assert label in report.results_
+        label = "+/-20% (redistribute + edge)"
+        assert label in report.results_
+        assert "scores" in report.results_[label]
+        assert report.schedules_[label].shape == PLAN_DF.shape
+        for pct in (40, 60, 80):
+            assert f"+/-{pct}% (redistribute + edge)" not in report.results_
+
+    def test_higher_intensity_redistribute_is_pinnable(self):
+        for pct in (40.0, 60.0, 80.0):
+            report = fit_small(make_report(strategy_pct=Redistribute(edge_cap_pct=pct)))
+            label = f"Pinned: +/-{pct:.0f}% (redistribute + edge)"
+            assert report.pinned_label_ == label
             assert "scores" in report.results_[label]
             assert report.schedules_[label].shape == PLAN_DF.shape
 
@@ -1333,3 +1345,177 @@ class TestPinnedStrategyHtml:
         report = fit_small(make_report(strategy_pct=60.0))
         html_out = report.to_html()
         assert f'data-lever="{report.pinned_label_}"' in html_out
+
+
+class TestTimeToBenefit:
+    def test_projection_covers_the_horizon(self):
+        report = fit_small(make_long_report(), horizon_years=3)
+        ttb = report.time_to_benefit_
+        assert ttb["years"] == [1, 2, 3]
+        assert ttb["label"] == report.winner_
+        for series in ("unphased", "phased", "improvement"):
+            for axis in ("variance", "bias", "saturation", "adstock"):
+                assert len(ttb[series][axis]) == 3
+
+    def test_year_one_matches_the_main_sweep(self):
+        report = fit_small(make_long_report(), horizon_years=2)
+        ttb = report.time_to_benefit_
+        base = report.results_[report.levers_[0][0]]["scores"]
+        won = report.results_[report.winner_]["scores"]
+        keys = {
+            "variance": "variance",
+            "bias": "bias",
+            "saturation": "saturation_range",
+            "adstock": "adstock_range",
+        }
+        for axis, key in keys.items():
+            assert ttb["phased"][axis][0] == won[key]
+            assert ttb["unphased"][axis] == [base[key]] * 2
+
+    def test_horizon_is_capped_by_available_history(self):
+        # 208 weeks of history leaves room for 1 + (208 - 52) // 52 = 4 years.
+        report = fit_small(make_long_report(), horizon_years=10)
+        assert report.time_to_benefit_["years"] == [1, 2, 3, 4]
+
+    def test_short_history_skips_the_projection(self):
+        report = fit_small(make_report(), horizon_years=3)
+        assert report.time_to_benefit_ is None
+
+    def test_horizon_of_one_skips_the_projection(self):
+        report = fit_small(make_long_report())
+        assert report.time_to_benefit_ is None
+        assert "Time to benefit" not in report.to_html()
+
+    def test_unphased_winner_skips_the_projection(self):
+        only_unphased = [("unphased", {ch: 0.0 for ch in CHANNELS}, "uniform", False)]
+        report = fit_small(make_long_report(levers=only_unphased), horizon_years=3)
+        assert report.time_to_benefit_ is None
+
+    def test_html_shows_time_to_benefit_in_the_appendix(self):
+        report = fit_small(make_long_report(), horizon_years=3)
+        html_out = report.to_html()
+        assert "Time to benefit: what" in html_out
+        assert html_out.index("Time to benefit") > html_out.index('id="appendix"')
+        assert "Saturation" in html_out and "Adstock" in html_out
+
+    def test_comparison_table_splits_identifiability(self):
+        html_out = fit_small(make_report()).to_html()
+        assert "<th>Saturation impact</th><th>Adstock impact</th>" in html_out
+        assert "<th>Identifiability impact</th>" not in html_out
+
+
+class TestBackphase:
+    def test_default_leaves_data_untouched(self):
+        report = make_report()
+        assert report.backphase_years == 0
+        assert len(report.plan_df) == len(PLAN_DF)
+        assert len(report.history_df) == len(HISTORY_DF)
+
+    def test_backphase_moves_history_tail_into_the_phased_window(self):
+        long_history = simulate_spend(
+            n_obs=208, correlation=0.6, seed=0, start_date="2016-01-04"
+        )
+        plan = simulate_spend(
+            n_obs=26,
+            correlation=0.6,
+            seed=1,
+            start_date=long_history.index[-1] + pd.Timedelta(weeks=1),
+        )
+        report = DiscoveryReport(
+            history_df=long_history, plan_df=plan, backphase_years=2
+        )
+        assert len(report.plan_df) == 104 + 26
+        assert len(report.history_df) == 208 - 104
+        pd.testing.assert_frame_equal(
+            pd.concat([report.history_df, report.plan_df]),
+            pd.concat([long_history, plan]),
+        )
+
+    def test_backphase_needs_enough_history(self):
+        with pytest.raises(ValueError, match="weeks of history"):
+            make_report(backphase_years=5)
+
+    def test_negative_backphase_rejected(self):
+        with pytest.raises(ValueError, match="non-negative"):
+            make_report(backphase_years=-1)
+
+
+class TestStrategyGlossary:
+    def test_every_swept_strategy_has_a_row(self):
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        assert "What each strategy does" in html_out
+        for label, *_ in report.levers_:
+            assert f'<td class="strat-name">{label}</td>' in html_out
+
+    def test_descriptions_reflect_each_family(self):
+        from how_wrong_is_your_mmm._discovery_report import _describe_strategy
+
+        cases = {
+            "The plan exactly as supplied": ({"a": 0.0}, "uniform", False),
+            "alternating up and down": ({"a": 20.0}, "seesaw", False),
+            "half of a month's weeks up and half down": ({"a": 20.0}, "edge", True),
+            "random amount up to 20%": ({"a": 20.0}, "uniform", False),
+            "goes dark for 1 week": (
+                {"a": Blackout(prob=1.0, max_dark_weeks_per_month=1)},
+                "uniform",
+                False,
+            ),
+            "in a different month per channel": (
+                {"a": Redistribute(edge_cap_pct=20.0)},
+                "edge",
+                True,
+            ),
+            "stepped up or down by 20%": (
+                {"a": MonthStep(step_pct=20.0)},
+                "uniform",
+                False,
+            ),
+        }
+        for expected, (spec, shape, balanced) in cases.items():
+            what, _ = _describe_strategy(spec, shape, balanced)
+            assert expected in what
+
+    def test_annual_only_for_strategies_that_move_budget_between_months(self):
+        from how_wrong_is_your_mmm._discovery_report import _describe_strategy
+
+        for spec in ({"a": Redistribute()}, {"a": MonthStep()}):
+            assert _describe_strategy(spec, "uniform", False)[1] == "Annual only"
+        assert _describe_strategy({"a": 20.0}, "edge", True)[1] == "Monthly and annual"
+
+
+class TestPlanYearHighlightAndPacingWindow:
+    def test_svg_multiline_shades_the_highlighted_span(self):
+        from how_wrong_is_your_mmm._discovery_report import _svg_multiline
+
+        series = {"a": np.arange(10.0)}
+        plain = _svg_multiline(series, {"a": "#000"}, normalize=False)
+        marked = _svg_multiline(
+            series,
+            {"a": "#000"},
+            normalize=False,
+            highlight_from=6,
+            highlight_label="Plan year",
+        )
+        assert "<rect" not in plain
+        assert "<rect" in marked and "Plan year" in marked
+
+    def test_spend_charts_mark_the_plan_year(self):
+        html_out = fit_small(make_report()).to_html()
+        assert html_out.count("Plan year</text>") >= len(CHANNELS)
+
+    def test_phased_spend_shows_only_the_plan_year_when_backphasing(self):
+        report = fit_small(
+            DiscoveryReport(
+                history_df=LONG_HISTORY_DF, plan_df=LONG_PLAN_DF, backphase_years=2
+            )
+        )
+        html_out = report.to_html()
+        assert "Only the plan year is shown" in html_out
+        # Section 4's charts plot the 26 plan weeks, not the 130-week window.
+        section4 = html_out[
+            html_out.index('id="phased-spend"') : html_out.index('id="appendix"')
+        ]
+        n_points = re.findall(r'<polyline points="([^"]+)"', section4)
+        assert n_points
+        assert all(len(p.split()) == len(LONG_PLAN_DF) for p in n_points)

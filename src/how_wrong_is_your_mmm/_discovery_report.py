@@ -125,10 +125,20 @@ _PALETTE = [
 ]
 
 
+_WEEKS_PER_YEAR = 52
+# History left un-phased ahead of a back-phased window: enough for the
+# diagnostics to have something to fit against.
+_MIN_HEAD_WEEKS = 52
+
+
 def _channel_colors(channels: list[str]) -> dict[str, str]:
     return {ch: _PALETTE[i % len(_PALETTE)] for i, ch in enumerate(channels)}
 
 
+# NOTE (2026-09-21): the default grid below was later cut to +/-20% only
+# plus the original Blackout(dark=1); the history that follows explains why
+# the stronger settings existed and is kept for the record.
+#
 # Default combo grid -- mirrors notebooks/05_strategy_comparison.ipynb's
 # own LEVERS list verbatim (the rebuilt notebook that replaced the
 # archived notebooks/archive/11_phasing_strategy.ipynb, session 52). That
@@ -167,73 +177,49 @@ def _channel_colors(channels: list[str]) -> dict[str, str]:
 # as this module's own docs pages now do. Each entry is
 # (label, per-channel spec, nudge_shape, balance_signs).
 def _default_levers(channels: list[str]) -> list[tuple[str, dict, str, bool]]:
-    """The full sweep: unphased, then every +/-20/40/60/80% intensity
-    split by nudge shape (uniform, unbalanced -- vs edge, balanced -- vs
-    seesaw, alternating), then the Redistribute family (round-robin
-    blackout, freed budget moved to a recipient month, edge layer on top)
-    at the same four intensities, then the MonthStep family (month-level
-    Hadamard steps) at the same four intensities, then three
-    contiguous-Blackout settings spanning the cost/rigor dial session 56
-    found (dark=1, the pre-session-56 no-op, through dark=4/prob=1.0,
-    session 56's strongest identifiability result). 24 candidates total
-    (session 49: widened from
-    a 5-candidate spot-check to a full 4-intensity x 2-shape sweep;
-    session 56: widened again from 10 to add seesaw and Blackout's
-    stronger settings; the Redistribute and MonthStep rows came out of the
-    phasing search, see tools/scratch/phasing_strategy_loop.md)."""
+    """The default sweep, all at +/-20% (Ryan, 2026-09-21: smaller moves are
+    more deployable and less likely to trigger ad-platform learning resets):
+    unphased, then +/-20% at each nudge shape (uniform, unbalanced -- vs
+    edge, balanced -- vs seesaw, alternating), then the Redistribute family
+    (round-robin blackout, freed budget moved to a recipient month, edge
+    layer on top), then the MonthStep family (month-level Hadamard steps),
+    then the original single-week Blackout (dark=1). 7 candidates total.
+    Stronger intensities (40/60/80%) and Blackout's stronger settings
+    (dark=3/prob=0.8, dark=4/prob=1.0) are no longer swept; pin them with
+    strategy_pct / channel_constraints, or pass your own levers=."""
 
     def all_channels(nominal: float) -> dict[str, float]:
         return {ch: nominal for ch in channels}
 
-    levers: list[tuple[str, dict, str, bool]] = [
-        ("unphased", all_channels(0.0), "uniform", False)
+    pct = 20.0
+    return [
+        ("unphased", all_channels(0.0), "uniform", False),
+        (f"+/-{pct:.0f}% (uniform)", all_channels(pct), "uniform", False),
+        (f"+/-{pct:.0f}% (edge, balanced)", all_channels(pct), "edge", True),
+        (f"+/-{pct:.0f}% (seesaw)", all_channels(pct), "seesaw", False),
+        # Redistribute's edge layer is built in (always edge, balanced), so
+        # nudge_shape/balance_signs here just say so.
+        (
+            f"+/-{pct:.0f}% (redistribute + edge)",
+            {ch: Redistribute(edge_cap_pct=pct) for ch in channels},
+            "edge",
+            True,
+        ),
+        # MonthStep has no weekly nudge at all, so nudge_shape/balance_signs
+        # are unused.
+        (
+            f"+/-{pct:.0f}% (month step)",
+            {ch: MonthStep(step_pct=pct) for ch in channels},
+            "uniform",
+            False,
+        ),
+        (
+            "Blackout (dark=1)",
+            {ch: Blackout(prob=1.0, max_dark_weeks_per_month=1) for ch in channels},
+            "uniform",
+            False,
+        ),
     ]
-    for pct in (20.0, 40.0, 60.0, 80.0):
-        levers.append((f"+/-{pct:.0f}% (uniform)", all_channels(pct), "uniform", False))
-        levers.append(
-            (f"+/-{pct:.0f}% (edge, balanced)", all_channels(pct), "edge", True)
-        )
-        levers.append((f"+/-{pct:.0f}% (seesaw)", all_channels(pct), "seesaw", False))
-    # Redistribute family: same four intensities as uniform/edge/seesaw so
-    # rows compare like-for-like. The edge layer is built into Redistribute
-    # (always edge, balanced), so nudge_shape/balance_signs here just say so.
-    for pct in (20.0, 40.0, 60.0, 80.0):
-        levers.append(
-            (
-                f"+/-{pct:.0f}% (redistribute + edge)",
-                {ch: Redistribute(edge_cap_pct=pct) for ch in channels},
-                "edge",
-                True,
-            )
-        )
-    # MonthStep family: same four intensities again. No weekly nudge at
-    # all, so nudge_shape/balance_signs are unused.
-    for pct in (20.0, 40.0, 60.0, 80.0):
-        levers.append(
-            (
-                f"+/-{pct:.0f}% (month step)",
-                {ch: MonthStep(step_pct=pct) for ch in channels},
-                "uniform",
-                False,
-            )
-        )
-    for label, prob, dark in (
-        ("Blackout (dark=1)", 1.0, 1),
-        ("Blackout (dark=3, prob=0.8)", 0.8, 3),
-        ("Blackout (dark=4, prob=1.0)", 1.0, 4),
-    ):
-        levers.append(
-            (
-                label,
-                {
-                    ch: Blackout(prob=prob, max_dark_weeks_per_month=dark)
-                    for ch in channels
-                },
-                "uniform",
-                False,
-            )
-        )
-    return levers
 
 
 def _moves_budget_between_months(spec: dict) -> bool:
@@ -299,6 +285,192 @@ def _safe_improvement(before: float, after: float) -> float:
     return (before - after) / before
 
 
+def _describe_strategy(
+    spec: dict, nudge_shape: str, balance_signs: bool
+) -> tuple[str, str]:
+    """(what it does, which budget totals it keeps) for one lever, in plain
+    words for the Appendix's glossary table. Described from the first
+    channel's spec; a lever whose channels differ says so."""
+    first = next(iter(spec.values()))
+    mixed = any(v != first for v in spec.values())
+    if isinstance(first, Redistribute):
+        what = (
+            f"Each channel goes dark for {first.dark_weeks} consecutive weeks "
+            "once a year, in a different month per channel. The freed budget "
+            "is moved into one other month, then every week is nudged up or "
+            f"down by exactly {first.edge_cap_pct:.0f}% (half up, half down)."
+        )
+        keeps = "Annual only"
+    elif isinstance(first, MonthStep):
+        what = (
+            f"Each month's whole budget is stepped up or down by {first.step_pct:.0f}%, "
+            "in a balanced pattern that is unrelated between channels. The "
+            "weekly shape inside a month is unchanged, so budgets change at "
+            "most 12 times a year."
+        )
+        keeps = "Annual only"
+    elif isinstance(first, Blackout):
+        if first.max_dark_weeks_per_month is None:
+            what = (
+                "Each week is independently either dark (zero spend) or on; "
+                "the weeks left on absorb the month's budget."
+            )
+        else:
+            n = first.max_dark_weeks_per_month
+            unit = "week" if n == 1 else "consecutive weeks"
+            what = (
+                f"In some months a channel goes dark for {n} {unit} (zero "
+                "spend) and that month's other weeks absorb the budget."
+            )
+            if first.prob < 1.0:
+                what += f" A month is affected with probability {first.prob:.0%}."
+        keeps = "Monthly and annual"
+    elif isinstance(first, (int, float)) and float(first) == 0.0:
+        what = "The plan exactly as supplied. Every other row is measured against this one."
+        keeps = "Monthly and annual"
+    else:
+        pct = f"{float(first):.0f}%"
+        if nudge_shape == "seesaw":
+            what = (
+                f"Every week moves by exactly {pct}, alternating up and down "
+                "week to week, then the month is rescaled to its planned total."
+            )
+        elif nudge_shape == "edge":
+            what = (
+                f"Every week moves by exactly {pct}, half of a month's weeks "
+                "up and half down in a random order, then the month is "
+                "rescaled to its planned total."
+                if balance_signs
+                else f"Every week moves by exactly {pct}, direction chosen at "
+                "random, then the month is rescaled to its planned total."
+            )
+        else:
+            what = (
+                f"Each week moves by a random amount up to {pct}, direction "
+                "chosen at random (a typical week moves about half that), "
+                "then the month is rescaled to its planned total."
+            )
+        keeps = "Monthly and annual"
+    if mixed:
+        what += (
+            " Some channels use a different setting; see the channel constraints below."
+        )
+    return what, keeps
+
+
+def _strategy_glossary_html(report: DiscoveryReport) -> str:
+    rows = ""
+    for label, spec, nudge_shape, balance_signs in report.levers_:
+        what, keeps = _describe_strategy(spec, nudge_shape, balance_signs)
+        rows += (
+            f'<tr><td class="strat-name">{html.escape(label)}</td>'
+            f'<td class="strat-what">{html.escape(what)}</td>'
+            f"<td>{keeps}</td></tr>"
+        )
+    return f"""
+  <h3>What each strategy does</h3>
+  <div class="table-scroll">
+  <table class="cross-table glossary-table">
+    <thead><tr><th>Strategy</th><th>What it does to the plan</th><th>Budget totals kept</th></tr></thead>
+    <tbody>{rows}</tbody>
+  </table>
+  </div>
+  <p class="fig-cap">Every strategy leaves each channel's annual budget and the
+  split across channels untouched; only the timing changes. "Monthly and
+  annual" means each calendar month still gets its planned budget, so
+  changes stay inside the month. "Annual only" means budget can move between
+  months.</p>
+  <h3>How they compare</h3>"""
+
+
+def _time_to_benefit_html(report: DiscoveryReport) -> str:
+    """Appendix subsection: the recommended strategy's benefit at year 1,
+    2, 3... of repeating the plan, against the unphased plan measured over
+    the same data. Empty string when there is nothing to project (horizon
+    of 1, or an unphased winner)."""
+    ttb = report.time_to_benefit_
+    if not ttb:
+        return ""
+    years = ttb["years"]
+    labels = [f"Year {y}" for y in years]
+    n_years = len(years)
+    winner = html.escape(ttb["label"])
+    panels = (
+        (
+            "variance",
+            "Variance",
+            "Mean CV of the marginal-return estimate",
+            lambda v: f"{v:.2f}",
+        ),
+        (
+            "bias",
+            "Bias",
+            "Mean absolute error, % of true return",
+            lambda v: f"{v:.0f}%",
+        ),
+        (
+            "saturation",
+            "Saturation",
+            "Width of the recovered exponent's p10-p90 range",
+            lambda v: f"{v:.2f}",
+        ),
+        (
+            "adstock",
+            "Adstock",
+            "Width of the recovered decay's p10-p90 range",
+            lambda v: f"{v:.2f}",
+        ),
+    )
+    cells = ""
+    for key, title, sub, fmt in panels:
+        svg = _svg_multiline(
+            {
+                "Unphased": np.asarray(ttb["unphased"][key]),
+                "Phased": np.asarray(ttb["phased"][key]),
+            },
+            {"Unphased": "#9ca3af", "Phased": "#2563eb"},
+            width=320,
+            height=190,
+            pad_left=44,
+            normalize=False,
+            y_fmt=fmt,
+            x_label="",
+            x_tick_labels=labels,
+            n_x_ticks=n_years,
+            markers=True,
+        )
+        cells += (
+            f'<div class="pacing-cell"><div class="pacing-title">{title}</div>'
+            f'<div class="fig-sub" style="margin:-.2rem 0 .3rem">{sub}</div>{svg}</div>'
+        )
+    last = n_years - 1
+    imp = ttb["improvement"]
+    headline = (
+        f"By year {years[-1]}, <b>{winner}</b> improves on the unphased plan by "
+        f"{100 * imp['variance'][last]:.0f}% on variance, "
+        f"{100 * imp['bias'][last]:.0f}% on bias, "
+        f"{100 * imp['saturation'][last]:.0f}% on saturation and "
+        f"{100 * imp['adstock'][last]:.0f}% on adstock, "
+        f"against {100 * imp['variance'][0]:.0f}%, "
+        f"{100 * imp['bias'][0]:.0f}%, "
+        f"{100 * imp['saturation'][0]:.0f}% and "
+        f"{100 * imp['adstock'][0]:.0f}% after the first year."
+    )
+    return f"""
+  <h3>Time to benefit: what {n_years} years of phasing looks like</h3>
+  <p>{headline} Lower is better on every chart. The gap between the lines
+  is the benefit of phasing.</p>
+  <div class="ttb-grid">{cells}</div>
+  <div class="legend"><span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Unphased</span><span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#2563eb"/></svg> {winner}</span></div>
+  <p class="fig-cap">Year 1 phases the plan year only, the same result as the
+  comparison table above. Year 2 also phases the last year of your
+  history, and year 3 the last two, as if phasing had started then, on
+  the spend you actually had. The grey line is flat because it is the same
+  data left unphased; only how much of it is phased changes. It is a
+  counterfactual on your own history, not a forecast, and it assumes sales
+  would have responded as the supplied response curves say.</p>"""
+
+
 def _svg_multiline(
     series: dict[str, np.ndarray],
     colors: dict[str, str],
@@ -315,6 +487,8 @@ def _svg_multiline(
     x_tick_labels: list[str] | None = None,
     n_x_ticks: int = 5,
     markers: bool = False,
+    highlight_from: int | None = None,
+    highlight_label: str = "",
 ) -> str:
     """Render a small multi-series line chart as a self-contained inline SVG,
     with a real x/y axis -- gridlines, tick labels, axis titles -- the same
@@ -346,6 +520,11 @@ def _svg_multiline(
         handful of evenly spaced ticks. Defaults to "Wk 1", "Wk 2", ... --
         pass real calendar labels, or spend-level labels for a response
         curve, to match what the x-axis actually represents.
+    highlight_from:
+        Index of the first point of a span to shade behind the lines, from
+        there to the right edge -- used to mark the plan year on a chart
+        that also shows history. `highlight_label` is written in the
+        shaded band's top corner.
     markers:
         If True, draw a small circle at every data point -- for a series
         with few, categorical x points (a handful of candidate levers)
@@ -389,6 +568,17 @@ def _svg_multiline(
         f'<svg class="chart" viewBox="0 0 {width} {height}" '
         f'xmlns="http://www.w3.org/2000/svg">'
     ]
+    if highlight_from is not None and 0 <= highlight_from < n:
+        hx = x_at(highlight_from)
+        parts.append(
+            f'<rect x="{hx:.1f}" y="{pad_top}" width="{width - pad_right - hx:.1f}" '
+            f'height="{plot_h:.1f}" fill="#e5e7eb" opacity="0.6"/>'
+        )
+        if highlight_label:
+            parts.append(
+                f'<text x="{hx + 4:.1f}" y="{pad_top + 10}" font-size="9" '
+                f'font-weight="600" fill="#6b7280">{html.escape(highlight_label)}</text>'
+            )
     for v in y_ticks:
         y = y_at(v)
         is_zero_line = (not normalize) and y_lo < 0 < y_hi and abs(v) < 1e-9
@@ -1024,18 +1214,15 @@ class DiscoveryReport:
     levers:
         The candidate strategies to sweep, as a list of
         (label, per-channel max_weekly_deviation_pct spec, nudge_shape,
-        balance_signs) tuples. Defaults to unphased, then +/-20/40/60/80%
-        at each of three nudge shapes (uniform, unbalanced -- vs edge,
-        balanced -- vs seesaw, alternating), then three contiguous-Blackout
-        settings (dark=1 through dark=4/prob=1.0), then the Redistribute
-        family (round-robin blackout + recipient month + edge layer) and
-        the MonthStep family (month-level Hadamard steps), each at
-        +/-20/40/60/80% -- 24 candidates total, see _default_levers
-        (session 49 widened the original 5-candidate
-        spot-check to a full 4-intensity x 2-shape sweep; session 56
-        widened it again to surface seesaw and Blackout's stronger
-        settings; no longer matches the archived notebooks/archive/11's
-        own narrower LEVERS list -- notebooks/05_strategy_comparison.ipynb
+        balance_signs) tuples. Defaults to unphased, then +/-20% at each of
+        three nudge shapes (uniform, unbalanced -- vs edge, balanced -- vs
+        seesaw, alternating), then the Redistribute family (round-robin
+        blackout + recipient month + edge layer) and the MonthStep family
+        (month-level Hadamard steps), each at +/-20%, then the original
+        single-week Blackout (dark=1) -- 7 candidates total, see
+        _default_levers. Higher intensities and Blackout's stronger
+        settings are pinnable (strategy_pct) or passable here, but are not
+        swept by default. notebooks/05_strategy_comparison.ipynb
         is the live one now). The first entry is expected to be the
         unphased baseline every other candidate is compared against; pass
         your own list to add or narrow candidates, keeping an unphased
@@ -1079,6 +1266,15 @@ class DiscoveryReport:
         Free-text labels shown on the report cover.
     seed:
         Base random seed for demand and phasing draws.
+    backphase_years:
+        Default 0. If N > 0, the last N years (52 weeks each) of
+        history_df are phased too, as if phasing had started N years
+        before the plan: the report's "plan" becomes that history tail plus
+        plan_df, so every section (impact, ranges, phased spend) shows the
+        N+1-year effect instead of one year. A counterfactual on your own
+        spend: nothing is simulated beyond what the report already
+        simulates from spend. Needs at least 52 weeks of history left
+        un-phased ahead of the window.
     demand_process:
         Forwarded to simulate_demand() for the report's one shared demand
         series. Default "white_noise", matching the package's other
@@ -1106,6 +1302,7 @@ class DiscoveryReport:
         plan_year: str = "",
         seed: int = 0,
         demand_process: str = "white_noise",
+        backphase_years: int = 0,
     ) -> None:
         if list(history_df.columns) != list(plan_df.columns):
             raise ValueError(
@@ -1116,6 +1313,26 @@ class DiscoveryReport:
             raise ValueError("demand_proxy_quality must be in (0, 1]")
 
         _get_month_labels(plan_df)  # validates DatetimeIndex, fails fast
+
+        if backphase_years < 0 or int(backphase_years) != backphase_years:
+            raise ValueError("backphase_years must be a non-negative integer")
+        self.supplied_history_df = history_df
+        self.supplied_plan_df = plan_df
+        self.backphase_years = int(backphase_years)
+        if backphase_years > 0:
+            # Counterfactual on the client's own history: treat the last
+            # `backphase_years` years of history as if phasing had started
+            # then, so the phased window is history's tail plus the plan.
+            # Everything downstream just sees a longer plan.
+            n_back = _WEEKS_PER_YEAR * self.backphase_years
+            if len(history_df) - n_back < _MIN_HEAD_WEEKS:
+                raise ValueError(
+                    f"backphase_years={backphase_years} needs at least "
+                    f"{n_back + _MIN_HEAD_WEEKS} weeks of history; got "
+                    f"{len(history_df)}."
+                )
+            plan_df = pd.concat([history_df.iloc[-n_back:], plan_df])
+            history_df = history_df.iloc[:-n_back]
 
         self.history_df = history_df
         self.plan_df = plan_df
@@ -1224,6 +1441,7 @@ class DiscoveryReport:
         self.winner_schedule_: pd.DataFrame | None = None
         self.schedules_: dict[str, pd.DataFrame] | None = None
         self.report_data_: dict | None = None
+        self.time_to_benefit_: dict | None = None
 
     def _phase(
         self, spec: dict, nudge_shape: str, balance_signs: bool, seed: int
@@ -1250,6 +1468,7 @@ class DiscoveryReport:
         valley_tol: float = 0.01,
         proxy_seed: int = 0,
         fast_mode: bool = False,
+        horizon_years: int = 3,
     ) -> DiscoveryReport:
         """Sweep every candidate lever, run the three diagnostics on each,
         and pick the report-wide "highest impact" winner.
@@ -1282,6 +1501,14 @@ class DiscoveryReport:
             n_phasing_seeds=2, id_n_sims=5) -- for iterating on the report
             itself, not for numbers to hand a client. to_html() watermarks
             a fast-mode report as a draft.
+        horizon_years:
+            How many years of phasing to show in the Appendix's
+            time-to-benefit view (default 3). Year 1 phases the plan year
+            only (the main sweep's own result). Year 2 also phases the last
+            year of the supplied history, year 3 the last two, each time as
+            if phasing had started then -- a counterfactual on your own
+            spend, no new data is simulated. The number of years is capped
+            by how much history there is. Set to 1 to skip the projection.
 
         Returns
         -------
@@ -1459,6 +1686,11 @@ class DiscoveryReport:
                     "variance": float(variance_cv.mean()),
                     "bias": float(bias_pct.abs().mean()),
                     "identifiability": float(identifiability["valley_pct"].mean()),
+                    # Width of each channel's recovered p10-p90 range for the
+                    # saturation exponent and adstock decay, averaged across
+                    # channels: identifiability split into its two parts.
+                    "saturation_range": float((id_b_p90 - id_b_p10).mean()),
+                    "adstock_range": float((id_lam_p90 - id_lam_p10).mean()),
                 },
             }
             schedules[label] = representative_schedule
@@ -1474,6 +1706,18 @@ class DiscoveryReport:
         self.winner_ = self.pinned_label_ or self._pick_winner(results)
         self.winner_schedule_ = schedules[self.winner_]
         self.schedules_ = schedules
+        self.time_to_benefit_ = None
+        if horizon_years > 1 and self.winner_ != self.levers_[0][0]:
+            self.time_to_benefit_ = self._time_to_benefit(
+                horizon_years=horizon_years,
+                n_sims=n_sims,
+                n_phasing_seeds=n_phasing_seeds,
+                id_n_sims=id_n_sims,
+                id_b_candidates=id_b_candidates,
+                id_lam_candidates=id_lam_candidates,
+                valley_tol=valley_tol,
+                proxy_seed=proxy_seed,
+            )
         self.report_data_ = self._build_report_data(fast_mode=fast_mode)
         return self
 
@@ -1516,6 +1760,176 @@ class DiscoveryReport:
             table.to_csv(path)
 
         return table
+
+    def _three_scores(
+        self,
+        combined: pd.DataFrame,
+        demand: np.ndarray,
+        n_sims: int,
+        id_n_sims: int,
+        id_b_candidates: np.ndarray | None,
+        id_lam_candidates: np.ndarray | None,
+        valley_tol: float,
+        proxy_seed: int,
+        noise_seed: int,
+    ) -> dict[str, float]:
+        """Report-wide variance / bias / identifiability scores for one
+        history+plan spend frame -- the same three measures fit() scores
+        every lever on (mean CV, mean |bias %|, mean valley %), on an
+        arbitrary-length frame."""
+        common = {
+            "spend_df": combined,
+            "true_marginal_returns": self.true_marginal_returns,
+            "base_sales": self.calibration_.baseline_level,
+            "revenue_noise_std": self.revenue_noise_std,
+            "demand": demand,
+            "demand_coef": self.calibration_.demand_coef,
+            "saturation": self.saturation,
+            "adstock": self.adstock,
+            "reference_spend": self.reference_spend_,
+        }
+        diag_var = CollinearityDiagnostic(**common)
+        diag_var.fit(n_sims=n_sims, controls=True)
+        variance = float(diag_var.summary()["coef_of_variation"].mean())
+
+        diag_bias = CollinearityDiagnostic(**common)
+        diag_bias.fit(
+            n_sims=n_sims,
+            controls=self.demand_proxy_quality,
+            proxy_seed=proxy_seed,
+        )
+        bias = float(diag_bias.summary()["mean_error_pct"].abs().mean())
+
+        diag_id = IdentifiabilityDiagnostic(
+            spend_df=combined,
+            demand=demand,
+            true_marginal_returns=self.true_marginal_returns,
+            true_saturation=self.saturation,
+            true_adstock=self.adstock,
+            demand_coef=self.calibration_.demand_coef,
+            base_sales=self.calibration_.baseline_level,
+            revenue_noise_std=self.revenue_noise_std,
+            reference_spend=self.reference_spend_,
+            b_candidates=id_b_candidates,
+            lam_candidates=id_lam_candidates,
+        )
+        diag_id.fit(n_sims=id_n_sims, noise_seed_offset=noise_seed)
+        identifiability = float(diag_id.summary(tol=valley_tol)["valley_pct"].mean())
+        b_range = np.mean(
+            [
+                diag_id.results_[ch]["recovered_b"].quantile(0.9)
+                - diag_id.results_[ch]["recovered_b"].quantile(0.1)
+                for ch in self.channels_
+            ]
+        )
+        lam_range = np.mean(
+            [
+                diag_id.results_[ch]["recovered_lam"].quantile(0.9)
+                - diag_id.results_[ch]["recovered_lam"].quantile(0.1)
+                for ch in self.channels_
+            ]
+        )
+        return {
+            "variance": variance,
+            "bias": bias,
+            "identifiability": identifiability,
+            "saturation": float(b_range),
+            "adstock": float(lam_range),
+        }
+
+    def _time_to_benefit(
+        self,
+        horizon_years: int,
+        n_sims: int,
+        n_phasing_seeds: int,
+        id_n_sims: int,
+        id_b_candidates: np.ndarray | None,
+        id_lam_candidates: np.ndarray | None,
+        valley_tol: float,
+        proxy_seed: int,
+    ) -> dict | None:
+        """Winner's benefit if phasing had run for 1, 2, ... years.
+
+        Year k phases the last k-1 years of the SUPPLIED history plus the
+        plan (as if phasing had started k-1 years ago) and leaves the rest
+        of the history as supplied. The unphased line is the same data
+        unphased, so it is flat by construction: what changes across years
+        is how much of the series has been phased. Nothing is simulated
+        beyond what the report already simulates from spend. Year
+        `backphase_years + 1` is the main sweep's own result and is reused.
+        """
+        baseline_label = self.levers_[0][0]
+        spec, nudge_shape, balance_signs = next(
+            (sp, ns, bs) for lbl, sp, ns, bs in self.levers_ if lbl == self.winner_
+        )
+        history = self.supplied_history_df
+        plan = self.supplied_plan_df
+        max_years = 1 + max(0, (len(history) - _MIN_HEAD_WEEKS) // _WEEKS_PER_YEAR)
+        years = list(range(1, min(horizon_years, max_years) + 1))
+        if len(years) < 2:
+            return None
+
+        axes = ("variance", "bias", "saturation", "adstock")
+        # results_ score key for each axis
+        key = {
+            "variance": "variance",
+            "bias": "bias",
+            "saturation": "saturation_range",
+            "adstock": "adstock_range",
+        }
+        base_scores = self.results_[baseline_label]["scores"]
+        unphased = {ax: [base_scores[key[ax]]] * len(years) for ax in axes}
+        phased: dict[str, list[float]] = {ax: [] for ax in axes}
+
+        for k in years:
+            if k - 1 == self.backphase_years:
+                won = self.results_[self.winner_]["scores"]
+                for ax in axes:
+                    phased[ax].append(won[key[ax]])
+                continue
+            n_back = _WEEKS_PER_YEAR * (k - 1)
+            head = history.iloc[: len(history) - n_back]
+            window = pd.concat([history.iloc[len(history) - n_back :], plan])
+            labels = _get_month_labels(window)
+            draws = []
+            for j in range(n_phasing_seeds):
+                sd = self.seed + j
+                phased_window = _generate_phased_schedule(
+                    window,
+                    labels,
+                    alpha=1.0,
+                    max_weekly_deviation_pct=spec,
+                    seed=sd,
+                    nudge_shape=nudge_shape,
+                    balance_signs=balance_signs,
+                )
+                draws.append(
+                    self._three_scores(
+                        pd.concat([head, phased_window]),
+                        self.demand_,
+                        n_sims,
+                        id_n_sims,
+                        id_b_candidates,
+                        id_lam_candidates,
+                        valley_tol,
+                        proxy_seed,
+                        sd,
+                    )
+                )
+            for ax in axes:
+                phased[ax].append(float(np.mean([d[ax] for d in draws])))
+
+        improvement = {
+            ax: [_safe_improvement(u, p) for u, p in zip(unphased[ax], phased[ax])]
+            for ax in axes
+        }
+        return {
+            "label": self.winner_,
+            "years": years,
+            "unphased": unphased,
+            "phased": phased,
+            "improvement": improvement,
+        }
 
     def _pick_winner(self, results: dict[str, dict]) -> str:
         """Report-wide "highest impact" strategy: dominance check, else
@@ -2030,6 +2444,9 @@ def _render_html(report: DiscoveryReport) -> str:
   </table>
   </div>"""
 
+    time_to_benefit_html = _time_to_benefit_html(report)
+    strategy_glossary_html = _strategy_glossary_html(report)
+
     baseline_scores = baseline["scores"]
     impact_table_rows_html = ""
     for lbl in lever_labels:
@@ -2038,8 +2455,11 @@ def _render_html(report: DiscoveryReport) -> str:
             baseline_scores["variance"], scores["variance"]
         )
         bias_impact = 100 * _safe_improvement(baseline_scores["bias"], scores["bias"])
-        id_impact = 100 * _safe_improvement(
-            baseline_scores["identifiability"], scores["identifiability"]
+        sat_impact = 100 * _safe_improvement(
+            baseline_scores["saturation_range"], scores["saturation_range"]
+        )
+        adstock_impact = 100 * _safe_improvement(
+            baseline_scores["adstock_range"], scores["adstock_range"]
         )
         cost_impact = float(np.mean(list(lever_cost_pct[lbl].values())))
         peak_week = _peak_week_multiple(report.plan_df, report.schedules_[lbl])
@@ -2051,7 +2471,8 @@ def _render_html(report: DiscoveryReport) -> str:
             f"<td>{html.escape(lbl)}{winner_tag}</td>"
             f"<td>{variance_impact:.0f}%</td>"
             f"<td>{bias_impact:.0f}%</td>"
-            f"<td>{id_impact:.0f}%</td>"
+            f"<td>{sat_impact:.0f}%</td>"
+            f"<td>{adstock_impact:.0f}%</td>"
             f"<td>{cost_impact:.2f}%</td>"
             f"<td>{peak_week:.1f}x</td></tr>"
         )
@@ -2064,13 +2485,27 @@ def _render_html(report: DiscoveryReport) -> str:
     # solid (via _lighten_hex), not a channel-blind grey/black pair --
     # grey in particular read as too faint against the page background
     # (session 49 feedback).
-    plan_week_labels = [d.strftime("%b '%y") for d in report.plan_df.index]
+    # Only the plan year is shown, even when back-phasing (see the
+    # constructor's backphase_years) phased earlier weeks of history too.
+    n_plan_weeks = len(report.supplied_plan_df)
+    backphase_note = (
+        ""
+        if report.backphase_years == 0
+        else (
+            f"Only the plan year is shown; the {report.backphase_years} "
+            "earlier year(s) of history in the phased window were phased the "
+            "same way."
+        )
+    )
+    pacing_plan = report.plan_df.iloc[-n_plan_weeks:]
+    pacing_schedule = report.winner_schedule_.iloc[-n_plan_weeks:]
+    plan_week_labels = [d.strftime("%b '%y") for d in pacing_plan.index]
     pacing_cells_html = "".join(
         f'<div class="pacing-cell"><div class="pacing-title">{html.escape(ch)}</div>'
         + _svg_multiline(
             {
-                "Plan": report.plan_df[ch].to_numpy(),
-                "Recommended": report.winner_schedule_[ch].to_numpy(),
+                "Plan": pacing_plan[ch].to_numpy(),
+                "Recommended": pacing_schedule[ch].to_numpy(),
             },
             {"Plan": _lighten_hex(colors[ch]), "Recommended": colors[ch]},
             width=320,
@@ -2195,6 +2630,8 @@ def _render_html(report: DiscoveryReport) -> str:
             x_label="Week",
             x_tick_labels=week_labels,
             n_x_ticks=4,
+            highlight_from=len(combined_baseline) - len(report.supplied_plan_df),
+            highlight_label="Plan year",
         )
         + "</div>"
         for ch in channels
@@ -2608,27 +3045,32 @@ def _render_html(report: DiscoveryReport) -> str:
   <h2>Phased spend</h2>
   <p>Each chart below shows one channel's weekly spend as supplied, in
   pale, against its recommended pacing under <b>{winner}</b>, in solid.
-  {totals_pacing}</p>
+  {totals_pacing} {backphase_note}</p>
   <div class="pacing-grid">{pacing_cells_html}</div>
 </section>
 
 <section id="appendix">
   <div class="s-label">Section 5</div>
   <h2>Appendix: every strategy compared</h2>
-  <p>The table below scores every candidate lever, from doing nothing
-  through to <b>Blackout</b>, against the three reliability problems this
-  package diagnoses, alongside what phasing costs in revenue to achieve
-  each result. <b>{winner}</b> is highlighted below; every chart in
-  Sections 2 through 4 is built from this one row.</p>
+  <p>This section first explains what each candidate strategy does to the
+  plan, then scores every one of them, from doing nothing through to
+  <b>Blackout</b>, against the three reliability problems this package
+  diagnoses, alongside what phasing costs in revenue to achieve each
+  result. <b>{winner}</b> is highlighted in the scores; every chart in
+  Sections 2 through 4 is built from that one row.</p>
+  {strategy_glossary_html}
   <div class="table-scroll">
   <table class="cross-table">
-    <thead><tr><th>Strategy</th><th>Variance impact</th><th>Bias impact</th><th>Identifiability impact</th><th>Cost</th><th>Peak week</th></tr></thead>
+    <thead><tr><th>Strategy</th><th>Variance impact</th><th>Bias impact</th><th>Saturation impact</th><th>Adstock impact</th><th>Cost</th><th>Peak week</th></tr></thead>
     <tbody>{impact_table_rows_html}</tbody>
   </table>
   </div>
   <p class="fig-cap">Impact is the percentage improvement over doing
-  nothing, averaged across channels; these are the same numbers used to
-  pick the winning row. Cost is the share of true plan-period revenue
+  nothing, averaged across channels. Saturation and adstock are the two
+  halves of the identifiability problem: each is how much narrower the
+  range of recovered values gets (p10 to p90, as in the range charts
+  above). The winning row is picked on variance, bias and a combined
+  identifiability measure of the two. Cost is the share of true plan-period revenue
   given up to phasing, under each channel's assumed response curve and
   again averaged across channels. It is zero when saturation is linear,
   and largest for the strategies that push spend hardest into the
@@ -2636,6 +3078,7 @@ def _render_html(report: DiscoveryReport) -> str:
   spend under each strategy, across every channel, as a multiple of that
   same week's as-supplied plan: the practical check on whether a media
   buyer can actually deploy it.</p>
+  {time_to_benefit_html}
   {channel_constraints_html}
 </section>
 
@@ -2722,4 +3165,9 @@ tr.winner-row td { background: #ecfdf5; font-weight: 700; }
 @media (max-width: 620px) { .pacing-grid { grid-template-columns: 1fr; } }
 .pacing-cell { border: 1px solid var(--border); border-radius: 8px; padding: .75rem .75rem .3rem; }
 .pacing-title { font-size: .82rem; font-weight: 700; margin-bottom: .3rem; }
+table.glossary-table td { text-align: left; vertical-align: top; }
+table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
+.ttb-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .75rem; margin: 1rem 0 .5rem; }
+@media (max-width: 620px) { .ttb-grid { grid-template-columns: 1fr; } }
+.ttb-grid .pacing-cell { padding: .6rem .5rem .2rem; }
 """
