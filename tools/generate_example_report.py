@@ -3,9 +3,9 @@
 Run from the repo root:  uv run python tools/generate_example_report.py
 
 Scenario matches notebooks/01_scenario_walkthrough.ipynb (history 208w seed 0
-from 2023-01-09 (ends Dec 2026), plan 52w seed 1 from 2027-01-04, correlation 0.7). Uses the
-default sweep (levers unset) and default fit() sim counts. Runs in about a
-minute.
+from 2023-01-09, ending Dec 2026; plan 52w seed 1 from 2027-01-04;
+correlation 0.7). Uses the default sweep (levers unset) and default fit()
+sim counts. Runs in about a minute.
 """
 
 from pathlib import Path
