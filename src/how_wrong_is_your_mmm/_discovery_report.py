@@ -97,6 +97,7 @@ from how_wrong_is_your_mmm._identifiability import (
 )
 from how_wrong_is_your_mmm._phaser import (
     Blackout,
+    MonthStep,
     Redistribute,
     _generate_phased_schedule,
     _get_month_labels,
@@ -170,13 +171,15 @@ def _default_levers(channels: list[str]) -> list[tuple[str, dict, str, bool]]:
     split by nudge shape (uniform, unbalanced -- vs edge, balanced -- vs
     seesaw, alternating), then the Redistribute family (round-robin
     blackout, freed budget moved to a recipient month, edge layer on top)
-    at the same four intensities, then three contiguous-Blackout settings
-    spanning the cost/rigor dial session 56 found (dark=1, the
-    pre-session-56 no-op, through dark=4/prob=1.0, session 56's strongest
-    identifiability result). 20 candidates total (session 49: widened from
+    at the same four intensities, then the MonthStep family (month-level
+    Hadamard steps) at the same four intensities, then three
+    contiguous-Blackout settings spanning the cost/rigor dial session 56
+    found (dark=1, the pre-session-56 no-op, through dark=4/prob=1.0,
+    session 56's strongest identifiability result). 24 candidates total
+    (session 49: widened from
     a 5-candidate spot-check to a full 4-intensity x 2-shape sweep;
     session 56: widened again from 10 to add seesaw and Blackout's
-    stronger settings; the Redistribute rows came out of the 20-loop
+    stronger settings; the Redistribute and MonthStep rows came out of the
     phasing search, see tools/scratch/phasing_strategy_loop.md)."""
 
     def all_channels(nominal: float) -> dict[str, float]:
@@ -203,6 +206,17 @@ def _default_levers(channels: list[str]) -> list[tuple[str, dict, str, bool]]:
                 True,
             )
         )
+    # MonthStep family: same four intensities again. No weekly nudge at
+    # all, so nudge_shape/balance_signs are unused.
+    for pct in (20.0, 40.0, 60.0, 80.0):
+        levers.append(
+            (
+                f"+/-{pct:.0f}% (month step)",
+                {ch: MonthStep(step_pct=pct) for ch in channels},
+                "uniform",
+                False,
+            )
+        )
     for label, prob, dark in (
         ("Blackout (dark=1)", 1.0, 1),
         ("Blackout (dark=3, prob=0.8)", 0.8, 3),
@@ -223,9 +237,10 @@ def _default_levers(channels: list[str]) -> list[tuple[str, dict, str, bool]]:
 
 
 def _moves_budget_between_months(spec: dict) -> bool:
-    """True if any channel's spec (Redistribute) shifts budget between
-    months -- every other spec preserves each month's total exactly."""
-    return any(isinstance(v, Redistribute) for v in spec.values())
+    """True if any channel's spec (Redistribute, MonthStep) shifts budget
+    between months -- every other spec preserves each month's total
+    exactly."""
+    return any(isinstance(v, Redistribute | MonthStep) for v in spec.values())
 
 
 def _peak_week_multiple(plan_df: pd.DataFrame, schedule: pd.DataFrame) -> float:
@@ -247,10 +262,10 @@ def _is_unphased(spec: dict) -> bool:
 
 
 def _pinned_strategy_label(
-    strategy_pct: float | Blackout | Redistribute,
+    strategy_pct: float | Blackout | Redistribute | MonthStep,
     nudge_shape: str,
     balanced: bool,
-    channel_constraints: dict[str, float | Blackout | Redistribute] | None,
+    channel_constraints: dict[str, float | Blackout | Redistribute | MonthStep] | None,
 ) -> str:
     """Label for a user-pinned strategy (DiscoveryReport's strategy_pct),
     formatted like _default_levers' own candidates (e.g. "+/-80% (edge,
@@ -262,6 +277,8 @@ def _pinned_strategy_label(
         base = "Blackout"
     elif isinstance(strategy_pct, Redistribute):
         base = f"+/-{strategy_pct.edge_cap_pct:.0f}% (redistribute + edge)"
+    elif isinstance(strategy_pct, MonthStep):
+        base = f"+/-{strategy_pct.step_pct:.0f}% (month step)"
     else:
         shape_bits = nudge_shape + (", balanced" if balanced else "")
         base = f"+/-{strategy_pct:.0f}% ({shape_bits})"
@@ -1011,8 +1028,9 @@ class DiscoveryReport:
         at each of three nudge shapes (uniform, unbalanced -- vs edge,
         balanced -- vs seesaw, alternating), then three contiguous-Blackout
         settings (dark=1 through dark=4/prob=1.0), then the Redistribute
-        family (round-robin blackout + recipient month + edge layer) at
-        +/-20/40/60/80% -- 20 candidates total, see _default_levers
+        family (round-robin blackout + recipient month + edge layer) and
+        the MonthStep family (month-level Hadamard steps), each at
+        +/-20/40/60/80% -- 24 candidates total, see _default_levers
         (session 49 widened the original 5-candidate
         spot-check to a full 4-intensity x 2-shape sweep; session 56
         widened it again to surface seesaw and Blackout's stronger
@@ -1030,11 +1048,13 @@ class DiscoveryReport:
         me the CSV" report once a strategy was chosen elsewhere).
         strategy_pct is the same per-channel spec _default_levers uses for
         one candidate: a float (symmetric +/-X% for every channel), a
-        Blackout, or a Redistribute (its edge_cap_pct is the intensity;
+        Blackout, a Redistribute (its edge_cap_pct is the intensity;
         strategy_nudge_shape and strategy_balanced are ignored for it --
-        the edge layer is always edge, balanced). Redistribute moves budget
-        between months, so only annual totals are preserved. When set, this exact strategy is added to the sweep as
-        one more candidate (labelled "Pinned: ...") and used directly as
+        the edge layer is always edge, balanced) or a MonthStep (its
+        step_pct is the intensity; the nudge shape and balance are ignored
+        too). Redistribute and MonthStep move budget between months, so
+        only annual totals are preserved. When set, this exact strategy is
+        added to the sweep as one more candidate (labelled "Pinned: ...") and used directly as
         self.winner_ -- _pick_winner's dominance check never runs, so
         Sections 1-4, the Appendix's headline callouts and schedule_csv()
         are all built from the strategy you chose, not one the sweep
@@ -1046,8 +1066,9 @@ class DiscoveryReport:
         is None.
     channel_constraints:
         Per-channel overrides applied on top of strategy_pct for specific
-        channels (a float, Blackout or Redistribute) -- e.g. {"meta": 20.0}
-        pins meta to +/-20% regardless of what strategy_pct says for every other channel, or {"meta":
+        channels (a float, Blackout, Redistribute or MonthStep) -- e.g.
+        {"meta": 20.0} pins meta to +/-20% regardless of what strategy_pct
+        says for every other channel, or {"meta":
         Blackout(max_dark_weeks_per_month=1)} switches meta to blackout-mode
         while the rest of the plan follows strategy_pct. Requires
         strategy_pct to be set (there is nothing to override otherwise);
@@ -1076,10 +1097,11 @@ class DiscoveryReport:
         adstock: dict[str, float] | float = 0.0,
         revenue_noise_std: float = 26_000.0,
         levers: list[tuple[str, dict, str, bool]] | None = None,
-        strategy_pct: float | Blackout | Redistribute | None = None,
+        strategy_pct: float | Blackout | Redistribute | MonthStep | None = None,
         strategy_nudge_shape: str = "edge",
         strategy_balanced: bool = True,
-        channel_constraints: dict[str, float | Blackout | Redistribute] | None = None,
+        channel_constraints: dict[str, float | Blackout | Redistribute | MonthStep]
+        | None = None,
         client_name: str = "",
         plan_year: str = "",
         seed: int = 0,
@@ -1135,9 +1157,11 @@ class DiscoveryReport:
         )
         base_levers = levers if levers is not None else _default_levers(self.channels_)
         self.pinned_label_: str | None = None
-        self.channel_constraints_: dict[str, float | Blackout | Redistribute] = {}
+        self.channel_constraints_: dict[
+            str, float | Blackout | Redistribute | MonthStep
+        ] = {}
         if strategy_pct is not None:
-            pinned_spec: dict[str, float | Blackout | Redistribute] = {
+            pinned_spec: dict[str, float | Blackout | Redistribute | MonthStep] = {
                 ch: strategy_pct for ch in self.channels_
             }
             if channel_constraints:
@@ -1942,9 +1966,9 @@ def _render_html(report: DiscoveryReport) -> str:
     # of leaving it visible only to someone who scrolls to the appendix).
     winner_cost_pct = float(np.mean(list(lever_cost_pct[winner].values())))
 
-    # Redistribute strategies move budget BETWEEN months (a blackout run's
-    # budget lands in a recipient month); only each channel's 12-month
-    # block total is preserved. Every other strategy preserves each
+    # Redistribute and MonthStep strategies move budget BETWEEN months (a
+    # blackout run's budget lands in a recipient month; a step scales a
+    # whole month); only each channel's 12-month block total is preserved. Every other strategy preserves each
     # month's total exactly, which is what the copy below normally says.
     winner_spec = next(spec for lbl, spec, *_ in report.levers_ if lbl == winner)
     if _moves_budget_between_months(winner_spec):
@@ -1952,11 +1976,15 @@ def _render_html(report: DiscoveryReport) -> str:
             "annual totals unchanged from unphased; budget moves between months"
         )
         totals_cost = "though each channel's annual total is unchanged"
+        how_months_move = (
+            "a blackout run's budget lands in a recipient month"
+            if any(isinstance(v, Redistribute) for v in winner_spec.values())
+            else "each month is stepped up or down"
+        )
         totals_pacing = (
             "Each channel's annual total is identical on both sides, but "
-            "this strategy also moves budget between months: a blackout "
-            "run's budget lands in a recipient month, so individual "
-            "monthly totals differ."
+            f"this strategy also moves budget between months: {how_months_move}, "
+            "so individual monthly totals differ."
         )
     else:
         totals_sub = "monthly totals unchanged from unphased"
@@ -1983,6 +2011,8 @@ def _render_html(report: DiscoveryReport) -> str:
                 value_text = "Blackout"
             elif isinstance(override, Redistribute):
                 value_text = f"+/-{override.edge_cap_pct:.0f}% (redistribute + edge)"
+            elif isinstance(override, MonthStep):
+                value_text = f"+/-{override.step_pct:.0f}% (month step)"
             else:
                 value_text = f"+/-{override:.0f}%"
             rows += (
