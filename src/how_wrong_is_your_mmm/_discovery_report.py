@@ -1461,7 +1461,7 @@ class DiscoveryReport:
     def fit(
         self,
         n_sims: int = 50,
-        n_phasing_seeds: int = 5,
+        n_phasing_seeds: int = 15,
         id_n_sims: int = 20,
         id_b_candidates: np.ndarray | None = None,
         id_lam_candidates: np.ndarray | None = None,
@@ -1481,7 +1481,18 @@ class DiscoveryReport:
         n_phasing_seeds:
             Independent phased-schedule draws averaged per lever (the
             unphased baseline always uses exactly 1 -- there's nothing
-            random to average over). Default 5.
+            random to average over). Default 15 (raised from 5, session
+            63): at 5, per-channel bias numbers for channels whose true
+            marginal return is high relative to tv's (meta, search_generic
+            on the canonical scenario) hadn't converged -- individual
+            channels swung between "improved" and "no better than
+            unphased" depending on which single Redistribute round-robin
+            assignment the 5 draws happened to sample, even though the
+            report-wide winner pick was unaffected (dominated by
+            low-marginal-return channels' much larger swings). 15 draws
+            matched 20 draws' numbers on the canonical scenario to within
+            about a point; lower this for fast iteration, and note
+            fast_mode already uses 2 for that reason.
         id_n_sims:
             Noise draws per IdentifiabilityDiagnostic fit. Kept separate
             from n_sims and smaller by default -- profiling a (b, lambda)
