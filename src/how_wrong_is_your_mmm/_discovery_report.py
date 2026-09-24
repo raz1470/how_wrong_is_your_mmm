@@ -88,7 +88,7 @@ from how_wrong_is_your_mmm._dgp import (
     apply_adstock,
     calibrate_baseline,
     channel_contributions,
-    simulate_demand,
+    link_demand_to_spend,
 )
 from how_wrong_is_your_mmm._diagnostic import CollinearityDiagnostic
 from how_wrong_is_your_mmm._identifiability import (
@@ -771,6 +771,27 @@ def _svg_stacked_area(
     return "".join(parts)
 
 
+def _demand_link_sentence(meta: dict) -> str:
+    """One sentence stating how the report's demand series relates to spend.
+
+    The link strength (demand_share) cannot be read off spend data, so the
+    report states it as the assumption it is.
+    """
+    corrs = list(meta["demand_spend_corr"].values())
+    span = f"{min(corrs):.2f} to {max(corrs):.2f}"
+    if meta["demand_supplied"]:
+        return (
+            "The demand series was supplied with the spend. Its correlation "
+            f"with each channel's unphased spend is {span}."
+        )
+    return (
+        "The demand series is built to track your unphased spend. It assumes "
+        f"{meta['demand_share']:.0%} of the channels' shared movement is "
+        f"demand, which gives a correlation of {span} with each channel. "
+        "Spend data cannot confirm that share, so treat it as an assumption."
+    )
+
+
 def _corr_table_html(matrix: dict, channels: list[str]) -> str:
     """Static HTML table for a channel-by-channel correlation matrix, cells
     heat-shaded from the correlation value (no JS -- computed at render time,
@@ -1276,9 +1297,25 @@ class DiscoveryReport:
         simulates from spend. Needs at least 52 weeks of history left
         un-phased ahead of the window.
     demand_process:
-        Forwarded to simulate_demand() for the report's one shared demand
-        series. Default "white_noise", matching the package's other
-        defaults.
+        Shape of the unlinked part of the report's demand series. Forwarded
+        to link_demand_to_spend(). Default "white_noise". The linked part
+        takes the shape of the supplied spend itself, so at the default
+        demand_share this setting shapes only about 10% of demand's
+        variance. Ignored when `demand` is supplied.
+    demand_share:
+        How much of the channels' shared movement is demand, in [0, 1].
+        Sets how strongly the report's demand series tracks the unphased
+        spend: corr(spend, demand) = sqrt(demand_share * mean pairwise
+        channel correlation), the same relationship simulate_spend uses.
+        Default 1.0, the maximal-bias case. Spend data cannot reveal the
+        true value, so the report states it as an assumption. Ignored
+        when `demand` is supplied.
+    demand:
+        Optional demand series of length len(history_df) + len(plan_df),
+        e.g. the series passed to simulate_spend(demand=...) when the
+        spend is simulated. Used instead of building one with
+        link_demand_to_spend(). Standardised to mean 0 / sd 1 on the way
+        in, since calibrate_baseline's demand_coef assumes that scale.
     """
 
     def __init__(
@@ -1303,6 +1340,8 @@ class DiscoveryReport:
         seed: int = 0,
         demand_process: str = "white_noise",
         backphase_years: int = 0,
+        demand_share: float = 1.0,
+        demand: np.ndarray | pd.Series | None = None,
     ) -> None:
         if list(history_df.columns) != list(plan_df.columns):
             raise ValueError(
@@ -1314,6 +1353,8 @@ class DiscoveryReport:
 
         _get_month_labels(plan_df)  # validates DatetimeIndex, fails fast
 
+        if not 0.0 <= demand_share <= 1.0:
+            raise ValueError("demand_share must be between 0 and 1 inclusive")
         if backphase_years < 0 or int(backphase_years) != backphase_years:
             raise ValueError("backphase_years must be a non-negative integer")
         self.supplied_history_df = history_df
@@ -1433,8 +1474,39 @@ class DiscoveryReport:
             baseline_cv=baseline_cv,
         )
 
-        n_total = len(history_df) + len(plan_df)
-        self.demand_ = simulate_demand(n_total, process=demand_process, seed=seed)
+        # Demand is built once, from the UNPHASED spend, and held fixed for
+        # every candidate. Phasing can then only change how closely spend
+        # tracks demand, never demand itself. Drawing demand independently
+        # of spend (the old behaviour) left the two linked only when the
+        # report seed happened to replay simulate_spend's own draws.
+        unphased = pd.concat([history_df, plan_df])
+        n_total = len(unphased)
+        self.demand_share = demand_share
+        if demand is not None:
+            demand_arr = np.asarray(demand, dtype=float)
+            if demand_arr.shape != (n_total,):
+                raise ValueError(
+                    "demand must be a 1-D series of length "
+                    f"len(history_df) + len(plan_df) = {n_total}, "
+                    f"got shape {demand_arr.shape}"
+                )
+            sd = demand_arr.std()
+            if sd == 0:
+                raise ValueError("demand has zero variance")
+            self.demand_ = (demand_arr - demand_arr.mean()) / sd
+            self.demand_link_ = None
+        else:
+            self.demand_link_ = link_demand_to_spend(
+                unphased,
+                demand_share=demand_share,
+                process=demand_process,
+                seed=seed,
+            )
+            self.demand_ = self.demand_link_.demand.to_numpy()
+        self.demand_spend_corr_ = {
+            ch: float(np.corrcoef(unphased[ch].to_numpy(), self.demand_)[0, 1])
+            for ch in self.channels_
+        }
 
         self.results_: dict[str, dict] | None = None
         self.winner_: str | None = None
@@ -1999,6 +2071,9 @@ class DiscoveryReport:
                 "n_weeks_plan": len(self.plan_df),
                 "true_marginal_returns": self.true_marginal_returns,
                 "demand_proxy_quality": self.demand_proxy_quality,
+                "demand_share": self.demand_share,
+                "demand_supplied": self.demand_link_ is None,
+                "demand_spend_corr": self.demand_spend_corr_,
                 "saturation": self.saturation,
                 "adstock": self.adstock,
                 "baseline_share": self.baseline_share,
@@ -2836,7 +2911,8 @@ def _render_html(report: DiscoveryReport) -> str:
   demand itself. Here that signal is a proxy at
   {meta["demand_proxy_quality"]:.0%} quality rather than the true series,
   and the gap between the two pulls every channel's estimate away from its
-  true marginal return before phasing is even considered.</p>
+  true marginal return before phasing is even considered.
+  {_demand_link_sentence(meta)}</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Revenue implied by the biased estimate, unphased</div>

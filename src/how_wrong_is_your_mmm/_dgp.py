@@ -417,6 +417,152 @@ def calibrate_baseline(
     )
 
 
+@dataclass(frozen=True)
+class LinkedDemand:
+    """Result of link_demand_to_spend.
+
+    Attributes
+    ----------
+    demand:
+        The linked demand series, standardised to mean 0 / sd 1, indexed
+        like the spend frame it was built from.
+    target_correlation:
+        The corr(spend_c, demand) the construction aimed for, averaged over
+        channels: sqrt(demand_share * mean pairwise channel correlation).
+    realised_correlation:
+        corr(spend_c, demand) actually achieved, per channel.
+    factor_weight:
+        Weight on the spend common factor (alpha in the construction).
+        The unlinked part of demand gets sqrt(1 - alpha^2).
+    """
+
+    demand: pd.Series
+    target_correlation: float
+    realised_correlation: dict[str, float]
+    factor_weight: float
+
+
+def _standardise(x: np.ndarray) -> np.ndarray:
+    sd = x.std()
+    if sd == 0:
+        return np.zeros_like(x)
+    return (x - x.mean()) / sd
+
+
+def link_demand_to_spend(
+    spend_df: pd.DataFrame,
+    demand_share: float = 1.0,
+    process: str = "white_noise",
+    seed: int = 0,
+    **process_kwargs: float,
+) -> LinkedDemand:
+    """Build a latent demand series that the supplied spend tracks.
+
+    simulate_spend runs demand -> spend. A real client's spend already
+    exists, so this runs the other way: it builds a demand series that the
+    supplied spend is correlated with, at the level simulate_spend's own
+    DGP implies for the same `demand_share`. Without this step a demand
+    series drawn independently of the spend has no link to it, and the
+    omitted-variable bias the diagnostics measure is chance correlation.
+
+    Construction:
+
+    1. f = the spend's common factor: each channel standardised, averaged
+       across channels, then standardised again.
+    2. target = sqrt(demand_share * mean pairwise channel correlation).
+       This is the corr(spend_c, demand) that simulate_spend produces at
+       the same demand_share and correlation.
+    3. u = simulate_demand(process=process, seed=seed), with the part
+       explained by f regressed out and the rest standardised.
+    4. demand = alpha * f + sqrt(1 - alpha^2) * u, with
+       alpha = target / mean_c corr(f, spend_c).
+
+    alpha never exceeds 1. For standardised channels the mean of
+    corr(f, spend_c) is sqrt((1 + (n - 1) * r) / n), where r is the mean
+    pairwise correlation, and that is at least sqrt(r) whenever r <= 1.
+
+    What this means for `process`: the linked part of demand takes the
+    shape of the spend itself. `process` only shapes the unlinked
+    remainder (a share 1 - alpha^2 of demand's variance). At
+    demand_share = 1 and a pairwise correlation of 0.7 that remainder is
+    about 10%.
+
+    Call this on UNPHASED spend and hold the result fixed. Demand is
+    exogenous to any phasing plan: rebuilding it from phased spend would
+    let the plan move demand, which defeats the comparison.
+
+    Parameters
+    ----------
+    spend_df:
+        Weekly spend, one column per channel. At least 3 rows.
+    demand_share:
+        Share of the channels' common variance attributable to demand, in
+        [0, 1]. Same meaning as simulate_spend's `demand_share`. 1.0 (the
+        default) is the maximal-bias case. The observed spend cannot
+        reveal the true value, so treat it as an assumption to state.
+    process:
+        One of DEMAND_PROCESSES, for the unlinked part of demand.
+    seed:
+        Seed for the unlinked part.
+    **process_kwargs:
+        Forwarded to simulate_demand (ar_coef, season_period,
+        season_weight, trend_drift).
+
+    Returns
+    -------
+    LinkedDemand. `demand` is standardised to mean 0 / sd 1.
+    """
+    if not 0.0 <= demand_share <= 1.0:
+        raise ValueError("demand_share must be between 0 and 1 inclusive")
+    n_obs = len(spend_df)
+    if n_obs < 3:
+        raise ValueError("spend_df needs at least 3 rows to link demand to it")
+
+    values = spend_df.to_numpy(dtype=float)
+    sds = values.std(axis=0)
+    if np.any(sds == 0):
+        flat = [c for c, s in zip(spend_df.columns, sds) if s == 0]
+        raise ValueError(
+            f"cannot link demand to constant spend column(s): {flat}. "
+            "A channel with no variation carries no demand signal."
+        )
+    z = (values - values.mean(axis=0)) / sds
+    factor = _standardise(z.mean(axis=1))
+
+    n_ch = values.shape[1]
+    if n_ch > 1:
+        corr = np.corrcoef(values.T)
+        mean_pairwise = float(corr[np.triu_indices(n_ch, 1)].mean())
+    else:
+        mean_pairwise = 1.0
+    # A negative mean pairwise correlation has no shared demand to find.
+    target = float(np.sqrt(demand_share * max(mean_pairwise, 0.0)))
+
+    factor_corr = np.array(
+        [np.corrcoef(factor, values[:, i])[0, 1] for i in range(n_ch)]
+    )
+    mean_factor_corr = float(factor_corr.mean())
+    # alpha <= 1 analytically (see docstring). min() only absorbs rounding.
+    alpha = min(target / mean_factor_corr, 1.0) if mean_factor_corr > 0 else 0.0
+
+    raw = simulate_demand(n_obs, process=process, seed=seed, **process_kwargs)
+    design = np.column_stack([np.ones(n_obs), factor])
+    resid = raw - design @ np.linalg.lstsq(design, raw, rcond=None)[0]
+    unlinked = _standardise(resid)
+
+    demand = _standardise(alpha * factor + np.sqrt(1.0 - alpha**2) * unlinked)
+    realised = {
+        str(ch): float(np.corrcoef(values[:, i], demand)[0, 1])
+        for i, ch in enumerate(spend_df.columns)
+    }
+    return LinkedDemand(
+        demand=pd.Series(demand, index=spend_df.index, name="demand"),
+        target_correlation=target,
+        realised_correlation=realised,
+        factor_weight=float(alpha),
+    )
+
+
 def simulate_spend(
     n_obs: int = 104,
     correlation: float = 0.7,

@@ -10,6 +10,7 @@ from how_wrong_is_your_mmm._dgp import (
     apply_adstock,
     calibrate_baseline,
     channel_contributions,
+    link_demand_to_spend,
     simulate_demand,
     simulate_demand_proxy,
     simulate_sales,
@@ -803,3 +804,110 @@ class TestChannelContributions:
         )
         for ch in CHANNELS:
             assert not np.allclose(linear[ch].to_numpy(), curved[ch].to_numpy())
+
+
+class TestLinkDemandToSpend:
+    """Demand built to track a given spend frame (the reverse of simulate_spend)."""
+
+    SPEND = simulate_spend(
+        n_obs=260,
+        correlation=0.7,
+        channels=["tv", "meta", "search", "tiktok"],
+        seed=0,
+        start_date="2023-01-09",
+    )
+
+    def test_realised_correlation_hits_target(self):
+        link = link_demand_to_spend(self.SPEND, demand_share=1.0)
+        realised = np.mean(list(link.realised_correlation.values()))
+        assert abs(realised - link.target_correlation) < 0.05
+        assert link.target_correlation == pytest.approx(np.sqrt(0.7), abs=0.03)
+
+    @pytest.mark.parametrize("share", [0.25, 0.5, 1.0])
+    def test_target_scales_with_demand_share(self, share):
+        link = link_demand_to_spend(self.SPEND, demand_share=share)
+        realised = np.mean(list(link.realised_correlation.values()))
+        assert abs(realised - link.target_correlation) < 0.05
+        full = link_demand_to_spend(self.SPEND, demand_share=1.0)
+        assert link.target_correlation == pytest.approx(
+            np.sqrt(share) * full.target_correlation
+        )
+
+    def test_zero_share_gives_unlinked_demand(self):
+        link = link_demand_to_spend(self.SPEND, demand_share=0.0, seed=3)
+        assert link.factor_weight == 0.0
+        for corr in link.realised_correlation.values():
+            assert abs(corr) < 0.2
+
+    @pytest.mark.parametrize("process", DEMAND_PROCESSES)
+    def test_every_process_hits_target(self, process):
+        link = link_demand_to_spend(self.SPEND, process=process)
+        realised = np.mean(list(link.realised_correlation.values()))
+        assert abs(realised - link.target_correlation) < 0.05
+
+    def test_standardised_and_indexed_like_spend(self):
+        link = link_demand_to_spend(self.SPEND, process="trend")
+        assert link.demand.mean() == pytest.approx(0.0, abs=1e-9)
+        assert link.demand.std(ddof=0) == pytest.approx(1.0)
+        assert link.demand.index.equals(self.SPEND.index)
+
+    def test_deterministic_for_a_seed(self):
+        a = link_demand_to_spend(self.SPEND, seed=5)
+        b = link_demand_to_spend(self.SPEND, seed=5)
+        c = link_demand_to_spend(self.SPEND, seed=6)
+        pd.testing.assert_series_equal(a.demand, b.demand)
+        assert not np.allclose(a.demand, c.demand)
+
+    def test_process_kwargs_forwarded(self):
+        a = link_demand_to_spend(self.SPEND, process="trend", trend_drift=0.0)
+        b = link_demand_to_spend(self.SPEND, process="trend", trend_drift=1.0)
+        assert not np.allclose(a.demand, b.demand)
+
+    def test_single_channel(self):
+        link = link_demand_to_spend(self.SPEND[["tv"]], demand_share=0.5)
+        assert link.target_correlation == pytest.approx(np.sqrt(0.5))
+        assert link.realised_correlation["tv"] == pytest.approx(np.sqrt(0.5))
+
+    def test_factor_weight_never_exceeds_one(self):
+        # Two uncorrelated blocks of near-duplicate channels: the case where
+        # the equal-weight factor tracks each channel least well.
+        rng = np.random.default_rng(0)
+        x, y = rng.standard_normal(200), rng.standard_normal(200)
+        spend = pd.DataFrame(
+            {
+                "a": x + 0.05 * rng.standard_normal(200),
+                "b": x + 0.05 * rng.standard_normal(200),
+                "c": y + 0.05 * rng.standard_normal(200),
+                "d": y + 0.05 * rng.standard_normal(200),
+            }
+        )
+        link = link_demand_to_spend(spend)
+        assert 0.0 < link.factor_weight <= 1.0
+        realised = np.mean(list(link.realised_correlation.values()))
+        assert abs(realised - link.target_correlation) < 0.05
+
+    def test_negative_mean_correlation_gives_zero_target(self):
+        rng = np.random.default_rng(0)
+        base = rng.standard_normal(100)
+        spend = pd.DataFrame(
+            {
+                "a": base + 0.01 * rng.standard_normal(100),
+                "b": -base + 0.01 * rng.standard_normal(100),
+            }
+        )
+        link = link_demand_to_spend(spend)
+        assert link.target_correlation == 0.0
+
+    def test_invalid_share_raises(self):
+        with pytest.raises(ValueError, match="demand_share"):
+            link_demand_to_spend(self.SPEND, demand_share=1.5)
+
+    def test_too_short_raises(self):
+        with pytest.raises(ValueError, match="at least 3 rows"):
+            link_demand_to_spend(self.SPEND.iloc[:2])
+
+    def test_constant_column_raises(self):
+        spend = self.SPEND.copy()
+        spend["tv"] = 1.0
+        with pytest.raises(ValueError, match="constant spend"):
+            link_demand_to_spend(spend)

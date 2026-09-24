@@ -1533,3 +1533,85 @@ class TestPlanYearHighlightAndPacingWindow:
         n_points = re.findall(r'<polyline points="([^"]+)"', section4)
         assert n_points
         assert all(len(p.split()) == len(LONG_PLAN_DF) for p in n_points)
+
+
+class TestDemandLink:
+    """The report's demand series tracks the unphased spend it was given."""
+
+    def test_demand_tracks_unphased_spend(self):
+        report = make_report()
+        link = report.demand_link_
+        assert link is not None
+        realised = np.mean(list(report.demand_spend_corr_.values()))
+        assert abs(realised - link.target_correlation) < 0.05
+        assert realised > 0.5
+
+    def test_plan_year_is_linked(self):
+        report = make_report()
+        plan_part = report.demand_[len(HISTORY_DF) :]
+        for ch in CHANNELS:
+            assert np.corrcoef(PLAN_DF[ch], plan_part)[0, 1] > 0.3
+
+    def test_link_does_not_depend_on_seed_matching(self):
+        # The old demand draw was only linked to spend when the report seed
+        # replayed simulate_spend's own draws. Any seed must now link.
+        for seed in (0, 7, 123):
+            report = make_report(seed=seed)
+            assert min(report.demand_spend_corr_.values()) > 0.5
+
+    def test_zero_demand_share_unlinks(self):
+        report = make_report(demand_share=0.0)
+        assert report.demand_link_.factor_weight == 0.0
+        for corr in report.demand_spend_corr_.values():
+            assert abs(corr) < 0.3
+
+    def test_trend_process_still_linked(self):
+        report = make_report(demand_process="trend")
+        realised = np.mean(list(report.demand_spend_corr_.values()))
+        assert abs(realised - report.demand_link_.target_correlation) < 0.05
+
+    def test_supplied_demand_used_and_standardised(self):
+        n = len(HISTORY_DF) + len(PLAN_DF)
+        supplied = 3.0 + 2.0 * np.random.default_rng(0).standard_normal(n)
+        report = make_report(demand=supplied)
+        assert report.demand_link_ is None
+        np.testing.assert_allclose(
+            report.demand_, (supplied - supplied.mean()) / supplied.std()
+        )
+
+    def test_supplied_demand_wrong_length_raises(self):
+        with pytest.raises(ValueError, match="demand must be a 1-D series"):
+            make_report(demand=np.zeros(5))
+
+    def test_supplied_constant_demand_raises(self):
+        n = len(HISTORY_DF) + len(PLAN_DF)
+        with pytest.raises(ValueError, match="zero variance"):
+            make_report(demand=np.ones(n))
+
+    def test_invalid_demand_share_raises(self):
+        with pytest.raises(ValueError, match="demand_share"):
+            make_report(demand_share=-0.1)
+
+    def test_demand_fixed_across_candidates(self):
+        report = make_report()
+        before = report.demand_.copy()
+        fit_small(report)
+        np.testing.assert_array_equal(report.demand_, before)
+
+    def test_backphase_links_on_unphased_spend(self):
+        # backphase_years moves history into the phased window. Demand must
+        # still be built on the unphased spend, so it matches the default.
+        a = make_long_report()
+        b = make_long_report(backphase_years=1)
+        np.testing.assert_allclose(a.demand_, b.demand_)
+
+    def test_report_states_demand_assumption(self):
+        report = fit_small(make_report(demand_share=0.5))
+        html_out = report.to_html()
+        assert "assumes 50% of the channels' shared movement is demand" in html_out
+
+    def test_report_states_supplied_demand(self):
+        n = len(HISTORY_DF) + len(PLAN_DF)
+        demand = np.random.default_rng(1).standard_normal(n)
+        report = fit_small(make_report(demand=demand))
+        assert "The demand series was supplied with the spend." in report.to_html()
