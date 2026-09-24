@@ -1640,3 +1640,44 @@ class TestZeroHeadWeeks:
         # 52 weeks of history + plan: year 2 phases all of it.
         report = fit_small(make_report(), horizon_years=3)
         assert report.time_to_benefit_["years"] == [1, 2]
+
+
+class TestBiasDraws:
+    """The bias section averages over several demand draws, not one."""
+
+    def test_one_draw_per_phasing_seed(self):
+        report = fit_small(
+            make_report(), fast_mode=False, n_sims=5, id_n_sims=2, n_phasing_seeds=3
+        )
+        assert report.n_bias_draws_ == 3
+        assert sorted(report._bias_demand_cache) == [0, 1, 2]
+
+    def test_draw_zero_is_the_report_demand(self):
+        report = make_report()
+        np.testing.assert_array_equal(report._bias_demand(0), report.demand_)
+
+    def test_draws_differ_but_all_hit_the_target(self):
+        report = make_report()
+        spend = pd.concat([HISTORY_DF, PLAN_DF])
+        draws = [report._bias_demand(k) for k in range(3)]
+        assert not np.allclose(draws[0], draws[1])
+        for d in draws:
+            realised = np.mean([np.corrcoef(spend[ch], d)[0, 1] for ch in CHANNELS])
+            assert abs(realised - report.demand_spend_corr) < 0.05
+
+    def test_supplied_demand_is_reused_for_every_draw(self):
+        n = len(HISTORY_DF) + len(PLAN_DF)
+        demand = np.random.default_rng(1).standard_normal(n)
+        report = make_report(demand=demand)
+        np.testing.assert_array_equal(report._bias_demand(2), report.demand_)
+
+    def test_pooled_range_brackets_the_mean(self):
+        report = fit_small(make_report())
+        for res in report.results_.values():
+            for ch in CHANNELS:
+                assert res["bias_pct_p10"][ch] <= res["bias_pct"][ch]
+                assert res["bias_pct"][ch] <= res["bias_pct_p90"][ch]
+
+    def test_report_states_draw_count(self):
+        report = fit_small(make_report())
+        assert "Bias is averaged over 2 draws of demand" in report.to_html()

@@ -127,6 +127,9 @@ _PALETTE = [
 
 
 _WEEKS_PER_YEAR = 52
+# Seed offset between the bias section's demand draws, kept well clear of
+# the phasing seeds (self.seed + j for small j).
+_BIAS_DRAW_SEED_STEP = 7919
 # History that must stay un-phased ahead of a back-phased window. Zero:
 # the diagnostics need spend to fit against, not un-phased spend, so a
 # window covering all of history is valid. It is the "phasing had run the
@@ -782,16 +785,20 @@ def _demand_link_sentence(meta: dict) -> str:
     """
     corrs = list(meta["realised_demand_corr"].values())
     span = f"{min(corrs):.2f} to {max(corrs):.2f}"
+    n = meta["n_bias_draws"]
     if meta["demand_supplied"]:
         return (
             "The demand series was supplied with the spend. Its correlation "
-            f"with each channel's unphased spend is {span}."
+            f"with each channel's unphased spend is {span}. Bias is averaged "
+            f"over {n} draws of the proxy."
         )
     return (
         "The demand series is built to track your unphased spend at an assumed "
         f"correlation of {meta['demand_spend_corr']:.2f} ({span} by channel). "
         "Spend data cannot confirm that value, so treat it as an assumption. "
-        "Bias grows steeply with it."
+        f"Bias grows steeply with it. Bias is averaged over {n} draws of "
+        "demand and its proxy, because any single draw can line up with one "
+        "channel by chance."
     )
 
 
@@ -1507,6 +1514,8 @@ class DiscoveryReport:
                 seed=seed,
             )
             self.demand_ = self.demand_link_.demand.to_numpy()
+        self._unphased_spend = unphased
+        self._bias_demand_cache: dict[int, np.ndarray] = {0: self.demand_}
         self.realised_demand_corr_ = {
             ch: float(np.corrcoef(unphased[ch].to_numpy(), self.demand_)[0, 1])
             for ch in self.channels_
@@ -1518,6 +1527,29 @@ class DiscoveryReport:
         self.schedules_: dict[str, pd.DataFrame] | None = None
         self.report_data_: dict | None = None
         self.time_to_benefit_: dict | None = None
+
+    def _bias_demand(self, k: int) -> np.ndarray:
+        """Demand series for bias draw k. Draw 0 is `demand_` itself.
+
+        One demand path is one draw of luck: how a single trend path lines up
+        with each channel's own slow movements moves that channel's bias by
+        tens of points from seed to seed. The bias section therefore averages
+        over several draws of the unlinked part of demand, all linked to the
+        same unphased spend at the same demand_spend_corr. A supplied
+        `demand` cannot be redrawn, so every draw reuses it (the proxy is
+        still redrawn per draw).
+        """
+        if k not in self._bias_demand_cache:
+            if self.demand_link_ is None:
+                self._bias_demand_cache[k] = self.demand_
+            else:
+                self._bias_demand_cache[k] = link_demand_to_spend(
+                    self._unphased_spend,
+                    demand_spend_corr=self.demand_spend_corr,
+                    process=self.demand_process,
+                    seed=self.seed + _BIAS_DRAW_SEED_STEP * k,
+                ).demand.to_numpy()
+        return self._bias_demand_cache[k]
 
     def _phase(
         self, spec: dict, nudge_shape: str, balance_signs: bool, seed: int
@@ -1557,7 +1589,10 @@ class DiscoveryReport:
         n_phasing_seeds:
             Independent phased-schedule draws averaged per lever (the
             unphased baseline always uses exactly 1 -- there's nothing
-            random to average over). Default 15 (raised from 5, session
+            random to average over). Also the number of demand draws the
+            bias section averages over: phasing seed j is paired with
+            demand draw j and proxy seed proxy_seed + j, and the unphased
+            baseline runs one bias fit per draw. Default 15 (raised from 5, session
             63): at 5, per-channel bias numbers for channels whose true
             marginal return is high relative to tv's (meta, search_generic
             on the canonical scenario) hadn't converged -- individual
@@ -1581,8 +1616,8 @@ class DiscoveryReport:
         valley_tol:
             Forwarded to IdentifiabilityDiagnostic.summary()'s valley_pct.
         proxy_seed:
-            Forwarded to CollinearityDiagnostic's bias-section fit as
-            `proxy_seed` -- the demand-proxy draw's own seed.
+            Base seed for the bias section's demand-proxy draws. Draw j
+            uses proxy_seed + j.
         fast_mode:
             If True, uses cheap settings throughout (n_sims=10,
             n_phasing_seeds=2, id_n_sims=5) -- for iterating on the report
@@ -1608,6 +1643,7 @@ class DiscoveryReport:
 
         results: dict[str, dict] = {}
         schedules: dict[str, pd.DataFrame] = {}
+        self.n_bias_draws_ = n_phasing_seeds
 
         for label, spec, nudge_shape, balance_signs in self.levers_:
             unphased = _is_unphased(spec)
@@ -1622,8 +1658,7 @@ class DiscoveryReport:
             revenue_p10_draws = []
             revenue_p90_draws = []
             bias_draws = []
-            bias_p10_draws = []
-            bias_p90_draws = []
+            bias_sims = []
             id_draws = []
             id_b_p10_draws = []
             id_b_p90_draws = []
@@ -1659,26 +1694,14 @@ class DiscoveryReport:
                 revenue_p90_draws.append(var_summary["incremental_revenue_p90"])
                 corr_draws.append(diag_var.correlation_matrix)
 
-                diag_bias = CollinearityDiagnostic(
-                    spend_df=combined,
-                    true_marginal_returns=self.true_marginal_returns,
-                    base_sales=self.calibration_.baseline_level,
-                    revenue_noise_std=self.revenue_noise_std,
-                    demand=self.demand_,
-                    demand_coef=self.calibration_.demand_coef,
-                    saturation=self.saturation,
-                    adstock=self.adstock,
-                    reference_spend=self.reference_spend_,
-                )
-                diag_bias.fit(
-                    n_sims=n_sims,
-                    controls=self.demand_proxy_quality,
-                    proxy_seed=proxy_seed,
-                )
-                bias_summary = diag_bias.summary().set_index("channel")
-                bias_draws.append(bias_summary["mean_error_pct"])
-                bias_p10_draws.append(bias_summary["error_pct_p10"])
-                bias_p90_draws.append(bias_summary["error_pct_p90"])
+                # Phasing seed j is paired with demand draw j. The unphased
+                # schedule has no phasing randomness, so it runs its bias
+                # fit once per draw instead (below the loop).
+                draws_here = range(n_phasing_seeds) if unphased else [j]
+                for k in draws_here:
+                    mean_err, sims = self._bias_fit(combined, k, n_sims, proxy_seed + k)
+                    bias_draws.append(mean_err)
+                    bias_sims.append(sims)
 
                 diag_id = IdentifiabilityDiagnostic(
                     spend_df=combined,
@@ -1737,8 +1760,12 @@ class DiscoveryReport:
             revenue_p10 = pd.concat(revenue_p10_draws, axis=1).mean(axis=1)
             revenue_p90 = pd.concat(revenue_p90_draws, axis=1).mean(axis=1)
             bias_pct = pd.concat(bias_draws, axis=1).mean(axis=1)
-            bias_pct_p10 = pd.concat(bias_p10_draws, axis=1).mean(axis=1)
-            bias_pct_p90 = pd.concat(bias_p90_draws, axis=1).mean(axis=1)
+            # p10-p90 over every simulation from every draw pooled, so the
+            # range includes the spread between demand draws, not only the
+            # noise within one.
+            pooled = pd.concat(bias_sims).groupby("channel")["error_pct"]
+            bias_pct_p10 = pooled.quantile(0.1)
+            bias_pct_p90 = pooled.quantile(0.9)
             # Per-channel DataFrame (b_mean, b_sd, ..., valley_pct), each
             # draw already indexed by channel -- average across draws
             # channel-by-channel, column-by-column.
@@ -1848,6 +1875,33 @@ class DiscoveryReport:
 
         return table
 
+    def _bias_fit(
+        self, combined: pd.DataFrame, k: int, n_sims: int, proxy_seed: int
+    ) -> tuple[pd.Series, pd.DataFrame]:
+        """One bias-section fit on demand draw k.
+
+        Returns the per-channel mean error % and the per-simulation
+        (channel, error_pct) rows for pooled quantiles.
+        """
+        diag_bias = CollinearityDiagnostic(
+            spend_df=combined,
+            true_marginal_returns=self.true_marginal_returns,
+            base_sales=self.calibration_.baseline_level,
+            revenue_noise_std=self.revenue_noise_std,
+            demand=self._bias_demand(k),
+            demand_coef=self.calibration_.demand_coef,
+            saturation=self.saturation,
+            adstock=self.adstock,
+            reference_spend=self.reference_spend_,
+        )
+        diag_bias.fit(
+            n_sims=n_sims,
+            controls=self.demand_proxy_quality,
+            proxy_seed=proxy_seed,
+        )
+        mean_err = diag_bias.summary().set_index("channel")["mean_error_pct"]
+        return mean_err, diag_bias.results_[["channel", "error_pct"]]
+
     def _three_scores(
         self,
         combined: pd.DataFrame,
@@ -1859,6 +1913,7 @@ class DiscoveryReport:
         valley_tol: float,
         proxy_seed: int,
         noise_seed: int,
+        bias_draw: int = 0,
     ) -> dict[str, float]:
         """Report-wide variance / bias / identifiability scores for one
         history+plan spend frame -- the same three measures fit() scores
@@ -1879,13 +1934,10 @@ class DiscoveryReport:
         diag_var.fit(n_sims=n_sims, controls=True)
         variance = float(diag_var.summary()["coef_of_variation"].mean())
 
-        diag_bias = CollinearityDiagnostic(**common)
-        diag_bias.fit(
-            n_sims=n_sims,
-            controls=self.demand_proxy_quality,
-            proxy_seed=proxy_seed,
+        mean_err, _ = self._bias_fit(
+            combined, bias_draw, n_sims, proxy_seed + bias_draw
         )
-        bias = float(diag_bias.summary()["mean_error_pct"].abs().mean())
+        bias = float(mean_err.abs().mean())
 
         diag_id = IdentifiabilityDiagnostic(
             spend_df=combined,
@@ -2001,6 +2053,7 @@ class DiscoveryReport:
                         valley_tol,
                         proxy_seed,
                         sd,
+                        bias_draw=j,
                     )
                 )
             for ax in axes:
@@ -2078,6 +2131,7 @@ class DiscoveryReport:
                 "demand_spend_corr": self.demand_spend_corr,
                 "demand_supplied": self.demand_link_ is None,
                 "realised_demand_corr": self.realised_demand_corr_,
+                "n_bias_draws": self.n_bias_draws_,
                 "saturation": self.saturation,
                 "adstock": self.adstock,
                 "baseline_share": self.baseline_share,
