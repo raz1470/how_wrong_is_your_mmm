@@ -1387,12 +1387,15 @@ class TestTimeToBenefit:
             assert ttb["unphased"][axis] == [base[key]] * 2
 
     def test_horizon_is_capped_by_available_history(self):
-        # 208 weeks of history leaves room for 1 + (208 - 52) // 52 = 4 years.
+        # 208 weeks of history leaves room for 1 + 208 // 52 = 5 years: the
+        # last year phases all of history, with no un-phased head left.
         report = fit_small(make_long_report(), horizon_years=10)
-        assert report.time_to_benefit_["years"] == [1, 2, 3, 4]
+        assert report.time_to_benefit_["years"] == [1, 2, 3, 4, 5]
 
-    def test_short_history_skips_the_projection(self):
-        report = fit_small(make_report(), horizon_years=3)
+    def test_under_a_year_of_history_skips_the_projection(self):
+        report = fit_small(
+            make_report(history_df=HISTORY_DF.iloc[-26:]), horizon_years=3
+        )
         assert report.time_to_benefit_ is None
 
     def test_horizon_of_one_skips_the_projection(self):
@@ -1533,3 +1536,148 @@ class TestPlanYearHighlightAndPacingWindow:
         n_points = re.findall(r'<polyline points="([^"]+)"', section4)
         assert n_points
         assert all(len(p.split()) == len(LONG_PLAN_DF) for p in n_points)
+
+
+class TestDemandLink:
+    """The report's demand series tracks the unphased spend it was given."""
+
+    @staticmethod
+    def mean_realised(report):
+        return np.mean(list(report.realised_demand_corr_.values()))
+
+    def test_defaults(self):
+        report = make_report()
+        assert report.demand_spend_corr == 0.65
+        assert report.demand_process == "trend"
+        assert abs(self.mean_realised(report) - 0.65) < 0.05
+
+    def test_plan_year_is_linked(self):
+        report = make_report()
+        plan_part = report.demand_[len(HISTORY_DF) :]
+        for ch in CHANNELS:
+            assert np.corrcoef(PLAN_DF[ch], plan_part)[0, 1] > 0.3
+
+    def test_link_does_not_depend_on_seed_matching(self):
+        # The old demand draw was only linked to spend when the report seed
+        # replayed simulate_spend's own draws. Any seed must now link.
+        for seed in (0, 7, 123):
+            report = make_report(seed=seed)
+            assert abs(self.mean_realised(report) - 0.65) < 0.05
+
+    def test_zero_corr_unlinks(self):
+        report = make_report(demand_spend_corr=0.0)
+        assert report.demand_link_.factor_weight == 0.0
+        for corr in report.realised_demand_corr_.values():
+            assert abs(corr) < 0.3
+
+    def test_white_noise_process_still_linked(self):
+        report = make_report(demand_process="white_noise")
+        assert abs(self.mean_realised(report) - 0.65) < 0.05
+
+    def test_supplied_demand_used_and_standardised(self):
+        n = len(HISTORY_DF) + len(PLAN_DF)
+        supplied = 3.0 + 2.0 * np.random.default_rng(0).standard_normal(n)
+        report = make_report(demand=supplied)
+        assert report.demand_link_ is None
+        np.testing.assert_allclose(
+            report.demand_, (supplied - supplied.mean()) / supplied.std()
+        )
+
+    def test_supplied_demand_wrong_length_raises(self):
+        with pytest.raises(ValueError, match="demand must be a 1-D series"):
+            make_report(demand=np.zeros(5))
+
+    def test_supplied_constant_demand_raises(self):
+        n = len(HISTORY_DF) + len(PLAN_DF)
+        with pytest.raises(ValueError, match="zero variance"):
+            make_report(demand=np.ones(n))
+
+    def test_invalid_demand_spend_corr_raises(self):
+        with pytest.raises(ValueError, match="demand_spend_corr"):
+            make_report(demand_spend_corr=-0.1)
+
+    def test_demand_fixed_across_candidates(self):
+        report = make_report()
+        before = report.demand_.copy()
+        fit_small(report)
+        np.testing.assert_array_equal(report.demand_, before)
+
+    def test_backphase_links_on_unphased_spend(self):
+        # backphase_years moves history into the phased window. Demand must
+        # still be built on the unphased spend, so it matches the default.
+        a = make_long_report()
+        b = make_long_report(backphase_years=1)
+        np.testing.assert_allclose(a.demand_, b.demand_)
+
+    def test_report_states_demand_assumption(self):
+        report = fit_small(make_report(demand_spend_corr=0.5))
+        html_out = report.to_html()
+        assert "at an assumed correlation of 0.50" in html_out
+
+    def test_report_states_supplied_demand(self):
+        n = len(HISTORY_DF) + len(PLAN_DF)
+        demand = np.random.default_rng(1).standard_normal(n)
+        report = fit_small(make_report(demand=demand))
+        assert "The demand series was supplied with the spend." in report.to_html()
+
+
+class TestZeroHeadWeeks:
+    """Back-phasing may cover all of history (no un-phased head left)."""
+
+    def test_backphase_covers_all_history(self):
+        report = make_report(backphase_years=1)  # HISTORY_DF is 52 weeks
+        assert len(report.history_df) == 0
+        assert len(report.plan_df) == len(HISTORY_DF) + len(PLAN_DF)
+        fit_small(report)
+        assert report.winner_ is not None
+        assert "<svg" in report.to_html()
+
+    def test_backphase_beyond_history_raises(self):
+        with pytest.raises(ValueError, match="backphase_years"):
+            make_report(backphase_years=2)
+
+    def test_time_to_benefit_reaches_full_history(self):
+        # 52 weeks of history + plan: year 2 phases all of it.
+        report = fit_small(make_report(), horizon_years=3)
+        assert report.time_to_benefit_["years"] == [1, 2]
+
+
+class TestBiasDraws:
+    """The bias section averages over several demand draws, not one."""
+
+    def test_one_draw_per_phasing_seed(self):
+        report = fit_small(
+            make_report(), fast_mode=False, n_sims=5, id_n_sims=2, n_phasing_seeds=3
+        )
+        assert report.n_bias_draws_ == 3
+        assert sorted(report._bias_demand_cache) == [0, 1, 2]
+
+    def test_draw_zero_is_the_report_demand(self):
+        report = make_report()
+        np.testing.assert_array_equal(report._bias_demand(0), report.demand_)
+
+    def test_draws_differ_but_all_hit_the_target(self):
+        report = make_report()
+        spend = pd.concat([HISTORY_DF, PLAN_DF])
+        draws = [report._bias_demand(k) for k in range(3)]
+        assert not np.allclose(draws[0], draws[1])
+        for d in draws:
+            realised = np.mean([np.corrcoef(spend[ch], d)[0, 1] for ch in CHANNELS])
+            assert abs(realised - report.demand_spend_corr) < 0.05
+
+    def test_supplied_demand_is_reused_for_every_draw(self):
+        n = len(HISTORY_DF) + len(PLAN_DF)
+        demand = np.random.default_rng(1).standard_normal(n)
+        report = make_report(demand=demand)
+        np.testing.assert_array_equal(report._bias_demand(2), report.demand_)
+
+    def test_pooled_range_brackets_the_mean(self):
+        report = fit_small(make_report())
+        for res in report.results_.values():
+            for ch in CHANNELS:
+                assert res["bias_pct_p10"][ch] <= res["bias_pct"][ch]
+                assert res["bias_pct"][ch] <= res["bias_pct_p90"][ch]
+
+    def test_report_states_draw_count(self):
+        report = fit_small(make_report())
+        assert "Bias is averaged over 2 draws of demand" in report.to_html()

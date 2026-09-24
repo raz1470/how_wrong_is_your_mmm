@@ -6,10 +6,12 @@ import pytest
 
 from how_wrong_is_your_mmm._dgp import (
     _DEFAULT_MARGINAL_RETURNS,
+    DEFAULT_DEMAND_SPEND_CORR,
     DEMAND_PROCESSES,
     apply_adstock,
     calibrate_baseline,
     channel_contributions,
+    link_demand_to_spend,
     simulate_demand,
     simulate_demand_proxy,
     simulate_sales,
@@ -803,3 +805,111 @@ class TestChannelContributions:
         )
         for ch in CHANNELS:
             assert not np.allclose(linear[ch].to_numpy(), curved[ch].to_numpy())
+
+
+class TestLinkDemandToSpend:
+    """Demand built to track a given spend frame (the reverse of simulate_spend)."""
+
+    SPEND = simulate_spend(
+        n_obs=260,
+        correlation=0.7,
+        channels=["tv", "meta", "search", "tiktok"],
+        seed=0,
+        start_date="2023-01-09",
+    )
+
+    @staticmethod
+    def mean_realised(link):
+        return np.mean(list(link.realised_correlation.values()))
+
+    def test_default_is_065_trend(self):
+        link = link_demand_to_spend(self.SPEND)
+        assert DEFAULT_DEMAND_SPEND_CORR == 0.65
+        assert link.target_correlation == pytest.approx(0.65)
+        assert abs(self.mean_realised(link) - 0.65) < 0.05
+        assert not link.capped
+
+    @pytest.mark.parametrize("corr", [0.0, 0.3, 0.5, 0.65, 0.8])
+    def test_realised_correlation_hits_target(self, corr):
+        link = link_demand_to_spend(self.SPEND, demand_spend_corr=corr)
+        assert abs(self.mean_realised(link) - corr) < 0.05
+
+    def test_zero_gives_unlinked_demand(self):
+        link = link_demand_to_spend(self.SPEND, demand_spend_corr=0.0, seed=3)
+        assert link.factor_weight == 0.0
+        for corr in link.realised_correlation.values():
+            assert abs(corr) < 0.2
+
+    @pytest.mark.parametrize("process", DEMAND_PROCESSES)
+    def test_every_process_hits_target(self, process):
+        link = link_demand_to_spend(self.SPEND, process=process)
+        assert abs(self.mean_realised(link) - 0.65) < 0.05
+
+    def test_standardised_and_indexed_like_spend(self):
+        link = link_demand_to_spend(self.SPEND)
+        assert link.demand.mean() == pytest.approx(0.0, abs=1e-9)
+        assert link.demand.std(ddof=0) == pytest.approx(1.0)
+        assert link.demand.index.equals(self.SPEND.index)
+
+    def test_deterministic_for_a_seed(self):
+        a = link_demand_to_spend(self.SPEND, seed=5)
+        b = link_demand_to_spend(self.SPEND, seed=5)
+        c = link_demand_to_spend(self.SPEND, seed=6)
+        pd.testing.assert_series_equal(a.demand, b.demand)
+        assert not np.allclose(a.demand, c.demand)
+
+    def test_process_kwargs_forwarded(self):
+        a = link_demand_to_spend(self.SPEND, trend_drift=0.0)
+        b = link_demand_to_spend(self.SPEND, trend_drift=1.0)
+        assert not np.allclose(a.demand, b.demand)
+
+    def test_single_channel(self):
+        link = link_demand_to_spend(self.SPEND[["tv"]], demand_spend_corr=0.5)
+        assert link.realised_correlation["tv"] == pytest.approx(0.5)
+
+    def test_unreachable_target_caps_and_warns(self):
+        # Two uncorrelated blocks of near-duplicate channels: the common
+        # factor reaches only about sqrt(0.5) = 0.71 per channel.
+        rng = np.random.default_rng(0)
+        x, y = rng.standard_normal(200), rng.standard_normal(200)
+        spend = pd.DataFrame(
+            {
+                "a": x + 0.05 * rng.standard_normal(200),
+                "b": x + 0.05 * rng.standard_normal(200),
+                "c": y + 0.05 * rng.standard_normal(200),
+                "d": y + 0.05 * rng.standard_normal(200),
+            }
+        )
+        with pytest.warns(UserWarning, match="above what this spend"):
+            link = link_demand_to_spend(spend, demand_spend_corr=0.9)
+        assert link.capped
+        assert link.factor_weight == 1.0
+        assert link.target_correlation < 0.9
+        assert abs(self.mean_realised(link) - link.target_correlation) < 0.01
+
+    def test_reachable_target_does_not_warn(self, recwarn):
+        link_demand_to_spend(self.SPEND, demand_spend_corr=0.8)
+        assert not [w for w in recwarn if "above what this spend" in str(w.message)]
+
+    def test_no_common_factor_caps_to_zero(self):
+        rng = np.random.default_rng(0)
+        base = rng.standard_normal(100)
+        spend = pd.DataFrame({"a": base, "b": -base})
+        with pytest.warns(UserWarning, match="above what this spend"):
+            link = link_demand_to_spend(spend)
+        assert link.factor_weight == 0.0
+        assert link.target_correlation == 0.0
+
+    def test_invalid_corr_raises(self):
+        with pytest.raises(ValueError, match="demand_spend_corr"):
+            link_demand_to_spend(self.SPEND, demand_spend_corr=1.5)
+
+    def test_too_short_raises(self):
+        with pytest.raises(ValueError, match="at least 3 rows"):
+            link_demand_to_spend(self.SPEND.iloc[:2])
+
+    def test_constant_column_raises(self):
+        spend = self.SPEND.copy()
+        spend["tv"] = 1.0
+        with pytest.raises(ValueError, match="constant spend"):
+            link_demand_to_spend(spend)

@@ -417,6 +417,170 @@ def calibrate_baseline(
     )
 
 
+@dataclass(frozen=True)
+class LinkedDemand:
+    """Result of link_demand_to_spend.
+
+    Attributes
+    ----------
+    demand:
+        The linked demand series, standardised to mean 0 / sd 1, indexed
+        like the spend frame it was built from.
+    target_correlation:
+        The corr(spend_c, demand) asked for, averaged over channels. Lower
+        than requested only when `capped` is True.
+    realised_correlation:
+        corr(spend_c, demand) actually achieved, per channel.
+    factor_weight:
+        Weight on the spend common factor (alpha in the construction).
+        The unlinked part of demand gets sqrt(1 - alpha^2).
+    capped:
+        True if the requested correlation was above what the spend's common
+        factor can reach. Demand is then the common factor itself.
+    """
+
+    demand: pd.Series
+    target_correlation: float
+    realised_correlation: dict[str, float]
+    factor_weight: float
+    capped: bool
+
+
+def _standardise(x: np.ndarray) -> np.ndarray:
+    sd = x.std()
+    if sd == 0:
+        return np.zeros_like(x)
+    return (x - x.mean()) / sd
+
+
+# Default corr(spend, demand) for link_demand_to_spend and DiscoveryReport.
+# The middle of a 0.5 to 0.8 range judged plausible for media plans that
+# partly follow demand. An assumption, not a measured value.
+DEFAULT_DEMAND_SPEND_CORR = 0.65
+
+
+def link_demand_to_spend(
+    spend_df: pd.DataFrame,
+    demand_spend_corr: float = DEFAULT_DEMAND_SPEND_CORR,
+    process: str = "trend",
+    seed: int = 0,
+    **process_kwargs: float,
+) -> LinkedDemand:
+    """Build a latent demand series that the supplied spend tracks.
+
+    simulate_spend runs demand -> spend. A real client's spend already
+    exists, so this runs the other way: it builds a demand series that the
+    supplied spend is correlated with at `demand_spend_corr`. Without this
+    step a demand series drawn independently of the spend has no link to
+    it, and the omitted-variable bias the diagnostics measure is chance
+    correlation.
+
+    Construction:
+
+    1. f = the spend's common factor: each channel standardised, averaged
+       across channels, then standardised again.
+    2. u = simulate_demand(process=process, seed=seed), with the part
+       explained by f regressed out and the rest standardised.
+    3. demand = alpha * f + sqrt(1 - alpha^2) * u, with
+       alpha = demand_spend_corr / mean_c corr(f, spend_c).
+
+    The linked part of demand takes the shape of the spend itself.
+    `process` shapes the unlinked remainder, a share 1 - alpha^2 of
+    demand's variance. At the default 0.65 and a pairwise channel
+    correlation of 0.7 that is about 45%.
+
+    alpha is capped at 1. The mean of corr(f, spend_c) is
+    sqrt((1 + (n - 1) * r) / n) for n channels with mean pairwise
+    correlation r, so a request above that cannot be met. Then demand is
+    f itself and a warning says so.
+
+    For comparison, simulate_spend's `demand_share` gives
+    corr(spend_c, demand) = sqrt(demand_share * correlation).
+
+    Call this on UNPHASED spend and hold the result fixed. Demand is
+    exogenous to any phasing plan: rebuilding it from phased spend would
+    let the plan move demand, which defeats the comparison.
+
+    Parameters
+    ----------
+    spend_df:
+        Weekly spend, one column per channel. At least 3 rows.
+    demand_spend_corr:
+        Target corr(spend_c, demand), averaged over channels, in [0, 1].
+        Default 0.65. Spend data cannot reveal the true value, so treat it
+        as an assumption to state. Bias grows steeply with it.
+    process:
+        One of DEMAND_PROCESSES, for the unlinked part of demand. Default
+        "trend".
+    seed:
+        Seed for the unlinked part.
+    **process_kwargs:
+        Forwarded to simulate_demand (ar_coef, season_period,
+        season_weight, trend_drift).
+
+    Returns
+    -------
+    LinkedDemand. `demand` is standardised to mean 0 / sd 1.
+    """
+    if not 0.0 <= demand_spend_corr <= 1.0:
+        raise ValueError("demand_spend_corr must be between 0 and 1 inclusive")
+    n_obs = len(spend_df)
+    if n_obs < 3:
+        raise ValueError("spend_df needs at least 3 rows to link demand to it")
+
+    values = spend_df.to_numpy(dtype=float)
+    sds = values.std(axis=0)
+    if np.any(sds == 0):
+        flat = [c for c, s in zip(spend_df.columns, sds) if s == 0]
+        raise ValueError(
+            f"cannot link demand to constant spend column(s): {flat}. "
+            "A channel with no variation carries no demand signal."
+        )
+    z = (values - values.mean(axis=0)) / sds
+    factor = _standardise(z.mean(axis=1))
+
+    n_ch = values.shape[1]
+    if factor.std() == 0:
+        # Channels cancel exactly: there is no common factor at all.
+        mean_factor_corr = 0.0
+    else:
+        factor_corr = [np.corrcoef(factor, values[:, i])[0, 1] for i in range(n_ch)]
+        mean_factor_corr = float(np.mean(factor_corr))
+    if mean_factor_corr <= 0:
+        # Channels that cancel out (mean pairwise correlation near -1/(n-1))
+        # leave no common factor to link to.
+        alpha, capped = 0.0, demand_spend_corr > 0
+    else:
+        alpha = demand_spend_corr / mean_factor_corr
+        capped = alpha > 1.0
+        alpha = min(alpha, 1.0)
+    if capped:
+        warnings.warn(
+            f"demand_spend_corr={demand_spend_corr:.2f} is above what this "
+            f"spend's common factor reaches ({max(mean_factor_corr, 0.0):.2f}). "
+            "Demand is set to the common factor itself.",
+            stacklevel=2,
+        )
+
+    raw = simulate_demand(n_obs, process=process, seed=seed, **process_kwargs)
+    design = np.column_stack([np.ones(n_obs), factor])
+    resid = raw - design @ np.linalg.lstsq(design, raw, rcond=None)[0]
+    unlinked = _standardise(resid)
+
+    demand = _standardise(alpha * factor + np.sqrt(1.0 - alpha**2) * unlinked)
+    realised = {
+        str(ch): float(np.corrcoef(values[:, i], demand)[0, 1])
+        for i, ch in enumerate(spend_df.columns)
+    }
+    return LinkedDemand(
+        demand=pd.Series(demand, index=spend_df.index, name="demand"),
+        target_correlation=float(min(demand_spend_corr, max(mean_factor_corr, 0.0))),
+        realised_correlation=realised,
+        factor_weight=float(alpha),
+        capped=bool(capped),
+    )
+
+
 def simulate_spend(
     n_obs: int = 104,
     correlation: float = 0.7,

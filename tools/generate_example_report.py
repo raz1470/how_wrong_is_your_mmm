@@ -2,27 +2,44 @@
 
 Run from the repo root:  uv run python tools/generate_example_report.py
 
-Scenario matches notebooks/01_scenario_walkthrough.ipynb (history 208w seed 0
-from 2023-01-09, ending Dec 2026; plan 52w seed 1 from 2027-01-04;
-correlation 0.7). Uses the default sweep (levers unset) and default fit()
-sim counts. Runs in about a minute.
+Scenario matches notebooks/01_scenario_walkthrough.ipynb: one 156-week
+trend demand series (seed 6) drives the spend, split into 104 weeks of
+history from 2025-01-06 (spend seed 12) and a 52-week plan from 2027-01-04
+(spend seed 13), correlation 0.7. The report then builds its own demand
+series from that spend at the package defaults (demand_spend_corr 0.65,
+trend), the same path a real client's spend takes. Uses the default sweep
+(levers unset) and default fit() sim counts. Runs in a few minutes.
 """
 
 from pathlib import Path
 
-from how_wrong_is_your_mmm import DiscoveryReport, simulate_spend
+from how_wrong_is_your_mmm import DiscoveryReport, simulate_demand, simulate_spend
 
 OUT = Path(__file__).resolve().parent.parent / "docs" / "example-report.html"
 
 CHANNELS = ["tv", "meta", "search_generic", "tiktok"]
+N_HISTORY = 104  # 2 years of actuals
+N_PLAN = 52  # 1 plan year
 
 
 def main() -> None:
+    # One trend series for history and plan, so the spend trends too.
+    demand = simulate_demand(N_HISTORY + N_PLAN, process="trend", seed=6)
     history_df = simulate_spend(
-        n_obs=208, correlation=0.7, channels=CHANNELS, seed=0, start_date="2023-01-09"
+        n_obs=N_HISTORY,
+        correlation=0.7,
+        channels=CHANNELS,
+        seed=12,
+        start_date="2025-01-06",
+        demand=demand[:N_HISTORY],
     )
     plan_df = simulate_spend(
-        n_obs=52, correlation=0.7, channels=CHANNELS, seed=1, start_date="2027-01-04"
+        n_obs=N_PLAN,
+        correlation=0.7,
+        channels=CHANNELS,
+        seed=13,
+        start_date="2027-01-04",
+        demand=demand[N_HISTORY:],
     )
     report = DiscoveryReport(
         history_df=history_df,
