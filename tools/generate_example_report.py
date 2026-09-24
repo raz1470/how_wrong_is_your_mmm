@@ -3,9 +3,9 @@
 Run from the repo root:  uv run python tools/generate_example_report.py
 
 Scenario matches notebooks/01_scenario_walkthrough.ipynb: one 156-week
-trend demand series (seed 0) drives the spend, split into 104 weeks of
-history from 2025-01-06 (spend seed 0) and a 52-week plan from 2027-01-04
-(spend seed 1), correlation 0.7. The report then builds its own demand
+trend demand series (seed 6) drives the spend, split into 104 weeks of
+history from 2025-01-06 (spend seed 12) and a 52-week plan from 2027-01-04
+(spend seed 13), correlation 0.7. The report then builds its own demand
 series from that spend at the package defaults (demand_spend_corr 0.65,
 trend), the same path a real client's spend takes. Uses the default sweep
 (levers unset) and default fit() sim counts. Runs in a few minutes.
@@ -24,12 +24,12 @@ N_PLAN = 52  # 1 plan year
 
 def main() -> None:
     # One trend series for history and plan, so the spend trends too.
-    demand = simulate_demand(N_HISTORY + N_PLAN, process="trend", seed=0)
+    demand = simulate_demand(N_HISTORY + N_PLAN, process="trend", seed=6)
     history_df = simulate_spend(
         n_obs=N_HISTORY,
         correlation=0.7,
         channels=CHANNELS,
-        seed=0,
+        seed=12,
         start_date="2025-01-06",
         demand=demand[:N_HISTORY],
     )
@@ -37,7 +37,7 @@ def main() -> None:
         n_obs=N_PLAN,
         correlation=0.7,
         channels=CHANNELS,
-        seed=1,
+        seed=13,
         start_date="2027-01-04",
         demand=demand[N_HISTORY:],
     )
