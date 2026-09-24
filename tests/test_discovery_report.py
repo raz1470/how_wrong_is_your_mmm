@@ -1387,12 +1387,15 @@ class TestTimeToBenefit:
             assert ttb["unphased"][axis] == [base[key]] * 2
 
     def test_horizon_is_capped_by_available_history(self):
-        # 208 weeks of history leaves room for 1 + (208 - 52) // 52 = 4 years.
+        # 208 weeks of history leaves room for 1 + 208 // 52 = 5 years: the
+        # last year phases all of history, with no un-phased head left.
         report = fit_small(make_long_report(), horizon_years=10)
-        assert report.time_to_benefit_["years"] == [1, 2, 3, 4]
+        assert report.time_to_benefit_["years"] == [1, 2, 3, 4, 5]
 
-    def test_short_history_skips_the_projection(self):
-        report = fit_small(make_report(), horizon_years=3)
+    def test_under_a_year_of_history_skips_the_projection(self):
+        report = fit_small(
+            make_report(history_df=HISTORY_DF.iloc[-26:]), horizon_years=3
+        )
         assert report.time_to_benefit_ is None
 
     def test_horizon_of_one_skips_the_projection(self):
@@ -1538,13 +1541,15 @@ class TestPlanYearHighlightAndPacingWindow:
 class TestDemandLink:
     """The report's demand series tracks the unphased spend it was given."""
 
-    def test_demand_tracks_unphased_spend(self):
+    @staticmethod
+    def mean_realised(report):
+        return np.mean(list(report.realised_demand_corr_.values()))
+
+    def test_defaults(self):
         report = make_report()
-        link = report.demand_link_
-        assert link is not None
-        realised = np.mean(list(report.demand_spend_corr_.values()))
-        assert abs(realised - link.target_correlation) < 0.05
-        assert realised > 0.5
+        assert report.demand_spend_corr == 0.65
+        assert report.demand_process == "trend"
+        assert abs(self.mean_realised(report) - 0.65) < 0.05
 
     def test_plan_year_is_linked(self):
         report = make_report()
@@ -1557,18 +1562,17 @@ class TestDemandLink:
         # replayed simulate_spend's own draws. Any seed must now link.
         for seed in (0, 7, 123):
             report = make_report(seed=seed)
-            assert min(report.demand_spend_corr_.values()) > 0.5
+            assert abs(self.mean_realised(report) - 0.65) < 0.05
 
-    def test_zero_demand_share_unlinks(self):
-        report = make_report(demand_share=0.0)
+    def test_zero_corr_unlinks(self):
+        report = make_report(demand_spend_corr=0.0)
         assert report.demand_link_.factor_weight == 0.0
-        for corr in report.demand_spend_corr_.values():
+        for corr in report.realised_demand_corr_.values():
             assert abs(corr) < 0.3
 
-    def test_trend_process_still_linked(self):
-        report = make_report(demand_process="trend")
-        realised = np.mean(list(report.demand_spend_corr_.values()))
-        assert abs(realised - report.demand_link_.target_correlation) < 0.05
+    def test_white_noise_process_still_linked(self):
+        report = make_report(demand_process="white_noise")
+        assert abs(self.mean_realised(report) - 0.65) < 0.05
 
     def test_supplied_demand_used_and_standardised(self):
         n = len(HISTORY_DF) + len(PLAN_DF)
@@ -1588,9 +1592,9 @@ class TestDemandLink:
         with pytest.raises(ValueError, match="zero variance"):
             make_report(demand=np.ones(n))
 
-    def test_invalid_demand_share_raises(self):
-        with pytest.raises(ValueError, match="demand_share"):
-            make_report(demand_share=-0.1)
+    def test_invalid_demand_spend_corr_raises(self):
+        with pytest.raises(ValueError, match="demand_spend_corr"):
+            make_report(demand_spend_corr=-0.1)
 
     def test_demand_fixed_across_candidates(self):
         report = make_report()
@@ -1606,12 +1610,33 @@ class TestDemandLink:
         np.testing.assert_allclose(a.demand_, b.demand_)
 
     def test_report_states_demand_assumption(self):
-        report = fit_small(make_report(demand_share=0.5))
+        report = fit_small(make_report(demand_spend_corr=0.5))
         html_out = report.to_html()
-        assert "assumes 50% of the channels' shared movement is demand" in html_out
+        assert "at an assumed correlation of 0.50" in html_out
 
     def test_report_states_supplied_demand(self):
         n = len(HISTORY_DF) + len(PLAN_DF)
         demand = np.random.default_rng(1).standard_normal(n)
         report = fit_small(make_report(demand=demand))
         assert "The demand series was supplied with the spend." in report.to_html()
+
+
+class TestZeroHeadWeeks:
+    """Back-phasing may cover all of history (no un-phased head left)."""
+
+    def test_backphase_covers_all_history(self):
+        report = make_report(backphase_years=1)  # HISTORY_DF is 52 weeks
+        assert len(report.history_df) == 0
+        assert len(report.plan_df) == len(HISTORY_DF) + len(PLAN_DF)
+        fit_small(report)
+        assert report.winner_ is not None
+        assert "<svg" in report.to_html()
+
+    def test_backphase_beyond_history_raises(self):
+        with pytest.raises(ValueError, match="backphase_years"):
+            make_report(backphase_years=2)
+
+    def test_time_to_benefit_reaches_full_history(self):
+        # 52 weeks of history + plan: year 2 phases all of it.
+        report = fit_small(make_report(), horizon_years=3)
+        assert report.time_to_benefit_["years"] == [1, 2]

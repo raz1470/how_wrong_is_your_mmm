@@ -6,6 +6,7 @@ import pytest
 
 from how_wrong_is_your_mmm._dgp import (
     _DEFAULT_MARGINAL_RETURNS,
+    DEFAULT_DEMAND_SPEND_CORR,
     DEMAND_PROCESSES,
     apply_adstock,
     calibrate_baseline,
@@ -817,24 +818,24 @@ class TestLinkDemandToSpend:
         start_date="2023-01-09",
     )
 
-    def test_realised_correlation_hits_target(self):
-        link = link_demand_to_spend(self.SPEND, demand_share=1.0)
-        realised = np.mean(list(link.realised_correlation.values()))
-        assert abs(realised - link.target_correlation) < 0.05
-        assert link.target_correlation == pytest.approx(np.sqrt(0.7), abs=0.03)
+    @staticmethod
+    def mean_realised(link):
+        return np.mean(list(link.realised_correlation.values()))
 
-    @pytest.mark.parametrize("share", [0.25, 0.5, 1.0])
-    def test_target_scales_with_demand_share(self, share):
-        link = link_demand_to_spend(self.SPEND, demand_share=share)
-        realised = np.mean(list(link.realised_correlation.values()))
-        assert abs(realised - link.target_correlation) < 0.05
-        full = link_demand_to_spend(self.SPEND, demand_share=1.0)
-        assert link.target_correlation == pytest.approx(
-            np.sqrt(share) * full.target_correlation
-        )
+    def test_default_is_065_trend(self):
+        link = link_demand_to_spend(self.SPEND)
+        assert DEFAULT_DEMAND_SPEND_CORR == 0.65
+        assert link.target_correlation == pytest.approx(0.65)
+        assert abs(self.mean_realised(link) - 0.65) < 0.05
+        assert not link.capped
 
-    def test_zero_share_gives_unlinked_demand(self):
-        link = link_demand_to_spend(self.SPEND, demand_share=0.0, seed=3)
+    @pytest.mark.parametrize("corr", [0.0, 0.3, 0.5, 0.65, 0.8])
+    def test_realised_correlation_hits_target(self, corr):
+        link = link_demand_to_spend(self.SPEND, demand_spend_corr=corr)
+        assert abs(self.mean_realised(link) - corr) < 0.05
+
+    def test_zero_gives_unlinked_demand(self):
+        link = link_demand_to_spend(self.SPEND, demand_spend_corr=0.0, seed=3)
         assert link.factor_weight == 0.0
         for corr in link.realised_correlation.values():
             assert abs(corr) < 0.2
@@ -842,11 +843,10 @@ class TestLinkDemandToSpend:
     @pytest.mark.parametrize("process", DEMAND_PROCESSES)
     def test_every_process_hits_target(self, process):
         link = link_demand_to_spend(self.SPEND, process=process)
-        realised = np.mean(list(link.realised_correlation.values()))
-        assert abs(realised - link.target_correlation) < 0.05
+        assert abs(self.mean_realised(link) - 0.65) < 0.05
 
     def test_standardised_and_indexed_like_spend(self):
-        link = link_demand_to_spend(self.SPEND, process="trend")
+        link = link_demand_to_spend(self.SPEND)
         assert link.demand.mean() == pytest.approx(0.0, abs=1e-9)
         assert link.demand.std(ddof=0) == pytest.approx(1.0)
         assert link.demand.index.equals(self.SPEND.index)
@@ -859,18 +859,17 @@ class TestLinkDemandToSpend:
         assert not np.allclose(a.demand, c.demand)
 
     def test_process_kwargs_forwarded(self):
-        a = link_demand_to_spend(self.SPEND, process="trend", trend_drift=0.0)
-        b = link_demand_to_spend(self.SPEND, process="trend", trend_drift=1.0)
+        a = link_demand_to_spend(self.SPEND, trend_drift=0.0)
+        b = link_demand_to_spend(self.SPEND, trend_drift=1.0)
         assert not np.allclose(a.demand, b.demand)
 
     def test_single_channel(self):
-        link = link_demand_to_spend(self.SPEND[["tv"]], demand_share=0.5)
-        assert link.target_correlation == pytest.approx(np.sqrt(0.5))
-        assert link.realised_correlation["tv"] == pytest.approx(np.sqrt(0.5))
+        link = link_demand_to_spend(self.SPEND[["tv"]], demand_spend_corr=0.5)
+        assert link.realised_correlation["tv"] == pytest.approx(0.5)
 
-    def test_factor_weight_never_exceeds_one(self):
-        # Two uncorrelated blocks of near-duplicate channels: the case where
-        # the equal-weight factor tracks each channel least well.
+    def test_unreachable_target_caps_and_warns(self):
+        # Two uncorrelated blocks of near-duplicate channels: the common
+        # factor reaches only about sqrt(0.5) = 0.71 per channel.
         rng = np.random.default_rng(0)
         x, y = rng.standard_normal(200), rng.standard_normal(200)
         spend = pd.DataFrame(
@@ -881,26 +880,29 @@ class TestLinkDemandToSpend:
                 "d": y + 0.05 * rng.standard_normal(200),
             }
         )
-        link = link_demand_to_spend(spend)
-        assert 0.0 < link.factor_weight <= 1.0
-        realised = np.mean(list(link.realised_correlation.values()))
-        assert abs(realised - link.target_correlation) < 0.05
+        with pytest.warns(UserWarning, match="above what this spend"):
+            link = link_demand_to_spend(spend, demand_spend_corr=0.9)
+        assert link.capped
+        assert link.factor_weight == 1.0
+        assert link.target_correlation < 0.9
+        assert abs(self.mean_realised(link) - link.target_correlation) < 0.01
 
-    def test_negative_mean_correlation_gives_zero_target(self):
+    def test_reachable_target_does_not_warn(self, recwarn):
+        link_demand_to_spend(self.SPEND, demand_spend_corr=0.8)
+        assert not [w for w in recwarn if "above what this spend" in str(w.message)]
+
+    def test_no_common_factor_caps_to_zero(self):
         rng = np.random.default_rng(0)
         base = rng.standard_normal(100)
-        spend = pd.DataFrame(
-            {
-                "a": base + 0.01 * rng.standard_normal(100),
-                "b": -base + 0.01 * rng.standard_normal(100),
-            }
-        )
-        link = link_demand_to_spend(spend)
+        spend = pd.DataFrame({"a": base, "b": -base})
+        with pytest.warns(UserWarning, match="above what this spend"):
+            link = link_demand_to_spend(spend)
+        assert link.factor_weight == 0.0
         assert link.target_correlation == 0.0
 
-    def test_invalid_share_raises(self):
-        with pytest.raises(ValueError, match="demand_share"):
-            link_demand_to_spend(self.SPEND, demand_share=1.5)
+    def test_invalid_corr_raises(self):
+        with pytest.raises(ValueError, match="demand_spend_corr"):
+            link_demand_to_spend(self.SPEND, demand_spend_corr=1.5)
 
     def test_too_short_raises(self):
         with pytest.raises(ValueError, match="at least 3 rows"):

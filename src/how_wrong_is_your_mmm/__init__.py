@@ -1,6 +1,7 @@
 """how_wrong_is_your_mmm: collinearity diagnostics and budget phasing for MMMs."""
 
 from how_wrong_is_your_mmm._dgp import (
+    DEFAULT_DEMAND_SPEND_CORR,
     DEMAND_PROCESSES,
     BaselineCalibration,
     LinkedDemand,
@@ -26,6 +27,7 @@ from how_wrong_is_your_mmm._phaser import (
 __version__ = "0.1.0"
 
 __all__ = [
+    "DEFAULT_DEMAND_SPEND_CORR",
     "DEMAND_PROCESSES",
     "BaselineCalibration",
     "Blackout",
