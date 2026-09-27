@@ -8,7 +8,7 @@ Take the marketing mix model (MMM) you use to allocate your marketing budget acr
 
 For most brands, no. TV, Meta, and Search budgets move together because the same planning cycle drives them all, and that makes it hard for an MMM to tell their individual effects apart. The result is marginal-return estimates (£ revenue per £ spend, sometimes called mROAS) that shift every time you refit, not because the market changed, but because the data was never informative enough to pin them down.
 
-This package quantifies that problem and recommends a fix, on three fronts: variance (can your spend design tell channels apart at all), bias (how far an unobserved demand driver could be pushing the estimate), and identifiability (whether adstock and saturation come back as anything more than a guess). **Important scope note:** all three are measured by simulation against assumptions you supply (your own plausible marginal returns, and optionally a demand proxy), not verified against ground truth in your actual historical data. A confounder you didn't think to simulate can still leave every one of these diagnostics looking healthy while the underlying estimate is wrong. See [the overview](https://raz1470.github.io/how_wrong_is_your_mmm/overview.html) for the full scope discussion.
+This package quantifies that problem and recommends a fix, on three fronts: variance (can your spend design tell channels apart at all), bias (how far an unobserved demand driver could be pushing the estimate), and identifiability (whether adstock and saturation come back as anything more than a guess). **Important scope note:** all three are measured by simulation against assumptions you supply (your own plausible marginal returns, and optionally a demand proxy), not verified against ground truth in your actual historical data. A confounder you didn't think to simulate can still leave every one of these diagnostics looking healthy while the underlying estimate is wrong. See [the overview](https://raz1470.github.io/how_wrong_is_your_mmm/overview.html) for a full walkthrough on a simulated example.
 
 ![A year of phasing tightens the estimated range for the same plan — incremental revenue model-estimated range today vs after one year of budget phasing, every channel narrowing 63-72% off the same £17.28m plan, no extra spend. Dashed line marks the true marginal return's implied revenue on this demo scenario.](https://raw.githubusercontent.com/raz1470/how_wrong_is_your_mmm/main/assets/readme-honest-ranges.png)
 
@@ -29,7 +29,7 @@ This chart shows the impact of the phasing algorithm: the estimated revenue rang
 ## Guides
 
 [**Overview**](https://raz1470.github.io/how_wrong_is_your_mmm/overview.html)
-An overview of how using a budget phasing algorithm can dramatically tighten the confidence in your MMM results.
+An overview of how a budget phasing algorithm can narrow your MMM's variance, reduce its bias and make adstock and saturation identifiable.
 
 [**API Reference**](https://raz1470.github.io/how_wrong_is_your_mmm/api/)
 Full class and function docs for `CollinearityDiagnostic`, `IdentifiabilityDiagnostic`, `BudgetPhaser`, `Blackout`, `Redistribute`, `MonthStep`, and `DiscoveryReport`.
@@ -150,9 +150,11 @@ always supply your own values.
 
 ## Future advancements
 
-**Does phasing help with omitted-variable bias, not just collinearity?** Directionally yes, and for a principled reason: phasing noise is exogenous by construction, so it raises spend variance without raising its covariance with an unobserved confounder. The caveat: phasing only helps with *unobserved* confounders — a *known* one (e.g. a seasonal driver you can see) should be controlled for directly (a Fourier term, free) rather than randomised away (expensive).
+**Bring-your-own-estimator.** `DiscoveryReport` currently fits with OLS internally. A hook to swap in your own estimator instead (PyMC-Marketing, Meridian, Robyn or whatever your team already trusts) while still returning the same diagnostics and phased schedule is on the list. The simulation inputs (curves, baseline variation, residual noise) could then come straight from that model's fit.
 
-**Bring-your-own-estimator.** `DiscoveryReport` currently fits with OLS internally. A hook to swap in your own estimator instead (Bayesian, regularised, whatever your team already trusts) while still returning the same diagnostics and phased schedule is on the list.
+**Rolling re-plan.** The winning schedule is set once for the plan year. A rolling mode would re-plan each quarter from the spend actually delivered and aim the next quarter at the channels whose ranges are still widest.
+
+**Optimise benefit against cost.** The winner is picked on variance, bias and identifiability, with cost shown beside it. Putting a £ value on better estimates (extra revenue from a better allocation, minus revenue given up to phasing) would give each strategy a payback period.
 
 ---
 
