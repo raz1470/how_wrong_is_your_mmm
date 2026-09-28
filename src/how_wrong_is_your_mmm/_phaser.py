@@ -162,12 +162,25 @@ class Blackout:
         prob=0.8 roughly halves saturation_b_sd and adstock_lam_sd
         relative to +/-80% (edge, balanced) at under 3x the cost, and
         clearly beats a scattered dark=3 selection at the same settings.
+    max_dark_weeks_per_quarter:
+        Quarterly version of the capped mode, and the report's default
+        (1). Each quarter independently activates with probability prob
+        (scaled by alpha). If it does, one month in that quarter is drawn
+        at random and min(max_dark_weeks_per_quarter, n_weeks - 1)
+        consecutive weeks in that month go dark. That month's other weeks
+        absorb its budget, so month totals are still kept. Quarters are
+        consecutive 3-month groups counted from the plan's first month (a
+        partial first or last month counts as a month). A lone trailing
+        month is merged into the quarter before it. With 1, a channel
+        loses 4 weeks a year instead of 12. Mutually exclusive with
+        max_dark_weeks_per_month.
     """
 
     def __init__(
         self,
         prob: float = 1.0,
         max_dark_weeks_per_month: int | None = None,
+        max_dark_weeks_per_quarter: int | None = None,
     ) -> None:
         if not 0.0 <= prob <= 1.0:
             raise ValueError(f"Blackout prob must be between 0 and 1, got {prob}.")
@@ -176,10 +189,29 @@ class Blackout:
                 "Blackout max_dark_weeks_per_month must be >= 1, got "
                 f"{max_dark_weeks_per_month}."
             )
+        if max_dark_weeks_per_quarter is not None and max_dark_weeks_per_quarter < 1:
+            raise ValueError(
+                "Blackout max_dark_weeks_per_quarter must be >= 1, got "
+                f"{max_dark_weeks_per_quarter}."
+            )
+        if (
+            max_dark_weeks_per_month is not None
+            and max_dark_weeks_per_quarter is not None
+        ):
+            raise ValueError(
+                "Blackout takes max_dark_weeks_per_month or "
+                "max_dark_weeks_per_quarter, not both."
+            )
         self.prob = float(prob)
         self.max_dark_weeks_per_month = max_dark_weeks_per_month
+        self.max_dark_weeks_per_quarter = max_dark_weeks_per_quarter
 
     def __repr__(self) -> str:
+        if self.max_dark_weeks_per_quarter is not None:
+            return (
+                f"Blackout(prob={self.prob}, "
+                f"max_dark_weeks_per_quarter={self.max_dark_weeks_per_quarter})"
+            )
         return (
             f"Blackout(prob={self.prob}, "
             f"max_dark_weeks_per_month={self.max_dark_weeks_per_month})"
@@ -190,6 +222,7 @@ class Blackout:
             isinstance(other, Blackout)
             and self.prob == other.prob
             and self.max_dark_weeks_per_month == other.max_dark_weeks_per_month
+            and self.max_dark_weeks_per_quarter == other.max_dark_weeks_per_quarter
         )
 
 
@@ -765,6 +798,49 @@ def _month_step_schedule(
     return out
 
 
+def _quarter_groups(month_labels: np.ndarray) -> list[list]:
+    """Month labels grouped into quarters: consecutive 3-month groups
+    counted from the plan's first month. A lone trailing month is merged
+    into the quarter before it. See Blackout's max_dark_weeks_per_quarter."""
+    months = list(dict.fromkeys(month_labels.tolist()))
+    groups = [months[i : i + 3] for i in range(0, len(months), 3)]
+    if len(groups) > 1 and len(groups[-1]) < 2:
+        groups[-2].extend(groups.pop())
+    return groups
+
+
+def _quarterly_dark_mask(
+    month_labels: np.ndarray,
+    columns: list[int],
+    specs: list[Blackout],
+    alpha: float,
+    n_rows: int,
+    n_cols: int,
+    seed: int,
+) -> np.ndarray:
+    """Boolean (n_rows, n_cols) mask of dark weeks for quarterly Blackout
+    columns. Per channel and quarter: activate with probability
+    alpha x prob, pick one month with room to keep a week on, then darken
+    one consecutive run in it. Has its own random stream so it does not
+    shift any other channel's draws."""
+    rng = np.random.default_rng(seed + 20_000)
+    dark = np.zeros((n_rows, n_cols), dtype=bool)
+    quarters = _quarter_groups(month_labels)
+    for ci, spec in zip(columns, specs, strict=True):
+        cap = spec.max_dark_weeks_per_quarter
+        p = alpha * spec.prob
+        for quarter in quarters:
+            rows_by_month = [np.where(month_labels == m)[0] for m in quarter]
+            eligible = [r for r in rows_by_month if len(r) >= 2]
+            if not eligible or rng.random() >= p:
+                continue
+            rows = eligible[rng.integers(len(eligible))]
+            n_dark = min(cap, len(rows) - 1)
+            start = rng.integers(0, len(rows) - n_dark + 1)
+            dark[rows[start : start + n_dark], ci] = True
+    return dark
+
+
 def _generate_phased_schedule(
     spend_df: pd.DataFrame,
     month_labels: np.ndarray,
@@ -908,6 +984,24 @@ def _generate_phased_schedule(
             ),
             seed,
         )
+    # Quarterly Blackout channels: dark weeks are drawn up front, one
+    # quarter at a time, since a quarter spans several months of the loop
+    # below. The loop then rescales each month around them as usual.
+    quarterly_cols = [
+        ci
+        for ci, ch in enumerate(channels)
+        if isinstance(channel_specs[ch], Blackout)
+        and channel_specs[ch].max_dark_weeks_per_quarter is not None
+    ]
+    quarterly_dark = _quarterly_dark_mask(
+        month_labels,
+        quarterly_cols,
+        [channel_specs[channels[ci]] for ci in quarterly_cols],
+        alpha,
+        new_spend.shape[0],
+        new_spend.shape[1],
+        seed,
+    )
     # The edge layer has its own stream, so adding or removing other
     # channels' draws doesn't shift it.
     edge_rng = np.random.default_rng(seed + 10_000)
@@ -923,6 +1017,8 @@ def _generate_phased_schedule(
                 )
             elif isinstance(spec, MonthStep):
                 raw = np.zeros(n_weeks)  # the step was applied to base_arr
+            elif isinstance(spec, Blackout) and ci in quarterly_cols:
+                raw = np.where(quarterly_dark[mask, ci], -1.0, 0.0)
             elif isinstance(spec, Blackout):
                 p = alpha * spec.prob
                 cap = spec.max_dark_weeks_per_month

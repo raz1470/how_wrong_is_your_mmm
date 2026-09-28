@@ -189,7 +189,8 @@ def _default_levers(channels: list[str]) -> list[tuple[str, dict, str, bool]]:
     edge, balanced -- vs seesaw, alternating), then the Redistribute family
     (round-robin blackout, freed budget moved to a recipient month, edge
     layer on top), then the MonthStep family (month-level Hadamard steps),
-    then the original single-week Blackout (dark=1). 7 candidates total.
+    then a single-week Blackout once a quarter (Ryan, 2026-09-26: once a
+    month was too often to be acceptable). 7 candidates total.
     Stronger intensities (40/60/80%) and Blackout's stronger settings
     (dark=3/prob=0.8, dark=4/prob=1.0) are no longer swept; pin them with
     strategy_pct / channel_constraints, or pass your own levers=."""
@@ -220,8 +221,8 @@ def _default_levers(channels: list[str]) -> list[tuple[str, dict, str, bool]]:
             False,
         ),
         (
-            "Blackout (dark=1)",
-            {ch: Blackout(prob=1.0, max_dark_weeks_per_month=1) for ch in channels},
+            "Blackout (quarterly)",
+            {ch: Blackout(prob=1.0, max_dark_weeks_per_quarter=1) for ch in channels},
             "uniform",
             False,
         ),
@@ -316,7 +317,16 @@ def _describe_strategy(
         )
         keeps = "Annual only"
     elif isinstance(first, Blackout):
-        if first.max_dark_weeks_per_month is None:
+        if first.max_dark_weeks_per_quarter is not None:
+            n = first.max_dark_weeks_per_quarter
+            unit = "week" if n == 1 else "consecutive weeks"
+            what = (
+                f"Once a quarter a channel goes dark for {n} {unit} (zero "
+                "spend) in one month. That month's other weeks absorb the budget."
+            )
+            if first.prob < 1.0:
+                what += f" A quarter is affected with probability {first.prob:.0%}."
+        elif first.max_dark_weeks_per_month is None:
             what = (
                 "Each week is independently either dark (zero spend) or on; "
                 "the weeks left on absorb the month's budget."
@@ -1238,10 +1248,21 @@ class DiscoveryReport:
         channel even when every channel shares the same assumed curvature
         (session 45, changed from the original single-shared-float design
         at Ryan's request -- see NOTES.md).
+    revenue_noise_pct:
+        Weekly sales noise sd as a fraction of average weekly sales (the
+        calibrated total from calibrate_baseline). Default 0.02 (2%).
+        This is pure noise: week-to-week variation that neither the media
+        nor demand explains. Demand, including the part the proxy misses,
+        is modelled separately (baseline_cv, demand_proxy_quality), so
+        this should be smaller than a real MMM's residual sd, which
+        contains both. Resolved to GBP once, in __init__, and stored on
+        revenue_noise_std. Variance CV scales about linearly with it. Bias
+        barely depends on it.
     revenue_noise_std:
-        Forwarded to every internal CollinearityDiagnostic/IdentifiabilityDiagnostic.
-        Set this from your own model's residual standard deviation -- see
-        CollinearityDiagnostic's own docstring, same caveat applies here.
+        Optional GBP override for the weekly noise sd. When set,
+        revenue_noise_pct is ignored. Either way the resolved GBP value is
+        forwarded to every internal
+        CollinearityDiagnostic/IdentifiabilityDiagnostic.
     levers:
         The candidate strategies to sweep, as a list of
         (label, per-channel max_weekly_deviation_pct spec, nudge_shape,
@@ -1250,7 +1271,7 @@ class DiscoveryReport:
         seesaw, alternating), then the Redistribute family (round-robin
         blackout + recipient month + edge layer) and the MonthStep family
         (month-level Hadamard steps), each at +/-20%, then the original
-        single-week Blackout (dark=1) -- 7 candidates total, see
+        single-week Blackout once a quarter -- 7 candidates total, see
         _default_levers. Higher intensities and Blackout's stronger
         settings are pinnable (strategy_pct) or passable here, but are not
         swept by default. notebooks/05_strategy_comparison.ipynb
@@ -1339,7 +1360,8 @@ class DiscoveryReport:
         demand_proxy_quality: float = 0.8,
         saturation: dict[str, float] | float = 1.0,
         adstock: dict[str, float] | float = 0.0,
-        revenue_noise_std: float = 26_000.0,
+        revenue_noise_pct: float = 0.02,
+        revenue_noise_std: float | None = None,
         levers: list[tuple[str, dict, str, bool]] | None = None,
         strategy_pct: float | Blackout | Redistribute | MonthStep | None = None,
         strategy_nudge_shape: str = "edge",
@@ -1361,6 +1383,10 @@ class DiscoveryReport:
             )
         if not 0.0 < demand_proxy_quality <= 1.0:
             raise ValueError("demand_proxy_quality must be in (0, 1]")
+        if revenue_noise_std is None and revenue_noise_pct < 0.0:
+            raise ValueError("revenue_noise_pct must be non-negative")
+        if revenue_noise_std is not None and revenue_noise_std < 0.0:
+            raise ValueError("revenue_noise_std must be non-negative")
 
         _get_month_labels(plan_df)  # validates DatetimeIndex, fails fast
 
@@ -1396,7 +1422,6 @@ class DiscoveryReport:
         self.baseline_share = baseline_share
         self.baseline_cv = baseline_cv
         self.demand_proxy_quality = demand_proxy_quality
-        self.revenue_noise_std = revenue_noise_std
         self.client_name = client_name
         self.plan_year = plan_year
         self.seed = seed
@@ -1484,6 +1509,19 @@ class DiscoveryReport:
             baseline_share=baseline_share,
             baseline_cv=baseline_cv,
         )
+        # Noise is set as a share of average weekly sales unless a GBP
+        # override is given. Stored in GBP so every diagnostic below takes
+        # it unchanged.
+        if revenue_noise_std is None:
+            self.revenue_noise_pct = float(revenue_noise_pct)
+            self.revenue_noise_std = float(
+                revenue_noise_pct * self.calibration_.total_sales
+            )
+        else:
+            self.revenue_noise_std = float(revenue_noise_std)
+            self.revenue_noise_pct = (
+                self.revenue_noise_std / self.calibration_.total_sales
+            )
 
         # Demand is built once, from the UNPHASED spend, and held fixed for
         # every candidate. Phasing can then only change how closely spend
@@ -1570,7 +1608,7 @@ class DiscoveryReport:
         self,
         n_sims: int = 50,
         n_phasing_seeds: int = 15,
-        id_n_sims: int = 20,
+        id_n_sims: int = 50,
         id_b_candidates: np.ndarray | None = None,
         id_lam_candidates: np.ndarray | None = None,
         valley_tol: float = 0.01,
@@ -1605,10 +1643,9 @@ class DiscoveryReport:
             about a point; lower this for fast iteration, and note
             fast_mode already uses 2 for that reason.
         id_n_sims:
-            Noise draws per IdentifiabilityDiagnostic fit. Kept separate
-            from n_sims and smaller by default -- profiling a (b, lambda)
-            grid is far more expensive per draw than a single OLS fit.
-            Default 20.
+            Noise draws per IdentifiabilityDiagnostic fit. Default 50,
+            matching n_sims. The grid solves every draw in one lstsq per
+            grid point, so the cost grows well under linearly with it.
         id_b_candidates, id_lam_candidates:
             Forwarded to IdentifiabilityDiagnostic. Defaults to that
             class's own defaults (a wide 33x31 grid); shrink for a fast
@@ -2136,6 +2173,8 @@ class DiscoveryReport:
                 "adstock": self.adstock,
                 "baseline_share": self.baseline_share,
                 "baseline_cv": self.baseline_cv,
+                "revenue_noise_pct": self.revenue_noise_pct,
+                "revenue_noise_std": self.revenue_noise_std,
                 "winner": self.winner_,
                 "baseline_label": baseline_label,
                 "fast_mode": fast_mode,

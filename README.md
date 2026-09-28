@@ -80,7 +80,7 @@ instead:
 diag = CollinearityDiagnostic(
     spend_df=my_spend_df,
     true_marginal_returns={"tv": 1.8, "paid_social": 2.4, "search": 4.1},  # your own numbers
-    revenue_noise_std=my_residual_std,  # from your own model's residuals, not the package default
+    revenue_noise_std=my_noise_std,  # weekly noise sd in GBP, your own assumption
 )
 diag.fit()
 diag.summary()  # same output, personalised to your correlation structure and assumptions
@@ -113,7 +113,7 @@ report = DiscoveryReport(
     history_df=history,
     plan_df=plan,
     true_marginal_returns={"tv": 1.8, "paid_social": 2.4, "search": 4.1},  # your own numbers
-    revenue_noise_std=my_residual_std,  # from your own model's residuals
+    revenue_noise_pct=0.02,  # weekly noise sd as a share of average weekly sales (default)
     client_name="Example Brand",
     # optional: pin a strategy instead of sweeping for one, with per-channel overrides
     # strategy_pct=60.0,
@@ -128,9 +128,13 @@ report.schedule_csv(
 
 `reports/` is git-ignored by default (see `.gitignore`). Save your own generated reports there, or wherever suits your workflow. See it end to end at the [example report](https://raz1470.github.io/how_wrong_is_your_mmm/example-report.html) above.
 
-`true_marginal_returns` and `revenue_noise_std` are the two most important inputs
-to get right — every CV and every £ range in the report is anchored to them, and
-CV is exactly inversely proportional to both. The demo defaults above (matching
+`true_marginal_returns` and the noise level are the two most important inputs
+to get right. Every CV and every £ range in the report is anchored to them. CV
+rises about linearly with the noise sd and falls as marginal returns rise. The
+report sets noise as 2% of average weekly sales by default (`revenue_noise_pct`),
+or takes a GBP sd directly (`revenue_noise_std`). This is pure noise. Demand,
+including the part your controls miss, is modelled separately, so it should be
+smaller than your MMM's residual sd. The demo defaults above (matching
 `tv`/`meta`/`search` channel names) are illustrative only; for your own data,
 always supply your own values.
 
@@ -150,7 +154,7 @@ always supply your own values.
 
 ## Future advancements
 
-**Bring-your-own-estimator.** `DiscoveryReport` currently fits with OLS internally. A hook to swap in your own estimator instead (PyMC-Marketing, Meridian, Robyn or whatever your team already trusts) while still returning the same diagnostics and phased schedule is on the list. The simulation inputs (curves, baseline variation, residual noise) could then come straight from that model's fit.
+**Bring-your-own-estimator.** `DiscoveryReport` currently fits with OLS internally. A hook to swap in your own estimator instead (PyMC-Marketing, Meridian, Robyn or whatever your team already trusts) while still returning the same diagnostics and phased schedule is on the list. The simulation inputs (curves, baseline variation) could then come straight from that model's fit.
 
 **Rolling re-plan.** The winning schedule is set once for the plan year. A rolling mode would re-plan each quarter from the spend actually delivered and aim the next quarter at the channels whose ranges are still widest.
 

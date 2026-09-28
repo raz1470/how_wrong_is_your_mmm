@@ -13,6 +13,7 @@ from how_wrong_is_your_mmm._phaser import (
     _generate_phased_schedule,
     _get_month_labels,
     _max_monthly_deviation,
+    _quarter_groups,
     _resolve_channel_specs,
     _shaped_nudge,
 )
@@ -234,6 +235,116 @@ class TestBlackout:
             max_dark_weeks_per_month=2
         )
         assert Blackout(max_dark_weeks_per_month=1) != Blackout()
+
+
+class TestBlackoutQuarterly:
+    def test_default_max_dark_weeks_per_quarter_is_none(self):
+        assert Blackout().max_dark_weeks_per_quarter is None
+
+    def test_stored(self):
+        assert Blackout(max_dark_weeks_per_quarter=2).max_dark_weeks_per_quarter == 2
+
+    def test_below_one_raises(self):
+        with pytest.raises(ValueError, match="max_dark_weeks_per_quarter"):
+            Blackout(max_dark_weeks_per_quarter=0)
+
+    def test_month_and_quarter_together_raises(self):
+        with pytest.raises(ValueError, match="not both"):
+            Blackout(max_dark_weeks_per_month=1, max_dark_weeks_per_quarter=1)
+
+    def test_equality_includes_quarter_cap(self):
+        assert Blackout(max_dark_weeks_per_quarter=1) == Blackout(
+            max_dark_weeks_per_quarter=1
+        )
+        assert Blackout(max_dark_weeks_per_quarter=1) != Blackout(
+            max_dark_weeks_per_month=1
+        )
+
+    def test_repr_names_quarter(self):
+        assert "max_dark_weeks_per_quarter=1" in repr(
+            Blackout(max_dark_weeks_per_quarter=1)
+        )
+
+
+class TestQuarterGroups:
+    def test_twelve_months_is_four_quarters(self):
+        labels = np.array(pd.period_range("2027-01", periods=12, freq="M"))
+        assert [len(g) for g in _quarter_groups(labels)] == [3, 3, 3, 3]
+
+    def test_plan_df_stub_month_joins_last_quarter(self):
+        # PLAN_DF runs 2023-01-09 to 2024-01-01: 12 months plus a 1-week stub.
+        groups = _quarter_groups(_get_month_labels(PLAN_DF))
+        assert [len(g) for g in groups] == [3, 3, 3, 4]
+
+    def test_lone_trailing_month_merges(self):
+        labels = np.array(pd.period_range("2027-01", periods=13, freq="M"))
+        assert [len(g) for g in _quarter_groups(labels)] == [3, 3, 3, 4]
+
+    def test_two_month_tail_is_its_own_quarter(self):
+        labels = np.array(pd.period_range("2027-01", periods=14, freq="M"))
+        assert [len(g) for g in _quarter_groups(labels)] == [3, 3, 3, 3, 2]
+
+
+class TestGeneratePhasedScheduleBlackoutQuarterly:
+    def setup_method(self):
+        self.month_labels = _get_month_labels(PLAN_DF)
+        self.spec = {
+            "tv": 0.0,
+            "meta": 0.0,
+            "search": Blackout(max_dark_weeks_per_quarter=1),
+        }
+
+    def _run(self, seed=0, alpha=1.0, spec=None):
+        return _generate_phased_schedule(
+            PLAN_DF,
+            self.month_labels,
+            alpha=alpha,
+            max_weekly_deviation_pct=spec or self.spec,
+            seed=seed,
+        )
+
+    def test_zero_alpha_no_change(self):
+        pd.testing.assert_frame_equal(self._run(alpha=0.0), PLAN_DF.astype(float))
+
+    @pytest.mark.parametrize("seed", range(5))
+    def test_one_dark_week_per_quarter(self, seed):
+        dark = self._run(seed=seed)["search"].to_numpy() == 0.0
+        for quarter in _quarter_groups(self.month_labels):
+            rows = np.isin(self.month_labels, quarter)
+            assert dark[rows].sum() == 1
+        assert dark.sum() == 4
+
+    @pytest.mark.parametrize("seed", range(5))
+    def test_month_totals_kept(self, seed):
+        result = self._run(seed=seed)
+        assert _max_monthly_deviation(PLAN_DF, result, self.month_labels) < 1e-9
+
+    def test_cap_two_is_one_consecutive_run_in_one_month(self):
+        spec = {**self.spec, "search": Blackout(max_dark_weeks_per_quarter=2)}
+        for seed in range(10):
+            dark = self._run(seed=seed, spec=spec)["search"].to_numpy() == 0.0
+            for quarter in _quarter_groups(self.month_labels):
+                idx = np.where(np.isin(self.month_labels, quarter) & dark)[0]
+                assert len(idx) == 2
+                assert idx[1] == idx[0] + 1
+                assert self.month_labels[idx[0]] == self.month_labels[idx[1]]
+
+    def test_zero_prob_no_change(self):
+        spec = {**self.spec, "search": Blackout(prob=0.0, max_dark_weeks_per_quarter=1)}
+        pd.testing.assert_frame_equal(self._run(spec=spec), PLAN_DF.astype(float))
+
+    def test_other_channels_draws_unchanged(self):
+        """The quarterly mask has its own stream, so whether search's
+        quarters activate or not leaves tv's draws alone."""
+        base = {
+            "tv": 20.0,
+            "meta": 0.0,
+            "search": Blackout(prob=0.0, max_dark_weeks_per_quarter=1),
+        }
+        with_q = {**base, "search": Blackout(max_dark_weeks_per_quarter=1)}
+        a = self._run(seed=3, spec=base)["tv"]
+        b = self._run(seed=3, spec=with_q)["tv"]
+        pd.testing.assert_series_equal(a, b)
 
 
 class TestGeneratePhasedScheduleBlackout:
