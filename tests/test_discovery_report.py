@@ -77,7 +77,7 @@ class TestDefaultLevers:
 
     def test_seven_candidates(self):
         # unphased + 20% at uniform/edge/seesaw + 20% Redistribute + 20%
-        # MonthStep + the original Blackout(dark=1) (Ryan, 2026-09-21).
+        # MonthStep + a quarterly single-week Blackout (Ryan, 2026-09-26).
         assert len(_default_levers(CHANNELS)) == 7
 
     def test_default_labels(self):
@@ -88,7 +88,7 @@ class TestDefaultLevers:
             "+/-20% (seesaw)",
             "+/-20% (redistribute + edge)",
             "+/-20% (month step)",
-            "Blackout (dark=1)",
+            "Blackout (quarterly)",
         ]
 
     def test_month_step_default_is_20pct(self):
@@ -113,14 +113,15 @@ class TestDefaultLevers:
         labels = [label for label, *_ in _default_levers(CHANNELS)]
         assert len(labels) == len(set(labels))
 
-    def test_only_the_original_blackout_is_swept(self):
+    def test_only_the_quarterly_blackout_is_swept(self):
         levers = _default_levers(CHANNELS)
         (_, spec, _, _) = levers[-1]
-        assert levers[-1][0] == "Blackout (dark=1)"
+        assert levers[-1][0] == "Blackout (quarterly)"
         for v in spec.values():
             assert isinstance(v, Blackout)
             assert v.prob == 1.0
-            assert v.max_dark_weeks_per_month == 1
+            assert v.max_dark_weeks_per_quarter == 1
+            assert v.max_dark_weeks_per_month is None
         assert sum("Blackout" in label for label, *_ in levers) == 1
 
 
@@ -1159,6 +1160,59 @@ class TestFitDefaults:
         # see NOTES.md session 63.
         assert default == 15
 
+    def test_id_n_sims_default_is_50(self):
+        import inspect
+
+        default = inspect.signature(DiscoveryReport.fit).parameters["id_n_sims"].default
+        # Ryan, 2026-09-25: "shouldnt we just do 50 everwhere?"
+        assert default == 50
+
+
+class TestRevenueNoise:
+    def test_default_is_2pct_of_average_weekly_sales(self):
+        report = make_report()
+        assert report.revenue_noise_pct == 0.02
+        assert report.revenue_noise_std == pytest.approx(
+            0.02 * report.calibration_.total_sales
+        )
+
+    def test_pct_scales_the_gbp_sd(self):
+        low = make_report(revenue_noise_pct=0.02)
+        high = make_report(revenue_noise_pct=0.10)
+        assert high.revenue_noise_std == pytest.approx(5 * low.revenue_noise_std)
+
+    def test_gbp_override_wins(self):
+        report = make_report(revenue_noise_pct=0.5, revenue_noise_std=26_000.0)
+        assert report.revenue_noise_std == 26_000.0
+        assert report.revenue_noise_pct == pytest.approx(
+            26_000.0 / report.calibration_.total_sales
+        )
+
+    def test_negative_pct_raises(self):
+        with pytest.raises(ValueError, match="revenue_noise_pct"):
+            make_report(revenue_noise_pct=-0.01)
+
+    def test_negative_gbp_raises(self):
+        with pytest.raises(ValueError, match="revenue_noise_std"):
+            make_report(revenue_noise_std=-1.0)
+
+    def test_more_noise_widens_variance(self):
+        cvs = []
+        for pct in (0.01, 0.10):
+            report = make_report(revenue_noise_pct=pct)
+            fit_small(report)
+            cvs.append(
+                np.mean(list(report.results_["unphased"]["variance_cv"].values()))
+            )
+        assert cvs[1] > cvs[0]
+
+    def test_meta_records_noise(self):
+        report = make_report(revenue_noise_pct=0.03)
+        fit_small(report)
+        meta = report._build_report_data(fast_mode=True)["meta"]
+        assert meta["revenue_noise_pct"] == 0.03
+        assert meta["revenue_noise_std"] == pytest.approx(report.revenue_noise_std)
+
 
 class TestPeakWeekMultiple:
     def test_unchanged_schedule_is_one(self):
@@ -1475,6 +1529,11 @@ class TestStrategyGlossary:
             "random amount up to 20%": ({"a": 20.0}, "uniform", False),
             "goes dark for 1 week": (
                 {"a": Blackout(prob=1.0, max_dark_weeks_per_month=1)},
+                "uniform",
+                False,
+            ),
+            "Once a quarter a channel goes dark for 1 week": (
+                {"a": Blackout(prob=1.0, max_dark_weeks_per_quarter=1)},
                 "uniform",
                 False,
             ),
