@@ -879,7 +879,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <p>Everything so far uses four channels. Most MMMs have more than that, so in this section we test whether the phasing algorithm still works at 5, 10 and 15 channels.</p>
 
-  <p>We keep the data generating process from section 1 and only change the number of channels. The channels are named Channel 1 to Channel n and each spends about £80k a week. They cycle through the four sets of marginal return, saturation and adstock from section 1, so Channel 5 behaves like TV, Channel 6 like Meta and so on. Every pair of channels still has a correlation of 0.7. We then run all six strategies from section 4 through the measures from section 2 and compare each one with the unphased plan.</p>
+  <p>We keep the data generating process from section 1 and only change the number of channels. The channels are named Channel 1 to Channel n and each spends about £80k a week. They cycle through the four sets of marginal return, saturation and adstock from section 1, so Channel 5 behaves like TV, Channel 6 like Meta and so on. Every pair of channels still has a correlation of 0.7. The noise is held at its four-channel size (about £23k a week), so each channel's signal is the same size at every channel count. We then run all six strategies from section 4 through the measures from section 2 and compare each one with the unphased plan.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -893,18 +893,20 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
       </div>
       <svg class="chart" id="chartScale" viewBox="0 0 700 460" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Each panel shows how much one measure improves on the unphased plan at 5, 10 and 15 channels. Above zero is better than unphased. Notice that variance holds up for both highlighted strategies, while bias, saturation and adstock fall away as channels are added.</p>
+    <p class="fig-cap">Each panel shows how much one measure improves on the unphased plan at 5, 10 and 15 channels. Above zero is better than unphased. Notice that variance, saturation and adstock hold up for Redistribute + edge, while bias falls away as channels are added.</p>
   </div>
 
-  <p>Variance scales. Redistribute + edge cuts variance by 60% at 5 channels and 46% at 15. Blackout goes from 43% to 38%. The cost stays between 1.7% and 1.8% of plan-year revenue for Redistribute + edge and under 0.6% for Blackout.</p>
+  <p>Variance, saturation and adstock scale. Redistribute + edge cuts variance by 60% at 5 channels and 48% at 15. Its saturation range narrows by 33% to 35% at every channel count and its adstock range by 35% to 47%. Blackout helps variance by 39% to 43% and adstock by 22% to 27%. The cost stays between 1.7% and 1.8% of plan-year revenue for Redistribute + edge and about 0.6% for Blackout.</p>
 
-  <p>Bias, saturation and adstock don't. Redistribute + edge cuts bias by 44% at 5 channels, 31% at 10 and 16% at 15. Its saturation range narrows by 32% at 5 channels but only 8% at 15. Its adstock range narrows by 44% at 5 channels and 21% to 25% after that. Unphased bias stays between 33% and 36%, so the problem isn't getting much worse. The fix is getting weaker.</p>
+  <p>Bias doesn't scale. Redistribute + edge cuts bias by 45% at 5 channels, 33% at 10 and 19% at 15. Unphased bias stays between 33% and 37%, so the problem isn't getting much worse. The fix is getting weaker.</p>
 
-  <p>Our best explanation is the amount of data per channel. Three years is 156 weeks. Spread across 5 channels that is 31 weeks per channel and across 15 it is about 10. Removing bias means separating each channel from demand, and with 10 weeks per channel there is little left to separate it with. Each channel is also a smaller share of total sales, while the noise is set as a share of total sales, so each channel's own signal is harder to see. In earlier testing at 20 channels the model struggled even before phasing, so we treat 15 as the upper end of what this setup supports.</p>
+  <p>Our best explanation is the amount of data per channel. Three years is 156 weeks. Spread across 5 channels that is 31 weeks per channel and across 15 it is about 10. Removing bias means separating each channel from demand, and with 10 weeks per channel there is little left to separate it with. In earlier testing at 20 channels the model struggled even before phasing, so we treat 15 as the upper end of what this setup supports.</p>
 
-  <p>Redistribute + edge is still the winner at every channel count and leads on every measure. Blackout, at one dark week a quarter, helps variance and adstock but barely moves bias or saturation at any count.</p>
+  <p>Holding the noise fixed matters. If it grows with total sales instead, each channel becomes a smaller share of what the model sees and its curve gets harder to pin down at any channel count. Rerun that way, the saturation gain falls from 32% at 5 channels to 8% at 15 and the adstock gain from 44% to 25%. Variance and bias shrink the same way under both.</p>
 
-  <p>The other four strategies never did much and don't start to with more channels. Uniform, edge and seesaw help variance by 8% to 22% and barely move anything else. Month step helps variance by 29% to 36% but makes bias worse than unphased at 10 and 15 channels.</p>
+  <p>Redistribute + edge is still the winner at every channel count and leads on every measure. Blackout, at one dark week a quarter, helps variance and adstock but moves bias and saturation by 12% at most.</p>
+
+  <p>The other four strategies never did much and don't start to with more channels. Uniform, edge and seesaw help variance by 8% to 22% and barely move anything else. Month step helps variance by 31% to 37% but makes bias worse than unphased at 10 and 15 channels.</p>
 
   <p>If you have more than 15 channels there are a few options:</p>
   <ul>
@@ -1083,7 +1085,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <p>Marketing channels move together because budgets are planned together. That leaves your MMM unsure in three separate ways. Its estimates have more variance than it lets on. They are biased by the demand it never saw. And it can't tell the shape of your response curves. This article measures all three at once.</p>
 
-  <p>Budget phasing goes after the root cause. It changes when each channel spends and keeps each channel's annual budget. On our scenario the winning strategy, Redistribute + edge, cuts variance by 66% and bias by 36%. The saturation and adstock ranges narrow by 45% and 50%. It costs 1.94% of plan-year revenue. Its variance gain holds from 5 to 15 channels, but the bias, saturation and adstock gains shrink as channels are added. A Bayesian model doesn't get around any of this: priors can't create variation the data never had.</p>
+  <p>Budget phasing goes after the root cause. It changes when each channel spends and keeps each channel's annual budget. On our scenario the winning strategy, Redistribute + edge, cuts variance by 66% and bias by 36%. The saturation and adstock ranges narrow by 45% and 50%. It costs 1.94% of plan-year revenue. It holds from 5 to 15 channels, although the bias gain shrinks as channels are added. A Bayesian model doesn't get around any of this: priors can't create variation the data never had.</p>
 
   <h3>What comes next</h3>
 
@@ -2338,10 +2340,11 @@ function drawTTBAt(svg, W, H, m, fs, fsLab, xTitleY, xLabs) {
 function drawTTB(svg) { drawTTBAt(svg, 700, 300, { top: 16, right: 150, bottom: 52, left: 56 }, FS.axis, FS.val, 292, ['Unphased', '1 year', '2 years', '3 years']); }
 function drawTTBNarrow(svg) { svg.setAttribute('viewBox', '0 0 340 300'); drawTTBAt(svg, 340, 300, { top: 16, right: 104, bottom: 52, left: 40 }, FSN.sub, FSN.sub, 292, ['None', '1', '2', '3']); }
 
-// Scaling up (section 6). DiscoveryReport default sweep at 5/10/15 channels on the example setup.
+// Scaling up (section 6). DiscoveryReport default sweep at 5/10/15 channels on the example setup,
+// noise held at GBP 23,107 (2% of the 4-channel example's sales) at every count.
 // % improvement vs unphased: variance CV, mean abs bias, mean saturation
 // and adstock p10-p90 width.
-const SCALE = {"redistribute": {"variance": [60.2, 55.0, 46.4], "bias": [44.5, 31.1, 15.7], "saturation_range": [31.6, 18.1, 7.8], "adstock_range": [44.1, 21.1, 25.2]}, "blackout": {"variance": [43.0, 40.6, 37.9], "bias": [2.2, 2.2, 7.9], "saturation_range": [6.1, 2.5, 0.4], "adstock_range": [20.9, 13.0, 17.5]}, "monthstep": {"variance": [36.3, 36.3, 28.9], "bias": [-1.4, -9.9, -10.0], "saturation_range": [-0.6, 0.0, 0.0], "adstock_range": [11.1, 3.7, 5.3]}, "edge": {"variance": [22.2, 19.7, 20.4], "bias": [-1.6, 0.7, 3.4], "saturation_range": [-0.3, 0.2, 0.0], "adstock_range": [7.8, 4.4, 7.2]}, "seesaw": {"variance": [16.9, 16.7, 11.0], "bias": [-5.3, -3.7, 2.1], "saturation_range": [-0.6, 0.2, 0.0], "adstock_range": [5.0, 1.7, 4.8]}, "uniform": {"variance": [8.6, 8.8, 8.3], "bias": [-0.1, 3.4, 4.9], "saturation_range": [-2.5, 0.1, 0.0], "adstock_range": [1.8, -1.3, 1.6]}};
+const SCALE = {"redistribute": {"variance": [60.2, 54.8, 47.5], "bias": [44.6, 33.3, 19.3], "saturation_range": [33.0, 33.4, 34.6], "adstock_range": [47.4, 42.4, 35.4]}, "blackout": {"variance": [43.0, 40.4, 39.2], "bias": [2.3, 3.0, 12.4], "saturation_range": [7.3, 9.9, 12.2], "adstock_range": [22.2, 26.6, 21.8]}, "monthstep": {"variance": [36.3, 36.5, 30.5], "bias": [-1.4, -9.8, -6.9], "saturation_range": [-0.0, -0.0, -0.5], "adstock_range": [12.4, 13.3, 8.5]}, "edge": {"variance": [22.2, 20.2, 21.9], "bias": [-1.5, 0.5, 9.2], "saturation_range": [-0.0, 1.2, 2.2], "adstock_range": [7.4, 11.5, 8.1]}, "seesaw": {"variance": [16.9, 16.8, 13.3], "bias": [-5.3, -3.4, 7.1], "saturation_range": [-0.5, 1.0, 1.4], "adstock_range": [5.1, 8.6, 3.6]}, "uniform": {"variance": [8.6, 8.7, 8.5], "bias": [-0.1, 3.6, 6.7], "saturation_range": [-2.2, 0.5, 0.4], "adstock_range": [0.6, 3.5, 0.1]}};
 const SCALE_PANELS = [['variance', 'Variance'], ['bias', 'Bias'], ['saturation_range', 'Saturation'], ['adstock_range', 'Adstock']];
 const SCALE_SERIES = [
   ['uniform', '#cbd5e1', 1.6], ['edge', '#cbd5e1', 1.6], ['seesaw', '#cbd5e1', 1.6], ['monthstep', '#cbd5e1', 1.6],
