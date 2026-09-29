@@ -686,23 +686,23 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <li><strong>Variance.</strong> Each channel has to move in weeks when the others don't. Moves drawn at random and separately for each channel do this.</li>
     <li><strong>Bias.</strong> The moves must have nothing to do with demand. A schedule drawn at random before the year starts can't follow demand.</li>
     <li><strong>Adstock.</strong> A change has to be held for longer than the carryover lasts. Adstock smooths a one-week blip away. A dark run or a month-long step survives it.</li>
-    <li><strong>Saturation.</strong> The channel needs spend at several different levels. A dark week adds a point at zero. A month that takes on extra budget adds a point well above plan.</li>
+    <li><strong>Saturation.</strong> The channel needs spend well above its plan, held long enough to get past adstock. A dark week doesn't help here, because every curve starts at zero. A month that takes on extra budget adds a point well up the curve.</li>
   </ul>
 
   <h3>The strategies</h3>
 
-  <p>We test six strategies. Each caps its nudges at 20% and is drawn separately for each channel. Dark weeks and the budget they free up are the only moves bigger than 20%.</p>
+  <p>We test six strategies. Each caps its nudges at 20% and is drawn separately for each channel. Dark weeks, the budget they free up and the high month are the only moves bigger than 20%.</p>
 
   <ul class="probs">
     <li><strong>Uniform.</strong> Each week moves up or down by a random amount between 0% and 20%.</li>
     <li><strong>Edge.</strong> Each week moves by exactly 20%. Ups and downs are balanced within the month.</li>
-    <li><strong>Seesaw.</strong> Each week moves by exactly 20% and alternates up and down.</li>
     <li><strong>Redistribute + edge.</strong> Once a year each channel goes dark for four weeks in a row. That budget moves into one other month. Channels take turns so no two go dark in the same month. Edge runs on top.</li>
+    <li><strong>Redistribute + high month.</strong> Redistribute + edge, plus one more month a year at 2.5 times plan. A small equal cut to the channel's other months pays for it. Channels take turns so no two peak in the same month. It is there for saturation.</li>
     <li><strong>Month step.</strong> Each whole month moves up or down by 20%. Every channel gets six up months and six down months. No two channels follow the same pattern.</li>
     <li><strong>Blackout.</strong> One week a quarter goes dark, in a month picked at random. The rest of that month absorbs its budget.</li>
   </ul>
 
-  <p>Every strategy keeps each channel's annual budget. Uniform, edge, seesaw and Blackout also keep every month's total. Redistribute and month step move money between months.</p>
+  <p>Every strategy keeps each channel's annual budget. Uniform, edge and Blackout also keep every month's total. Both Redistribute strategies and month step move money between months.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -715,7 +715,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
       </div>
       <svg class="chart" id="chartPhasePanels" viewBox="0 0 700 360" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Each panel shows TV's planned weekly spend for the plan year and one draw of the phased schedule. Notice that uniform, edge and seesaw jitter around the plan week to week. Redistribute and Blackout drop to zero and month step moves in month-long blocks.</p>
+    <p class="fig-cap">Each panel shows TV's planned weekly spend for the plan year and one draw of the phased schedule. Notice that uniform and edge jitter around the plan week to week. Both Redistribute strategies and Blackout drop to zero. Redistribute + high month also has one month at 2.5 times plan, and month step moves in month-long blocks.</p>
   </div>
 
   <h3>Which works best</h3>
@@ -732,8 +732,8 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
         <tr><td>Unphased</td><td>0.24</td><td>27.7%</td><td>0.71</td><td>0.43</td><td>&mdash;</td><td>1.0x</td></tr>
         <tr><td>Uniform</td><td>0.21</td><td>27.8%</td><td>0.72</td><td>0.39</td><td>0.06%</td><td>1.2x</td></tr>
         <tr><td>Edge</td><td>0.18</td><td>27.6%</td><td>0.71</td><td>0.35</td><td>0.25%</td><td>1.3x</td></tr>
-        <tr><td>Seesaw</td><td>0.19</td><td>27.6%</td><td>0.70</td><td>0.36</td><td>0.17%</td><td>1.2x</td></tr>
-        <tr class="winner"><td>Redistribute + edge</td><td>0.08</td><td>17.8%</td><td>0.39</td><td>0.21</td><td>1.94%</td><td>2.6x</td></tr>
+        <tr><td>Redistribute + edge</td><td>0.08</td><td>17.8%</td><td>0.39</td><td>0.21</td><td>1.94%</td><td>2.6x</td></tr>
+        <tr class="winner"><td>Redistribute + high month</td><td>0.07</td><td>15.1%</td><td>0.31</td><td>0.18</td><td>3.43%</td><td>3.0x</td></tr>
         <tr><td>Month step</td><td>0.15</td><td>24.9%</td><td>0.70</td><td>0.35</td><td>0.24%</td><td>1.2x</td></tr>
         <tr><td>Blackout</td><td>0.13</td><td>25.6%</td><td>0.63</td><td>0.28</td><td>0.64%</td><td>1.5x</td></tr>
       </tbody>
@@ -743,15 +743,17 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <p>Variance is the CV and bias the mean absolute %, both averaged over the four channels. Saturation and adstock are the average width of each channel's range from section 2. Cost is plan-year revenue given up. Peak is the biggest single week as a multiple of its plan. Lower is better in every column.</p>
 
-  <p>Redistribute + edge wins. Variance falls from 0.24 to 0.08 and bias from 27.7% to 17.8%. The saturation range almost halves from 0.71 to 0.39 and the adstock range halves from 0.43 to 0.21. Blackout comes second on variance and adstock at a third of the cost, but barely moves bias.</p>
+  <p>Redistribute + high month wins. Variance falls from 0.24 to 0.07 and bias from 27.7% to 15.1%. The saturation range more than halves from 0.71 to 0.31 and the adstock range falls from 0.43 to 0.18. The high month is what moves saturation: without it, Redistribute + edge gets the range to 0.39. Redistribute + edge is second on every measure. Blackout helps variance and adstock at a fraction of the cost, but barely moves bias.</p>
 
-  <p>Uniform, edge and seesaw help variance but barely touch bias, saturation or adstock. Their moves are small and last a week. Month step holds its moves for a month but at 20% it adds little beyond variance and some bias.</p>
+  <p>Saturation matters beyond the model. It sets the return on the next pound as spend goes up, so a tighter saturation range is a tighter answer to which channels you can grow.</p>
+
+  <p>Uniform and edge help variance but barely touch bias, saturation or adstock. Their moves are small and last a week. Month step holds its moves for a month but at 20% it adds little beyond variance and some bias.</p>
 
   <h3>What it costs</h3>
 
   <ul class="probs">
-    <li><strong>Revenue given up.</strong> Returns diminish as spend rises. So budget moved from a quiet week into a busy one earns less than it did. Measured against the true curves the winner gives up 1.94% of plan-year revenue. Blackout gives up 0.64% and edge 0.25%.</li>
-    <li><strong>Platform learning phases.</strong> Ad platforms can re-enter a learning phase after a large budget change and deliver worse while they do. We don't model this. It is why every strategy caps its nudges at 20%. It is also why the peak week column matters: the winner's biggest week is 2.6 times its plan.</li>
+    <li><strong>Revenue given up.</strong> Returns diminish as spend rises. So budget moved from a quiet week into a busy one earns less than it did. Measured against the true curves the winner gives up 3.43% of plan-year revenue. Redistribute + edge gives up 1.94%, Blackout 0.64% and edge 0.25%. The high month adds 1.5 points because it pushes spend furthest up the curve, where each extra pound earns least. That is also why it pins saturation down.</li>
+    <li><strong>Platform learning phases.</strong> Ad platforms can re-enter a learning phase after a large budget change and deliver worse while they do. We don't model this. It is why every strategy caps its nudges at 20%. It is also why the peak week column matters: the winner's biggest week is 3.0 times its plan.</li>
   </ul>
 
   <p>Stronger settings can be pinned in the report: 40% to 80% nudges or longer blackouts. They buy bigger improvements at a higher price. Blacking out all but one week a month cuts bias by 94% but gives up 14.3% of revenue.</p>
@@ -762,7 +764,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p class="s-label">5 · The impact</p>
   <h2>What the phasing algorithm buys you, and what it costs</h2>
 
-  <p>Breaking the correlation is the mechanism. Tighter, less biased, more identifiable estimates are the point. The winning lever on this scenario, &plusmn;20% (Redistribute + edge), has the lowest variance, the lowest bias and the tightest identifiability valley of the 7 default candidates. It is not, however, free: it is also the single most expensive of the 7 on plan-period revenue given up. Both things are true together, and a client report should say so.</p>
+  <p>Tighter, less biased, more identifiable estimates are the point. The winner on this scenario, Redistribute + high month, has the lowest variance, the lowest bias and the narrowest saturation and adstock ranges of the six strategies. It is also the most expensive of the six. Both are true, and a client report should say so.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -772,7 +774,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <div class="fig-body">
       <svg class="chart" id="chartCorr" viewBox="0 0 700 304" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Before, every pair of channels moves together at between 0.64 and 0.75, and that is why your model can't tell them apart on any of the three problems above. After, with every channel on the winning &plusmn;20% (Redistribute + edge) lever, every pair falls to between 0.24 (Meta/Search Generic) and 0.32 (Meta/TikTok). Mean pairwise correlation falls from 0.70 to 0.28. Same channels and the same annual budget. Only the timing changed.</p>
+    <p class="fig-cap">Before, every pair of channels moves together at between 0.64 and 0.75, and that is why your model can't tell them apart on any of the three problems above. After, with every channel on the winning Redistribute + high month strategy, every pair falls to between 0.13 (Search Generic/TikTok) and 0.18 (TV/Meta). Mean pairwise correlation falls from 0.70 to 0.16. Same channels and the same annual budget. Only the timing changed.</p>
   </div>
 
   <div class="fig">
@@ -788,7 +790,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
       </div>
       <svg class="chart" id="chartImpactVariance" viewBox="0 0 700 210" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">The forest plot shows the model's estimated range for incremental revenue before phasing (faded) and after one year of phasing (solid), compared with the ground truth. Notice how much the range narrows: by 54% for Search Generic up to 71% for Meta. The point estimate barely moves because variance is about the spread, not the centre.</p>
+    <p class="fig-cap">The forest plot shows the model's estimated range for incremental revenue before phasing (faded) and after one year of phasing (solid), compared with the ground truth. Notice how much the range narrows: by 62% for Search Generic up to 75% for Meta. The point estimate barely moves because variance is about the spread, not the centre.</p>
   </div>
 
   <div class="fig">
@@ -804,7 +806,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
       </div>
       <svg class="chart" id="chartImpactBias" viewBox="0 0 700 210" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">The forest plot shows the model's estimated range for incremental revenue before and after phasing when demand is only seen through a proxy. Notice that every point estimate moves toward the ground truth. TikTok's bias falls from 31.0% to 12.0% and TV's from 41.5% to 31.0%. Meta falls from 29.4% to 20.7% and Search Generic, which started closest, from 8.8% to 7.7%.</p>
+    <p class="fig-cap">The forest plot shows the model's estimated range for incremental revenue before and after phasing when demand is only seen through a proxy. Notice that every point estimate moves toward the ground truth. TikTok's bias falls from 31.0% to 9.4% and TV's from 41.5% to 29.3%. Meta falls from 29.4% to 15.2% and Search Generic, which started closest, from 8.8% to 6.7%.</p>
   </div>
 
   <div class="fig">
@@ -820,7 +822,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
       </div>
       <svg class="chart" id="chartImpactSaturation" viewBox="0 0 700 210" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">The forest plot shows the range of saturation exponents the model recovers before and after phasing and compares it to the true value. Notice that Meta and TikTok no longer cover the whole 0.20 to 1.00 search. TV barely narrows: its range still runs from 0.23 to 0.97.</p>
+    <p class="fig-cap">The forest plot shows the range of saturation exponents the model recovers before and after phasing and compares it to the true value. Notice that TV, Meta and TikTok no longer cover the whole 0.20 to 1.00 search. TV narrows the least: its range still runs from 0.32 to 0.90.</p>
   </div>
 
   <div class="fig">
@@ -836,12 +838,12 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
       </div>
       <svg class="chart" id="chartImpactAdstock" viewBox="0 0 700 210" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">The forest plot shows the range of adstock decays the model recovers before and after phasing and compares it to the true value. Notice that TV, Meta and TikTok no longer reach down to zero. Search Generic was already tight and barely moves.</p>
+    <p class="fig-cap">The forest plot shows the range of adstock decays the model recovers before and after phasing and compares it to the true value. Notice that TV, Meta and TikTok no longer reach down to zero. Search Generic was already tight and narrows a little, from 0.00&ndash;0.24 to 0.04&ndash;0.16.</p>
   </div>
 
   <p>Everything above is after one year of phasing. The model is fitted on three years and only the last of them is phased. If the phasing keeps running the gains keep coming as more of the three-year window is phased.</p>
 
-  <p>Most of the gain lands in the first year. Year one delivers 85% of the three-year improvement in variance and about 70% for saturation and adstock. Bias improves the slowest: 36% better after one year and 58% after three.</p>
+  <p>Most of the gain lands in the first year. Year one delivers 86% of the three-year improvement in variance, 74% for saturation and 80% for adstock. Bias improves the slowest: 45% better after one year and 72% after three.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -866,7 +868,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     </div>
     <div class="kbox">
       <div class="lbl">Cost of the winning lever</div>
-      <div class="num" style="color:#b45309">1.94%</div>
+      <div class="num" style="color:#b45309">3.43%</div>
       <div class="lab">Of plan-period revenue, given up to real per-channel saturation. It leads on variance, bias, saturation and adstock. Cost is the trade-off.</div>
     </div>
   </div>
@@ -887,26 +889,25 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     </div>
     <div class="fig-body">
       <div class="legend">
-        <span class="li"><svg width="18" height="10"><line x1="1" y1="5" x2="17" y2="5" stroke="#111827" stroke-width="2.4"/></svg> Redistribute + edge</span>
+        <span class="li"><svg width="18" height="10"><line x1="1" y1="5" x2="17" y2="5" stroke="#111827" stroke-width="2.4"/></svg> Redistribute + high month</span>
+        <span class="li"><svg width="18" height="10"><line x1="1" y1="5" x2="17" y2="5" stroke="#6b7280" stroke-width="2.2"/></svg> Redistribute + edge</span>
         <span class="li"><svg width="18" height="10"><line x1="1" y1="5" x2="17" y2="5" stroke="#b45309" stroke-width="2.4"/></svg> Blackout</span>
-        <span class="li"><svg width="18" height="10"><line x1="1" y1="5" x2="17" y2="5" stroke="#cbd5e1" stroke-width="1.8"/></svg> Uniform, edge, seesaw and month step</span>
+        <span class="li"><svg width="18" height="10"><line x1="1" y1="5" x2="17" y2="5" stroke="#cbd5e1" stroke-width="1.8"/></svg> Uniform, edge and month step</span>
       </div>
       <svg class="chart" id="chartScale" viewBox="0 0 700 460" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">Each panel shows how much one measure improves on the unphased plan at 5, 10 and 15 channels. Above zero is better than unphased. Notice that variance, saturation and adstock hold up for Redistribute + edge, while bias falls away as channels are added.</p>
+    <p class="fig-cap">Each panel shows how much one measure improves on the unphased plan at 5, 10 and 15 channels. Above zero is better than unphased. Notice that variance, saturation and adstock hold up for both Redistribute strategies, while bias falls away as channels are added.</p>
   </div>
 
-  <p>Variance, saturation and adstock scale. Redistribute + edge cuts variance by 60% at 5 channels and 48% at 15. Its saturation range narrows by 33% to 35% at every channel count and its adstock range by 35% to 47%. Blackout helps variance by 39% to 43% and adstock by 22% to 27%. The cost stays between 1.7% and 1.8% of plan-year revenue for Redistribute + edge and about 0.6% for Blackout.</p>
+  <p>Variance, saturation and adstock scale. Redistribute + high month cuts variance by 70% at 5 channels and 56% at 15. Its saturation range narrows by 38% to 40% at every channel count and its adstock range by 45% to 56%. Redistribute + edge is a few points behind on each: variance 60% to 48%, saturation 33% to 35%, adstock 35% to 47%. Blackout helps variance by 39% to 43% and adstock by 22% to 27%. The cost stays between 2.8% and 2.9% of plan-year revenue for Redistribute + high month, 1.7% to 1.8% for Redistribute + edge and about 0.6% for Blackout.</p>
 
-  <p>Bias doesn't scale. Redistribute + edge cuts bias by 45% at 5 channels, 33% at 10 and 19% at 15. Unphased bias stays between 33% and 37%, so the problem isn't getting much worse. The fix is getting weaker.</p>
+  <p>Bias doesn't scale. Redistribute + high month cuts bias by 50% at 5 channels, 30% at 10 and 23% at 15. Unphased bias stays between 33% and 37%, so the problem isn't getting much worse. The fix is getting weaker.</p>
 
   <p>Our best explanation is the amount of data per channel. Three years is 156 weeks. Spread across 5 channels that is 31 weeks per channel and across 15 it is about 10. Removing bias means separating each channel from demand, and with 10 weeks per channel there is little left to separate it with. In earlier testing at 20 channels the model struggled even before phasing, so we treat 15 as the upper end of what this setup supports.</p>
 
-  <p>Holding the noise fixed matters. If it grows with total sales instead, each channel becomes a smaller share of what the model sees and its curve gets harder to pin down at any channel count. Rerun that way, the saturation gain falls from 32% at 5 channels to 8% at 15 and the adstock gain from 44% to 25%. Variance and bias shrink the same way under both.</p>
+  <p>Redistribute + high month is the winner at 5 and 15 channels and leads on every measure there. At 10 channels it loses to Redistribute + edge on bias (30% against 33%) and leads on everything else, so the pick flips on one measure where a few points is within the noise. Blackout, at one dark week a quarter, helps variance and adstock but moves bias and saturation by 12% at most.</p>
 
-  <p>Redistribute + edge is still the winner at every channel count and leads on every measure. Blackout, at one dark week a quarter, helps variance and adstock but moves bias and saturation by 12% at most.</p>
-
-  <p>The other four strategies never did much and don't start to with more channels. Uniform, edge and seesaw help variance by 8% to 22% and barely move anything else. Month step helps variance by 31% to 37% but makes bias worse than unphased at 10 and 15 channels.</p>
+  <p>The other three strategies never did much and don't start to with more channels. Uniform and edge help variance by 8% to 22% and barely move anything else. Month step helps variance by 31% to 37% but makes bias worse than unphased at 10 and 15 channels.</p>
 
   <p>If you have more than 15 channels there are a few options:</p>
   <ul>
@@ -1031,7 +1032,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
       <div class="step-n" style="background: var(--meta)">2</div>
       <div>
         <h3>Phase</h3>
-        <p>It runs the six strategies from section 4 at &plusmn;20%, scores each one on the same measures and picks the one that does best. You get a week-by-week spend schedule for the plan year and what it costs in revenue. Each channel keeps its annual budget. Stronger settings can be pinned, and individual channels can be capped or left untouched.</p>
+        <p>It runs the six strategies from section 4, scores each one on the same measures and picks the one that does best. You get a week-by-week spend schedule for the plan year and what it costs in revenue. Each channel keeps its annual budget. Stronger settings can be pinned, and individual channels can be capped or left untouched.</p>
       </div>
     </div>
     <div class="step">
@@ -1085,7 +1086,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <p>Marketing channels move together because budgets are planned together. That leaves your MMM unsure in three separate ways. Its estimates have more variance than it lets on. They are biased by the demand it never saw. And it can't tell the shape of your response curves. This article measures all three at once.</p>
 
-  <p>Budget phasing goes after the root cause. It changes when each channel spends and keeps each channel's annual budget. On our scenario the winning strategy, Redistribute + edge, cuts variance by 66% and bias by 36%. The saturation and adstock ranges narrow by 45% and 50%. It costs 1.94% of plan-year revenue. It holds from 5 to 15 channels, although the bias gain shrinks as channels are added. A Bayesian model doesn't get around any of this: priors can't create variation the data never had.</p>
+  <p>Budget phasing goes after the root cause. It changes when each channel spends and keeps each channel's annual budget. On our scenario the winning strategy, Redistribute + high month, cuts variance by 71% and bias by 45%. The saturation and adstock ranges narrow by 56% and 59%. It costs 3.43% of plan-year revenue. It holds from 5 to 15 channels, although the bias gain shrinks as channels are added. A Bayesian model doesn't get around any of this: priors can't create variation the data never had.</p>
 
   <h3>What comes next</h3>
 
@@ -1525,30 +1526,30 @@ function drawCause() {
 // replaces the single grouped chartImpact panel with that same four-chart
 // family so a reader who has seen the report recognises this section.
 const VARIANCE_IMPACT = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c], sub: `£${CH_SPEND[c].toFixed(1)}m spend` }));
-VARIANCE_IMPACT[0] = { ...VARIANCE_IMPACT[0], before: { p10: 2.792, p90: 6.939, point: 4.708 }, after: { p10: 3.859, p90: 5.353, point: 4.593 }, truth: 4.625 };
-VARIANCE_IMPACT[1] = { ...VARIANCE_IMPACT[1], before: { p10: 4.071, p90: 8.004, point: 6.219 }, after: { p10: 5.312, p90: 6.471, point: 5.903 }, truth: 5.987 };
-VARIANCE_IMPACT[2] = { ...VARIANCE_IMPACT[2], before: { p10: 6.275, p90: 8.164, point: 7.331 }, after: { p10: 6.878, p90: 7.741, point: 7.322 }, truth: 7.394 };
-VARIANCE_IMPACT[3] = { ...VARIANCE_IMPACT[3], before: { p10: 5.795, p90: 9.351, point: 7.488 }, after: { p10: 6.815, p90: 8.014, point: 7.430 }, truth: 7.621 };
+VARIANCE_IMPACT[0] = { ...VARIANCE_IMPACT[0], before: { p10: 2.792, p90: 6.939, point: 4.708 }, after: { p10: 3.906, p90: 5.159, point: 4.539 }, truth: 4.625 };
+VARIANCE_IMPACT[1] = { ...VARIANCE_IMPACT[1], before: { p10: 4.071, p90: 8.004, point: 6.219 }, after: { p10: 5.357, p90: 6.342, point: 5.831 }, truth: 5.987 };
+VARIANCE_IMPACT[2] = { ...VARIANCE_IMPACT[2], before: { p10: 6.275, p90: 8.164, point: 7.331 }, after: { p10: 6.895, p90: 7.621, point: 7.262 }, truth: 7.394 };
+VARIANCE_IMPACT[3] = { ...VARIANCE_IMPACT[3], before: { p10: 5.795, p90: 9.351, point: 7.488 }, after: { p10: 6.838, p90: 7.804, point: 7.317 }, truth: 7.621 };
 
 // Same fix as BIAS_DATA above: believed revenue (£m) vs. true revenue,
 // not % error -- matches _discovery_report.py's bias_svg exactly.
 const BIAS_IMPACT = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c], sub: `£${CH_SPEND[c].toFixed(1)}m spend` }));
-BIAS_IMPACT[0] = { ...BIAS_IMPACT[0], before: { p10: 3.957, p90: 9.177, point: 6.545 }, after: { p10: 4.793, p90: 7.430, point: 6.057 }, truth: 4.625 };
-BIAS_IMPACT[1] = { ...BIAS_IMPACT[1], before: { p10: 5.666, p90: 9.780, point: 7.747 }, after: { p10: 6.294, p90: 8.107, point: 7.224 }, truth: 5.987 };
-BIAS_IMPACT[2] = { ...BIAS_IMPACT[2], before: { p10: 6.631, p90: 9.391, point: 8.044 }, after: { p10: 7.278, p90: 8.673, point: 7.966 }, truth: 7.394 };
-BIAS_IMPACT[3] = { ...BIAS_IMPACT[3], before: { p10: 7.711, p90: 12.333, point: 9.984 }, after: { p10: 7.696, p90: 9.363, point: 8.536 }, truth: 7.621 };
+BIAS_IMPACT[0] = { ...BIAS_IMPACT[0], before: { p10: 3.957, p90: 9.177, point: 6.545 }, after: { p10: 4.805, p90: 7.253, point: 5.979 }, truth: 4.625 };
+BIAS_IMPACT[1] = { ...BIAS_IMPACT[1], before: { p10: 5.666, p90: 9.780, point: 7.747 }, after: { p10: 6.100, p90: 7.765, point: 6.900 }, truth: 5.987 };
+BIAS_IMPACT[2] = { ...BIAS_IMPACT[2], before: { p10: 6.631, p90: 9.391, point: 8.044 }, after: { p10: 7.355, p90: 8.387, point: 7.888 }, truth: 7.394 };
+BIAS_IMPACT[3] = { ...BIAS_IMPACT[3], before: { p10: 7.711, p90: 12.333, point: 9.984 }, after: { p10: 7.372, p90: 9.246, point: 8.334 }, truth: 7.621 };
 
 const SATURATION_IMPACT = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c] }));
-SATURATION_IMPACT[0] = { ...SATURATION_IMPACT[0], sub: 'true 0.60', before: { p10: 0.20, p90: 1.00, point: 0.61 }, after: { p10: 0.23, p90: 0.97, point: 0.60 }, truth: 0.60 };
-SATURATION_IMPACT[1] = { ...SATURATION_IMPACT[1], sub: 'true 0.75', before: { p10: 0.20, p90: 1.00, point: 0.68 }, after: { p10: 0.57, p90: 0.94, point: 0.75 }, truth: 0.75 };
-SATURATION_IMPACT[2] = { ...SATURATION_IMPACT[2], sub: 'true 0.90', before: { p10: 0.57, p90: 1.00, point: 0.83 }, after: { p10: 0.80, p90: 0.99, point: 0.90 }, truth: 0.90 };
-SATURATION_IMPACT[3] = { ...SATURATION_IMPACT[3], sub: 'true 0.70', before: { p10: 0.20, p90: 1.00, point: 0.68 }, after: { p10: 0.58, p90: 0.84, point: 0.70 }, truth: 0.70 };
+SATURATION_IMPACT[0] = { ...SATURATION_IMPACT[0], sub: 'true 0.60', before: { p10: 0.20, p90: 1.00, point: 0.61 }, after: { p10: 0.32, p90: 0.90, point: 0.61 }, truth: 0.60 };
+SATURATION_IMPACT[1] = { ...SATURATION_IMPACT[1], sub: 'true 0.75', before: { p10: 0.20, p90: 1.00, point: 0.68 }, after: { p10: 0.61, p90: 0.90, point: 0.75 }, truth: 0.75 };
+SATURATION_IMPACT[2] = { ...SATURATION_IMPACT[2], sub: 'true 0.90', before: { p10: 0.57, p90: 1.00, point: 0.83 }, after: { p10: 0.82, p90: 0.99, point: 0.90 }, truth: 0.90 };
+SATURATION_IMPACT[3] = { ...SATURATION_IMPACT[3], sub: 'true 0.70', before: { p10: 0.20, p90: 1.00, point: 0.68 }, after: { p10: 0.60, p90: 0.80, point: 0.70 }, truth: 0.70 };
 
 const ADSTOCK_IMPACT = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c] }));
-ADSTOCK_IMPACT[0] = { ...ADSTOCK_IMPACT[0], sub: 'true 0.50', before: { p10: 0.05, p90: 0.66, point: 0.45 }, after: { p10: 0.32, p90: 0.61, point: 0.47 }, truth: 0.50 };
-ADSTOCK_IMPACT[1] = { ...ADSTOCK_IMPACT[1], sub: 'true 0.30', before: { p10: 0.00, p90: 0.51, point: 0.28 }, after: { p10: 0.18, p90: 0.40, point: 0.29 }, truth: 0.30 };
-ADSTOCK_IMPACT[2] = { ...ADSTOCK_IMPACT[2], sub: 'true 0.10', before: { p10: 0.00, p90: 0.24, point: 0.11 }, after: { p10: 0.03, p90: 0.18, point: 0.10 }, truth: 0.10 };
-ADSTOCK_IMPACT[3] = { ...ADSTOCK_IMPACT[3], sub: 'true 0.20', before: { p10: 0.00, p90: 0.36, point: 0.18 }, after: { p10: 0.10, p90: 0.29, point: 0.20 }, truth: 0.20 };
+ADSTOCK_IMPACT[0] = { ...ADSTOCK_IMPACT[0], sub: 'true 0.50', before: { p10: 0.05, p90: 0.66, point: 0.45 }, after: { p10: 0.36, p90: 0.60, point: 0.49 }, truth: 0.50 };
+ADSTOCK_IMPACT[1] = { ...ADSTOCK_IMPACT[1], sub: 'true 0.30', before: { p10: 0.00, p90: 0.51, point: 0.28 }, after: { p10: 0.20, p90: 0.39, point: 0.30 }, truth: 0.30 };
+ADSTOCK_IMPACT[2] = { ...ADSTOCK_IMPACT[2], sub: 'true 0.10', before: { p10: 0.00, p90: 0.24, point: 0.11 }, after: { p10: 0.04, p90: 0.16, point: 0.10 }, truth: 0.10 };
+ADSTOCK_IMPACT[3] = { ...ADSTOCK_IMPACT[3], sub: 'true 0.20', before: { p10: 0.00, p90: 0.36, point: 0.18 }, after: { p10: 0.12, p90: 0.28, point: 0.20 }, truth: 0.20 };
 
 // Shared with the Problem section's own saturation/adstock forests above,
 // so both sections plot the same two parameters on the same scale.
@@ -2280,7 +2281,7 @@ function drawSweepBarsNarrow(svg, c) {
   svg.appendChild(g);
 }
 
-const PHASE_PANELS = { plan: [112208, 121092, 114950, 113342, 96973, 111347, 82788, 74101, 74694, 96143, 85439, 83740, 102874, 104746, 98453, 53741, 78587, 76259, 79160, 93473, 128072, 94526, 82354, 103315, 93391, 96220, 87415, 97685, 107600, 79665, 86055, 118412, 122623, 106040, 104260, 117065, 109448, 121818, 149335, 130578, 141922, 122077, 129840, 143278, 104367, 127168, 126393, 131526, 158384, 145012, 120030, 139281], panels: [{"name": "Uniform", "v": [132101, 122709, 104742, 102040, 108969, 111062, 74722, 70457, 65034, 106698, 87986, 78890, 104283, 126605, 85162, 52754, 71007, 70963, 65577, 96690, 147499, 90760, 64392, 104237, 101075, 105577, 78268, 97992, 103849, 92256, 79690, 113676, 143670, 107325, 93030, 118962, 113022, 138132, 127550, 154664, 121448, 140713, 107591, 128630, 88307, 141978, 137793, 136023, 158528, 120153, 141969, 142057]}, {"name": "Edge", "v": [135076, 97180, 138376, 90960, 116731, 89356, 99656, 59466, 89295, 95780, 68093, 66739, 122983, 87493, 82236, 67334, 98464, 77910, 97049, 114596, 104676, 77258, 100094, 83714, 113508, 77965, 68526, 114865, 126523, 62450, 104204, 143386, 98990, 85603, 105208, 92001, 86016, 143605, 176044, 103707, 169074, 96955, 154681, 115022, 104730, 153132, 101466, 158380, 128724, 117857, 146329, 169798]}, {"name": "Seesaw", "v": [89485, 144854, 91671, 135582, 116731, 89356, 99656, 59466, 90440, 77606, 103449, 67595, 103800, 82880, 116851, 42523, 93273, 60052, 93505, 73607, 151280, 93046, 100094, 83714, 113508, 77965, 103912, 77413, 127906, 63133, 68442, 141265, 97526, 126505, 103652, 141610, 88265, 147360, 120431, 157844, 114371, 147567, 104635, 169804, 82459, 150711, 99862, 129896, 190458, 116253, 144338, 111658]}, {"name": "Redistribute + edge", "v": [89360, 144653, 137315, 90263, 255172, 195329, 217847, 129991, 59693, 115251, 85350, 100383, 82213, 82880, 116851, 42523, 93273, 59343, 61600, 109107, 149493, 91947, 99789, 83459, 75442, 116591, 70602, 118345, 86904, 96513, 0, 0, 0, 0, 104260, 92001, 86016, 143605, 176044, 105289, 114436, 147651, 157041, 144083, 125943, 102305, 101682, 158717, 187882, 114680, 94924, 165221]}, {"name": "Month step", "v": [91980, 99262, 94227, 92909, 119237, 136911, 101796, 91114, 91843, 118216, 105055, 102966, 126493, 128795, 121057, 66079, 96630, 62511, 64890, 76622, 104984, 77485, 101262, 127035, 114833, 118311, 107485, 120112, 132303, 97955, 70541, 97066, 100517, 86924, 85465, 95961, 89718, 99857, 122414, 107038, 116337, 100069, 106433, 117449, 85552, 104243, 103608, 107815, 194747, 178306, 147588, 171258]}, {"name": "Blackout", "v": [112208, 121092, 114950, 113342, 96973, 111347, 82788, 74101, 97294, 125231, 111289, 109076, 0, 104746, 98453, 53741, 78587, 104698, 108682, 128332, 0, 129778, 82354, 103315, 93391, 96220, 87415, 97685, 107600, 79665, 86055, 118412, 122623, 106040, 104260, 0, 143112, 159287, 195267, 130578, 141922, 122077, 129840, 143278, 104367, 127168, 126393, 131526, 0, 201817, 167049, 193841]}] };
+const PHASE_PANELS = { plan: [112208, 121092, 114950, 113342, 96973, 111347, 82788, 74101, 74694, 96143, 85439, 83740, 102874, 104746, 98453, 53741, 78587, 76259, 79160, 93473, 128072, 94526, 82354, 103315, 93391, 96220, 87415, 97685, 107600, 79665, 86055, 118412, 122623, 106040, 104260, 117065, 109448, 121818, 149335, 130578, 141922, 122077, 129840, 143278, 104367, 127168, 126393, 131526, 158384, 145012, 120030, 139281], panels: [{"name": "Uniform", "v": [132101, 122709, 104742, 102040, 108969, 111062, 74722, 70457, 65034, 106698, 87986, 78890, 104283, 126605, 85162, 52754, 71007, 70963, 65577, 96690, 147499, 90760, 64392, 104237, 101075, 105577, 78268, 97992, 103849, 92256, 79690, 113676, 143670, 107325, 93030, 118962, 113022, 138132, 127550, 154664, 121448, 140713, 107591, 128630, 88307, 141978, 137793, 136023, 158528, 120153, 141969, 142057]}, {"name": "Edge", "v": [135076, 97180, 138376, 90960, 116731, 89356, 99656, 59466, 89295, 95780, 68093, 66739, 122983, 87493, 82236, 67334, 98464, 77910, 97049, 114596, 104676, 77258, 100094, 83714, 113508, 77965, 68526, 114865, 126523, 62450, 104204, 143386, 98990, 85603, 105208, 92001, 86016, 143605, 176044, 103707, 169074, 96955, 154681, 115022, 104730, 153132, 101466, 158380, 128724, 117857, 146329, 169798]}, {"name": "Redistribute + edge", "v": [89360, 144653, 137315, 90263, 255172, 195329, 217847, 129991, 59693, 115251, 85350, 100383, 82213, 82880, 116851, 42523, 93273, 59343, 61600, 109107, 149493, 91947, 99789, 83459, 75442, 116591, 70602, 118345, 86904, 96513, 0, 0, 0, 0, 104260, 92001, 86016, 143605, 176044, 105289, 114436, 147651, 157041, 144083, 125943, 102305, 101682, 158717, 187882, 114680, 94924, 165221]}, {"name": "Redistribute + high month", "v": [73398, 118813, 112787, 74139, 255172, 195329, 217847, 129991, 49030, 94663, 70104, 82451, 67528, 68075, 95978, 34927, 76612, 48742, 50597, 89617, 122789, 75522, 81964, 68550, 61966, 95764, 57990, 97205, 71380, 79273, 0, 0, 0, 0, 104260, 230004, 215039, 359013, 440109, 86481, 93994, 121276, 128989, 118345, 103446, 84030, 83519, 130365, 154320, 94195, 77967, 135708]}, {"name": "Month step", "v": [91980, 99262, 94227, 92909, 119237, 136911, 101796, 91114, 91843, 118216, 105055, 102966, 126493, 128795, 121057, 66079, 96630, 62511, 64890, 76622, 104984, 77485, 101262, 127035, 114833, 118311, 107485, 120112, 132303, 97955, 70541, 97066, 100517, 86924, 85465, 95961, 89718, 99857, 122414, 107038, 116337, 100069, 106433, 117449, 85552, 104243, 103608, 107815, 194747, 178306, 147588, 171258]}, {"name": "Blackout", "v": [112208, 121092, 114950, 113342, 96973, 111347, 82788, 74101, 97294, 125231, 111289, 109076, 0, 104746, 98453, 53741, 78587, 104698, 108682, 128332, 0, 129778, 82354, 103315, 93391, 96220, 87415, 97685, 107600, 79665, 86055, 118412, 122623, 106040, 104260, 0, 143112, 159287, 195267, 130578, 141922, 122077, 129840, 143278, 104367, 127168, 126393, 131526, 0, 201817, 167049, 193841]}] };
 function drawPhasePanelsAt(svg, W, H, cols, fsTitle) {
   const P = PHASE_PANELS, n = P.panels.length, rows = Math.ceil(n / cols);
   const gx = 18, gy = 14, top = 4;
@@ -2309,10 +2310,10 @@ function drawPhasePanelsNarrow(svg) { svg.setAttribute('viewBox', '0 0 340 480')
 // scenario: the winner run over 1, 2 or all 3
 // years of the 3-year window, % improvement vs unphased.
 const TTB = [
-  { name: 'Variance', color: '#111827', v: [0, 65.8, 74.2, 77.9] },
-  { name: 'Saturation', color: '#0d9488', v: [0, 44.8, 60.7, 65.6] },
-  { name: 'Adstock', color: '#92400e', v: [0, 50.3, 63.8, 67.9] },
-  { name: 'Bias', color: '#7c3aed', v: [0, 35.6, 52.4, 57.7] },
+  { name: 'Variance', color: '#111827', v: [0, 70.8, 79.2, 82.5] },
+  { name: 'Saturation', color: '#0d9488', v: [0, 56.1, 71.9, 75.6] },
+  { name: 'Adstock', color: '#92400e', v: [0, 59.2, 70.5, 73.8] },
+  { name: 'Bias', color: '#7c3aed', v: [0, 45.3, 64.7, 72.3] },
 ];
 function drawTTBAt(svg, W, H, m, fs, fsLab, xTitleY, xLabs) {
   const pw = W - m.left - m.right, ph = H - m.top - m.bottom;
@@ -2344,11 +2345,11 @@ function drawTTBNarrow(svg) { svg.setAttribute('viewBox', '0 0 340 300'); drawTT
 // noise held at GBP 23,107 (2% of the 4-channel example's sales) at every count.
 // % improvement vs unphased: variance CV, mean abs bias, mean saturation
 // and adstock p10-p90 width.
-const SCALE = {"redistribute": {"variance": [60.2, 54.8, 47.5], "bias": [44.6, 33.3, 19.3], "saturation_range": [33.0, 33.4, 34.6], "adstock_range": [47.4, 42.4, 35.4]}, "blackout": {"variance": [43.0, 40.4, 39.2], "bias": [2.3, 3.0, 12.4], "saturation_range": [7.3, 9.9, 12.2], "adstock_range": [22.2, 26.6, 21.8]}, "monthstep": {"variance": [36.3, 36.5, 30.5], "bias": [-1.4, -9.8, -6.9], "saturation_range": [-0.0, -0.0, -0.5], "adstock_range": [12.4, 13.3, 8.5]}, "edge": {"variance": [22.2, 20.2, 21.9], "bias": [-1.5, 0.5, 9.2], "saturation_range": [-0.0, 1.2, 2.2], "adstock_range": [7.4, 11.5, 8.1]}, "seesaw": {"variance": [16.9, 16.8, 13.3], "bias": [-5.3, -3.4, 7.1], "saturation_range": [-0.5, 1.0, 1.4], "adstock_range": [5.1, 8.6, 3.6]}, "uniform": {"variance": [8.6, 8.7, 8.5], "bias": [-0.1, 3.6, 6.7], "saturation_range": [-2.2, 0.5, 0.4], "adstock_range": [0.6, 3.5, 0.1]}};
+const SCALE = {"uniform": {"variance": [8.6, 8.7, 8.5], "bias": [-0.1, 3.6, 6.7], "saturation_range": [-2.2, 0.5, 0.4], "adstock_range": [0.6, 3.5, 0.1]}, "edge": {"variance": [22.2, 20.2, 21.9], "bias": [-1.5, 0.5, 9.2], "saturation_range": [-0.0, 1.2, 2.2], "adstock_range": [7.4, 11.5, 8.1]}, "redistribute": {"variance": [60.2, 54.8, 47.5], "bias": [44.6, 33.3, 19.3], "saturation_range": [33.0, 33.4, 34.6], "adstock_range": [47.4, 42.4, 35.4]}, "highmonth": {"variance": [69.7, 65.8, 55.5], "bias": [50.2, 29.8, 23.2], "saturation_range": [38.2, 39.4, 39.6], "adstock_range": [56.2, 53.7, 45.0]}, "monthstep": {"variance": [36.3, 36.5, 30.5], "bias": [-1.4, -9.8, -6.9], "saturation_range": [-0.0, -0.0, -0.5], "adstock_range": [12.4, 13.3, 8.5]}, "blackout": {"variance": [43.0, 40.4, 39.2], "bias": [2.3, 3.0, 12.4], "saturation_range": [7.3, 9.9, 12.2], "adstock_range": [22.2, 26.6, 21.8]}};
 const SCALE_PANELS = [['variance', 'Variance'], ['bias', 'Bias'], ['saturation_range', 'Saturation'], ['adstock_range', 'Adstock']];
 const SCALE_SERIES = [
-  ['uniform', '#cbd5e1', 1.6], ['edge', '#cbd5e1', 1.6], ['seesaw', '#cbd5e1', 1.6], ['monthstep', '#cbd5e1', 1.6],
-  ['blackout', '#b45309', 2.4], ['redistribute', '#111827', 2.4],
+  ['uniform', '#cbd5e1', 1.6], ['edge', '#cbd5e1', 1.6], ['monthstep', '#cbd5e1', 1.6],
+  ['blackout', '#b45309', 2.4], ['redistribute', '#6b7280', 2.2], ['highmonth', '#111827', 2.4],
 ];
 function drawScaleAt(svg, W, H, fs, fsTitle, xLabs) {
   const cols = 2, gapX = W > 400 ? 44 : 18, gapY = 30, left = W > 400 ? 44 : 34, top = 4, bottom = 34;
