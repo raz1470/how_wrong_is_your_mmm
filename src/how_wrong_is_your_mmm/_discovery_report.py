@@ -182,15 +182,26 @@ def _channel_colors(channels: list[str]) -> dict[str, str]:
 # care about deployability should check the Cost column themselves, same
 # as this module's own docs pages now do. Each entry is
 # (label, per-channel spec, nudge_shape, balance_signs).
+# The default sweep's high month (Redistribute.high_month_pct): 2.5x plan.
+# Tested 2026-09-28 against 3x (narrower saturation range, but cost ~3.7%
+# and a ~3.7x peak week) -- see NOTES.md session 69 continued.
+_DEFAULT_HIGH_MONTH_PCT = 150.0
+
+
 def _default_levers(channels: list[str]) -> list[tuple[str, dict, str, bool]]:
     """The default sweep, all at +/-20% (Ryan, 2026-09-21: smaller moves are
     more deployable and less likely to trigger ad-platform learning resets):
-    unphased, then +/-20% at each nudge shape (uniform, unbalanced -- vs
-    edge, balanced -- vs seesaw, alternating), then the Redistribute family
-    (round-robin blackout, freed budget moved to a recipient month, edge
-    layer on top), then the MonthStep family (month-level Hadamard steps),
-    then a single-week Blackout once a quarter (Ryan, 2026-09-26: once a
-    month was too often to be acceptable). 7 candidates total.
+    unphased, then +/-20% at two nudge shapes (uniform, unbalanced -- vs
+    edge, balanced), then the Redistribute family (round-robin blackout,
+    freed budget moved to a recipient month, edge layer on top), plain and
+    with a high month at 2.5x plan (high_month_pct=150, for saturation),
+    then the MonthStep family (month-level Hadamard steps), then a
+    single-week Blackout once a quarter (Ryan, 2026-09-26: once a month was
+    too often to be acceptable). 7 candidates total. Seesaw left the
+    default sweep 2026-09-29 (dominated by edge, balanced on every measure
+    but cost); nudge_shape="seesaw" is still available via levers=. Plain
+    Redistribute stays in so the report can show what the high month adds
+    and what it costs.
     Stronger intensities (40/60/80%) and Blackout's stronger settings
     (dark=3/prob=0.8, dark=4/prob=1.0) are no longer swept; pin them with
     strategy_pct / channel_constraints, or pass your own levers=."""
@@ -203,12 +214,24 @@ def _default_levers(channels: list[str]) -> list[tuple[str, dict, str, bool]]:
         ("unphased", all_channels(0.0), "uniform", False),
         (f"+/-{pct:.0f}% (uniform)", all_channels(pct), "uniform", False),
         (f"+/-{pct:.0f}% (edge, balanced)", all_channels(pct), "edge", True),
-        (f"+/-{pct:.0f}% (seesaw)", all_channels(pct), "seesaw", False),
         # Redistribute's edge layer is built in (always edge, balanced), so
         # nudge_shape/balance_signs here just say so.
         (
-            f"+/-{pct:.0f}% (redistribute + edge)",
+            _redistribute_label(Redistribute(edge_cap_pct=pct)),
             {ch: Redistribute(edge_cap_pct=pct) for ch in channels},
+            "edge",
+            True,
+        ),
+        (
+            _redistribute_label(
+                Redistribute(edge_cap_pct=pct, high_month_pct=_DEFAULT_HIGH_MONTH_PCT)
+            ),
+            {
+                ch: Redistribute(
+                    edge_cap_pct=pct, high_month_pct=_DEFAULT_HIGH_MONTH_PCT
+                )
+                for ch in channels
+            },
             "edge",
             True,
         ),
@@ -250,6 +273,14 @@ def _peak_week_multiple(plan_df: pd.DataFrame, schedule: pd.DataFrame) -> float:
     return float(max(1.0, (sched[planned] / plan[planned]).max()))
 
 
+def _redistribute_label(spec: Redistribute) -> str:
+    """Sweep/table label for a Redistribute spec, e.g. "+/-20% (redistribute
+    + edge)", or "+/-20% (redistribute + high month + edge)" when it has a
+    high month (Redistribute.high_month_pct > 0)."""
+    high = " + high month" if spec.high_month_pct > 0 else ""
+    return f"+/-{spec.edge_cap_pct:.0f}% (redistribute{high} + edge)"
+
+
 def _is_unphased(spec: dict) -> bool:
     return all(isinstance(v, float) and v == 0.0 for v in spec.values())
 
@@ -269,7 +300,7 @@ def _pinned_strategy_label(
     if isinstance(strategy_pct, Blackout):
         base = "Blackout"
     elif isinstance(strategy_pct, Redistribute):
-        base = f"+/-{strategy_pct.edge_cap_pct:.0f}% (redistribute + edge)"
+        base = _redistribute_label(strategy_pct)
     elif isinstance(strategy_pct, MonthStep):
         base = f"+/-{strategy_pct.step_pct:.0f}% (month step)"
     else:
@@ -304,7 +335,15 @@ def _describe_strategy(
         what = (
             f"Each channel goes dark for {first.dark_weeks} consecutive weeks "
             "once a year, in a different month per channel. The freed budget "
-            "is moved into one other month, then every week is nudged up or "
+            "is moved into one other month"
+            + (
+                f". A third month runs at {1 + first.high_month_pct / 100:.1f}x "
+                "plan, paid for by a small equal cut to the channel's other "
+                "months"
+                if first.high_month_pct > 0
+                else ""
+            )
+            + ", then every week is nudged up or "
             f"down by exactly {first.edge_cap_pct:.0f}% (half up, half down)."
         )
         keeps = "Annual only"
@@ -1266,10 +1305,10 @@ class DiscoveryReport:
     levers:
         The candidate strategies to sweep, as a list of
         (label, per-channel max_weekly_deviation_pct spec, nudge_shape,
-        balance_signs) tuples. Defaults to unphased, then +/-20% at each of
-        three nudge shapes (uniform, unbalanced -- vs edge, balanced -- vs
-        seesaw, alternating), then the Redistribute family (round-robin
-        blackout + recipient month + edge layer) and the MonthStep family
+        balance_signs) tuples. Defaults to unphased, then +/-20% at two
+        nudge shapes (uniform, unbalanced -- vs edge, balanced), then the
+        Redistribute family (round-robin blackout + recipient month + edge
+        layer), plain and with a 2.5x high month, and the MonthStep family
         (month-level Hadamard steps), each at +/-20%, then the original
         single-week Blackout once a quarter -- 7 candidates total, see
         _default_levers. Higher intensities and Blackout's stronger
@@ -2574,7 +2613,15 @@ def _render_html(report: DiscoveryReport) -> str:
         )
         totals_cost = "though each channel's annual total is unchanged"
         how_months_move = (
-            "a blackout run's budget lands in a recipient month"
+            (
+                "a blackout run's budget lands in a recipient month, and a "
+                "high month is funded by a small cut to the others"
+                if any(
+                    isinstance(v, Redistribute) and v.high_month_pct > 0
+                    for v in winner_spec.values()
+                )
+                else "a blackout run's budget lands in a recipient month"
+            )
             if any(isinstance(v, Redistribute) for v in winner_spec.values())
             else "each month is stepped up or down"
         )
@@ -2607,7 +2654,7 @@ def _render_html(report: DiscoveryReport) -> str:
             if isinstance(override, Blackout):
                 value_text = "Blackout"
             elif isinstance(override, Redistribute):
-                value_text = f"+/-{override.edge_cap_pct:.0f}% (redistribute + edge)"
+                value_text = _redistribute_label(override)
             elif isinstance(override, MonthStep):
                 value_text = f"+/-{override.step_pct:.0f}% (month step)"
             else:
