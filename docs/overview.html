@@ -764,6 +764,22 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p class="s-label">5 · The impact</p>
   <h2>What the phasing algorithm buys you, and what it costs</h2>
 
+  <p>From here on we focus on the winning strategy, Redistribute + high month. This is what it does to each channel's spend in the plan year.</p>
+
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">The winning strategy's phased spend, by channel</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#9ca3af" stroke-width="2.5"/></svg> Plan</span>
+        <span class="li"><svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#111827" stroke-width="2.5"/></svg> Phased (in each channel's colour)</span>
+      </div>
+      <svg class="chart" id="chartWinnerSpend" viewBox="0 0 700 420" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+    <p class="fig-cap">Each panel shows one channel's planned weekly spend for the plan year and its phased schedule. Notice the four dark weeks in each channel and the two months that run well above plan: the one that takes the dark weeks' budget and the high month. No two channels go dark in the same month. Every other week moves up or down by 20%, and each channel's annual budget is unchanged.</p>
+  </div>
+
   <p>Tighter, less biased, more identifiable estimates are the point. The winner on this scenario, Redistribute + high month, has the lowest variance, the lowest bias and the narrowest saturation and adstock ranges of the six strategies. It is also the most expensive of the six. Both are true, and a client report should say so.</p>
 
   <div class="fig">
@@ -2379,6 +2395,39 @@ function drawScaleAt(svg, W, H, fs, fsTitle, xLabs) {
 function drawScale(svg) { drawScaleAt(svg, 700, 460, FS.axis, FS.sub + 1, ['5', '10', '15']); }
 function drawScaleNarrow(svg) { svg.setAttribute('viewBox', '0 0 340 420'); drawScaleAt(svg, 340, 420, FSN.sub, FSN.sub + 1, ['5', '10', '15']); }
 
+// Section 5 opener: the winner's phased spend for every channel (example
+// scenario, the report's representative schedule, seed 0). From
+// Claude outputs/regen_v4/winner_spend.py.
+const WINNER_SPEND = {"dates":["2027-01-04","2027-01-11","2027-01-18","2027-01-25","2027-02-01","2027-02-08","2027-02-15","2027-02-22","2027-03-01","2027-03-08","2027-03-15","2027-03-22","2027-03-29","2027-04-05","2027-04-12","2027-04-19","2027-04-26","2027-05-03","2027-05-10","2027-05-17","2027-05-24","2027-05-31","2027-06-07","2027-06-14","2027-06-21","2027-06-28","2027-07-05","2027-07-12","2027-07-19","2027-07-26","2027-08-02","2027-08-09","2027-08-16","2027-08-23","2027-08-30","2027-09-06","2027-09-13","2027-09-20","2027-09-27","2027-10-04","2027-10-11","2027-10-18","2027-10-25","2027-11-01","2027-11-08","2027-11-15","2027-11-22","2027-11-29","2027-12-06","2027-12-13","2027-12-20","2027-12-27"],"plan":{"tv":[112208,121092,114950,113342,96973,111347,82788,74101,74694,96143,85439,83740,102874,104746,98453,53741,78587,76259,79160,93473,128072,94526,82354,103315,93391,96220,87415,97685,107600,79665,86055,118412,122623,106040,104260,117065,109448,121818,149335,130578,141922,122077,129840,143278,104367,127168,126393,131526,158384,145012,120030,139281],"meta":[81617,76694,104549,70968,76630,65382,79092,67330,68084,70360,86363,64985,67874,61183,86305,68771,63118,68620,100774,78053,91553,83481,73866,68822,71081,72499,55610,103713,90514,84659,83356,75405,98014,87670,97920,80996,102524,119346,97943,109492,100336,109596,109235,99455,90899,106604,101746,94807,113014,111273,100999,111027],"search_generic":[119078,93740,85626,106064,69836,48083,51912,48936,69386,80695,53880,85105,62956,74666,77755,75899,73379,74415,65035,81841,92826,88008,99645,86261,81497,92315,79672,65612,59438,96053,90931,91479,85420,92891,111698,97909,87854,95466,114389,90933,74639,76217,85605,106700,97262,96352,88716,99756,106964,101490,107321,104627],"tiktok":[108100,62476,85866,71444,81246,70097,74232,69077,68849,80839,61527,83480,72862,75886,88484,82695,92787,50635,66841,88577,72103,77120,90759,84214,64915,80436,83641,78940,80446,84907,70619,84401,79194,93370,97428,85854,104824,103197,100374,108764,96917,95953,99516,98268,107609,80476,98287,81089,103364,109308,109512,121346]},"phased":{"tv":[73398,118813,112787,74139,255172,195329,217847,129991,49030,94663,70104,82451,67528,68075,95978,34927,76612,48742,50597,89617,122789,75522,81964,68550,61966,95764,57990,97205,71380,79273,0,0,0,0,104260,230004,215039,359013,440109,86481,93994,121276,128989,118345,103446,84030,83519,130365,154320,94195,77967,135708],"meta":[83726,52451,107251,48534,80670,68830,55508,47254,68084,0,0,0,0,43292,61067,72990,66991,47592,104837,81200,63496,72372,221737,206595,142251,145089,60308,74984,65442,91812,86765,52326,102023,60837,84937,56667,107593,83497,102786,76924,105737,115496,76743,87016,63624,74616,106824,99539,226485,148665,202408,148336],"search_generic":[252933,132742,121252,225291,63303,43585,31370,29572,43515,63259,50686,53373,59223,45807,71554,46563,67527,74415,0,0,0,0,61569,53299,75534,85560,73847,60814,36728,59353,83068,55713,65028,56573,102039,59366,53269,86828,104038,56045,69003,46975,79141,265649,193722,287861,176699,298032,98340,62205,65779,96192],"tiktok":[102141,59032,54088,45004,76542,44025,69934,43385,65629,51373,48875,79576,46303,72759,84838,52858,59309,49109,64826,71589,46620,49863,86937,53778,62181,51366,145417,205867,139862,221428,44477,53157,74817,88209,76702,54075,99036,64999,94832,69420,61859,91865,95277,0,0,0,0,81089,207278,328797,329411,243337]}};
+function drawWinnerSpendAt(svg, W, H, cols, fs, fsTitle) {
+  const D = WINNER_SPEND, chs = ['tv', 'meta', 'search_generic', 'tiktok'];
+  const rows = Math.ceil(chs.length / cols), gx = 28, gy = 18, left = 48, bottom = 20;
+  const cw = (W - left - gx * (cols - 1)) / cols, chh = (H - bottom - gy * (rows - 1)) / rows;
+  const top = Math.max(...chs.flatMap(c => D.phased[c].concat(D.plan[c])));
+  const yMax = Math.ceil(top / 100000) * 100000, n = D.dates.length;
+  const months = D.dates.map(t => +t.slice(5, 7));
+  const ticks = [];
+  months.forEach((m, k) => { if ((k === 0 || months[k - 1] !== m) && [1, 4, 7, 10].includes(m)) ticks.push([k, ['Jan', 'Apr', 'Jul', 'Oct'][[1, 4, 7, 10].indexOf(m)]]); });
+  const g = el('g', {});
+  chs.forEach((c, i) => {
+    const x0 = left + (i % cols) * (cw + gx), y0 = Math.floor(i / cols) * (chh + gy);
+    const pt = 20, ph = chh - pt - 4;
+    const scX = k => x0 + (k / (n - 1)) * cw, scY = v => y0 + pt + ph - (v / yMax) * ph;
+    g.appendChild(el('text', { x: x0, y: y0 + 13, 'font-size': fsTitle, 'font-weight': '600', fill: '#374151' }, CH_NAME[c]));
+    for (let v = 0; v <= yMax; v += yMax / 2) {
+      g.appendChild(el('line', { x1: x0, y1: scY(v), x2: x0 + cw, y2: scY(v), stroke: v === 0 ? '#d1d5db' : '#f3f4f6', 'stroke-width': 1 }));
+      if (i % cols === 0) g.appendChild(el('text', { x: x0 - 6, y: scY(v) + 4, 'text-anchor': 'end', 'font-size': fs, fill: '#9ca3af' }, fmtK(v)));
+    }
+    if (Math.floor(i / cols) === rows - 1) ticks.forEach(([k, t]) => g.appendChild(el('text', { x: scX(k), y: y0 + pt + ph + 16, 'text-anchor': 'middle', 'font-size': fs, fill: '#9ca3af' }, t)));
+    const path = arr => arr.map((v, k) => `${k === 0 ? 'M' : 'L'}${scX(k).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
+    g.appendChild(el('path', { d: path(D.plan[c]), fill: 'none', stroke: '#9ca3af', 'stroke-width': 1.5, 'stroke-linejoin': 'round' }));
+    g.appendChild(el('path', { d: path(D.phased[c]), fill: 'none', stroke: CH_COLOR[c], 'stroke-width': 1.7, 'stroke-linejoin': 'round' }));
+  });
+  svg.appendChild(g);
+}
+function drawWinnerSpend(svg) { drawWinnerSpendAt(svg, 700, 420, 2, FS.axis, FS.sub + 1); }
+function drawWinnerSpendNarrow(svg) { svg.setAttribute('viewBox', '0 0 340 640'); drawWinnerSpendAt(svg, 340, 640, 1, FSN.sub, FSN.sub + 1); }
+
 // ── Registrations ──────────────────────────────────────────────────────────
 chart('chartCause', '0 0 700 232', drawCause, drawCauseNarrow);
 chart('chartImpactVariance', '0 0 700 210', drawVarianceImpact, drawVarianceImpactNarrow);
@@ -2392,6 +2441,7 @@ chart('chartCorrBefore', '0 0 294 298', drawCorrBefore, drawCorrBeforeNarrow);
 chart('chartLever', '0 0 700 280', drawLever, drawLeverNarrow);
 chart('chartCorrCost', '0 0 700 300', drawCorrCost, drawCorrCostNarrow);
 chart('chartPhasePanels', '0 0 700 360', drawPhasePanels, drawPhasePanelsNarrow);
+chart('chartWinnerSpend', '0 0 700 420', drawWinnerSpend, drawWinnerSpendNarrow);
 chart('chartCorrBias', '0 0 700 300', svg => drawSweepBars(svg, BIAS_SWEEP), svg => drawSweepBarsNarrow(svg, BIAS_SWEEP));
 chart('chartCorrAdstock', '0 0 700 300', svg => drawSweepBars(svg, ADSTOCK_SWEEP), svg => drawSweepBarsNarrow(svg, ADSTOCK_SWEEP));
 
