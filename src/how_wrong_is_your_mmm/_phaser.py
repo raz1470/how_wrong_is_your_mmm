@@ -266,9 +266,28 @@ class Redistribute:
     the channel is left at its plan for that block (the edge layer still
     applies).
 
+    Optionally (``high_month_pct`` > 0) a high month goes between steps 2
+    and 3: one more month per channel per block, picked from the months
+    steps 1-2 left untouched, is scaled to (1 + ``high_month_pct``/100) x
+    plan, funded by the same percentage cut to every other untouched month
+    of that channel, so the block total is still preserved exactly. Its
+    job is saturation: a channel's curvature is pinned mostly by a point
+    well up its curve held long enough (a month) to survive adstock, and
+    the recipient month is the only such point otherwise. High months are
+    assigned round-robin across the channels that have one (order shuffled
+    per seed), so channels peak in different months while months last. A
+    channel whose block has fewer than two untouched months, or whose
+    funding months would have to be cut to zero or below, skips the step
+    for that block. An internal test (example scenario, 15 seeds) found
+    150 narrows the saturation range ~22%, and also improves bias,
+    variance and adstock, for about +1.1pp cost and a peak week of about
+    3.1x plan (2.6x without). With ``high_month_pct=0`` (the default) the
+    schedule is identical, draw for draw, to a Redistribute without it.
+
     Every Redistribute channel in one specification must share the same
     ``dark_weeks`` and ``min_recipient_weeks`` (they define one shared
-    round-robin); ``edge_cap_pct`` may differ per channel.
+    round-robin); ``edge_cap_pct`` and ``high_month_pct`` may differ per
+    channel (e.g. a high month on TV only).
 
     Parameters
     ----------
@@ -285,6 +304,10 @@ class Redistribute:
         value the phasing search settled on; DiscoveryReport sweeps
         20/40/60/80. A smooth rigor / cost / spike dial with no optimum, so
         picking it is a deployability judgment.
+    high_month_pct:
+        How far ABOVE plan the optional high month runs, in percent (150 =
+        2.5x plan). Between 0 and 300. Default 0.0: no high month. Applied
+        in full whenever alpha > 0, like the blackout and recipient steps.
     """
 
     def __init__(
@@ -292,6 +315,7 @@ class Redistribute:
         dark_weeks: int = 4,
         min_recipient_weeks: int = 4,
         edge_cap_pct: float = 15.0,
+        high_month_pct: float = 0.0,
     ) -> None:
         if int(dark_weeks) != dark_weeks or dark_weeks < 1:
             raise ValueError(
@@ -307,15 +331,22 @@ class Redistribute:
                 "Redistribute edge_cap_pct must be between 0 and 100 "
                 f"(inclusive), got {edge_cap_pct}."
             )
+        if not 0.0 <= high_month_pct <= 300.0:
+            raise ValueError(
+                "Redistribute high_month_pct must be between 0 and 300 "
+                f"(inclusive), got {high_month_pct}."
+            )
         self.dark_weeks = int(dark_weeks)
         self.min_recipient_weeks = int(min_recipient_weeks)
         self.edge_cap_pct = float(edge_cap_pct)
+        self.high_month_pct = float(high_month_pct)
 
     def __repr__(self) -> str:
+        high = f", high_month_pct={self.high_month_pct}" if self.high_month_pct else ""
         return (
             f"Redistribute(dark_weeks={self.dark_weeks}, "
             f"min_recipient_weeks={self.min_recipient_weeks}, "
-            f"edge_cap_pct={self.edge_cap_pct})"
+            f"edge_cap_pct={self.edge_cap_pct}{high})"
         )
 
     def __eq__(self, other: object) -> bool:
@@ -324,6 +355,7 @@ class Redistribute:
             and self.dark_weeks == other.dark_weeks
             and self.min_recipient_weeks == other.min_recipient_weeks
             and self.edge_cap_pct == other.edge_cap_pct
+            and self.high_month_pct == other.high_month_pct
         )
 
 
@@ -711,6 +743,91 @@ def _redistribute_schedule(
     return out
 
 
+_HIGH_MONTH_SEED_OFFSET = 30_000
+
+
+def _high_month_block(
+    values: np.ndarray,
+    plan: np.ndarray,
+    block_labels: np.ndarray,
+    high_fracs: np.ndarray,
+    min_weeks: int,
+    seed: int,
+) -> np.ndarray:
+    """High-month step for one block (see Redistribute's high_month_pct).
+
+    values is the post-redistribution (n_block_weeks, n_channels) block and
+    plan the same block before redistribution; every column has a high
+    month to place (high_fracs > 0). A month is "untouched" for a channel
+    if redistribution left its total at plan and it is at least min_weeks
+    long. Each channel takes the untouched month used by the fewest
+    channels so far, ties broken by a per-channel rotation of one per-seed
+    shuffled month order, so channels spread across months. The high month is scaled
+    by 1 + frac; every other untouched month of that channel is cut by the
+    same fraction, sized so the column total is unchanged.
+    """
+    rng = np.random.default_rng(seed)
+    out = values.copy()
+    months = list(dict.fromkeys(block_labels.tolist()))
+    order = [months[i] for i in rng.permutation(len(months))]
+    used = dict.fromkeys(months, 0)
+    for ci in range(values.shape[1]):
+        untouched = [
+            m
+            for m in order
+            if (block_labels == m).sum() >= min_weeks
+            and np.isclose(
+                values[block_labels == m, ci].sum(),
+                plan[block_labels == m, ci].sum(),
+                rtol=1e-9,
+                atol=1e-9,
+            )
+        ]
+        if len(untouched) < 2:
+            continue
+        # Least-used month first (so channels peak in different months
+        # while months last), ties broken by a per-channel rotation of the
+        # shuffled order.
+        high = min(
+            untouched,
+            key=lambda m: (used[m], (order.index(m) - ci) % len(order)),
+        )
+        others = np.isin(block_labels, [m for m in untouched if m != high])
+        high_rows = block_labels == high
+        added = high_fracs[ci] * values[high_rows, ci].sum()
+        pool = values[others, ci].sum()
+        if pool <= 0 or added >= pool:
+            continue  # funding months would hit zero or below
+        out[high_rows, ci] *= 1.0 + high_fracs[ci]
+        out[others, ci] *= 1.0 - added / pool
+        used[high] += 1
+    return out
+
+
+def _high_month_schedule(
+    spend: np.ndarray,
+    plan: np.ndarray,
+    month_labels: np.ndarray,
+    columns: list[int],
+    high_fracs: np.ndarray,
+    min_weeks: int,
+    seed: int,
+) -> np.ndarray:
+    """Apply _high_month_block to `columns`, one 12-month block at a time
+    (same blocks as Redistribute). Returns a copy."""
+    out = spend.copy()
+    for k, rows in enumerate(_redistribute_blocks(month_labels)):
+        out[np.ix_(rows, columns)] = _high_month_block(
+            spend[np.ix_(rows, columns)],
+            plan[np.ix_(rows, columns)],
+            month_labels[rows],
+            high_fracs,
+            min_weeks,
+            seed + _HIGH_MONTH_SEED_OFFSET + 1000 * k,
+        )
+    return out
+
+
 @functools.lru_cache(maxsize=1)
 def _month_step_hadamard() -> np.ndarray:
     """The 12 x 11 non-constant columns of the order-12 Paley type I
@@ -875,8 +992,11 @@ def _generate_phased_schedule(
     blackout budget into a recipient month, once per 12-month block; steps
     1-3 then run on that redistributed plan, so the edge layer preserves
     each month's post-redistribution total, and the per-channel 12-month
-    block total is preserved exactly. alpha scales the edge layer; any
-    alpha > 0 applies the full redistribution, alpha = 0 changes nothing.
+    block total is preserved exactly. A Redistribute channel with
+    high_month_pct > 0 also gets its high month here, after the
+    round-robin and before the edge layer. alpha scales the edge layer; any
+    alpha > 0 applies the full redistribution (and high month), alpha = 0
+    changes nothing.
     MonthStep channels are the same kind of exception: their month-level
     steps (see MonthStep) run first, once per 12-month block, add no weekly
     noise, and preserve each channel's block total exactly; alpha scales the
@@ -964,6 +1084,29 @@ def _generate_phased_schedule(
             first.min_recipient_weeks,
             seed,
         )
+        # Optional high month (Redistribute.high_month_pct), placed in the
+        # months the round-robin above left untouched. Its own RNG stream,
+        # so high_month_pct=0 leaves every other draw exactly as before.
+        high_cols = [
+            ci
+            for ci in redistribute_cols
+            if channel_specs[channels[ci]].high_month_pct > 0
+        ]
+        if high_cols:
+            base_arr = _high_month_schedule(
+                base_arr,
+                new_spend,
+                month_labels,
+                high_cols,
+                np.array(
+                    [
+                        channel_specs[channels[ci]].high_month_pct / 100.0
+                        for ci in high_cols
+                    ]
+                ),
+                first.min_recipient_weeks,
+                seed,
+            )
     # MonthStep channels: month-level Hadamard steps, also run once over the
     # whole plan (per 12-month block) before the per-month loop, which then
     # adds no weekly noise for them. alpha scales the step, so alpha=0 is

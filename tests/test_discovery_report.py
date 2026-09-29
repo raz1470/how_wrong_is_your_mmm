@@ -76,8 +76,9 @@ class TestDefaultLevers:
         assert _is_unphased(levers[0][1])
 
     def test_seven_candidates(self):
-        # unphased + 20% at uniform/edge/seesaw + 20% Redistribute + 20%
-        # MonthStep + a quarterly single-week Blackout (Ryan, 2026-09-26).
+        # unphased + 20% at uniform/edge + 20% Redistribute, plain and with
+        # a high month + 20% MonthStep + a quarterly single-week Blackout
+        # (seesaw dropped 2026-09-29).
         assert len(_default_levers(CHANNELS)) == 7
 
     def test_default_labels(self):
@@ -85,11 +86,34 @@ class TestDefaultLevers:
             "unphased",
             "+/-20% (uniform)",
             "+/-20% (edge, balanced)",
-            "+/-20% (seesaw)",
             "+/-20% (redistribute + edge)",
+            "+/-20% (redistribute + high month + edge)",
             "+/-20% (month step)",
             "Blackout (quarterly)",
         ]
+
+    def test_no_seesaw_in_default_sweep(self):
+        assert all(shape != "seesaw" for *_, shape, _ in _default_levers(CHANNELS))
+
+    def test_high_month_default_is_150pct_on_every_channel(self):
+        (lever,) = [lv for lv in _default_levers(CHANNELS) if "high month" in lv[0]]
+        _, spec, shape, balanced = lever
+        assert (shape, balanced) == ("edge", True)
+        assert set(spec) == set(CHANNELS)
+        assert all(
+            isinstance(v, Redistribute)
+            and v.edge_cap_pct == 20.0
+            and v.high_month_pct == 150.0
+            for v in spec.values()
+        )
+
+    def test_plain_redistribute_has_no_high_month(self):
+        (lever,) = [
+            lv
+            for lv in _default_levers(CHANNELS)
+            if lv[0] == "+/-20% (redistribute + edge)"
+        ]
+        assert all(v.high_month_pct == 0.0 for v in lever[1].values())
 
     def test_month_step_default_is_20pct(self):
         (lever,) = [lv for lv in _default_levers(CHANNELS) if "month step" in lv[0]]
@@ -100,8 +124,13 @@ class TestDefaultLevers:
         )
 
     def test_redistribute_default_is_20pct(self):
-        (lever,) = [lv for lv in _default_levers(CHANNELS) if "redistribute" in lv[0]]
-        _, spec, nudge_shape, balanced = lever
+        levers = [lv for lv in _default_levers(CHANNELS) if "redistribute" in lv[0]]
+        assert len(levers) == 2  # plain, and with a high month
+        for _, spec, nudge_shape, balanced in levers:
+            self._check_redistribute_20(spec, nudge_shape, balanced)
+
+    @staticmethod
+    def _check_redistribute_20(spec, nudge_shape, balanced):
         assert set(spec) == set(CHANNELS)
         assert all(
             isinstance(v, Redistribute) and v.edge_cap_pct == 20.0
@@ -1339,6 +1368,20 @@ class TestRedistributeInReport:
         assert report.schedules_[label].shape == PLAN_DF.shape
         for pct in (40, 60, 80):
             assert f"+/-{pct}% (redistribute + edge)" not in report.results_
+
+    def test_high_month_redistribute_is_pinnable_and_labelled(self):
+        report = fit_small(
+            make_report(
+                strategy_pct=Redistribute(edge_cap_pct=20.0, high_month_pct=150.0)
+            )
+        )
+        label = "Pinned: +/-20% (redistribute + high month + edge)"
+        assert report.pinned_label_ == label
+        assert report.schedules_[label].shape == PLAN_DF.shape
+
+    def test_high_month_described_in_glossary(self):
+        html_out = fit_small(make_report()).to_html()
+        assert "A third month runs at 2.5x plan" in html_out
 
     def test_higher_intensity_redistribute_is_pinnable(self):
         for pct in (40.0, 60.0, 80.0):
