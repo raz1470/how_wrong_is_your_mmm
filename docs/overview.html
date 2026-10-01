@@ -370,7 +370,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
 <header class="hdr">
   <h1>How Wrong Is Your MMM?</h1>
-  <p class="tagline">An overview of how a budget phasing algorithm can narrow your MMM's variance, reduce its bias and make adstock and saturation identifiable, leading to more accurate results.</p>
+  <p class="tagline">A well-built MMM can still be wrong, because the spend it learns from never held the information it needs. This article tests whether changing when you spend, not how much, can fix that.</p>
 </header>
 
 <nav class="snav">
@@ -389,17 +389,17 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
 <p>Measuring the return on marketing spend is one of the hardest jobs in growth, but Marketing Mix Modelling has spent the last few years making a resurgence as the answer to it. Open-source releases have driven most of that: <a href="https://github.com/facebookexperimental/Robyn" target="_blank" rel="noopener">Robyn</a> from Meta, <a href="https://developers.google.com/meridian" target="_blank" rel="noopener">Meridian</a> from Google, <a href="https://www.pymc-marketing.io/" target="_blank" rel="noopener">PyMC-Marketing</a> from PyMC Labs. Running an MMM has never been easier. Trusting one is a different question.</p>
 
-<p>Google set out why back in 2017, in <a href="https://research.google/pubs/challenges-and-opportunities-in-media-mix-modeling/" target="_blank" rel="noopener">Challenges and Opportunities in Media Mix Modeling</a>, a paper that is still the clearest statement of what goes wrong. Three of the problems it names do most of the damage. All three trace back to the same root cause: your spend follows demand.</p>
+<p>Google set out why back in 2017, in <a href="https://research.google/pubs/challenges-and-opportunities-in-media-mix-modeling/" target="_blank" rel="noopener">Challenges and Opportunities in Media Mix Modeling</a>, a paper that is still the clearest statement of what goes wrong. Three of the problems it names do most of the damage. Each one comes from a different kind of variation that is missing from your spend.</p>
 
 <ul class="probs">
-  <li><strong>Multi-collinearity.</strong> Marketing channels get set in the same planning cycle, so they rise and fall together. No model can separate channels that never moved apart, so the estimates come back with high variance.</li>
-  <li><strong>Selection bias.</strong> Spend follows demand, with organisations spending more on marketing in peak periods. But as demand itself isn't directly observable, the model has to fall back on proxies for it. The channel coefficients absorb what those proxies miss: textbook omitted variable bias.</li>
-  <li><strong>Non-identifiable adstock and saturation.</strong> Every MMM also has to identify adstock and saturation effects. A 2024 study titled <a href="https://thearf-org-unified-admin.s3.amazonaws.com/MSI_Report_24-144.pdf" target="_blank" rel="noopener">Your MMM is Broken</a> found these shape parameters are often not separately identifiable from ordinary spend data either. It's the same underlying reason driving this: spend that never varies on its own can't tell the model what shape its response curve takes.</li>
+  <li><strong>Multi-collinearity.</strong> Marketing channels get set in the same planning cycle, so they rise and fall together. No model can separate channels that never moved apart, so the estimates come back with high variance. What is missing is each channel moving on its own.</li>
+  <li><strong>Selection bias.</strong> Spend follows demand, with organisations spending more on marketing in peak periods. But as demand itself isn't directly observable, the model has to fall back on proxies for it. The channel coefficients absorb what those proxies miss: textbook omitted variable bias. What is missing is spend that moves for reasons other than demand.</li>
+  <li><strong>Non-identifiable adstock and saturation.</strong> Every MMM also has to identify adstock and saturation effects. A 2024 study titled <a href="https://thearf-org-unified-admin.s3.amazonaws.com/MSI_Report_24-144.pdf" target="_blank" rel="noopener">Your MMM is Broken</a> found these shape parameters are often not separately identifiable from ordinary spend data either. What is missing is spend at clearly different levels, held for long enough to outlast the carryover.</li>
 </ul>
 
 <p>Google's 2017 paper's own answer was better data. Nearly a decade on, the industry's main response has been incrementality testing, now increasingly used to calibrate MMMs. That is real progress, but it reads one channel at a time and can take months to get a reliable impact. And a <a href="https://research.getrecast.com/geolift-sim-study" target="_blank" rel="noopener">2026 Recast study</a> found most open-source geo-testing tools report a false lift 14-30% of the time.</p>
 
-<p>Step back and all three problems have the same solution: creating variation. This article asks whether a budget phasing algorithm can help with all three, narrowing variance, reducing bias and tightening adstock/saturation ranges, without running an experiment at all.</p>
+<p>Step back and all three problems have the same kind of solution: put the missing variation into the spend. This article asks whether a budget phasing algorithm can supply all three kinds without running an experiment at all. It is a simulation study, and <a href="#limits">section 9</a> sets out what it does and doesn't show.</p>
 
 <!-- SECTION 1: THE DATA -->
 <section id="data">
@@ -425,7 +425,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
       </div>
       <svg class="chart" id="chartScenSpend" viewBox="0 0 700 240" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">The chart shows a time series of the simulated marketing spend: 2 years of history and the planned budget for next year (shaded). Notice how each channel follows the same trend over the 3 years.</p>
+    <p class="fig-cap">The chart shows a time series of the simulated marketing spend: 2 years of history and the planned budget for next year (shaded).</p>
   </div>
 
   <p>Demand is what links spend to sales. We build it backwards from the spend so that the two move together, at an assumed correlation of 0.65. The same approach works on your real spend.</p>
@@ -642,7 +642,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p class="s-label">4 · The fix</p>
   <h2>Same budget, a smarter phasing algorithm</h2>
 
-  <p>You don't need a bigger model, a bigger budget, or an AI agent bolted onto your MMM. You need to break the correlation between channels using a phasing algorithm. Nudge a channel's weekly spend up or down by a set percentage, or go further and switch it off entirely some weeks, giving that spend to another week instead. Breaking that cycle of correlated spend gives the model weeks where each channel finally moves on its own, so it can tell which one is actually driving your sales.</p>
+  <p>You don't need a bigger model, a bigger budget, or an AI agent bolted onto your MMM. You need spend that carries more information, and a phasing algorithm can supply it. That means each channel moving on its own, for reasons that have nothing to do with demand. It also means spend at several levels, each held for long enough to register. Lower correlation between channels is one result. It is not the whole goal: section 3 showed that saturation stays unidentified at any correlation.</p>
 
   <p>The idea isn't new. MMM vendors already say it: Recast tell clients to <a href="https://operators.getrecast.com/docs/building-a-good-model" target="_blank" rel="noopener">intentionally vary spend</a> so the model becomes identifiable, and go-dark tests have been around for years. What has been missing is the how much. Which channel to move, by how far, and what you get back for it. This section goes into different phasing strategies, why we chose them and which works best.</p>
 
@@ -764,7 +764,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">The correlation actually breaks</div>
+      <div class="fig-title">Channels stop moving together</div>
       <div class="fig-sub">Pairwise channel correlation, before and after phasing</div>
     </div>
     <div class="fig-body">
@@ -942,7 +942,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
           <path d="M332,79 L348,79 L368,61" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M362,79 L368,79 L368,73" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
           <text x="350" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="#111827">Phase</text>
-          <text x="350" y="120" text-anchor="middle" font-size="10.5" fill="#6b7280">De-correlate the weekly split,</text>
+          <text x="350" y="120" text-anchor="middle" font-size="10.5" fill="#6b7280">Vary each channel on its own,</text>
           <text x="350" y="134" text-anchor="middle" font-size="10.5" fill="#6b7280">annual budget stays the same</text>
         </g>
 
@@ -988,7 +988,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
           <circle cx="42" cy="166" r="13" fill="#d97706"/>
           <text x="42" y="171" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">2</text>
           <text x="66" y="171" font-size="14" font-weight="700" fill="#111827">Phase</text>
-          <text x="30" y="198" font-size="11.5" fill="#6b7280">De-correlate the weekly split,</text>
+          <text x="30" y="198" font-size="11.5" fill="#6b7280">Vary each channel on its own,</text>
           <text x="30" y="214" font-size="11.5" fill="#6b7280">annual budget stays the same</text>
           <g transform="translate(-60,113)">
             <path d="M332,61 L348,61 L368,79" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1012,7 +1012,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
         </g>
       </svg>
     </div>
-    <p class="fig-cap">Retraining is where the payoff lands, but it only gets there because the first two steps have already broken the correlation.</p>
+    <p class="fig-cap">Retraining is where the payoff lands, but it only gets there because the first two steps have already put the missing variation into the spend.</p>
   </div>
 
   <div class="steps">
@@ -1053,7 +1053,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <h2>Frequently asked questions</h2>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Doesn't this need me to already know my marginal return?</p>
-  <p>You supply a plausible estimate, not a proven one. The package uses it as the ground truth to measure against: it simulates revenue from that assumption, refits the model across many plausible versions of your history, and reports how far the answer moves. That spread tells you how reliable your model is, not whether your assumed number was right.</p>
+  <p>You supply a plausible estimate, not a proven one. The package uses it as the ground truth to measure against: it simulates revenue from that assumption, refits the model across many plausible versions of your history, and reports how far the answer moves. That spread tells you how reliable your model is, not whether your assumed number was right. The package can't check your inputs. If the overall scale of your marginal returns is off, the £ figures move with it but the percentage improvement from phasing barely does. If the proportions between channels are off, the improvement can move too.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Why not just run a geo-lift test instead?</p>
   <p>Geo-experiments are the gold standard, but they test one channel at a time, need a region you can go dark in and take months to read. You can't run one for TV, Meta, Search Generic and TikTok at the same time. The tools are also less reliable than they look: in the <a href="https://research.getrecast.com/geolift-sim-study" target="_blank" rel="noopener">Recast study</a> from the introduction, Meta's GeoLift missed around 90% of real effects. Phasing improves the data for every channel at once. If you do have budget for a test, weigh it against creative testing: <a href="https://www.nielsen.com/insights/2017/perspectives-want-a-successful-ad-get-creative/" target="_blank" rel="noopener">Nielsen</a> found creative quality drives as much of a campaign's sales impact as every other factor combined.</p>
@@ -1074,7 +1074,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p>A weekly spend number per channel for the plan year. Each channel's annual budget stays the same. The Combined strategy moves some budget between months, so the monthly totals change as well as the weekly split. Nothing about the buy itself changes, only when the money lands.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">How do I phase a plan I haven't finalised yet?</p>
-  <p><code>BudgetPhaser</code> needs a starting weekly shape to work with, so build one the normal way: take your annual per-channel budget from your MMM and optimiser, and spread it across the year using whatever seasonality or demand pattern you'd use anyway. That first pass doesn't need to be right, phasing is about to rework it regardless. Feed it in alongside your spend history, and the output is your real weekly booking plan, decorrelated from day one instead of retrofitted onto something the agency's already committed to.</p>
+  <p><code>BudgetPhaser</code> needs a starting weekly shape to work with, so build one the normal way: take your annual per-channel budget from your MMM and optimiser, and spread it across the year using whatever seasonality or demand pattern you'd use anyway. That first pass doesn't need to be right, phasing is about to rework it regardless. Feed it in alongside your spend history, and the output is your real weekly booking plan, phased from day one instead of retrofitted onto something the agency's already committed to.</p>
 </section>
 
 <!-- SECTION 9: BRINGING IT TOGETHER -->
@@ -1082,9 +1082,23 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p class="s-label">9 · Bringing it together</p>
   <h2>It was never the model's fault</h2>
 
-  <p>Marketing channels move together because budgets are planned together. That leaves your MMM unsure in three separate ways. Its estimates have more variance than it lets on. They are biased by the demand it never saw. And it can't tell the shape of your response curves. This article measures all three at once.</p>
+  <p>Marketing budgets are planned together, follow demand and rarely leave their usual range. That leaves your MMM unsure in three separate ways. Its estimates have more variance than it lets on. They are biased by the demand it never saw. And it can't tell the shape of your response curves. This article measures all three at once.</p>
 
-  <p>Budget phasing goes after the root cause. It changes when each channel spends and keeps each channel's annual budget. On our scenario the Combined strategy cuts variance by 70% and bias by 45%. The saturation and adstock ranges narrow by 54% and 58%. It costs 3.41% of plan-year revenue. It holds from 5 to 15 channels, although the bias gain shrinks as channels are added. A Bayesian model doesn't get around any of this: priors can't create variation the data never had.</p>
+  <p>Budget phasing goes after the cause, which is spend that carries too little information. It changes when each channel spends and keeps each channel's annual budget. On our scenario the Combined strategy cuts variance by 70% and bias by 45%. The saturation and adstock ranges narrow by 54% and 58%. It costs 3.41% of plan-year revenue. It holds from 5 to 15 channels, although the bias gain shrinks as channels are added. A Bayesian model doesn't get around any of this: priors can't create variation the data never had.</p>
+
+  <h3 id="limits">What this does and doesn't show</h3>
+
+  <p>Everything here comes from a simulation, so it is worth being exact about the claim.</p>
+
+  <ul class="probs">
+    <li><strong>What it shows.</strong> When sales follow a known response, a model fitted on phased spend recovers that response better than one fitted on the plan as it stood.</li>
+    <li><strong>What it doesn't show.</strong> How wrong any real MMM is. No simulation can settle that.</li>
+    <li><strong>The model is given the right shapes.</strong> The fitted MMM uses the same curve families as the simulation: power saturation and geometric adstock. The variance test is even given the true curve values. A real model can be wrong about the shape as well as the size.</li>
+    <li><strong>What we varied.</strong> The problem was measured across correlation levels and across strengths of the link between spend and demand. The fix was measured at one of each (0.7 and 0.65), and at 4, 5, 10 and 15 channels.</li>
+    <li><strong>What we haven't tested.</strong> A model with the wrong curve shape. Seasonal demand. Returns that change over time. Platform learning phases. Other MMM tools. Real data.</li>
+  </ul>
+
+  <p>The inputs you supply are assumptions too. The first question in <a href="#faq">section 8</a> covers what happens when they are wrong.</p>
 
   <h3>What comes next</h3>
 
