@@ -210,3 +210,121 @@ class TestEdgeCases:
         )
         assert (out.to_numpy() >= 0).all()
         assert np.allclose(out.sum(), plan.sum())
+
+
+class TestPeakMonthAlone:
+    """dark_weeks=0: no blackout run and no recipient month, so a high
+    month (with or without the edge layer) is the only between-month move."""
+
+    def test_dark_weeks_zero_is_allowed(self):
+        assert Redistribute(dark_weeks=0).dark_weeks == 0
+
+    @pytest.mark.parametrize("seed", [0, 1, 7])
+    def test_no_dark_weeks_and_annual_total_kept(self, seed):
+        plan = make_plan(n_channels=4)
+        sched = phase(plan, no_edge(dark_weeks=0), seed=seed)
+        assert (sched.to_numpy() > 0).all()
+        assert np.allclose(sched.sum(), plan.sum())
+
+    @pytest.mark.parametrize("seed", [0, 1, 7])
+    def test_one_month_at_high_multiple_rest_at_or_below_plan(self, seed):
+        plan = make_plan(n_channels=4)
+        ratio = month_ratio(plan, phase(plan, no_edge(dark_weeks=0), seed=seed))
+        for ch in ratio.columns:
+            col = np.sort(ratio[ch].to_numpy())
+            assert col[-1] == pytest.approx(2.5)
+            assert (col[:-1] <= 1.0 + 1e-9).all()
+
+    def test_channels_peak_in_different_months(self):
+        plan = make_plan(n_channels=4)
+        ratio = month_ratio(plan, phase(plan, no_edge(dark_weeks=0), seed=0))
+        assert ratio.idxmax().nunique() == 4
+
+    def test_nothing_switched_on_is_the_plan(self):
+        plan = make_plan(n_channels=4)
+        sched = phase(plan, Redistribute(dark_weeks=0, edge_cap_pct=0.0), seed=0)
+        assert np.allclose(sched.to_numpy(), plan.to_numpy())
+
+
+class TestEdgeQuietMonthsOnly:
+    """edge_quiet_months_only: the edge layer skips the blackout, recipient
+    and high months and nudges every other month."""
+
+    def quiet(self, **kw):
+        return Redistribute(
+            edge_cap_pct=20.0, high_month_pct=150.0, edge_quiet_months_only=True, **kw
+        )
+
+    def test_default_is_off_and_repr_eq(self):
+        assert Redistribute().edge_quiet_months_only is False
+        assert self.quiet() == self.quiet()
+        assert self.quiet() != Redistribute(edge_cap_pct=20.0, high_month_pct=150.0)
+        assert "edge_quiet_months_only=True" in repr(self.quiet())
+        assert "edge_quiet_months_only" not in repr(Redistribute())
+
+    @pytest.mark.parametrize("seed", [0, 1, 7])
+    def test_big_move_months_match_the_no_edge_schedule(self, seed):
+        plan = make_plan(n_channels=4)
+        labels = _get_month_labels(plan)
+        bare = phase(plan, no_edge(), seed=seed)
+        sched = phase(plan, self.quiet(), seed=seed)
+        ratio = month_ratio(plan, bare)
+        nudged_somewhere = False
+        for ch in plan.columns:
+            for month in ratio.index:
+                rows = labels == month
+                same = np.allclose(sched.loc[rows, ch], bare.loc[rows, ch])
+                big = ratio.loc[month, ch] > 1.3 or ratio.loc[month, ch] < 0.6
+                if big:
+                    assert same
+                else:
+                    nudged_somewhere |= not same
+        assert nudged_somewhere
+
+    @pytest.mark.parametrize("seed", [0, 1, 7])
+    def test_quiet_months_get_the_same_nudge_as_without_the_flag(self, seed):
+        plan = make_plan(n_channels=4)
+        labels = _get_month_labels(plan)
+        ratio = month_ratio(plan, phase(plan, no_edge(), seed=seed))
+        every = phase(
+            plan, Redistribute(edge_cap_pct=20.0, high_month_pct=150.0), seed=seed
+        )
+        quiet = phase(plan, self.quiet(), seed=seed)
+        for ch in plan.columns:
+            for month in ratio.index:
+                if 0.6 < ratio.loc[month, ch] < 1.3:
+                    rows = labels == month
+                    assert np.allclose(quiet.loc[rows, ch], every.loc[rows, ch])
+
+    @pytest.mark.parametrize("seed", [0, 1, 7])
+    def test_totals_kept_and_peak_week_not_raised(self, seed):
+        plan = make_plan(n_channels=4)
+        bare = phase(plan, no_edge(), seed=seed)
+        quiet = phase(plan, self.quiet(), seed=seed)
+        every = phase(
+            plan, Redistribute(edge_cap_pct=20.0, high_month_pct=150.0), seed=seed
+        )
+        assert np.allclose(quiet.sum(), plan.sum())
+        peak = lambda s: float((s / plan).to_numpy().max())  # noqa: E731
+        assert peak(quiet) == pytest.approx(peak(bare))
+        assert peak(quiet) < peak(every)
+
+    def test_off_is_bit_identical_to_before(self):
+        plan = make_plan(n_channels=4)
+        a = phase(plan, Redistribute(edge_cap_pct=20.0, high_month_pct=150.0), seed=3)
+        b = phase(
+            plan,
+            Redistribute(
+                edge_cap_pct=20.0, high_month_pct=150.0, edge_quiet_months_only=False
+            ),
+            seed=3,
+        )
+        assert np.array_equal(a.to_numpy(), b.to_numpy())
+
+    def test_plain_dark_month_with_quiet_nudge(self):
+        plan = make_plan(n_channels=4)
+        sched = phase(
+            plan, Redistribute(edge_cap_pct=20.0, edge_quiet_months_only=True), seed=0
+        )
+        assert np.allclose(sched.sum(), plan.sum())
+        assert ((sched.to_numpy() < 1e-9).sum(axis=0) == 4).all()

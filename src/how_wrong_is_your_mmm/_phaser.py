@@ -293,6 +293,9 @@ class Redistribute:
     ----------
     dark_weeks:
         Consecutive weeks blacked out per channel per block. Default 4.
+        0 skips the blackout and its recipient month altogether, which
+        leaves only the optional high month and the edge layer (a high
+        month on its own is ``dark_weeks=0, edge_cap_pct=0``).
     min_recipient_weeks:
         Minimum length, in weeks, of a month eligible to receive the freed
         budget. Default 4.
@@ -308,6 +311,16 @@ class Redistribute:
         How far ABOVE plan the optional high month runs, in percent (150 =
         2.5x plan). Between 0 and 300. Default 0.0: no high month. Applied
         in full whenever alpha > 0, like the blackout and recipient steps.
+    edge_quiet_months_only:
+        If True, the edge layer skips the channel's blackout, recipient
+        and high months and nudges only the months those steps left at (or
+        slightly below) plan. The big moves already supply the variation
+        in their own months, and stacking a nudge on a recipient or high
+        month only raises the peak week (an internal test on the example
+        scenario: 3.0x plan down to 2.5x, with variance, bias, saturation
+        and adstock unchanged within seed noise). Default False: every
+        month is nudged, and the schedule is identical, draw for draw, to
+        earlier versions.
     """
 
     def __init__(
@@ -316,10 +329,11 @@ class Redistribute:
         min_recipient_weeks: int = 4,
         edge_cap_pct: float = 15.0,
         high_month_pct: float = 0.0,
+        edge_quiet_months_only: bool = False,
     ) -> None:
-        if int(dark_weeks) != dark_weeks or dark_weeks < 1:
+        if int(dark_weeks) != dark_weeks or dark_weeks < 0:
             raise ValueError(
-                f"Redistribute dark_weeks must be an integer >= 1, got {dark_weeks}."
+                f"Redistribute dark_weeks must be an integer >= 0, got {dark_weeks}."
             )
         if int(min_recipient_weeks) != min_recipient_weeks or min_recipient_weeks < 1:
             raise ValueError(
@@ -340,13 +354,15 @@ class Redistribute:
         self.min_recipient_weeks = int(min_recipient_weeks)
         self.edge_cap_pct = float(edge_cap_pct)
         self.high_month_pct = float(high_month_pct)
+        self.edge_quiet_months_only = bool(edge_quiet_months_only)
 
     def __repr__(self) -> str:
         high = f", high_month_pct={self.high_month_pct}" if self.high_month_pct else ""
+        quiet = ", edge_quiet_months_only=True" if self.edge_quiet_months_only else ""
         return (
             f"Redistribute(dark_weeks={self.dark_weeks}, "
             f"min_recipient_weeks={self.min_recipient_weeks}, "
-            f"edge_cap_pct={self.edge_cap_pct}{high})"
+            f"edge_cap_pct={self.edge_cap_pct}{high}{quiet})"
         )
 
     def __eq__(self, other: object) -> bool:
@@ -356,6 +372,7 @@ class Redistribute:
             and self.min_recipient_weeks == other.min_recipient_weeks
             and self.edge_cap_pct == other.edge_cap_pct
             and self.high_month_pct == other.high_month_pct
+            and self.edge_quiet_months_only == other.edge_quiet_months_only
         )
 
 
@@ -746,6 +763,28 @@ def _redistribute_schedule(
 _HIGH_MONTH_SEED_OFFSET = 30_000
 
 
+def _big_move_months(
+    plan: np.ndarray,
+    after_blackout: np.ndarray,
+    final: np.ndarray,
+    month_labels: np.ndarray,
+) -> np.ndarray:
+    """Boolean (n_weeks, n_channels) mask of the months that hold a
+    Redistribute channel's big moves: its blackout and recipient months
+    (monthly total changed by the round-robin) and its high month (monthly
+    total raised by the high-month step). The months that only fund a high
+    month, with a small equal cut, are not big moves."""
+    out = np.zeros(plan.shape, dtype=bool)
+    for month in np.unique(month_labels):
+        rows = month_labels == month
+        p = plan[rows].sum(axis=0)
+        a = after_blackout[rows].sum(axis=0)
+        f = final[rows].sum(axis=0)
+        moved = ~np.isclose(a, p, rtol=1e-9, atol=1e-9) | (f > a * (1 + 1e-9))
+        out[np.ix_(rows, moved)] = True
+    return out
+
+
 def _high_month_block(
     values: np.ndarray,
     plan: np.ndarray,
@@ -1069,6 +1108,10 @@ def _generate_phased_schedule(
     # preserves each month's post-redistribution total. alpha=0 is "no
     # change" for every spec, so it skips the redistribution too.
     base_arr = new_spend.copy()
+    # (week, channel) cells whose month holds one of a Redistribute
+    # channel's big moves: its blackout, recipient or high month. Only read
+    # for channels with edge_quiet_months_only.
+    big_move = np.zeros(new_spend.shape, dtype=bool)
     redistribute_cols = [
         ci
         for ci, ch in enumerate(channels)
@@ -1076,14 +1119,17 @@ def _generate_phased_schedule(
     ]
     if redistribute_cols and alpha > 0:
         first = channel_specs[channels[redistribute_cols[0]]]
-        base_arr = _redistribute_schedule(
-            base_arr,
-            month_labels,
-            redistribute_cols,
-            first.dark_weeks,
-            first.min_recipient_weeks,
-            seed,
-        )
+        # dark_weeks=0 means no blackout run and so no recipient month.
+        if first.dark_weeks > 0:
+            base_arr = _redistribute_schedule(
+                base_arr,
+                month_labels,
+                redistribute_cols,
+                first.dark_weeks,
+                first.min_recipient_weeks,
+                seed,
+            )
+        after_blackout = base_arr.copy()
         # Optional high month (Redistribute.high_month_pct), placed in the
         # months the round-robin above left untouched. Its own RNG stream,
         # so high_month_pct=0 leaves every other draw exactly as before.
@@ -1107,6 +1153,12 @@ def _generate_phased_schedule(
                 first.min_recipient_weeks,
                 seed,
             )
+        big_move[:, redistribute_cols] = _big_move_months(
+            new_spend[:, redistribute_cols],
+            after_blackout[:, redistribute_cols],
+            base_arr[:, redistribute_cols],
+            month_labels,
+        )
     # MonthStep channels: month-level Hadamard steps, also run once over the
     # whole plan (per 12-month block) before the per-month loop, which then
     # adds no weekly noise for them. alpha scales the step, so alpha=0 is
@@ -1158,6 +1210,10 @@ def _generate_phased_schedule(
                 raw = _shaped_nudge(
                     edge_rng, n_weeks, alpha * spec.edge_cap_pct / 100.0, "edge", True
                 )
+                # The draw is made either way, so skipping a month never
+                # shifts another channel's or month's nudges.
+                if spec.edge_quiet_months_only and big_move[mask[0], ci]:
+                    raw = np.zeros(n_weeks)
             elif isinstance(spec, MonthStep):
                 raw = np.zeros(n_weeks)  # the step was applied to base_arr
             elif isinstance(spec, Blackout) and ci in quarterly_cols:
