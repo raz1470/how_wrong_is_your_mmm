@@ -76,7 +76,7 @@ class TestRedistributeMarker:
         assert how_wrong_is_your_mmm.Redistribute is Redistribute
         assert "Redistribute" in how_wrong_is_your_mmm.__all__
 
-    @pytest.mark.parametrize("bad", [0, -1, 2.5])
+    @pytest.mark.parametrize("bad", [-1, 2.5])
     def test_dark_weeks_validated(self, bad):
         with pytest.raises(ValueError, match="dark_weeks"):
             Redistribute(dark_weeks=bad)

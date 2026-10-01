@@ -76,67 +76,63 @@ class TestDefaultLevers:
         assert _is_unphased(levers[0][1])
 
     def test_seven_candidates(self):
-        # unphased + 20% at uniform/edge + 20% Redistribute, plain and with
-        # a high month + 20% MonthStep + a quarterly single-week Blackout
-        # (seesaw dropped 2026-09-29).
+        # unphased + three building blocks (weekly nudge, dark month, peak
+        # month) + all three combined + month step + dark week.
         assert len(_default_levers(CHANNELS)) == 7
 
     def test_default_labels(self):
         assert [label for label, *_ in _default_levers(CHANNELS)] == [
             "unphased",
-            "+/-20% (uniform)",
-            "+/-20% (edge, balanced)",
-            "+/-20% (redistribute + edge)",
-            "+/-20% (redistribute + high month + edge)",
-            "+/-20% (month step)",
-            "Blackout (quarterly)",
+            "Weekly nudge",
+            "Dark month",
+            "Peak month",
+            "Combined",
+            "Month step",
+            "Dark week",
         ]
 
-    def test_no_seesaw_in_default_sweep(self):
-        assert all(shape != "seesaw" for *_, shape, _ in _default_levers(CHANNELS))
-
-    def test_high_month_default_is_150pct_on_every_channel(self):
-        (lever,) = [lv for lv in _default_levers(CHANNELS) if "high month" in lv[0]]
-        _, spec, shape, balanced = lever
-        assert (shape, balanced) == ("edge", True)
-        assert set(spec) == set(CHANNELS)
-        assert all(
-            isinstance(v, Redistribute)
-            and v.edge_cap_pct == 20.0
-            and v.high_month_pct == 150.0
-            for v in spec.values()
-        )
-
-    def test_plain_redistribute_has_no_high_month(self):
-        (lever,) = [
-            lv
-            for lv in _default_levers(CHANNELS)
-            if lv[0] == "+/-20% (redistribute + edge)"
-        ]
-        assert all(v.high_month_pct == 0.0 for v in lever[1].values())
-
-    def test_month_step_default_is_20pct(self):
-        (lever,) = [lv for lv in _default_levers(CHANNELS) if "month step" in lv[0]]
-        _, spec, _, _ = lever
-        assert set(spec) == set(CHANNELS)
-        assert all(
-            isinstance(v, MonthStep) and v.step_pct == 20.0 for v in spec.values()
-        )
-
-    def test_redistribute_default_is_20pct(self):
-        levers = [lv for lv in _default_levers(CHANNELS) if "redistribute" in lv[0]]
-        assert len(levers) == 2  # plain, and with a high month
-        for _, spec, nudge_shape, balanced in levers:
-            self._check_redistribute_20(spec, nudge_shape, balanced)
+    def test_no_seesaw_or_uniform_in_default_sweep(self):
+        phased = _default_levers(CHANNELS)[1:]
+        assert all(shape != "seesaw" for *_, shape, _ in phased)
+        (nudge,) = [lv for lv in phased if lv[0] == "Weekly nudge"]
+        assert nudge[1] == dict.fromkeys(CHANNELS, 20.0)
+        assert (nudge[2], nudge[3]) == ("edge", True)
 
     @staticmethod
-    def _check_redistribute_20(spec, nudge_shape, balanced):
-        assert set(spec) == set(CHANNELS)
+    def _lever(label):
+        (lever,) = [lv for lv in _default_levers(CHANNELS) if lv[0] == label]
+        assert set(lever[1]) == set(CHANNELS)
+        return lever[1]
+
+    def test_dark_month_is_redistribute_with_nothing_else(self):
         assert all(
-            isinstance(v, Redistribute) and v.edge_cap_pct == 20.0
-            for v in spec.values()
+            v == Redistribute(dark_weeks=4, edge_cap_pct=0.0, high_month_pct=0.0)
+            for v in self._lever("Dark month").values()
         )
-        assert (nudge_shape, balanced) == ("edge", True)
+
+    def test_peak_month_is_the_high_month_alone(self):
+        assert all(
+            v == Redistribute(dark_weeks=0, edge_cap_pct=0.0, high_month_pct=150.0)
+            for v in self._lever("Peak month").values()
+        )
+
+    def test_combined_has_all_three_blocks(self):
+        assert all(
+            v
+            == Redistribute(
+                dark_weeks=4,
+                edge_cap_pct=20.0,
+                high_month_pct=150.0,
+                edge_quiet_months_only=True,
+            )
+            for v in self._lever("Combined").values()
+        )
+
+    def test_month_step_default_is_20pct(self):
+        assert all(
+            isinstance(v, MonthStep) and v.step_pct == 20.0
+            for v in self._lever("Month step").values()
+        )
 
     def test_labels_are_unique(self):
         labels = [label for label, *_ in _default_levers(CHANNELS)]
@@ -145,13 +141,16 @@ class TestDefaultLevers:
     def test_only_the_quarterly_blackout_is_swept(self):
         levers = _default_levers(CHANNELS)
         (_, spec, _, _) = levers[-1]
-        assert levers[-1][0] == "Blackout (quarterly)"
+        assert levers[-1][0] == "Dark week"
         for v in spec.values():
             assert isinstance(v, Blackout)
             assert v.prob == 1.0
             assert v.max_dark_weeks_per_quarter == 1
             assert v.max_dark_weeks_per_month is None
-        assert sum("Blackout" in label for label, *_ in levers) == 1
+        assert (
+            sum(isinstance(next(iter(sp.values())), Blackout) for _, sp, *_ in levers)
+            == 1
+        )
 
 
 class TestIsUnphased:
@@ -1089,7 +1088,7 @@ class TestPinnedStrategyLabel:
         label = _pinned_strategy_label(
             Redistribute(edge_cap_pct=40.0), "edge", True, None
         )
-        assert label == "Pinned: +/-40% (redistribute + edge)"
+        assert label == "Pinned: Dark month + 40% weekly nudge"
 
     def test_channel_overrides_appended_singular(self):
         label = _pinned_strategy_label(60.0, "edge", True, {"meta": 20.0})
@@ -1272,7 +1271,7 @@ class TestPeakWeekMultiple:
 class TestMonthStepInReport:
     def test_pinned_month_step_becomes_winner_and_is_scored(self):
         report = fit_small(make_report(strategy_pct=MonthStep(step_pct=40.0)))
-        assert report.pinned_label_ == "Pinned: +/-40% (month step)"
+        assert report.pinned_label_ == "Pinned: 40% month step"
         assert report.winner_ == report.pinned_label_
         assert report.winner_schedule_.shape == PLAN_DF.shape
         # annual total preserved per channel (plan is < 12 months: one block)
@@ -1285,7 +1284,7 @@ class TestMonthStepInReport:
     def test_pinned_label(self):
         assert (
             _pinned_strategy_label(MonthStep(step_pct=60.0), "edge", True, None)
-            == "Pinned: +/-60% (month step)"
+            == "Pinned: 60% month step"
         )
 
     def test_pinned_month_step_html_does_not_claim_monthly_totals_unchanged(self):
@@ -1305,11 +1304,11 @@ class TestMonthStepInReport:
                 channel_constraints={"meta": MonthStep(step_pct=20.0)},
             )
         )
-        assert "+/-20% (month step)</td>" in report.to_html()
+        assert "Month step</td>" in report.to_html()
 
     def test_default_sweep_scores_the_20pct_month_step_row(self):
         report = fit_small(make_report())
-        label = "+/-20% (month step)"
+        label = "Month step"
         assert label in report.results_
         assert "scores" in report.results_[label]
         assert report.schedules_[label].shape == PLAN_DF.shape
@@ -1319,7 +1318,7 @@ class TestMonthStepInReport:
     def test_higher_intensity_month_step_is_pinnable(self):
         for pct in (40.0, 60.0, 80.0):
             report = fit_small(make_report(strategy_pct=MonthStep(step_pct=pct)))
-            label = f"Pinned: +/-{pct:.0f}% (month step)"
+            label = f"Pinned: {pct:.0f}% month step"
             assert report.pinned_label_ == label
             assert "scores" in report.results_[label]
             assert report.schedules_[label].shape == PLAN_DF.shape
@@ -1328,7 +1327,7 @@ class TestMonthStepInReport:
 class TestRedistributeInReport:
     def test_pinned_redistribute_becomes_winner_and_is_scored(self):
         report = fit_small(make_report(strategy_pct=Redistribute(edge_cap_pct=40.0)))
-        assert report.pinned_label_ == "Pinned: +/-40% (redistribute + edge)"
+        assert report.pinned_label_ == "Pinned: Dark month + 40% weekly nudge"
         assert report.winner_ == report.pinned_label_
         assert report.winner_schedule_.shape == PLAN_DF.shape
         # annual total preserved per channel (plan is < 12 months: one block)
@@ -1358,11 +1357,11 @@ class TestRedistributeInReport:
             )
         )
         html_out = report.to_html()
-        assert "+/-20% (redistribute + edge)</td>" in html_out
+        assert "Dark month</td>" in html_out
 
     def test_default_sweep_scores_the_20pct_redistribute_row(self):
         report = fit_small(make_report())
-        label = "+/-20% (redistribute + edge)"
+        label = "Dark month"
         assert label in report.results_
         assert "scores" in report.results_[label]
         assert report.schedules_[label].shape == PLAN_DF.shape
@@ -1375,18 +1374,18 @@ class TestRedistributeInReport:
                 strategy_pct=Redistribute(edge_cap_pct=20.0, high_month_pct=150.0)
             )
         )
-        label = "Pinned: +/-20% (redistribute + high month + edge)"
+        label = "Pinned: Dark month + peak month + 20% weekly nudge"
         assert report.pinned_label_ == label
         assert report.schedules_[label].shape == PLAN_DF.shape
 
     def test_high_month_described_in_glossary(self):
         html_out = fit_small(make_report()).to_html()
-        assert "A third month runs at 2.5x plan" in html_out
+        assert "One month a year runs at 2.5x plan" in html_out
 
     def test_higher_intensity_redistribute_is_pinnable(self):
         for pct in (40.0, 60.0, 80.0):
             report = fit_small(make_report(strategy_pct=Redistribute(edge_cap_pct=pct)))
-            label = f"Pinned: +/-{pct:.0f}% (redistribute + edge)"
+            label = f"Pinned: Dark month + {pct:.0f}% weekly nudge"
             assert report.pinned_label_ == label
             assert "scores" in report.results_[label]
             assert report.schedules_[label].shape == PLAN_DF.shape
