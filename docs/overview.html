@@ -399,7 +399,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
 <p>Google's 2017 paper's own answer was better data. Nearly a decade on, the industry's main response has been incrementality testing, now increasingly used to calibrate MMMs. That is real progress, but it reads one channel at a time and can take months to get a reliable impact. And a <a href="https://research.getrecast.com/geolift-sim-study" target="_blank" rel="noopener">2026 Recast study</a> found most open-source geo-testing tools report a false lift 14-30% of the time.</p>
 
-<p>Step back and all three problems have the same kind of solution: put the missing variation into the spend. This article asks whether a budget phasing algorithm can supply all three kinds without running an experiment at all. It is a simulation study, and <a href="#limits">section 9</a> sets out what it does and doesn't show.</p>
+<p>Step back and all three problems have the same fix: spend that varies in the ways the model needs. This simulation study asks whether a budget phasing algorithm can build all three kinds of variation into a plan.</p>
 
 <!-- SECTION 1: THE DATA -->
 <section id="data">
@@ -410,7 +410,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <h3>Step 1: Simulate marketing spend and demand</h3>
 
-  <p>We generate three years of weekly spend for TV, Meta, Search Generic and TikTok. In reality you most likely have more than 4 channels, but we choose 4 channels to illustrate the problem and explore the solution, and then demonstrate whether it can scale to 10-15 channels later in the article. We choose three years of weekly spend data as this is a common choice in MMM, as it balances the trade-off between having enough data and keeping it recent. The channels all track the same hidden demand signal and have a correlation coefficient of 0.7. The correlation coefficient is high, but this is a realistic scenario driven by budget planning following demand forecasts. Later in the article we also explore the impact of different correlation coefficients. Demand here trends upward, so spend drifts up with it. Keep in mind we simulate spend for the purpose of this article, but in practice you should supply your actual spend history (the last 2 years if you follow the practice of using 3 years to train your MMM) and planned spend (next year, which gives you a total of 3 years).</p>
+  <p>We generate three years of weekly spend for TV, Meta, Search Generic and TikTok. In reality you most likely have more than 4 channels, but we choose 4 channels to illustrate the problem and explore the solution, and then demonstrate whether it can scale to 10-15 channels later in the article. We choose three years of weekly spend data as this is a common choice in MMM, as it balances the trade-off between having enough data and keeping it recent. The channels all follow the same underlying signal, which gives them a correlation coefficient of 0.7. The correlation coefficient is high, but this is a realistic scenario driven by budget planning following demand forecasts. Later in the article we also explore the impact of different correlation coefficients. That shared signal trends upward, so spend drifts up over the three years. Keep in mind we simulate spend for the purpose of this article. In practice you supply your last two years of actual spend and next year's plan, which together make up the three years an MMM is typically trained on.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -428,24 +428,26 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <p class="fig-cap">The chart shows a time series of the simulated marketing spend: 2 years of history and the planned budget for next year (shaded).</p>
   </div>
 
-  <p>Demand is what links spend to sales. We build it backwards from the spend so that the two move together, at an assumed correlation of 0.65. The same approach works on your real spend.</p>
+  <p>Sales depend on more than marketing. Underlying demand, how much people would buy in a given week regardless of advertising, drives sales too. Because budgets are planned around it, it also moves with spend, and that is where selection bias comes from.</p>
 
-  <p>Only part of demand comes from the spend. The rest can move in one of five ways:</p>
+  <p>Nobody observes demand directly, so we construct it: a series that moves with the spend at a correlation of 0.65. That figure is an assumption, since spend data can't reveal the true value. With your own data, the package builds demand from your real spend in the same way.</p>
+
+  <p>Spend explains a little over half of demand at these settings. The rest follows one of five patterns:</p>
 
   <ul class="probs">
-    <li>Trend is a random walk with drift, so it keeps heading up or down, and is our default.</li>
-    <li>White noise is a fresh draw each week.</li>
-    <li>AR(1) drifts slowly.</li>
-    <li>Seasonal repeats every year.</li>
-    <li>Seasonal AR(1) blends the two.</li>
+    <li><strong>Trend</strong>: drifts steadily up or down. Our default.</li>
+    <li><strong>White noise</strong>: jumps randomly each week, with no pattern.</li>
+    <li><strong>Slow drift</strong> (AR(1)): wanders, with each week staying close to the last.</li>
+    <li><strong>Seasonal</strong>: repeats the same pattern every year.</li>
+    <li><strong>Seasonal with drift</strong> (seasonal AR(1)): a yearly pattern plus slow wandering.</li>
   </ul>
 
-  <p>When using your own data you should choose the one which fits your sales series best.</p>
+  <p>With your own data, pick the pattern closest to how your sales behave apart from marketing: steady growth, a strong yearly cycle, or neither.</p>
 
 
   <h3>Step 2: Choose the response</h3>
 
-  <p>Before we can generate sales/revenue, we need to set up the response function for marketing channels. Each channel gets a marginal return, a saturation curve and an adstock decay (how long an ad keeps working after the week it runs). For the purpose of this article we use plausible values, but in practice you should use the results from your MMM. This might seem counterintuitive at first, but the aim here is to generate realistic sales/revenue data with a known marketing response, so we can understand how much of a problem our correlated spend is and how much we can improve it by using a budget phasing algorithm.</p>
+  <p>Before we can generate sales/revenue, we need to set up the response function for marketing channels. Each channel gets a marginal return, a saturation curve (how quickly extra spend stops paying back) and an adstock decay (how long an ad keeps working after the week it runs). For the purpose of this article we use plausible values, but in practice you should use the results from your MMM. That might seem circular, but the aim is realistic sales data where the true response is known. That lets us measure how much damage correlated spend does, and how much budget phasing repairs.</p>
 
   <div class="dtable-wrap">
     <table class="dtable scen">
@@ -474,8 +476,8 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <li><strong>Channel contributions.</strong> How much each channel contributes to sales using marginal return, adstock and saturation.</li>
     <li><strong>Baseline.</strong> What sales would be with no marketing.</li>
     <li><strong>Demand.</strong> A hidden weekly series for everything outside your marketing that moves sales, such as seasonality or the economy. It is what makes your baseline rise and fall. We size it so the baseline varies by 5% around its average. You can supply this from your own MMM: take its baseline series and divide its standard deviation by its mean.</li>
-    <li><strong>Demand proxy.</strong> We can't observe demand directly, but we can use a proxy such as a category search index. In reality this has an unobserved correlation with demand. We assume a sensible correlation coefficient of 0.8.</li>
-    <li><strong>Noise.</strong> Random week-to-week variation that nothing in the model explains. We use a standard deviation of 2% of average weekly sales. This is pure noise: demand, including the part a proxy misses, is modelled separately above. Every simulation draws the noise again, which lets us see how far the model's estimates move across plausible versions of the same history. Every measure in this article uses 50 of these simulations.</li>
+    <li><strong>Demand proxy.</strong> We can't observe demand directly, but we can use a proxy such as a category search index. How closely a proxy tracks demand can't be measured either, so we assume a correlation of 0.8.</li>
+    <li><strong>Noise.</strong> Random week-to-week variation that nothing in the model explains, with a standard deviation of 2% of average weekly sales. This is pure noise: demand, including the part a proxy misses, is modelled separately above. Each simulation redraws it, which shows how far the estimates move across plausible versions of the same history.</li>
   </ul>
 
 
@@ -509,12 +511,12 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <ul class="probs">
     <li><strong>Variance.</strong> If you refit your MMM on a slightly different version of the same history, how far would its answer move?</li>
     <li><strong>Bias.</strong> Across all those refits, does the average answer land on the truth, or is it consistently off to one side?</li>
-    <li><strong>Identifiability.</strong> Can the model tell what shape each channel's response curve takes: how long an ad keeps working (adstock) and how quickly extra spend stops paying back (saturation)?</li>
+    <li><strong>Identifiability.</strong> Can the model recover each channel's adstock and saturation?</li>
   </ul>
 
   <h3>Problem 1: Variance</h3>
 
-  <p>We simulate 50 sales series from the data generating process. Each one keeps the spend, the response and demand fixed and only redraws the noise. We fit an MMM to each series, giving it the true demand and the true curve shapes, so the only thing that can make the estimates differ is noise meeting correlated spend. We then compare each channel's estimated incremental revenue on next year's plan with the ground truth.</p>
+  <p>We simulate 50 sales series from the data generating process. Each one keeps the spend, the response and demand fixed and only redraws the noise, so each is a version of the same three years that could equally have happened. We fit an MMM to each series, giving it the true demand and the true curve shapes, so the only thing that can make the estimates differ is noise meeting correlated spend. That is a best case: a real MMM has to estimate those too, so its estimates would move at least this much. We then compare each channel's estimated incremental revenue on next year's plan with the ground truth.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -535,7 +537,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <h3>Problem 2: Bias</h3>
 
-  <p>We fit the same way as for variance, with one change: the model gets the demand proxy instead of the true demand, just as a real MMM would. We repeat this for 15 draws of the proxy and of the part of demand not tied to spend, each with 50 noise draws, and compare the average estimate with the ground truth.</p>
+  <p>We fit the same way as for variance, with one change: the model gets the demand proxy instead of the true demand, just as a real MMM would. How large the bias is depends on the particular demand series and proxy we happen to draw, so a single draw could flatter or exaggerate it. We therefore draw 15 versions of demand and its proxy, run the 50 simulations on each, and compare the average estimate with the ground truth.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -556,7 +558,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <h3>Problem 3: Identifiability</h3>
 
-  <p>We simulate 50 sales series with fresh noise and give the model the true demand. For each channel we try every combination of saturation exponent (0.20 to 1.00) and adstock decay (0.00 to 0.90), holding the other channels at their true values, and keep the combination that fits best. The spread of those best fits across the 50 series is the recovered range.</p>
+  <p>We simulate 50 sales series with fresh noise and give the model the true demand. We then take one channel at a time. The other channels keep their true saturation and adstock, and for the one being tested we try every combination of saturation exponent (0.20 to 1.00) and adstock decay (0.00 to 0.90) and keep the one that fits best. The spread of those best fits across the 50 series is the recovered range. This is a best case too: a real MMM has to estimate every channel's shape at once.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -630,9 +632,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <p class="fig-cap">The bar chart shows how far TV's estimated incremental revenue sits above the truth at each strength of link between spend and demand.</p>
   </div>
 
-  <p>Adstock and saturation are a different kind of problem. Lower correlation helps adstock a little: Meta's range narrows from 0.51 at our 0.7 to 0.36 at 0.1. It does nothing for saturation. TV and Meta land on the edge of the range we search in more than half of refits at every correlation.</p>
-
-  <p>Both need something from the spend itself. Adstock needs a change that is held for longer than the carryover lasts. Saturation needs spend at several clearly different levels. So there are three causes rather than one, and a fix has to supply a different kind of variation for each.</p>
+  <p>Adstock and saturation are a different kind of problem. Both need something from the spend itself. Adstock needs a change that is held for longer than the carryover lasts. Saturation needs spend at several clearly different levels. So there are three causes rather than one, and a fix has to supply a different kind of variation for each.</p>
 
   <p>It isn't that the model is badly built. It's that the data it's learning from was never designed to answer any of these three questions.</p>
 </section>
@@ -642,7 +642,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p class="s-label">4 · The fix</p>
   <h2>Same budget, a smarter phasing algorithm</h2>
 
-  <p>You don't need a bigger model, a bigger budget, or an AI agent bolted onto your MMM. You need spend that carries more information, and a phasing algorithm can supply it. That means each channel moving on its own, for reasons that have nothing to do with demand. It also means spend at several levels, each held for long enough to register. Lower correlation between channels is one result. It is not the whole goal: section 3 showed that saturation stays unidentified at any correlation.</p>
+  <p>You don't need a bigger model, a bigger budget, or an AI agent bolted onto your MMM. You need spend that carries more information, and a phasing algorithm can supply it. That means each channel moving on its own, for reasons that have nothing to do with demand. It also means spend at several levels, each held for long enough to register.</p>
 
   <p>The idea isn't new. MMM vendors already say it: Recast tell clients to <a href="https://operators.getrecast.com/docs/building-a-good-model" target="_blank" rel="noopener">intentionally vary spend</a> so the model becomes identifiable, and go-dark tests have been around for years. What has been missing is the how much. Which channel to move, by how far, and what you get back for it. This section goes into different phasing strategies, why we chose them and which works best.</p>
 
@@ -651,10 +651,10 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p>Section 3 showed that each problem needs something different from the data. A phasing strategy has to supply it.</p>
 
   <ul class="probs">
-    <li><strong>Variance.</strong> Each channel has to move in weeks when the others don't. Moves drawn at random and separately for each channel do this.</li>
-    <li><strong>Bias.</strong> The moves must have nothing to do with demand. A schedule drawn at random before the year starts can't follow demand.</li>
-    <li><strong>Adstock.</strong> A change has to be held for longer than the carryover lasts. Adstock smooths a one-week blip away. A dark run or a month-long step survives it.</li>
-    <li><strong>Saturation.</strong> The channel needs spend well above its plan, held long enough to get past adstock. A dark week doesn't help here, because every curve starts at zero. A month that takes on extra budget adds a point well up the curve.</li>
+    <li><strong>Variance.</strong> Each channel has to move in weeks when the others don't. Random moves, drawn separately for each channel, do this.</li>
+    <li><strong>Bias.</strong> The moves must have nothing to do with demand. A schedule drawn at random before the year starts can't follow it.</li>
+    <li><strong>Adstock.</strong> A change has to be held for longer than the carryover lasts. Adstock smooths away a one-week blip, but a dark run or a month-long step survives it.</li>
+    <li><strong>Saturation.</strong> The channel needs spend well above its plan, held long enough to outlast adstock. Going dark doesn't help here: zero spend gives zero response whatever the curve's shape. A month that takes on extra budget adds a point well up the curve.</li>
   </ul>
 
   <h3>The strategies</h3>
@@ -673,8 +673,6 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p>Every strategy is drawn separately for each channel and keeps each channel's annual budget. Weekly nudge and dark week also keep every month's total. The other four move money between months.</p>
 
   <p>We also tried two other weekly nudges: random sizes up to 20% and strict alternation between up and down. Neither improved on the fixed-size nudge, so they are left out.</p>
-
-  <p>The chart shows one draw of each strategy on TV. Weekly nudge jitters around the plan. Dark month drops to zero for four weeks and lifts one other month. Peak month lifts a single month to 2.5 times plan. Combined does all three, and keeps the nudge out of the months with a big move.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -713,24 +711,25 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   </div>
   <p class="swipe-hint">Swipe the table sideways to see every column.</p>
 
-  <p>Variance is the CV and bias the mean absolute %, both averaged over the four channels. Saturation and adstock are the average width of each channel's range from section 2. Cost is plan-year revenue given up. Peak is the biggest single week as a multiple of its plan. Lower is better in every column.</p>
+  <p>How to read the columns. Lower is better in every one:</p>
 
-  <p>Combined is best on every measure. Variance falls from 0.24 to 0.07 and bias from 27.7% to 15.2%. The saturation range more than halves from 0.71 to 0.32 and the adstock range falls from 0.43 to 0.18.</p>
+  <ul class="probs">
+    <li><strong>Variance</strong>: the coefficient of variation, averaged over the four channels.</li>
+    <li><strong>Bias</strong>: the mean absolute % gap from the truth, averaged over the four channels.</li>
+    <li><strong>Saturation and adstock</strong>: the average width of each channel's range from section 2.</li>
+    <li><strong>Cost</strong>: plan-year revenue given up.</li>
+    <li><strong>Peak</strong>: the biggest single week as a multiple of its plan.</li>
+  </ul>
 
-  <p>The building blocks don't map one to one onto the problems. Weekly nudge does its job on variance (0.24 to 0.18) and nothing for bias or saturation. Dark month does the most of any single block on all four measures. That includes saturation (0.71 to 0.41), because the month that takes its budget runs at about twice plan. Peak month on its own is weaker on saturation (0.58) but cuts variance almost as far (0.09). Stacking the three is what gets saturation to 0.32 and bias to 15.2%.</p>
-
-  <p>Saturation matters beyond the model. It sets the return on the next pound as spend goes up, so a tighter saturation range is a tighter answer to which channels you can grow.</p>
-
-  <p>Month step and dark week keep every move small. Month step holds its moves for a month but at 20% it adds little beyond variance and some bias. Dark week helps variance and adstock at a fraction of the cost, but barely moves bias.</p>
+  <p>Combined is best on all four diagnostics. Variance falls from 0.24 to 0.07 and bias from 27.7% to 15.2%. The saturation range more than halves from 0.71 to 0.32 and the adstock range falls from 0.43 to 0.18.</p>
 
   <h3>What it costs</h3>
 
   <ul class="probs">
-    <li><strong>Revenue given up.</strong> Returns diminish as spend rises. So budget moved from a quiet week into a busy one earns less than it did. Measured against the true curves Combined gives up 3.41% of plan-year revenue. Dark month alone gives up 1.82%, peak month 1.45%, dark week 0.64% and weekly nudge 0.25%. The cost follows how far spend is pushed up the curve, where each extra pound earns least. That is also what pins saturation down.</li>
-    <li><strong>Platform learning phases.</strong> Ad platforms can re-enter a learning phase after a large budget change and deliver worse while they do. We don't model this. It is why every strategy caps its nudges at 20%. It is also why the peak week column matters: Combined's biggest week is 2.5 times its plan.</li>
+    <li><strong>Revenue given up.</strong> Returns diminish as spend rises, so budget moved from a quiet week into a busy one earns less than it did. The cost follows how far spend is pushed up the curve, where each extra pound earns least. That is also what pins saturation down.</li>
+    <li><strong>Platform learning phases.</strong> Ad platforms can re-enter a learning phase after a large budget change and deliver worse while they do. We don't model this. It is why every strategy caps its nudges at 20%, and why the peak column matters.</li>
   </ul>
 
-  <p>Stronger settings can be pinned in the report: 40% to 80% nudges or longer blackouts. They buy bigger improvements at a higher price. Blacking out all but one week a month cuts bias by 94% but gives up 14.3% of revenue.</p>
 </section>
 
 <!-- SECTION 5: THE IMPACT -->
@@ -881,7 +880,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <p>We keep the data generating process from section 1 and only change the number of channels. Each added channel copies one of the four from section 1, and every pair still has a correlation of 0.7. The noise is held at its four-channel size.</p>
 
-  <p>The impact shrinks as channels are added but stays large. Combined cuts variance by 69% at 5 channels and 52% at 15. Its saturation range narrows by about 38% and its adstock range by 42% to 56%. Bias falls away fastest, from a 49% cut at 5 channels to 19% at 15. The likely reason is that the same three years of data are spread across more channels.</p>
+  <p>The impact shrinks as channels are added. Variance, saturation and adstock hold up well: Combined still cuts variance by about half at 15 channels. The bias gain falls away fastest. The likely reason is that the same three years of data are spread across more channels.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -1039,8 +1038,6 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     </div>
   </div>
 
-  <p>Run all three steps against your own spend and <code>DiscoveryReport</code> packages the result into a single client-ready HTML report: today's model-estimated range, bias and identifiability, the recommended weekly schedule, and what it costs as well as what it buys, no code required to read it.</p>
-
   <div class="cta">
     <p>Want to see what your team would actually get?</p>
     <a class="cta-btn" href="example-report.html">See a full example report →</a>
@@ -1053,10 +1050,10 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <h2>Frequently asked questions</h2>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Doesn't this need me to already know my marginal return?</p>
-  <p>You supply a plausible estimate, not a proven one. The package uses it as the ground truth to measure against: it simulates revenue from that assumption, refits the model across many plausible versions of your history, and reports how far the answer moves. That spread tells you how reliable your model is, not whether your assumed number was right. The package can't check your inputs. If the overall scale of your marginal returns is off, the £ figures move with it but the percentage improvement from phasing barely does. If the proportions between channels are off, the improvement can move too.</p>
+  <p>You supply a plausible estimate, not a proven one. The package uses it as the ground truth to measure against: it simulates revenue from that assumption, refits the model across many plausible versions of your history, and reports how far the answer moves. That spread tells you how reliable your model is, not whether your assumed number was right.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Why not just run a geo-lift test instead?</p>
-  <p>Geo-experiments are the gold standard, but they test one channel at a time, need a region you can go dark in and take months to read. You can't run one for TV, Meta, Search Generic and TikTok at the same time. The tools are also less reliable than they look: in the <a href="https://research.getrecast.com/geolift-sim-study" target="_blank" rel="noopener">Recast study</a> from the introduction, Meta's GeoLift missed around 90% of real effects. Phasing improves the data for every channel at once. If you do have budget for a test, weigh it against creative testing: <a href="https://www.nielsen.com/insights/2017/perspectives-want-a-successful-ad-get-creative/" target="_blank" rel="noopener">Nielsen</a> found creative quality drives as much of a campaign's sales impact as every other factor combined.</p>
+  <p>Geo-experiments are the gold standard, but they test one channel at a time, need a region you can go dark in and take months to read. You can't run one for TV, Meta, Search Generic and TikTok at the same time. The tools are also less reliable than they look: in the <a href="https://research.getrecast.com/geolift-sim-study" target="_blank" rel="noopener">Recast study</a> from the introduction, Meta's GeoLift missed around 90% of real effects. Phasing improves the data for every channel at once. If you do have budget for a test, save it for creative testing: <a href="https://www.nielsen.com/insights/2017/perspectives-want-a-successful-ad-get-creative/" target="_blank" rel="noopener">Nielsen</a> found creative quality drives as much of a campaign's sales impact as every other factor combined.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Doesn't a Bayesian model already fix this?</p>
   <p>Not on its own. Priors are genuinely useful, and Google's own <a href="https://research.google/pubs/bayesian-methods-for-media-mix-modeling-with-carryover-and-shape-effects/" target="_blank" rel="noopener">Bayesian MMM paper</a> shows why: they stabilise noisy estimates, and its flexible functional forms capture how spend decays and saturates over time. But priors can't invent information that was never in the data. That paper says as much itself, noting that the optimal media mix it produces “has a large variance due to the variance of the parameter estimates”. If TV and Meta always moved together, no prior tells you which one actually drove sales.</p>
@@ -1066,9 +1063,6 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <p style="font-weight:700; margin-bottom: .3rem;">Won't this put my channels into learning mode?</p>
   <p>Possibly. Ad platforms can re-enter a learning phase after a large budget change, which is why every strategy caps its nudges at 20% (see section 4). Dark weeks and the budget they free up are bigger moves, so check the peak week before you commit. If a channel can't take them, give it a lighter strategy rather than leaving it out. In our tests a channel left at its plan while the others were phased ended up with more bias than before, because it was the only one still following demand. It's a compromise between data science and marketing, and each channel can be set separately.</p>
-
-  <p style="font-weight:700; margin-bottom: .3rem;">What if I have more than 15 channels?</p>
-  <p>We treat 15 as the upper end of what this setup supports. Beyond that there are three options. Group channels that are bought and planned together, such as display and programmatic. Use more history, at the cost of older data. Or add experiments or priors on the channels with the widest ranges, so the data only has to pin down the rest.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">What do I actually hand my media agency?</p>
   <p>A weekly spend number per channel for the plan year. Each channel's annual budget stays the same. The Combined strategy moves some budget between months, so the monthly totals change as well as the weekly split. Nothing about the buy itself changes, only when the money lands.</p>
@@ -1085,20 +1079,6 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p>Marketing budgets are planned together, follow demand and rarely leave their usual range. That leaves your MMM unsure in three separate ways. Its estimates have more variance than it lets on. They are biased by the demand it never saw. And it can't tell the shape of your response curves. This article measures all three at once.</p>
 
   <p>Budget phasing goes after the cause, which is spend that carries too little information. It changes when each channel spends and keeps each channel's annual budget. On our scenario the Combined strategy cuts variance by 70% and bias by 45%. The saturation and adstock ranges narrow by 54% and 58%. It costs 3.41% of plan-year revenue. It holds from 5 to 15 channels, although the bias gain shrinks as channels are added. A Bayesian model doesn't get around any of this: priors can't create variation the data never had.</p>
-
-  <h3 id="limits">What this does and doesn't show</h3>
-
-  <p>Everything here comes from a simulation, so it is worth being exact about the claim.</p>
-
-  <ul class="probs">
-    <li><strong>What it shows.</strong> When sales follow a known response, a model fitted on phased spend recovers that response better than one fitted on the plan as it stood.</li>
-    <li><strong>What it doesn't show.</strong> How wrong any real MMM is. No simulation can settle that.</li>
-    <li><strong>The model is given the right shapes.</strong> The fitted MMM uses the same curve families as the simulation: power saturation and geometric adstock. The variance test is even given the true curve values. A real model can be wrong about the shape as well as the size.</li>
-    <li><strong>What we varied.</strong> The problem was measured across correlation levels and across strengths of the link between spend and demand. The fix was measured at one of each (0.7 and 0.65), and at 4, 5, 10 and 15 channels.</li>
-    <li><strong>What we haven't tested.</strong> A model with the wrong curve shape. Seasonal demand. Returns that change over time. Platform learning phases. Other MMM tools. Real data.</li>
-  </ul>
-
-  <p>The inputs you supply are assumptions too. The first question in <a href="#faq">section 8</a> covers what happens when they are wrong.</p>
 
   <h3>What comes next</h3>
 
