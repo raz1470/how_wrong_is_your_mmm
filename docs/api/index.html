@@ -419,6 +419,34 @@
   
   
     <li class="md-nav__item">
+      <a href="api/identifiability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Identifiability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="api/phaser/" class="md-nav__link">
         
   
@@ -447,14 +475,14 @@
   
   
     <li class="md-nav__item">
-      <a href="api/report/" class="md-nav__link">
+      <a href="api/discovery_report/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Report
+    DiscoveryReport
   
 
     
@@ -640,6 +668,10 @@ start with one of these instead:</p>
 <td>Quantifies how identifiable OLS marginal returns are, given your spend data.</td>
 </tr>
 <tr>
+<td><a href="api/identifiability/"><code>IdentifiabilityDiagnostic</code></a></td>
+<td>Quantifies whether your spend data pins down each channel's saturation and adstock.</td>
+</tr>
+<tr>
 <td><a href="api/phaser/"><code>BudgetPhaser</code></a></td>
 <td>Recommends a de-correlated weekly spend schedule, monthly totals preserved exactly.</td>
 </tr>
@@ -648,8 +680,16 @@ start with one of these instead:</p>
 <td>A harder on/off phasing lever for <code>BudgetPhaser</code>, in place of a continuous weekly range.</td>
 </tr>
 <tr>
-<td><a href="api/report/"><code>ReportBuilder</code></a></td>
-<td>Packages <code>CollinearityDiagnostic</code> + <code>BudgetPhaser</code> into a single client-ready HTML report.</td>
+<td><a href="api/phaser/#how_wrong_is_your_mmm.Redistribute"><code>Redistribute</code></a></td>
+<td>A round-robin blackout + recipient-month + edge-layer phasing lever for <code>BudgetPhaser</code>/<code>DiscoveryReport</code>; preserves annual (not monthly) totals.</td>
+</tr>
+<tr>
+<td><a href="api/phaser/#how_wrong_is_your_mmm.MonthStep"><code>MonthStep</code></a></td>
+<td>A whole-month step phasing lever for <code>BudgetPhaser</code>/<code>DiscoveryReport</code>: each month scaled up or down in orthogonal Hadamard patterns across channels; preserves annual (not monthly) totals.</td>
+</tr>
+<tr>
+<td><a href="api/discovery_report/"><code>DiscoveryReport</code></a></td>
+<td>Sweeps candidate phasing strategies (or pins one directly, with per-channel overrides) into a single client-ready HTML report, plus the resulting schedule as a CSV.</td>
 </tr>
 </tbody>
 </table>
@@ -657,7 +697,7 @@ start with one of these instead:</p>
 and <a href="api/mmm/"><code>fit_ols</code></a> — are also exported, mainly useful if you're
 extending the package rather than just using it.</p>
 <h2 id="minimal-example">Minimal example<a class="headerlink" href="#minimal-example" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">how_wrong_is_your_mmm</span><span class="w"> </span><span class="kn">import</span> <span class="n">CollinearityDiagnostic</span><span class="p">,</span> <span class="n">BudgetPhaser</span><span class="p">,</span> <span class="n">ReportBuilder</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">how_wrong_is_your_mmm</span><span class="w"> </span><span class="kn">import</span> <span class="n">CollinearityDiagnostic</span><span class="p">,</span> <span class="n">BudgetPhaser</span><span class="p">,</span> <span class="n">DiscoveryReport</span>
 
 <span class="n">diag</span> <span class="o">=</span> <span class="n">CollinearityDiagnostic</span><span class="p">(</span><span class="n">spend_df</span><span class="o">=</span><span class="n">my_spend_df</span><span class="p">)</span>
 <span class="n">diag</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
@@ -667,9 +707,10 @@ extending the package rather than just using it.</p>
 <span class="n">phaser</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
 <span class="n">phaser</span><span class="o">.</span><span class="n">recommended_schedule_</span>
 
-<span class="n">report</span> <span class="o">=</span> <span class="n">ReportBuilder</span><span class="p">(</span><span class="n">history_df</span><span class="o">=</span><span class="n">history</span><span class="p">,</span> <span class="n">plan_df</span><span class="o">=</span><span class="n">plan</span><span class="p">,</span> <span class="n">client_name</span><span class="o">=</span><span class="s2">&quot;Example Brand&quot;</span><span class="p">)</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">DiscoveryReport</span><span class="p">(</span><span class="n">history_df</span><span class="o">=</span><span class="n">history</span><span class="p">,</span> <span class="n">plan_df</span><span class="o">=</span><span class="n">plan</span><span class="p">,</span> <span class="n">client_name</span><span class="o">=</span><span class="s2">&quot;Example Brand&quot;</span><span class="p">)</span>
 <span class="n">report</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
 <span class="n">report</span><span class="o">.</span><span class="n">to_html</span><span class="p">(</span><span class="s2">&quot;reports/example_brand.html&quot;</span><span class="p">)</span>
+<span class="n">report</span><span class="o">.</span><span class="n">schedule_csv</span><span class="p">(</span><span class="s2">&quot;reports/example_brand_schedule.csv&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p>Source: <a href="https://github.com/raz1470/how_wrong_is_your_mmm">github.com/raz1470/how_wrong_is_your_mmm</a></p>
 

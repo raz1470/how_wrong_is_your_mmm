@@ -24,6 +24,7 @@ pip install how-wrong-is-your-mmm  # coming to PyPI
 | Class | What it does |
 |---|---|
 | [`CollinearityDiagnostic`](api/diagnostic.md) | Quantifies how identifiable OLS marginal returns are, given your spend data. |
+| [`IdentifiabilityDiagnostic`](api/identifiability.md) | Quantifies whether your spend data pins down each channel's saturation and adstock. |
 | [`BudgetPhaser`](api/phaser.md) | Recommends a de-correlated weekly spend schedule, monthly totals preserved exactly. |
 | [`Blackout`](api/phaser.md#how_wrong_is_your_mmm.Blackout) | A harder on/off phasing lever for `BudgetPhaser`, in place of a continuous weekly range. |
 | [`Redistribute`](api/phaser.md#how_wrong_is_your_mmm.Redistribute) | A round-robin blackout + recipient-month + edge-layer phasing lever for `BudgetPhaser`/`DiscoveryReport`; preserves annual (not monthly) totals. |

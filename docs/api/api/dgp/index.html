@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://raz1470.github.io/how_wrong_is_your_mmm/api/api/dgp/">
       
       
-        <link rel="prev" href="../report/">
+        <link rel="prev" href="../discovery_report/">
       
       
         <link rel="next" href="../mmm/">
@@ -343,6 +343,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../identifiability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Identifiability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../phaser/" class="md-nav__link">
         
   
@@ -371,14 +399,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../report/" class="md-nav__link">
+      <a href="../discovery_report/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Report
+    DiscoveryReport
   
 
     
@@ -612,7 +640,10 @@ simulation loop.</p>
     <span class="n">channels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="n">start_date</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="n">demand</span><span class="p">:</span> <span class="n">ndarray</span> <span class="o">|</span> <span class="n">Series</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">demand_share</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">return_demand</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">]</span>
 </code></pre></div>
 
     <div class="doc doc-contents first">
@@ -715,6 +746,72 @@ when using the output with BudgetPhaser.</p>
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>demand</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span> | <span title="pandas.Series">Series</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional externally supplied latent demand series of length n_obs,
+e.g. from simulate_demand. Use this to pair one demand series with
+several spend frames -- notably a plan and its phased version, which
+BudgetPhaser produces and this function never sees. The internal draw
+still happens and is discarded, so supplying the series this function
+would have drawn anyway reproduces its output exactly.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>demand_share</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Share of the channels' <em>common</em> variance attributable to demand, in
+[0, 1]. The remainder comes from an independent "planning factor" that
+correlates the channels but never enters sales.</p>
+<p>This separates two things the DGP previously conflated. At the default
+1.0 every bit of channel-channel correlation comes from demand, which
+forces corr(spend_c, demand) = sqrt(correlation) -- the maximal-bias
+case. Lower it to represent the common real situation where channels
+move together because one planning cycle sets both budgets, and neither
+closely tracks demand.</p>
+<p>Pairwise channel correlation stays exactly <code>correlation</code> at every
+setting; what changes is corr(spend_c, demand) = sqrt(demand_share *
+correlation). <strong>The observed correlation matrix cannot reveal the
+split</strong>, which is why omitted-variable bias is not identifiable from
+spend data alone and needs either a demand proxy or a sensitivity band.</p>
+              </div>
+            </td>
+            <td>
+                  <code>1.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>return_demand</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, return (spend_df, demand_series) instead of just spend_df.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -748,67 +845,142 @@ when using the output with BudgetPhaser.</p>
               </div>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code>If return_demand is True, returns (spend_df, demand_series) instead.</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                
+              </div>
+            </td>
+          </tr>
       </tbody>
     </table>
 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_dgp.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 55</span>
-<span class="normal"> 56</span>
-<span class="normal"> 57</span>
-<span class="normal"> 58</span>
-<span class="normal"> 59</span>
-<span class="normal"> 60</span>
-<span class="normal"> 61</span>
-<span class="normal"> 62</span>
-<span class="normal"> 63</span>
-<span class="normal"> 64</span>
-<span class="normal"> 65</span>
-<span class="normal"> 66</span>
-<span class="normal"> 67</span>
-<span class="normal"> 68</span>
-<span class="normal"> 69</span>
-<span class="normal"> 70</span>
-<span class="normal"> 71</span>
-<span class="normal"> 72</span>
-<span class="normal"> 73</span>
-<span class="normal"> 74</span>
-<span class="normal"> 75</span>
-<span class="normal"> 76</span>
-<span class="normal"> 77</span>
-<span class="normal"> 78</span>
-<span class="normal"> 79</span>
-<span class="normal"> 80</span>
-<span class="normal"> 81</span>
-<span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
-<span class="normal"> 90</span>
-<span class="normal"> 91</span>
-<span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">simulate_spend</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">584</span>
+<span class="normal">585</span>
+<span class="normal">586</span>
+<span class="normal">587</span>
+<span class="normal">588</span>
+<span class="normal">589</span>
+<span class="normal">590</span>
+<span class="normal">591</span>
+<span class="normal">592</span>
+<span class="normal">593</span>
+<span class="normal">594</span>
+<span class="normal">595</span>
+<span class="normal">596</span>
+<span class="normal">597</span>
+<span class="normal">598</span>
+<span class="normal">599</span>
+<span class="normal">600</span>
+<span class="normal">601</span>
+<span class="normal">602</span>
+<span class="normal">603</span>
+<span class="normal">604</span>
+<span class="normal">605</span>
+<span class="normal">606</span>
+<span class="normal">607</span>
+<span class="normal">608</span>
+<span class="normal">609</span>
+<span class="normal">610</span>
+<span class="normal">611</span>
+<span class="normal">612</span>
+<span class="normal">613</span>
+<span class="normal">614</span>
+<span class="normal">615</span>
+<span class="normal">616</span>
+<span class="normal">617</span>
+<span class="normal">618</span>
+<span class="normal">619</span>
+<span class="normal">620</span>
+<span class="normal">621</span>
+<span class="normal">622</span>
+<span class="normal">623</span>
+<span class="normal">624</span>
+<span class="normal">625</span>
+<span class="normal">626</span>
+<span class="normal">627</span>
+<span class="normal">628</span>
+<span class="normal">629</span>
+<span class="normal">630</span>
+<span class="normal">631</span>
+<span class="normal">632</span>
+<span class="normal">633</span>
+<span class="normal">634</span>
+<span class="normal">635</span>
+<span class="normal">636</span>
+<span class="normal">637</span>
+<span class="normal">638</span>
+<span class="normal">639</span>
+<span class="normal">640</span>
+<span class="normal">641</span>
+<span class="normal">642</span>
+<span class="normal">643</span>
+<span class="normal">644</span>
+<span class="normal">645</span>
+<span class="normal">646</span>
+<span class="normal">647</span>
+<span class="normal">648</span>
+<span class="normal">649</span>
+<span class="normal">650</span>
+<span class="normal">651</span>
+<span class="normal">652</span>
+<span class="normal">653</span>
+<span class="normal">654</span>
+<span class="normal">655</span>
+<span class="normal">656</span>
+<span class="normal">657</span>
+<span class="normal">658</span>
+<span class="normal">659</span>
+<span class="normal">660</span>
+<span class="normal">661</span>
+<span class="normal">662</span>
+<span class="normal">663</span>
+<span class="normal">664</span>
+<span class="normal">665</span>
+<span class="normal">666</span>
+<span class="normal">667</span>
+<span class="normal">668</span>
+<span class="normal">669</span>
+<span class="normal">670</span>
+<span class="normal">671</span>
+<span class="normal">672</span>
+<span class="normal">673</span>
+<span class="normal">674</span>
+<span class="normal">675</span>
+<span class="normal">676</span>
+<span class="normal">677</span>
+<span class="normal">678</span>
+<span class="normal">679</span>
+<span class="normal">680</span>
+<span class="normal">681</span>
+<span class="normal">682</span>
+<span class="normal">683</span>
+<span class="normal">684</span>
+<span class="normal">685</span>
+<span class="normal">686</span>
+<span class="normal">687</span>
+<span class="normal">688</span>
+<span class="normal">689</span>
+<span class="normal">690</span>
+<span class="normal">691</span>
+<span class="normal">692</span>
+<span class="normal">693</span>
+<span class="normal">694</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">simulate_spend</span><span class="p">(</span>
     <span class="n">n_obs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">104</span><span class="p">,</span>
     <span class="n">correlation</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span>
     <span class="n">channels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="n">start_date</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="n">demand</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">demand_share</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">return_demand</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate synthetic correlated spend for N channels via a latent demand signal.</span>
 
 <span class="sd">    All channels track the same underlying demand index with independent noise.</span>
@@ -828,28 +1000,87 @@ when using the output with BudgetPhaser.</p>
 <span class="sd">        If provided (e.g. &quot;2023-01-02&quot;), the DataFrame will have a weekly</span>
 <span class="sd">        DatetimeIndex anchored on Mondays starting from this date. Required</span>
 <span class="sd">        when using the output with BudgetPhaser.</span>
+<span class="sd">    demand:</span>
+<span class="sd">        Optional externally supplied latent demand series of length n_obs,</span>
+<span class="sd">        e.g. from simulate_demand. Use this to pair one demand series with</span>
+<span class="sd">        several spend frames -- notably a plan and its phased version, which</span>
+<span class="sd">        BudgetPhaser produces and this function never sees. The internal draw</span>
+<span class="sd">        still happens and is discarded, so supplying the series this function</span>
+<span class="sd">        would have drawn anyway reproduces its output exactly.</span>
+<span class="sd">    demand_share:</span>
+<span class="sd">        Share of the channels&#39; *common* variance attributable to demand, in</span>
+<span class="sd">        [0, 1]. The remainder comes from an independent &quot;planning factor&quot; that</span>
+<span class="sd">        correlates the channels but never enters sales.</span>
+
+<span class="sd">        This separates two things the DGP previously conflated. At the default</span>
+<span class="sd">        1.0 every bit of channel-channel correlation comes from demand, which</span>
+<span class="sd">        forces corr(spend_c, demand) = sqrt(correlation) -- the maximal-bias</span>
+<span class="sd">        case. Lower it to represent the common real situation where channels</span>
+<span class="sd">        move together because one planning cycle sets both budgets, and neither</span>
+<span class="sd">        closely tracks demand.</span>
+
+<span class="sd">        Pairwise channel correlation stays exactly `correlation` at every</span>
+<span class="sd">        setting; what changes is corr(spend_c, demand) = sqrt(demand_share *</span>
+<span class="sd">        correlation). **The observed correlation matrix cannot reveal the</span>
+<span class="sd">        split**, which is why omitted-variable bias is not identifiable from</span>
+<span class="sd">        spend data alone and needs either a demand proxy or a sensitivity band.</span>
+<span class="sd">    return_demand:</span>
+<span class="sd">        If True, return (spend_df, demand_series) instead of just spend_df.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    pd.DataFrame with one column per channel. If start_date is provided,</span>
 <span class="sd">    the index is a weekly DatetimeIndex; otherwise it is the default integer index.</span>
+<span class="sd">    If return_demand is True, returns (spend_df, demand_series) instead.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">channels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">channels</span> <span class="o">=</span> <span class="n">_DEFAULT_CHANNELS</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">demand_share</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;demand_share must be between 0 and 1 inclusive&quot;</span><span class="p">)</span>
 
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
     <span class="n">noise_std</span> <span class="o">=</span> <span class="n">_noise_std_from_correlation</span><span class="p">(</span><span class="n">correlation</span><span class="p">)</span>
-    <span class="n">demand</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">(</span><span class="n">n_obs</span><span class="p">)</span>
+
+    <span class="c1"># The internal draw ALWAYS happens, even when `demand` is supplied, so that</span>
+    <span class="c1"># supplying a series does not shift the channel-noise draws below. Session</span>
+    <span class="c1"># 41&#39;s nudge_shape lesson: changing a generator&#39;s call sequence silently</span>
+    <span class="c1"># moves every seeded number already published from this function.</span>
+    <span class="n">drawn_demand</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">(</span><span class="n">n_obs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">demand</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">demand_arr</span> <span class="o">=</span> <span class="n">drawn_demand</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">demand_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">demand</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">demand_arr</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="n">n_obs</span><span class="p">,):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;demand must be a 1-D series of length n_obs=</span><span class="si">{</span><span class="n">n_obs</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;got shape </span><span class="si">{</span><span class="n">demand_arr</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">demand_share</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">:</span>
+        <span class="c1"># Drawn from a SEPARATE generator, deliberately. Taking it from `rng`</span>
+        <span class="c1"># would shift every channel-noise draw below, so two demand_share</span>
+        <span class="c1"># settings at the same seed would not be comparable draw for draw --</span>
+        <span class="c1"># exactly the caveat nudge_shape has to carry. This way they are.</span>
+        <span class="n">planning</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">([</span><span class="n">seed</span><span class="p">,</span> <span class="n">_PLANNING_STREAM</span><span class="p">])</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">(</span>
+            <span class="n">n_obs</span>
+        <span class="p">)</span>
+        <span class="n">common</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">demand_share</span><span class="p">)</span> <span class="o">*</span> <span class="n">demand_arr</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">demand_share</span><span class="p">)</span> <span class="o">*</span> <span class="n">planning</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">common</span> <span class="o">=</span> <span class="n">demand_arr</span>
 
     <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">:</span>
         <span class="n">mean</span><span class="p">,</span> <span class="n">std</span> <span class="o">=</span> <span class="n">_CHANNEL_SCALE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span> <span class="n">_DEFAULT_SCALE</span><span class="p">)</span>
-        <span class="n">signal</span> <span class="o">=</span> <span class="n">demand</span> <span class="o">+</span> <span class="n">noise_std</span> <span class="o">*</span> <span class="n">rng</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">(</span><span class="n">n_obs</span><span class="p">)</span>
+        <span class="n">signal</span> <span class="o">=</span> <span class="n">common</span> <span class="o">+</span> <span class="n">noise_std</span> <span class="o">*</span> <span class="n">rng</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">(</span><span class="n">n_obs</span><span class="p">)</span>
         <span class="n">data</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span> <span class="o">=</span> <span class="n">mean</span> <span class="o">+</span> <span class="n">std</span> <span class="o">*</span> <span class="n">signal</span>
 
     <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">start_date</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">start_date</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="n">n_obs</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;W-MON&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">return_demand</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">df</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">demand_arr</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;demand&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">df</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -872,6 +1103,11 @@ when using the output with BudgetPhaser.</p>
     <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">26000.0</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="n">true_elasticities</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">demand</span><span class="p">:</span> <span class="n">ndarray</span> <span class="o">|</span> <span class="n">Series</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">demand_coef</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+    <span class="n">saturation</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">adstock</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">reference_spend</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span>
 </code></pre></div>
 
@@ -1001,6 +1237,123 @@ FutureWarning -- migrate to <code>true_marginal_returns</code>.</p>
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>demand</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span> | <span title="pandas.Series">Series</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional latent demand series contributing to sales. Because spend
+follows demand in this DGP, a model fitted WITHOUT this term is
+misspecified and its channel coefficients carry omitted-variable bias.
+Fit with it (see fit_ols's <code>controls</code>) and the model is correctly
+specified. Toggling between the two is how the bias is measured.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>demand_coef</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Coefficient on <code>demand</code>. Ignored when demand is None. Get a value in
+practitioner-legible units from calibrate_baseline, which derives it
+from the baseline's share of sales and its volatility.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>saturation</code>
+            </td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="float">float</span>] | <span title="float">float</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional diminishing returns. A float applied to every channel, or a
+dict of channel -&gt; exponent b in (0, 1]; channels absent from the dict
+stay linear. The contribution becomes k * spend ** b, with k chosen so
+that the MARGINAL return at <code>reference_spend</code> is exactly the supplied
+<code>true_marginal_returns</code> value. So the supplied marginal return keeps
+its meaning -- it is the return on the next pound at the reference
+level, rather than an average over the curve.</p>
+<p>b = 1.0 is linear and takes the same code path as saturation=None,
+so it reproduces the linear output exactly rather than approximately.</p>
+<p>Curvature is only identified by variation in spend LEVEL. A plan that
+sits in a narrow band around its own average barely traces the curve
+out, which is why b is normally treated as an assumption rather than
+an estimate. Schedules that drive spend to zero trace out far more of
+it -- whether that is enough to estimate b is a question this
+parameter exists to let a notebook answer.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>adstock</code>
+            </td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="float">float</span>] | <span title="float">float</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional geometric carryover. A float applied to every channel, or a
+dict of channel -&gt; decay in [0, 1); channels absent from the dict get
+no carryover. Applied BEFORE saturation, matching the convention in
+Robyn, Meridian and PyMC-Marketing. Normalised, so a constant spend
+level passes through unchanged and the supplied marginal return means
+the same thing at every decay -- see apply_adstock.</p>
+<p>decay = 0.0 is no carryover and takes the same code path as
+adstock=None, so it reproduces the no-carryover output exactly.</p>
+<p>Carryover matters to this package more than it looks. The phasing
+lever works by adding high-frequency spend variation that demand
+cannot explain; adstock is a low-pass filter and attenuates exactly
+that component. So it is a sensitivity that can eat the benefit,
+not merely another knob.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>reference_spend</code>
+            </td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="float">float</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Spend level at which the supplied marginal returns are exact, per
+channel. Defaults to each channel's mean spend in <code>spend_df</code>. Supply
+it explicitly when comparing schedules, so that every schedule is
+calibrated against the SAME curve rather than against its own mean --
+otherwise the curve moves with the schedule and the comparison is
+not like for like. Ignored when the channel is linear.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -1028,90 +1381,170 @@ FutureWarning -- migrate to <code>true_marginal_returns</code>.</p>
     </table>
 
 
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>The demand term is added AFTER the noise draw, so supplying it does not
+disturb the random stream: at demand_coef=0 (or demand=None) this function
+reproduces its previous output exactly.</p>
+</details>
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_dgp.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">simulate_sales</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">854</span>
+<span class="normal">855</span>
+<span class="normal">856</span>
+<span class="normal">857</span>
+<span class="normal">858</span>
+<span class="normal">859</span>
+<span class="normal">860</span>
+<span class="normal">861</span>
+<span class="normal">862</span>
+<span class="normal">863</span>
+<span class="normal">864</span>
+<span class="normal">865</span>
+<span class="normal">866</span>
+<span class="normal">867</span>
+<span class="normal">868</span>
+<span class="normal">869</span>
+<span class="normal">870</span>
+<span class="normal">871</span>
+<span class="normal">872</span>
+<span class="normal">873</span>
+<span class="normal">874</span>
+<span class="normal">875</span>
+<span class="normal">876</span>
+<span class="normal">877</span>
+<span class="normal">878</span>
+<span class="normal">879</span>
+<span class="normal">880</span>
+<span class="normal">881</span>
+<span class="normal">882</span>
+<span class="normal">883</span>
+<span class="normal">884</span>
+<span class="normal">885</span>
+<span class="normal">886</span>
+<span class="normal">887</span>
+<span class="normal">888</span>
+<span class="normal">889</span>
+<span class="normal">890</span>
+<span class="normal">891</span>
+<span class="normal">892</span>
+<span class="normal">893</span>
+<span class="normal">894</span>
+<span class="normal">895</span>
+<span class="normal">896</span>
+<span class="normal">897</span>
+<span class="normal">898</span>
+<span class="normal">899</span>
+<span class="normal">900</span>
+<span class="normal">901</span>
+<span class="normal">902</span>
+<span class="normal">903</span>
+<span class="normal">904</span>
+<span class="normal">905</span>
+<span class="normal">906</span>
+<span class="normal">907</span>
+<span class="normal">908</span>
+<span class="normal">909</span>
+<span class="normal">910</span>
+<span class="normal">911</span>
+<span class="normal">912</span>
+<span class="normal">913</span>
+<span class="normal">914</span>
+<span class="normal">915</span>
+<span class="normal">916</span>
+<span class="normal">917</span>
+<span class="normal">918</span>
+<span class="normal">919</span>
+<span class="normal">920</span>
+<span class="normal">921</span>
+<span class="normal">922</span>
+<span class="normal">923</span>
+<span class="normal">924</span>
+<span class="normal">925</span>
+<span class="normal">926</span>
+<span class="normal">927</span>
+<span class="normal">928</span>
+<span class="normal">929</span>
+<span class="normal">930</span>
+<span class="normal">931</span>
+<span class="normal">932</span>
+<span class="normal">933</span>
+<span class="normal">934</span>
+<span class="normal">935</span>
+<span class="normal">936</span>
+<span class="normal">937</span>
+<span class="normal">938</span>
+<span class="normal">939</span>
+<span class="normal">940</span>
+<span class="normal">941</span>
+<span class="normal">942</span>
+<span class="normal">943</span>
+<span class="normal">944</span>
+<span class="normal">945</span>
+<span class="normal">946</span>
+<span class="normal">947</span>
+<span class="normal">948</span>
+<span class="normal">949</span>
+<span class="normal">950</span>
+<span class="normal">951</span>
+<span class="normal">952</span>
+<span class="normal">953</span>
+<span class="normal">954</span>
+<span class="normal">955</span>
+<span class="normal">956</span>
+<span class="normal">957</span>
+<span class="normal">958</span>
+<span class="normal">959</span>
+<span class="normal">960</span>
+<span class="normal">961</span>
+<span class="normal">962</span>
+<span class="normal">963</span>
+<span class="normal">964</span>
+<span class="normal">965</span>
+<span class="normal">966</span>
+<span class="normal">967</span>
+<span class="normal">968</span>
+<span class="normal">969</span>
+<span class="normal">970</span>
+<span class="normal">971</span>
+<span class="normal">972</span>
+<span class="normal">973</span>
+<span class="normal">974</span>
+<span class="normal">975</span>
+<span class="normal">976</span>
+<span class="normal">977</span>
+<span class="normal">978</span>
+<span class="normal">979</span>
+<span class="normal">980</span>
+<span class="normal">981</span>
+<span class="normal">982</span>
+<span class="normal">983</span>
+<span class="normal">984</span>
+<span class="normal">985</span>
+<span class="normal">986</span>
+<span class="normal">987</span>
+<span class="normal">988</span>
+<span class="normal">989</span>
+<span class="normal">990</span>
+<span class="normal">991</span>
+<span class="normal">992</span>
+<span class="normal">993</span>
+<span class="normal">994</span>
+<span class="normal">995</span>
+<span class="normal">996</span>
+<span class="normal">997</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">simulate_sales</span><span class="p">(</span>
     <span class="n">spend_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">true_marginal_returns</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">base_sales</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1_000.0</span><span class="p">,</span>
     <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">26_000.0</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="n">true_elasticities</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">demand</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">demand_coef</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+    <span class="n">saturation</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">adstock</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">reference_spend</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a synthetic sales column from a spend DataFrame.</span>
 
@@ -1146,10 +1579,67 @@ FutureWarning -- migrate to <code>true_marginal_returns</code>.</p>
 <span class="sd">        Deprecated alias for `true_marginal_returns`, kept for backward</span>
 <span class="sd">        compatibility. Raises ValueError if both are supplied. Emits a</span>
 <span class="sd">        FutureWarning -- migrate to `true_marginal_returns`.</span>
+<span class="sd">    demand:</span>
+<span class="sd">        Optional latent demand series contributing to sales. Because spend</span>
+<span class="sd">        follows demand in this DGP, a model fitted WITHOUT this term is</span>
+<span class="sd">        misspecified and its channel coefficients carry omitted-variable bias.</span>
+<span class="sd">        Fit with it (see fit_ols&#39;s `controls`) and the model is correctly</span>
+<span class="sd">        specified. Toggling between the two is how the bias is measured.</span>
+<span class="sd">    demand_coef:</span>
+<span class="sd">        Coefficient on `demand`. Ignored when demand is None. Get a value in</span>
+<span class="sd">        practitioner-legible units from calibrate_baseline, which derives it</span>
+<span class="sd">        from the baseline&#39;s share of sales and its volatility.</span>
+<span class="sd">    saturation:</span>
+<span class="sd">        Optional diminishing returns. A float applied to every channel, or a</span>
+<span class="sd">        dict of channel -&gt; exponent b in (0, 1]; channels absent from the dict</span>
+<span class="sd">        stay linear. The contribution becomes k * spend ** b, with k chosen so</span>
+<span class="sd">        that the MARGINAL return at `reference_spend` is exactly the supplied</span>
+<span class="sd">        `true_marginal_returns` value. So the supplied marginal return keeps</span>
+<span class="sd">        its meaning -- it is the return on the next pound at the reference</span>
+<span class="sd">        level, rather than an average over the curve.</span>
+
+<span class="sd">        b = 1.0 is linear and takes the same code path as saturation=None,</span>
+<span class="sd">        so it reproduces the linear output exactly rather than approximately.</span>
+
+<span class="sd">        Curvature is only identified by variation in spend LEVEL. A plan that</span>
+<span class="sd">        sits in a narrow band around its own average barely traces the curve</span>
+<span class="sd">        out, which is why b is normally treated as an assumption rather than</span>
+<span class="sd">        an estimate. Schedules that drive spend to zero trace out far more of</span>
+<span class="sd">        it -- whether that is enough to estimate b is a question this</span>
+<span class="sd">        parameter exists to let a notebook answer.</span>
+<span class="sd">    adstock:</span>
+<span class="sd">        Optional geometric carryover. A float applied to every channel, or a</span>
+<span class="sd">        dict of channel -&gt; decay in [0, 1); channels absent from the dict get</span>
+<span class="sd">        no carryover. Applied BEFORE saturation, matching the convention in</span>
+<span class="sd">        Robyn, Meridian and PyMC-Marketing. Normalised, so a constant spend</span>
+<span class="sd">        level passes through unchanged and the supplied marginal return means</span>
+<span class="sd">        the same thing at every decay -- see apply_adstock.</span>
+
+<span class="sd">        decay = 0.0 is no carryover and takes the same code path as</span>
+<span class="sd">        adstock=None, so it reproduces the no-carryover output exactly.</span>
+
+<span class="sd">        Carryover matters to this package more than it looks. The phasing</span>
+<span class="sd">        lever works by adding high-frequency spend variation that demand</span>
+<span class="sd">        cannot explain; adstock is a low-pass filter and attenuates exactly</span>
+<span class="sd">        that component. So it is a sensitivity that can eat the benefit,</span>
+<span class="sd">        not merely another knob.</span>
+<span class="sd">    reference_spend:</span>
+<span class="sd">        Spend level at which the supplied marginal returns are exact, per</span>
+<span class="sd">        channel. Defaults to each channel&#39;s mean spend in `spend_df`. Supply</span>
+<span class="sd">        it explicitly when comparing schedules, so that every schedule is</span>
+<span class="sd">        calibrated against the SAME curve rather than against its own mean --</span>
+<span class="sd">        otherwise the curve moves with the schedule and the comparison is</span>
+<span class="sd">        not like for like. Ignored when the channel is linear.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    pd.Series of simulated sales values.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The demand term is added AFTER the noise draw, so supplying it does not</span>
+<span class="sd">    disturb the random stream: at demand_coef=0 (or demand=None) this function</span>
+<span class="sd">    reproduces its previous output exactly.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">true_elasticities</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">true_marginal_returns</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -1171,14 +1661,20 @@ FutureWarning -- migrate to <code>true_marginal_returns</code>.</p>
 
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
     <span class="n">sales</span> <span class="o">=</span> <span class="n">base_sales</span> <span class="o">+</span> <span class="n">revenue_noise_std</span> <span class="o">*</span> <span class="n">rng</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">spend_df</span><span class="p">))</span>
-    <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">spend_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">ch</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">true_marginal_returns</span><span class="p">:</span>
+
+    <span class="k">if</span> <span class="n">demand</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">demand_coef</span><span class="p">:</span>
+        <span class="n">demand_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">demand</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">demand_arr</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">spend_df</span><span class="p">),):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Channel &#39;</span><span class="si">{</span><span class="n">ch</span><span class="si">}</span><span class="s2">&#39; in spend_df has no entry in &quot;</span>
-                <span class="s2">&quot;true_marginal_returns. Provide true_marginal_returns for &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;all channels: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">spend_df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;demand must be a 1-D series of length </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">spend_df</span><span class="p">)</span><span class="si">}</span><span class="s2"> to match &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;spend_df, got shape </span><span class="si">{</span><span class="n">demand_arr</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
-        <span class="n">sales</span> <span class="o">=</span> <span class="n">sales</span> <span class="o">+</span> <span class="n">true_marginal_returns</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span> <span class="o">*</span> <span class="n">spend_df</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="n">sales</span> <span class="o">=</span> <span class="n">sales</span> <span class="o">+</span> <span class="n">demand_coef</span> <span class="o">*</span> <span class="n">demand_arr</span>
+
+    <span class="n">contributions</span> <span class="o">=</span> <span class="n">channel_contributions</span><span class="p">(</span>
+        <span class="n">spend_df</span><span class="p">,</span> <span class="n">true_marginal_returns</span><span class="p">,</span> <span class="n">saturation</span><span class="p">,</span> <span class="n">adstock</span><span class="p">,</span> <span class="n">reference_spend</span>
+    <span class="p">)</span>
+    <span class="n">sales</span> <span class="o">=</span> <span class="n">sales</span> <span class="o">+</span> <span class="n">contributions</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
 
     <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">sales</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;sales&quot;</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>

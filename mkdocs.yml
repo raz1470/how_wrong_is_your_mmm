@@ -39,6 +39,7 @@ nav:
   - Home: index.md
   - API Reference:
       - Diagnostic: api/diagnostic.md
+      - Identifiability: api/identifiability.md
       - Phaser: api/phaser.md
       - DiscoveryReport: api/discovery_report.md
       - DGP (simulation): api/dgp.md
