@@ -452,7 +452,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <table class="dtable scen">
       <caption>The scenario used throughout this article</caption>
       <thead>
-        <tr><th>Channel</th><th>Marginal return</th><th>Saturation</th><th>Adstock</th></tr>
+        <tr><th>Channel</th><th>Marginal return (£ per extra £1)</th><th>Saturation</th><th>Adstock</th></tr>
       </thead>
       <tbody>
         <tr><td>TV</td><td>0.50</td><td>0.60</td><td>0.50</td></tr>
@@ -463,7 +463,9 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     </table>
   </div>
 
-  <p>To keep things simple we use a power-curve saturation and geometric adstock, but this can be adapted to match the response you are using in your MMM. Saturation is the exponent on spend: 1.0 is a straight line, and the lower the value, the faster extra spend stops paying back. Adstock is the share of an ad's effect that carries into the next week, so TV keeps half and Search Generic keeps a tenth. The response function also requires an assumption for baseline, what sales would be with no marketing. We use a plausible value of 70%, but again you should use the value from your MMM results.</p>
+  <p>Marginal return is the revenue the next £1 brings in at the channel's planned weekly spend: £0.50 for TV and £1.50 for Search Generic. To keep things simple we use a power-curve saturation and geometric adstock, but this can be adapted to match the response you are using in your MMM. Saturation is the exponent on spend: 1.0 is a straight line, and the lower the value, the faster extra spend stops paying back. Adstock is the share of an ad's effect that carries into the next week, so TV keeps half and Search Generic keeps a tenth. The response function also requires an assumption for baseline, what sales would be with no marketing. We use a plausible value of 70%, but again you should use the value from your MMM results.</p>
+
+  <p>Every variance and bias figure in this article is conditional on these inputs. They show what a model would get wrong if the world worked this way. They are not a measurement of your own MMM.</p>
 
   <h3>Step 3: Generate sales/revenue</h3>
 
@@ -502,7 +504,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 <!-- SECTION 2: THE PROBLEM -->
 <section id="problem">
   <p class="s-label">2 · The problem</p>
-  <h2>Your model is more unsure than it lets on, in three separate ways</h2>
+  <h2>Three separate ways your model can mislead you</h2>
 
   <p>Now let's move on to assessing the problem. There are three areas we are going to focus on:</p>
 
@@ -535,7 +537,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <h3>Problem 2: Bias</h3>
 
-  <p>We fit the same way as for variance, with one change: the model gets the demand proxy instead of the true demand, just as a real MMM would. How large the bias is depends on the particular demand series and proxy we happen to draw, so a single draw could flatter or exaggerate it. We therefore draw 15 versions of demand and its proxy, run the 50 simulations on each, and compare the average estimate with the ground truth.</p>
+  <p>We fit the same way as for variance, with one change: the model gets the demand proxy instead of the true demand, just as a real MMM would. How large the bias is depends on the particular demand series and proxy we happen to draw, so a single draw could flatter or exaggerate it. We therefore draw 100 versions of demand and its proxy, run the 50 simulations on each, and compare the average estimate with the ground truth.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -549,10 +551,10 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
       </div>
       <svg class="chart" id="chartProblemBias" viewBox="0 0 700 210" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">The forest plot shows the model's estimated range for incremental revenue (p10 to p90 across all 750 refits) and compares it to the ground truth.</p>
+    <p class="fig-cap">The forest plot shows the model's estimated range for incremental revenue (p10 to p90 across all 5,000 refits) and compares it to the ground truth.</p>
   </div>
 
-  <p>Pay attention to how the point estimates sit above the ground truth for every channel: TV by 42%, Meta by 29%, TikTok by 31% and Search Generic by 9%. This is driven by spend following demand. When demand lifts sales, spend is up too, and whatever the proxy misses gets credited to the channels. This is omitted variable bias, and unlike variance it doesn't average out with more data. Refitting the same mis-specified model on more weeks just gets you a tighter estimate of the wrong number.</p>
+  <p>Pay attention to how the point estimates sit above the ground truth for every channel: TV by 49%, Meta by 27%, TikTok by 29% and Search Generic by 8%. This is driven by spend following demand. When demand lifts sales, spend is up too, and whatever the proxy misses gets credited to the channels. This is omitted variable bias, and unlike variance it doesn't average out with more data. Refitting the same mis-specified model on more weeks just gets you a tighter estimate of the wrong number.</p>
 
   <h3>Problem 3: Identifiability</h3>
 
@@ -618,7 +620,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <p>Bias works differently. It depends on how closely spend follows demand rather than how closely channels follow each other. So here we hold the channels at 0.7 and sweep the link between spend and demand instead (0.65 in our data generating process).</p>
 
-  <p>With a weak link TV's estimate is only a few percent too high. At our 0.65 it is 42% too high and at 0.88 it is 90% too high. 0.88 is the strongest link possible when the channels sit at 0.7.</p>
+  <p>Even with a weak link of 0.1 TV's estimate is 15% too high. At our 0.65 it is 49% too high and at 0.88 it is 91% too high. 0.88 is the strongest link possible when the channels sit at 0.7.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -652,7 +654,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <li><strong>Variance.</strong> Each channel has to move in weeks when the others don't. Random moves, drawn separately for each channel, do this.</li>
     <li><strong>Bias.</strong> The moves must have nothing to do with demand. A schedule drawn at random before the year starts can't follow it.</li>
     <li><strong>Adstock.</strong> A change has to be held for longer than the carryover lasts. Adstock smooths away a one-week blip, but a dark run or a month-long step survives it.</li>
-    <li><strong>Saturation.</strong> The channel needs spend well above its plan, held long enough to outlast adstock. Going dark doesn't help here: zero spend gives zero response whatever the curve's shape. A month that takes on extra budget adds a point well up the curve.</li>
+    <li><strong>Saturation.</strong> The channel needs spend well above its plan, held long enough to outlast adstock. Going dark doesn't help here: zero spend gives zero response whatever the curve's shape. That holds for the power curve we use. With an S-shaped curve low spend can carry information too, and we haven't tested that. A month that takes on extra budget adds a point well up the curve.</li>
   </ul>
 
   <h3>The strategies</h3>
@@ -660,9 +662,9 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p>We test six strategies. The first three are building blocks, each aimed at one of the jobs above. The fourth runs all three together. The last two are lighter alternatives.</p>
 
   <ul class="probs">
-    <li><strong>Weekly nudge.</strong> Every week moves up or down by exactly 20%. Ups and downs are balanced within the month. It is there for variance.</li>
-    <li><strong>Dark month.</strong> Once a year each channel goes dark for four weeks in a row. That budget moves into one other month. Channels take turns so no two go dark in the same month. It is there for bias and adstock.</li>
-    <li><strong>Peak month.</strong> One month a year runs at 2.5 times plan. A small equal cut to the channel's other months pays for it. Channels take turns so no two peak in the same month. It is there for saturation.</li>
+    <li><strong>Weekly nudge.</strong> Every week moves up or down by 20%. Ups and downs are balanced within the month, and the month is then rescaled to its planned total, which can lift the biggest week to 1.25 times plan. It is there for variance.</li>
+    <li><strong>Dark month.</strong> Once a year each channel goes dark for four weeks in a row. That budget moves into one other month. Channels take turns, so with up to 12 channels no two go dark in the same month. It is there for bias and adstock.</li>
+    <li><strong>Peak month.</strong> One month a year runs at 2.5 times plan. A small equal cut to the channel's other months pays for it. Channels take turns, so with up to 12 channels no two peak in the same month. It is there for saturation.</li>
     <li><strong>Combined.</strong> All three together: the dark month, the peak month, and the weekly nudge in every other month.</li>
     <li><strong>Month step.</strong> Each whole month moves up or down by 20%. Every channel gets six up months and six down months. No two channels follow the same pattern.</li>
     <li><strong>Dark week.</strong> One week a quarter goes dark, in a month picked at random. The rest of that month absorbs its budget.</li>
@@ -688,7 +690,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <h3>Which works best</h3>
 
-  <p>We run every strategy through the measures from section 2 and compare it with the unphased plan. Each strategy is averaged over 15 random draws of its schedule.</p>
+  <p>We run every strategy through the measures from section 2 and compare it with the unphased plan. Each strategy is averaged over 15 random draws of its schedule, and bias over 100 draws of demand.</p>
 
   <div class="dtable-wrap">
     <table class="dtable">
@@ -697,13 +699,13 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
         <tr><th>Strategy</th><th>Variance</th><th>Bias</th><th>Saturation</th><th>Adstock</th><th>Cost</th><th>Peak</th></tr>
       </thead>
       <tbody>
-        <tr><td>Unphased</td><td>0.24</td><td>27.7%</td><td>0.71</td><td>0.43</td><td>&mdash;</td><td>1.0x</td></tr>
-        <tr><td>Weekly nudge</td><td>0.18</td><td>27.6%</td><td>0.71</td><td>0.35</td><td>0.25%</td><td>1.3x</td></tr>
-        <tr><td>Dark month</td><td>0.08</td><td>18.4%</td><td>0.41</td><td>0.23</td><td>1.82%</td><td>2.2x</td></tr>
-        <tr><td>Peak month</td><td>0.09</td><td>23.4%</td><td>0.58</td><td>0.25</td><td>1.45%</td><td>2.5x</td></tr>
-        <tr class="winner"><td>Combined</td><td>0.07</td><td>15.2%</td><td>0.32</td><td>0.18</td><td>3.41%</td><td>2.5x</td></tr>
-        <tr><td>Month step</td><td>0.15</td><td>24.9%</td><td>0.70</td><td>0.35</td><td>0.24%</td><td>1.2x</td></tr>
-        <tr><td>Dark week</td><td>0.13</td><td>25.6%</td><td>0.63</td><td>0.28</td><td>0.64%</td><td>1.5x</td></tr>
+        <tr><td>Unphased</td><td>0.24</td><td>28.3%</td><td>0.71</td><td>0.43</td><td>&mdash;</td><td>1.0x</td></tr>
+        <tr><td>Weekly nudge</td><td>0.18</td><td>27.9%</td><td>0.71</td><td>0.35</td><td>0.25%</td><td>1.3x</td></tr>
+        <tr><td>Dark month</td><td>0.08</td><td>18.7%</td><td>0.41</td><td>0.23</td><td>1.82%</td><td>2.2x</td></tr>
+        <tr><td>Peak month</td><td>0.09</td><td>21.9%</td><td>0.58</td><td>0.25</td><td>1.45%</td><td>2.5x</td></tr>
+        <tr class="winner"><td>Combined</td><td>0.07</td><td>15.1%</td><td>0.32</td><td>0.18</td><td>3.41%</td><td>2.5x</td></tr>
+        <tr><td>Month step</td><td>0.15</td><td>26.3%</td><td>0.70</td><td>0.35</td><td>0.24%</td><td>1.2x</td></tr>
+        <tr><td>Dark week</td><td>0.13</td><td>26.0%</td><td>0.63</td><td>0.28</td><td>0.64%</td><td>1.5x</td></tr>
       </tbody>
     </table>
   </div>
@@ -715,17 +717,25 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <li><strong>Variance</strong>: the coefficient of variation, averaged over the four channels.</li>
     <li><strong>Bias</strong>: the mean absolute % gap from the truth, averaged over the four channels.</li>
     <li><strong>Saturation and adstock</strong>: the average width of each channel's range from section 2.</li>
-    <li><strong>Cost</strong>: plan-year revenue given up.</li>
+    <li><strong>Cost</strong>: the share of the revenue each channel drives in the plan year that is given up, averaged over the four channels.</li>
     <li><strong>Peak</strong>: the biggest single week as a multiple of its plan.</li>
   </ul>
 
-  <p>Combined is best on all four diagnostics. Variance falls from 0.24 to 0.07 and bias from 27.7% to 15.2%. The saturation range more than halves from 0.71 to 0.32 and the adstock range falls from 0.43 to 0.18.</p>
+  <p>Each figure is an average over simulated draws, so it would move a little on a fresh set. The Monte Carlo standard error is about 0.002 on variance, under 0.01 on the saturation and adstock ranges and about 0.5 points on bias. The unphased row has no schedule draws to average over, so it is less certain: about 0.02 on variance and 0.02 on the ranges.</p>
+
+  <p>Combined is best on all four diagnostics. Variance falls from 0.24 to 0.07 and bias from 28.3% to 15.1%. The saturation range more than halves from 0.71 to 0.32 and the adstock range falls from 0.43 to 0.18.</p>
+
+  <p>It also costs the most. Dark month is the closest alternative: it gets 92% of Combined's variance gain and 73% of its bias gain for about half the cost (1.82% against 3.41%). What it can't do is pin down saturation as well, where its range is 0.41 against Combined's 0.32. Weekly nudge is the weakest: Month step matches or beats it on every measure at the same cost.</p>
+
+  <p>Accuracy does not come for free. We think Combined's extra accuracy is worth its cost, so it is the strategy we carry forward. If that cost is too high for you, Dark month is the place to start.</p>
 
   <h3>What it costs</h3>
 
   <ul class="probs">
     <li><strong>Revenue given up.</strong> Returns diminish as spend rises, so budget moved from a quiet week into a busy one earns less than it did. The cost follows how far spend is pushed up the curve, where each extra pound earns least. That is also what pins saturation down.</li>
-    <li><strong>Platform learning phases.</strong> Ad platforms can re-enter a learning phase after a large budget change and deliver worse while they do. We don't model this. It is why every strategy caps its nudges at 20%, and why the peak column matters.</li>
+    <li><strong>Platform learning phases.</strong> Ad platforms can re-enter a learning phase after a large budget change and deliver worse while they do. We don't model this. It is why the weekly nudges are capped at 20%. Dark months and peak months are much bigger moves, which is why the peak column matters.</li>
+    <li><strong>What your channels can take.</strong> TV is often booked upfront. Generic search can't absorb 2.5 times its budget if the searches aren't there. A dark month on one channel may dent another, such as TV driving search. We don't model any of this, and each channel can be given a lighter strategy.</li>
+    <li><strong>Demand.</strong> In our data generating process demand adds to sales and doesn't change how well media works. If your media works harder when demand is high, moving spend out of busy weeks costs more than we show.</li>
   </ul>
 
 </section>
@@ -792,11 +802,11 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <h3>Impact 2: Bias</h3>
 
-  <p>Every point estimate moves toward the ground truth. TikTok's bias falls from 31.0% to 9.4% and TV's from 41.5% to 28.4%. Meta falls from 29.4% to 15.6%. Search Generic started closest and goes from 8.8% to 7.4%.</p>
+  <p>Three of the four point estimates move toward the ground truth. TikTok's bias falls from 29.2% to 9.8%, TV's from 49.2% to 29.1% and Meta's from 27.2% to 12.9%. Search Generic started closest and doesn't move: 7.6% before and 8.6% after, a difference within simulation error.</p>
 
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Point estimates move toward the truth</div>
+      <div class="fig-title">Most point estimates move toward the truth</div>
     </div>
     <div class="fig-body">
       <div class="legend">
@@ -852,7 +862,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <p>Everything above is after one year of phasing. The model is fitted on three years and only the last of them is phased. If the phasing keeps running the gains keep coming as more of the three-year window is phased.</p>
 
-  <p>Most of the gain lands in the first year. Year one delivers 85% of the three-year improvement in variance, 72% for saturation and 79% for adstock. Bias improves the slowest: 45% better after one year and 71% after three. The lines flatten by year three.</p>
+  <p>Most of the gain lands in the first year. Year one delivers 85% of the three-year improvement in variance, 72% for saturation and 79% for adstock. Bias improves the slowest: 47% better after one year and 69% after three. The lines flatten by year three.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -866,7 +876,9 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <h3>What it costs</h3>
 
-  <p>Combined gives up 3.41% of plan-year revenue, the most of the six strategies. The annual plan stays at £19.0m and no extra spend is needed. Only the timing changes.</p>
+  <p>Combined gives up 3.41% of the revenue the four channels drive in the plan year, the most of the six strategies. That is about £0.9m of £25.6m, or 1.5% of total sales. The annual plan stays at £19.0m and no extra spend is needed. Only the timing changes.</p>
+
+  <p>The cost depends on the saturation curves, which section 2 showed are hard to pin down. Keeping the same schedule and moving every channel's exponent across that range, the cost runs from 0.3% when the curves are straight lines to 5.3% at an exponent of 0.4.</p>
 </section>
 
 <!-- SECTION 6: SCALING UP -->
@@ -1051,7 +1063,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p>You supply a plausible estimate, not a proven one. The package uses it as the ground truth to measure against: it simulates revenue from that assumption, refits the model across many plausible versions of your history, and reports how far the answer moves. That spread tells you how reliable your model is, not whether your assumed number was right.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Why not just run a geo-lift test instead?</p>
-  <p>Geo-experiments are the gold standard, but they test one channel at a time, need a region you can go dark in and take months to read. You can't run one for TV, Meta, Search Generic and TikTok at the same time. The tools are also less reliable than they look: in the <a href="https://research.getrecast.com/geolift-sim-study" target="_blank" rel="noopener">Recast study</a> from the introduction, Meta's GeoLift missed around 90% of real effects. Phasing improves the data for every channel at once. If you do have budget for a test, save it for creative testing: <a href="https://www.nielsen.com/insights/2017/perspectives-want-a-successful-ad-get-creative/" target="_blank" rel="noopener">Nielsen</a> found creative quality drives as much of a campaign's sales impact as every other factor combined.</p>
+  <p>If you can run them, you should. Geo-experiments are the gold standard for a single channel. They take planning: you need regions you can hold out, and each test takes weeks or months to read. Testing several channels at once is possible with multi-cell designs, but it needs more regions and more budget. They aren't immune to noise either: one <a href="https://research.getrecast.com/geolift-sim-study" target="_blank" rel="noopener">simulation study by Recast</a> found Meta's GeoLift missed around 90% of real effects in its set-up. Phasing is not a replacement. It improves the data your MMM sees for every channel at once, and an experiment can then calibrate the channels that matter most.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Doesn't a Bayesian model already fix this?</p>
   <p>Not on its own. Priors are genuinely useful, and Google's own <a href="https://research.google/pubs/bayesian-methods-for-media-mix-modeling-with-carryover-and-shape-effects/" target="_blank" rel="noopener">Bayesian MMM paper</a> shows why: they stabilise noisy estimates, and its flexible functional forms capture how spend decays and saturates over time. But priors can't invent information that was never in the data. That paper says as much itself, noting that the optimal media mix it produces “has a large variance due to the variance of the parameter estimates”. If TV and Meta always moved together, no prior tells you which one actually drove sales.</p>
@@ -1060,7 +1072,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p>Genuinely useful, and worth doing if you can. Google's own <a href="https://research.google/pubs/geo-level-bayesian-hierarchical-media-mix-modeling/" target="_blank" rel="noopener">geo-level hierarchical paper</a> shows that pooling across regions gives tighter intervals than national data alone. But your planning cycle is national, so TV and Search rise and fall together in every region: more rows, the same correlation inside each one. National TV and OOH are bought without a regional breakout, so any geo split there is an allocation rule rather than a measurement, and the paper is candid about what that costs: estimates "generally deteriorate as more media variables are imputed using the national level data". Small regions are noisy on top of that. It helps, but it can't manufacture variation your plan never had.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Won't this put my channels into learning mode?</p>
-  <p>Possibly. Ad platforms can re-enter a learning phase after a large budget change, which is why every strategy caps its nudges at 20% (see section 4). Dark weeks and the budget they free up are bigger moves, so check the peak week before you commit. If a channel can't take them, give it a lighter strategy rather than leaving it out. In our tests a channel left at its plan while the others were phased ended up with more bias than before, because it was the only one still following demand. It's a compromise between data science and marketing, and each channel can be set separately.</p>
+  <p>Possibly. Ad platforms can re-enter a learning phase after a large budget change, which is why the weekly nudges are capped at 20% (see section 4). Dark weeks and the budget they free up are bigger moves, so check the peak week before you commit. If a channel can't take them, give it a lighter strategy rather than leaving it out. In our tests a channel left at its plan while the others were phased ended up with more bias than before, because it was the only one still following demand. It's a compromise between data science and marketing, and each channel can be set separately.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">What about brand search and affiliates?</p>
   <p>They are the hardest case for bias. With most channels you set a budget and demand only shapes it. With brand search and affiliates, demand sets the spend directly: you pay per click or per sale, so a good week for the business is automatically a big week for the channel. An MMM reads that as the channel driving the sales and gives it too much credit. This is endogeneity, and more data doesn't fix it while spend keeps following sales. A weekly nudge doesn't apply, because there is no fixed budget to nudge. A dark period does. Switching the channel off for a few weeks is a move in spend that demand didn't cause, which is exactly what the model is missing.</p>
@@ -1077,9 +1089,9 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p class="s-label">9 · Bringing it together</p>
   <h2>It was never the model's fault</h2>
 
-  <p>Marketing budgets are planned together, follow demand and rarely leave their usual range. That leaves your MMM unsure in three separate ways. Its estimates have more variance than it lets on. They are biased by the demand it never saw. And it can't tell the shape of your response curves. This article measures all three at once.</p>
+  <p>Marketing budgets are planned together, follow demand and rarely leave their usual range. That leaves your MMM unsure in three separate ways. Its estimates move a long way from one refit to the next. They are biased by the demand it never saw. And it can't tell the shape of your response curves. This article measures all three at once.</p>
 
-  <p>Budget phasing goes after the cause, which is spend that carries too little information. It changes when each channel spends and keeps each channel's annual budget. On our scenario the Combined strategy cuts variance by 70% and bias by 45%. The saturation and adstock ranges narrow by 54% and 58%. It costs 3.41% of plan-year revenue. It holds from 5 to 15 channels, although the bias gain shrinks as channels are added. A Bayesian model doesn't get around any of this: priors can't create variation the data never had.</p>
+  <p>Budget phasing goes after the cause, which is spend that carries too little information. It changes when each channel spends and keeps each channel's annual budget. On our scenario the Combined strategy cuts variance by 70% and bias by 47%. The saturation and adstock ranges narrow by 54% and 58%. It costs 3.41% of the revenue the channels drive, about £0.9m here. It holds from 5 to 15 channels, although the bias gain shrinks as channels are added. A Bayesian model doesn't get around any of this: priors can't create variation the data never had.</p>
 
   <h3>What comes next</h3>
 
@@ -1349,10 +1361,10 @@ const BIAS_DATA = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c] }));
 // "believed revenue" in £ against a true-revenue dashed line (same units
 // as the variance chart), not a percentage. believed = true_revenue *
 // (1 + bias_pct/100); truth reuses the same true_revenue as PROBLEM_DATA.
-BIAS_DATA[0] = { ...BIAS_DATA[0], p10: 3.957, p90: 9.177, point: 6.545, truth: 4.625 };
-BIAS_DATA[1] = { ...BIAS_DATA[1], p10: 5.666, p90: 9.780, point: 7.747, truth: 5.987 };
-BIAS_DATA[2] = { ...BIAS_DATA[2], p10: 6.631, p90: 9.391, point: 8.044, truth: 7.394 };
-BIAS_DATA[3] = { ...BIAS_DATA[3], p10: 7.711, p90: 12.333, point: 9.984, truth: 7.621 };
+BIAS_DATA[0] = { ...BIAS_DATA[0], p10: 4.080, p90: 9.741, point: 6.900, truth: 4.625 };
+BIAS_DATA[1] = { ...BIAS_DATA[1], p10: 5.393, p90: 9.767, point: 7.614, truth: 5.987 };
+BIAS_DATA[2] = { ...BIAS_DATA[2], p10: 6.634, p90: 9.208, point: 7.953, truth: 7.394 };
+BIAS_DATA[3] = { ...BIAS_DATA[3], p10: 7.371, p90: 12.185, point: 9.847, truth: 7.621 };
 
 const ADSTOCK_DATA = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c] }));
 ADSTOCK_DATA[0] = { ...ADSTOCK_DATA[0], p10: 0.05, p90: 0.66, point: 0.45, truth: 0.50 };
@@ -1447,10 +1459,10 @@ VARIANCE_IMPACT[3] = { ...VARIANCE_IMPACT[3], before: { p10: 5.795, p90: 9.351, 
 // Same fix as BIAS_DATA above: believed revenue (£m) vs. true revenue,
 // not % error -- matches _discovery_report.py's bias_svg exactly.
 const BIAS_IMPACT = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c], sub: `£${CH_SPEND[c].toFixed(1)}m spend` }));
-BIAS_IMPACT[0] = { ...BIAS_IMPACT[0], before: { p10: 3.957, p90: 9.177, point: 6.545 }, after: { p10: 4.767, p90: 7.269, point: 5.938 }, truth: 4.625 };
-BIAS_IMPACT[1] = { ...BIAS_IMPACT[1], before: { p10: 5.666, p90: 9.780, point: 7.747 }, after: { p10: 6.103, p90: 7.789, point: 6.923 }, truth: 5.987 };
-BIAS_IMPACT[2] = { ...BIAS_IMPACT[2], before: { p10: 6.631, p90: 9.391, point: 8.044 }, after: { p10: 7.399, p90: 8.440, point: 7.940 }, truth: 7.394 };
-BIAS_IMPACT[3] = { ...BIAS_IMPACT[3], before: { p10: 7.711, p90: 12.333, point: 9.984 }, after: { p10: 7.327, p90: 9.248, point: 8.339 }, truth: 7.621 };
+BIAS_IMPACT[0] = { ...BIAS_IMPACT[0], before: { p10: 4.080, p90: 9.741, point: 6.900 }, after: { p10: 4.882, p90: 7.056, point: 5.971 }, truth: 4.625 };
+BIAS_IMPACT[1] = { ...BIAS_IMPACT[1], before: { p10: 5.393, p90: 9.767, point: 7.614 }, after: { p10: 5.974, p90: 7.543, point: 6.758 }, truth: 5.987 };
+BIAS_IMPACT[2] = { ...BIAS_IMPACT[2], before: { p10: 6.634, p90: 9.208, point: 7.953 }, after: { p10: 7.456, p90: 8.615, point: 8.027 }, truth: 7.394 };
+BIAS_IMPACT[3] = { ...BIAS_IMPACT[3], before: { p10: 7.371, p90: 12.185, point: 9.847 }, after: { p10: 7.546, p90: 9.183, point: 8.369 }, truth: 7.621 };
 
 const SATURATION_IMPACT = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c] }));
 SATURATION_IMPACT[0] = { ...SATURATION_IMPACT[0], sub: 'true 0.60', before: { p10: 0.20, p90: 1.00, point: 0.61 }, after: { p10: 0.31, p90: 0.90, point: 0.61 }, truth: 0.60 };
@@ -1995,7 +2007,7 @@ function drawCorrCostNarrow(svg) {
 // demand_spend_corr swept (the 0.9 request is capped at 0.88, the most the
 // spend factor reaches at 0.7). Adstock: IdentifiabilityDiagnostic, 50 draws,
 // demand built once at 0.7. Unphased, report defaults.
-const CORR_BIAS = [{ x: '0.1', v: 3.3 }, { x: '0.2', v: 7.5 }, { x: '0.3', v: 12.4 }, { x: '0.4', v: 18.2 }, { x: '0.5', v: 25.5 }, { x: '0.6', v: 35.3 }, { x: '0.7', v: 49.1 }, { x: '0.8', v: 70.0 }, { x: '0.88', v: 89.9 }];
+const CORR_BIAS = [{ x: '0.1', v: 15.2 }, { x: '0.2', v: 19.2 }, { x: '0.3', v: 23.7 }, { x: '0.4', v: 28.9 }, { x: '0.5', v: 35.4 }, { x: '0.6', v: 43.8 }, { x: '0.7', v: 55.6 }, { x: '0.8', v: 73.6 }, { x: '0.88', v: 90.8 }];
 const BIAS_SWEEP = { data: CORR_BIAS, color: CH_COLOR.tv, yMax: 100, yStep: 25, fmt: v => `${Math.round(v)}%`,
   yTitle: "How far TV's estimate is too high", xTitle: 'Link between spend and demand' };
 function drawSweepBars(svg, c) {
@@ -2076,7 +2088,7 @@ const TTB = [
   { name: 'Variance', color: '#111827', v: [0, 70.1, 78.8, 82.4] },
   { name: 'Saturation', color: '#0d9488', v: [0, 54.4, 70.6, 75.1] },
   { name: 'Adstock', color: '#92400e', v: [0, 58.0, 69.8, 73.1] },
-  { name: 'Bias', color: '#7c3aed', v: [0, 45.1, 64.3, 71.1] },
+  { name: 'Bias', color: '#7c3aed', v: [0, 46.7, 64.0, 69.4] },
 ];
 function drawTTBAt(svg, W, H, m, fs, fsLab, xTitleY, xLabs) {
   const pw = W - m.left - m.right, ph = H - m.top - m.bottom;

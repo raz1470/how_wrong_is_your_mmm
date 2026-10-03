@@ -1,0 +1,240 @@
+{
+ "unphased": {
+  "variance": 0.225385,
+  "variance_se": 0.01760307602989562,
+  "saturation": 0.7177916666666667,
+  "saturation_se": 0.018646839225328178,
+  "adstock": 0.4398,
+  "adstock_se": 0.023277288133653855,
+  "bias": 28.284132,
+  "bias_by_channel": {
+   "tv": 49.181,
+   "meta": 27.171,
+   "search_generic": 7.569,
+   "tiktok": 29.216
+  },
+  "bias_by_channel_se": {
+   "tv": 2.835,
+   "meta": 1.575,
+   "search_generic": 0.83,
+   "tiktok": 1.4
+  },
+  "bias_se": 0.40084288923234657
+ },
+ "Weekly nudge": {
+  "variance": 0.18008666666666667,
+  "variance_se": 0.001621413380112039,
+  "saturation": 0.70875,
+  "saturation_se": 0.002934680764661842,
+  "adstock": 0.3538,
+  "adstock_se": 0.00452283886829626,
+  "bias": 27.949785750000004,
+  "bias_by_channel": {
+   "tv": 58.442,
+   "meta": 24.97,
+   "search_generic": 7.732,
+   "tiktok": 20.655
+  },
+  "bias_by_channel_se": {
+   "tv": 2.551,
+   "meta": 1.299,
+   "search_generic": 0.663,
+   "tiktok": 0.999
+  },
+  "bias_se": 0.36458854596693663,
+  "bias_improvement_pct": 1.1820983228334359,
+  "bias_improvement_pct_se": 0.5696128591308037,
+  "abs_bias_change_by_channel": {
+   "tv": 9.261,
+   "meta": -2.201,
+   "search_generic": 0.163,
+   "tiktok": -8.56
+  },
+  "abs_bias_change_by_channel_se": {
+   "tv": 1.537,
+   "meta": 0.924,
+   "search_generic": 0.501,
+   "tiktok": 0.918
+  }
+ },
+ "Dark month": {
+  "variance": 0.08488166666666666,
+  "variance_se": 0.0011279523869834173,
+  "saturation": 0.40745833333333337,
+  "saturation_se": 0.006488160768563777,
+  "adstock": 0.22699999999999995,
+  "adstock_se": 0.0038893168698738993,
+  "bias": 18.69523275,
+  "bias_by_channel": {
+   "tv": 34.66,
+   "meta": 17.139,
+   "search_generic": 10.344,
+   "tiktok": 12.638
+  },
+  "bias_by_channel_se": {
+   "tv": 1.821,
+   "meta": 0.998,
+   "search_generic": 0.567,
+   "tiktok": 0.727
+  },
+  "bias_se": 0.39187625808951954,
+  "bias_improvement_pct": 33.90204532350507,
+  "bias_improvement_pct_se": 1.3241861779832511,
+  "abs_bias_change_by_channel": {
+   "tv": -14.521,
+   "meta": -10.032,
+   "search_generic": 2.775,
+   "tiktok": -16.578
+  },
+  "abs_bias_change_by_channel_se": {
+   "tv": 2.986,
+   "meta": 1.772,
+   "search_generic": 0.841,
+   "tiktok": 1.322
+  }
+ },
+ "Peak month": {
+  "variance": 0.09067499999999999,
+  "variance_se": 0.0021652477038545995,
+  "saturation": 0.5829166666666666,
+  "saturation_se": 0.008129958804245574,
+  "adstock": 0.25275000000000003,
+  "adstock_se": 0.006418444404326377,
+  "bias": 21.939447749999996,
+  "bias_by_channel": {
+   "tv": 42.017,
+   "meta": 18.897,
+   "search_generic": 10.968,
+   "tiktok": 15.876
+  },
+  "bias_by_channel_se": {
+   "tv": 1.833,
+   "meta": 0.955,
+   "search_generic": 0.629,
+   "tiktok": 0.928
+  },
+  "bias_se": 0.48686131579523845,
+  "bias_improvement_pct": 22.43195672400342,
+  "bias_improvement_pct_se": 1.5398061097241271,
+  "abs_bias_change_by_channel": {
+   "tv": -7.164,
+   "meta": -8.274,
+   "search_generic": 3.399,
+   "tiktok": -13.34
+  },
+  "abs_bias_change_by_channel_se": {
+   "tv": 2.648,
+   "meta": 1.585,
+   "search_generic": 0.822,
+   "tiktok": 1.294
+  }
+ },
+ "Combined": {
+  "variance": 0.07081500000000002,
+  "variance_se": 0.00176479258190385,
+  "saturation": 0.322125,
+  "saturation_se": 0.008697931814928353,
+  "adstock": 0.181,
+  "adstock_se": 0.003688544041062429,
+  "bias": 15.088043,
+  "bias_by_channel": {
+   "tv": 29.083,
+   "meta": 12.881,
+   "search_generic": 8.563,
+   "tiktok": 9.824
+  },
+  "bias_by_channel_se": {
+   "tv": 1.49,
+   "meta": 0.809,
+   "search_generic": 0.475,
+   "tiktok": 0.665
+  },
+  "bias_se": 0.39715803671748595,
+  "bias_improvement_pct": 46.655449776574365,
+  "bias_improvement_pct_se": 1.3242934209435553,
+  "abs_bias_change_by_channel": {
+   "tv": -20.098,
+   "meta": -14.289,
+   "search_generic": 0.994,
+   "tiktok": -19.391
+  },
+  "abs_bias_change_by_channel_se": {
+   "tv": 2.812,
+   "meta": 1.744,
+   "search_generic": 0.806,
+   "tiktok": 1.354
+  }
+ },
+ "Month step": {
+  "variance": 0.152615,
+  "variance_se": 0.0020248101027950617,
+  "saturation": 0.6977083333333333,
+  "saturation_se": 0.00456747798667166,
+  "adstock": 0.3491,
+  "adstock_se": 0.004777663804472998,
+  "bias": 26.3071795,
+  "bias_by_channel": {
+   "tv": 51.375,
+   "meta": 22.275,
+   "search_generic": 9.053,
+   "tiktok": 22.526
+  },
+  "bias_by_channel_se": {
+   "tv": 2.569,
+   "meta": 1.481,
+   "search_generic": 0.727,
+   "tiktok": 1.132
+  },
+  "bias_se": 0.4515409601969178,
+  "bias_improvement_pct": 6.989617005040138,
+  "bias_improvement_pct_se": 1.4262083886956702,
+  "abs_bias_change_by_channel": {
+   "tv": 2.194,
+   "meta": -4.896,
+   "search_generic": 1.484,
+   "tiktok": -6.689
+  },
+  "abs_bias_change_by_channel_se": {
+   "tv": 2.862,
+   "meta": 1.529,
+   "search_generic": 0.781,
+   "tiktok": 1.146
+  }
+ },
+ "Dark week": {
+  "variance": 0.128705,
+  "variance_se": 0.0023909467142695156,
+  "saturation": 0.6319166666666667,
+  "saturation_se": 0.0061683556245656895,
+  "adstock": 0.27940000000000004,
+  "adstock_se": 0.0035863331850632223,
+  "bias": 25.95410799999999,
+  "bias_by_channel": {
+   "tv": 62.439,
+   "meta": 20.505,
+   "search_generic": 7.933,
+   "tiktok": 12.94
+  },
+  "bias_by_channel_se": {
+   "tv": 1.819,
+   "meta": 1.006,
+   "search_generic": 0.518,
+   "tiktok": 0.718
+  },
+  "bias_se": 0.32933161190584653,
+  "bias_improvement_pct": 8.237919410077744,
+  "bias_improvement_pct_se": 0.7547082746377197,
+  "abs_bias_change_by_channel": {
+   "tv": 13.258,
+   "meta": -6.666,
+   "search_generic": 0.364,
+   "tiktok": -16.276
+  },
+  "abs_bias_change_by_channel_se": {
+   "tv": 2.03,
+   "meta": 1.421,
+   "search_generic": 0.696,
+   "tiktok": 1.133
+  }
+ }
+}

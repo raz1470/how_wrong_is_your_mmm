@@ -12,6 +12,8 @@ Run every script from the repo root with `uv run python <script>`.
 | 3: bias against the demand link, variance against channel correlation | `corr_sweep.py` | `results/corr_sweep.json` |
 | 4: one phased schedule per strategy | `phase_panels.py` | `results/phase_panels.json` |
 | 5: the winner's phased spend by channel | `winner_spend.py` | `results/winner_spend.json` |
+| 4: Monte Carlo standard errors under the strategy table | `mc_error.py` | `results/mc_error.json` |
+| 5 and 9: cost in £ and as a share of sales, and its range across saturation exponents | `cost.py` | `results/cost.json` |
 | 6: does it scale, 5 to 15 channels | `section6/` | `section6/results/scale_summary_4seed.json` |
 
 ## Section 6
@@ -34,13 +36,20 @@ regenerates them.
 
 - `summarise.py` reproduces `scale_summary_4seed.json`, which matches the
   `SCALE` constant in the article.
+- `example_scenario.py` and `corr_sweep.py` were re-run on the current
+  package at 100 bias draws. Only the bias figures moved; variance,
+  saturation, adstock, cost and the winner are identical to the earlier
+  run.
+- `mc_error.py` reproduces the table's bias column from its own draws.
 - `phase_panels.py` and `winner_spend.py` reproduce their committed
-  results on the current package.
-- `example_scenario.py`, `corr_sweep.py` and the section 6 fits have not
-  been re-run since the article was built.
+  results.
+- The section 6 full fits have not been re-run since the article was
+  built.
 
 ## Bias draws
 
-Sections 1 to 5 were built when the report averaged bias over 15 demand
-draws. `DiscoveryReport.fit()` now defaults to 100, so the scripts for
-those sections pin `n_bias_draws=15` to reproduce the published numbers.
+Every bias figure in the article is an average over 100 demand draws, the
+`DiscoveryReport.fit()` default. Sections 1 to 5 were first built at 15
+draws; at 100, Search Generic's bias no longer improves under Combined
+(7.6% to 8.6%, within simulation error) and TV's unphased bias is 49%, not
+42%.

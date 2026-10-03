@@ -2,7 +2,7 @@
 
 Scenario = tools/generate_example_report.py (104w trend history + 52w plan,
 report defaults: demand_spend_corr 0.65, trend). Main fit uses default
-fit() settings apart from the bias draws (see below). Run from repo root:
+fit() settings. Run from repo root:
     uv run python tools/overview_data/example_scenario.py
 Writes results/example_scenario.json.
 """
@@ -121,9 +121,7 @@ out = {}
 
 # ── Main report, default settings (= docs/example-report.html) ──
 r = make_report(hist, plan)
-# The article's sections 1 to 5 were built at 15 bias draws, the default at
-# the time. fit() now defaults to 100.
-r.fit(n_bias_draws=15)
+r.fit()
 truth = true_revenue(r)
 u, w = r.results_["unphased"], r.results_[r.winner_]
 labels = [lb for lb, *_ in r.levers_]

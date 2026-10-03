@@ -63,7 +63,7 @@ def run(h, p, **kw):
         plan_year="2027",
         levers=UNPH,
         **kw,
-    ).fit(n_bias_draws=15)  # as the article was built
+    ).fit()
     res = r.results_["Unphased"]
     return r, {
         "cv": {k: 100 * v for k, v in res["variance_cv"].items()},
