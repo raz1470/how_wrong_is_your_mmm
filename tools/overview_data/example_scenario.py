@@ -37,7 +37,7 @@ def scenario(correlation=0.7):
         n_obs=N_HISTORY,
         correlation=correlation,
         channels=CH,
-        seed=12,
+        seed=37,
         start_date="2025-01-06",
         demand=DEMAND[:N_HISTORY],
     )

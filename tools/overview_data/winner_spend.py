@@ -13,7 +13,7 @@ h = simulate_spend(
     n_obs=104,
     correlation=0.7,
     channels=CH,
-    seed=12,
+    seed=37,
     start_date="2025-01-06",
     demand=D[:104],
 )

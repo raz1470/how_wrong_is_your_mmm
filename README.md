@@ -32,6 +32,20 @@ cd how_wrong_is_your_mmm
 uv venv --python 3.12 && uv sync
 ```
 
+### Your inputs
+
+Every step takes the same inputs: your spend, and plausible values from your MMM.
+
+```python
+# history: your multi-year weekly spend, one column per channel (DatetimeIndex)
+# plan:    the upcoming year's weekly spend plan (DatetimeIndex, same channels)
+
+marginal_returns = {"tv": 1.8, "paid_social": 2.4, "search": 4.1}  # revenue from the next £1
+saturation = {"tv": 0.6, "paid_social": 0.75, "search": 0.9}  # curve exponent, 1.0 is linear
+adstock = {"tv": 0.5, "paid_social": 0.3, "search": 0.1}  # share of the effect carried into next week
+noise_std = 50_000  # weekly sales noise sd in GBP
+```
+
 ### 1. Diagnose
 
 How much do your marginal-return estimates swing, given your own spend history?
@@ -40,9 +54,11 @@ How much do your marginal-return estimates swing, given your own spend history?
 from how_wrong_is_your_mmm import CollinearityDiagnostic
 
 diag = CollinearityDiagnostic(
-    spend_df=my_spend_df,
-    true_marginal_returns={"tv": 1.8, "paid_social": 2.4, "search": 4.1},  # your own numbers
-    revenue_noise_std=my_noise_std,  # weekly noise sd in GBP, your own assumption
+    spend_df=history,
+    true_marginal_returns=marginal_returns,
+    saturation=saturation,
+    adstock=adstock,
+    revenue_noise_std=noise_std,
 )
 diag.fit()
 diag.summary()
@@ -55,9 +71,14 @@ Get a weekly schedule that breaks the correlation between channels:
 ```python
 from how_wrong_is_your_mmm import BudgetPhaser
 
-# history: your multi-year spend history (DatetimeIndex)
-# plan:    the upcoming year's spend plan (DatetimeIndex, same channels)
-phaser = BudgetPhaser(history_df=history, plan_df=plan)
+phaser = BudgetPhaser(
+    history_df=history,
+    plan_df=plan,
+    true_marginal_returns=marginal_returns,
+    saturation=saturation,
+    adstock=adstock,
+    revenue_noise_std=noise_std,
+)
 phaser.fit()
 phaser.recommended_schedule_  # 52-week DataFrame, monthly totals guaranteed to match
 ```
@@ -72,8 +93,10 @@ from how_wrong_is_your_mmm import DiscoveryReport
 report = DiscoveryReport(
     history_df=history,
     plan_df=plan,
-    true_marginal_returns={"tv": 1.8, "paid_social": 2.4, "search": 4.1},  # your own numbers
-    revenue_noise_pct=0.02,  # weekly noise sd as a share of average weekly sales (default)
+    true_marginal_returns=marginal_returns,
+    saturation=saturation,
+    adstock=adstock,
+    revenue_noise_std=noise_std,
     client_name="Example Brand",
     # optional: pin a strategy instead of sweeping for one, with per-channel overrides
     # strategy_pct=60.0,
@@ -81,10 +104,7 @@ report = DiscoveryReport(
 )
 report.fit()
 report.to_html("reports/example_brand.html")  # self-contained HTML, open it in a browser
-report.schedule_csv(
-    "reports/example_brand_schedule.csv"
-)  # the recommended weekly schedule as a CSV
-report.growth_readout()  # each channel's return at +50% and +100% spend, unphased vs phased
+report.schedule_csv("reports/example_brand_schedule.csv")  # the recommended weekly schedule
 ```
 
 `true_marginal_returns` and the noise level are the two inputs that matter most. Supply your own for both.

@@ -52,7 +52,6 @@ report = DiscoveryReport(history_df=history, plan_df=plan, client_name="Example 
 report.fit()
 report.to_html("reports/example_brand.html")
 report.schedule_csv("reports/example_brand_schedule.csv")
-report.growth_readout()
 ```
 
 Source: [github.com/raz1470/how_wrong_is_your_mmm](https://github.com/raz1470/how_wrong_is_your_mmm)

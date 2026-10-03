@@ -29,7 +29,7 @@ UNPH = [("Unphased", {ch: 0.0 for ch in CH}, "uniform", False)]
 def spend(c):
     out = []
     for n, seed, start, dem in [
-        (NH, 12, "2025-01-06", D[:NH]),
+        (NH, 37, "2025-01-06", D[:NH]),
         (NP, 13, "2027-01-04", D[NH:]),
     ]:
         rng = np.random.default_rng(seed)
