@@ -922,13 +922,11 @@ control for in practice. Default 0.8.</p>
 default) and adstock decay lambda in [0, 1) (0.0 = no carryover,
 default) to assume PER CHANNEL -- either a dict covering every
 channel in history_df/plan_df, or a single float that broadcasts
-to every channel (the old shared-value behaviour). Each channel
+to every channel. Each channel
 gets its own value because IdentifiabilityDiagnostic's grid search
 is now per-channel too: a channel's OWN spend pattern determines
 how well its OWN curvature can be pinned down, which differs by
-channel even when every channel shares the same assumed curvature
-(session 45, changed from the original single-shared-float design
-at Ryan's request -- see NOTES.md).</p>
+channel even when every channel shares the same assumed curvature.</p>
               </div>
             </td>
             <td>
@@ -948,13 +946,11 @@ at Ryan's request -- see NOTES.md).</p>
 default) and adstock decay lambda in [0, 1) (0.0 = no carryover,
 default) to assume PER CHANNEL -- either a dict covering every
 channel in history_df/plan_df, or a single float that broadcasts
-to every channel (the old shared-value behaviour). Each channel
+to every channel. Each channel
 gets its own value because IdentifiabilityDiagnostic's grid search
 is now per-channel too: a channel's OWN spend pattern determines
 how well its OWN curvature can be pinned down, which differs by
-channel even when every channel shares the same assumed curvature
-(session 45, changed from the original single-shared-float design
-at Ryan's request -- see NOTES.md).</p>
+channel even when every channel shares the same assumed curvature.</p>
               </div>
             </td>
             <td>
@@ -1043,11 +1039,7 @@ baseline entry first.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Pin a single strategy instead of sweeping for one (session 51,
-Ryan: "we want to be able to use this class and pick a strategy
-and set channel constraints" -- this replaced the separate
-ReportBuilder class, which used to be the "I've picked one, give
-me the CSV" report once a strategy was chosen elsewhere).
+                <p>Pin a single strategy instead of sweeping for one.
 strategy_pct is the same per-channel spec <em>default_levers uses for
 one candidate: a float (symmetric +/-X% for every channel), a
 Blackout, a Redistribute (its edge_cap_pct is the intensity;
@@ -1081,11 +1073,7 @@ is None.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Pin a single strategy instead of sweeping for one (session 51,
-Ryan: "we want to be able to use this class and pick a strategy
-and set channel constraints" -- this replaced the separate
-ReportBuilder class, which used to be the "I've picked one, give
-me the CSV" report once a strategy was chosen elsewhere).
+                <p>Pin a single strategy instead of sweeping for one.
 strategy_pct is the same per-channel spec <em>default_levers uses for
 one candidate: a float (symmetric +/-X% for every channel), a
 Blackout, a Redistribute (its edge_cap_pct is the intensity;
@@ -1119,11 +1107,7 @@ is None.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Pin a single strategy instead of sweeping for one (session 51,
-Ryan: "we want to be able to use this class and pick a strategy
-and set channel constraints" -- this replaced the separate
-ReportBuilder class, which used to be the "I've picked one, give
-me the CSV" report once a strategy was chosen elsewhere).
+                <p>Pin a single strategy instead of sweeping for one.
 strategy_pct is the same per-channel spec <em>default_levers uses for
 one candidate: a float (symmetric +/-X% for every channel), a
 Blackout, a Redistribute (its edge_cap_pct is the intensity;
@@ -1319,7 +1303,72 @@ in, since calibrate_baseline's demand_coef assumes that scale.</p>
 
                   <details class="mkdocstrings-source">
                     <summary>Source code in <code>src/how_wrong_is_your_mmm/_discovery_report.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1421</span>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1356</span>
+<span class="normal">1357</span>
+<span class="normal">1358</span>
+<span class="normal">1359</span>
+<span class="normal">1360</span>
+<span class="normal">1361</span>
+<span class="normal">1362</span>
+<span class="normal">1363</span>
+<span class="normal">1364</span>
+<span class="normal">1365</span>
+<span class="normal">1366</span>
+<span class="normal">1367</span>
+<span class="normal">1368</span>
+<span class="normal">1369</span>
+<span class="normal">1370</span>
+<span class="normal">1371</span>
+<span class="normal">1372</span>
+<span class="normal">1373</span>
+<span class="normal">1374</span>
+<span class="normal">1375</span>
+<span class="normal">1376</span>
+<span class="normal">1377</span>
+<span class="normal">1378</span>
+<span class="normal">1379</span>
+<span class="normal">1380</span>
+<span class="normal">1381</span>
+<span class="normal">1382</span>
+<span class="normal">1383</span>
+<span class="normal">1384</span>
+<span class="normal">1385</span>
+<span class="normal">1386</span>
+<span class="normal">1387</span>
+<span class="normal">1388</span>
+<span class="normal">1389</span>
+<span class="normal">1390</span>
+<span class="normal">1391</span>
+<span class="normal">1392</span>
+<span class="normal">1393</span>
+<span class="normal">1394</span>
+<span class="normal">1395</span>
+<span class="normal">1396</span>
+<span class="normal">1397</span>
+<span class="normal">1398</span>
+<span class="normal">1399</span>
+<span class="normal">1400</span>
+<span class="normal">1401</span>
+<span class="normal">1402</span>
+<span class="normal">1403</span>
+<span class="normal">1404</span>
+<span class="normal">1405</span>
+<span class="normal">1406</span>
+<span class="normal">1407</span>
+<span class="normal">1408</span>
+<span class="normal">1409</span>
+<span class="normal">1410</span>
+<span class="normal">1411</span>
+<span class="normal">1412</span>
+<span class="normal">1413</span>
+<span class="normal">1414</span>
+<span class="normal">1415</span>
+<span class="normal">1416</span>
+<span class="normal">1417</span>
+<span class="normal">1418</span>
+<span class="normal">1419</span>
+<span class="normal">1420</span>
+<span class="normal">1421</span>
 <span class="normal">1422</span>
 <span class="normal">1423</span>
 <span class="normal">1424</span>
@@ -1468,72 +1517,7 @@ in, since calibrate_baseline's demand_coef assumes that scale.</p>
 <span class="normal">1567</span>
 <span class="normal">1568</span>
 <span class="normal">1569</span>
-<span class="normal">1570</span>
-<span class="normal">1571</span>
-<span class="normal">1572</span>
-<span class="normal">1573</span>
-<span class="normal">1574</span>
-<span class="normal">1575</span>
-<span class="normal">1576</span>
-<span class="normal">1577</span>
-<span class="normal">1578</span>
-<span class="normal">1579</span>
-<span class="normal">1580</span>
-<span class="normal">1581</span>
-<span class="normal">1582</span>
-<span class="normal">1583</span>
-<span class="normal">1584</span>
-<span class="normal">1585</span>
-<span class="normal">1586</span>
-<span class="normal">1587</span>
-<span class="normal">1588</span>
-<span class="normal">1589</span>
-<span class="normal">1590</span>
-<span class="normal">1591</span>
-<span class="normal">1592</span>
-<span class="normal">1593</span>
-<span class="normal">1594</span>
-<span class="normal">1595</span>
-<span class="normal">1596</span>
-<span class="normal">1597</span>
-<span class="normal">1598</span>
-<span class="normal">1599</span>
-<span class="normal">1600</span>
-<span class="normal">1601</span>
-<span class="normal">1602</span>
-<span class="normal">1603</span>
-<span class="normal">1604</span>
-<span class="normal">1605</span>
-<span class="normal">1606</span>
-<span class="normal">1607</span>
-<span class="normal">1608</span>
-<span class="normal">1609</span>
-<span class="normal">1610</span>
-<span class="normal">1611</span>
-<span class="normal">1612</span>
-<span class="normal">1613</span>
-<span class="normal">1614</span>
-<span class="normal">1615</span>
-<span class="normal">1616</span>
-<span class="normal">1617</span>
-<span class="normal">1618</span>
-<span class="normal">1619</span>
-<span class="normal">1620</span>
-<span class="normal">1621</span>
-<span class="normal">1622</span>
-<span class="normal">1623</span>
-<span class="normal">1624</span>
-<span class="normal">1625</span>
-<span class="normal">1626</span>
-<span class="normal">1627</span>
-<span class="normal">1628</span>
-<span class="normal">1629</span>
-<span class="normal">1630</span>
-<span class="normal">1631</span>
-<span class="normal">1632</span>
-<span class="normal">1633</span>
-<span class="normal">1634</span>
-<span class="normal">1635</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">1570</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">history_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">plan_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
@@ -2023,7 +2007,72 @@ by how much history there is. Set to 1 to skip the projection.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_discovery_report.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1675</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1610</span>
+<span class="normal">1611</span>
+<span class="normal">1612</span>
+<span class="normal">1613</span>
+<span class="normal">1614</span>
+<span class="normal">1615</span>
+<span class="normal">1616</span>
+<span class="normal">1617</span>
+<span class="normal">1618</span>
+<span class="normal">1619</span>
+<span class="normal">1620</span>
+<span class="normal">1621</span>
+<span class="normal">1622</span>
+<span class="normal">1623</span>
+<span class="normal">1624</span>
+<span class="normal">1625</span>
+<span class="normal">1626</span>
+<span class="normal">1627</span>
+<span class="normal">1628</span>
+<span class="normal">1629</span>
+<span class="normal">1630</span>
+<span class="normal">1631</span>
+<span class="normal">1632</span>
+<span class="normal">1633</span>
+<span class="normal">1634</span>
+<span class="normal">1635</span>
+<span class="normal">1636</span>
+<span class="normal">1637</span>
+<span class="normal">1638</span>
+<span class="normal">1639</span>
+<span class="normal">1640</span>
+<span class="normal">1641</span>
+<span class="normal">1642</span>
+<span class="normal">1643</span>
+<span class="normal">1644</span>
+<span class="normal">1645</span>
+<span class="normal">1646</span>
+<span class="normal">1647</span>
+<span class="normal">1648</span>
+<span class="normal">1649</span>
+<span class="normal">1650</span>
+<span class="normal">1651</span>
+<span class="normal">1652</span>
+<span class="normal">1653</span>
+<span class="normal">1654</span>
+<span class="normal">1655</span>
+<span class="normal">1656</span>
+<span class="normal">1657</span>
+<span class="normal">1658</span>
+<span class="normal">1659</span>
+<span class="normal">1660</span>
+<span class="normal">1661</span>
+<span class="normal">1662</span>
+<span class="normal">1663</span>
+<span class="normal">1664</span>
+<span class="normal">1665</span>
+<span class="normal">1666</span>
+<span class="normal">1667</span>
+<span class="normal">1668</span>
+<span class="normal">1669</span>
+<span class="normal">1670</span>
+<span class="normal">1671</span>
+<span class="normal">1672</span>
+<span class="normal">1673</span>
+<span class="normal">1674</span>
+<span class="normal">1675</span>
 <span class="normal">1676</span>
 <span class="normal">1677</span>
 <span class="normal">1678</span>
@@ -2265,72 +2314,7 @@ by how much history there is. Set to 1 to skip the projection.</p>
 <span class="normal">1914</span>
 <span class="normal">1915</span>
 <span class="normal">1916</span>
-<span class="normal">1917</span>
-<span class="normal">1918</span>
-<span class="normal">1919</span>
-<span class="normal">1920</span>
-<span class="normal">1921</span>
-<span class="normal">1922</span>
-<span class="normal">1923</span>
-<span class="normal">1924</span>
-<span class="normal">1925</span>
-<span class="normal">1926</span>
-<span class="normal">1927</span>
-<span class="normal">1928</span>
-<span class="normal">1929</span>
-<span class="normal">1930</span>
-<span class="normal">1931</span>
-<span class="normal">1932</span>
-<span class="normal">1933</span>
-<span class="normal">1934</span>
-<span class="normal">1935</span>
-<span class="normal">1936</span>
-<span class="normal">1937</span>
-<span class="normal">1938</span>
-<span class="normal">1939</span>
-<span class="normal">1940</span>
-<span class="normal">1941</span>
-<span class="normal">1942</span>
-<span class="normal">1943</span>
-<span class="normal">1944</span>
-<span class="normal">1945</span>
-<span class="normal">1946</span>
-<span class="normal">1947</span>
-<span class="normal">1948</span>
-<span class="normal">1949</span>
-<span class="normal">1950</span>
-<span class="normal">1951</span>
-<span class="normal">1952</span>
-<span class="normal">1953</span>
-<span class="normal">1954</span>
-<span class="normal">1955</span>
-<span class="normal">1956</span>
-<span class="normal">1957</span>
-<span class="normal">1958</span>
-<span class="normal">1959</span>
-<span class="normal">1960</span>
-<span class="normal">1961</span>
-<span class="normal">1962</span>
-<span class="normal">1963</span>
-<span class="normal">1964</span>
-<span class="normal">1965</span>
-<span class="normal">1966</span>
-<span class="normal">1967</span>
-<span class="normal">1968</span>
-<span class="normal">1969</span>
-<span class="normal">1970</span>
-<span class="normal">1971</span>
-<span class="normal">1972</span>
-<span class="normal">1973</span>
-<span class="normal">1974</span>
-<span class="normal">1975</span>
-<span class="normal">1976</span>
-<span class="normal">1977</span>
-<span class="normal">1978</span>
-<span class="normal">1979</span>
-<span class="normal">1980</span>
-<span class="normal">1981</span>
-<span class="normal">1982</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span>
+<span class="normal">1917</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">n_sims</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
     <span class="n">n_phasing_seeds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">15</span><span class="p">,</span>
@@ -2615,8 +2599,8 @@ by how much history there is. Set to 1 to skip the projection.</p>
     <span class="bp">self</span><span class="o">.</span><span class="n">results_</span> <span class="o">=</span> <span class="n">results</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">valley_tol_</span> <span class="o">=</span> <span class="n">valley_tol</span>
     <span class="c1"># A pinned strategy (self.pinned_label_) skips _pick_winner&#39;s</span>
-    <span class="c1"># dominance check entirely -- session 51, Ryan picked the strategy</span>
-    <span class="c1"># himself, there is nothing left to choose between. The sweep</span>
+    <span class="c1"># dominance check entirely: the strategy was chosen by the caller,</span>
+    <span class="c1"># so there is nothing left to choose between. The sweep</span>
     <span class="c1"># still ran above (so the pinned candidate scores alongside every</span>
     <span class="c1"># other lever for the Appendix comparison table), only the</span>
     <span class="c1"># winner-SELECTION step is bypassed.</span>
@@ -2659,14 +2643,9 @@ by how much history there is. Set to 1 to skip the projection.</p>
 
         <p>Return the winning (or pinned) strategy's weekly schedule as a
 tidy, exportable table.</p>
-<p>Session 51 (Ryan: "the class should also trigger the phased
-budget csv"): this is DiscoveryReport's replacement for
-ReportBuilder.schedule_csv(), now that DiscoveryReport can pin a
-strategy directly instead of needing a second class once one's
-been picked. Same shape as ReportBuilder's own version: one row
-per week, three columns per channel (the original plan figure,
-the recommended figure, and whether that week is a Blackout dark
-week), both £ columns rounded to the nearest penny.</p>
+<p>One row per week, three columns per channel (the original plan
+figure, the recommended figure, and whether that week is a
+Blackout dark week), both £ columns rounded to the nearest penny.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -2745,56 +2724,46 @@ week), both £ columns rounded to the nearest penny.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_discovery_report.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1984</span>
-<span class="normal">1985</span>
-<span class="normal">1986</span>
-<span class="normal">1987</span>
-<span class="normal">1988</span>
-<span class="normal">1989</span>
-<span class="normal">1990</span>
-<span class="normal">1991</span>
-<span class="normal">1992</span>
-<span class="normal">1993</span>
-<span class="normal">1994</span>
-<span class="normal">1995</span>
-<span class="normal">1996</span>
-<span class="normal">1997</span>
-<span class="normal">1998</span>
-<span class="normal">1999</span>
-<span class="normal">2000</span>
-<span class="normal">2001</span>
-<span class="normal">2002</span>
-<span class="normal">2003</span>
-<span class="normal">2004</span>
-<span class="normal">2005</span>
-<span class="normal">2006</span>
-<span class="normal">2007</span>
-<span class="normal">2008</span>
-<span class="normal">2009</span>
-<span class="normal">2010</span>
-<span class="normal">2011</span>
-<span class="normal">2012</span>
-<span class="normal">2013</span>
-<span class="normal">2014</span>
-<span class="normal">2015</span>
-<span class="normal">2016</span>
-<span class="normal">2017</span>
-<span class="normal">2018</span>
-<span class="normal">2019</span>
-<span class="normal">2020</span>
-<span class="normal">2021</span>
-<span class="normal">2022</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">schedule_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1919</span>
+<span class="normal">1920</span>
+<span class="normal">1921</span>
+<span class="normal">1922</span>
+<span class="normal">1923</span>
+<span class="normal">1924</span>
+<span class="normal">1925</span>
+<span class="normal">1926</span>
+<span class="normal">1927</span>
+<span class="normal">1928</span>
+<span class="normal">1929</span>
+<span class="normal">1930</span>
+<span class="normal">1931</span>
+<span class="normal">1932</span>
+<span class="normal">1933</span>
+<span class="normal">1934</span>
+<span class="normal">1935</span>
+<span class="normal">1936</span>
+<span class="normal">1937</span>
+<span class="normal">1938</span>
+<span class="normal">1939</span>
+<span class="normal">1940</span>
+<span class="normal">1941</span>
+<span class="normal">1942</span>
+<span class="normal">1943</span>
+<span class="normal">1944</span>
+<span class="normal">1945</span>
+<span class="normal">1946</span>
+<span class="normal">1947</span>
+<span class="normal">1948</span>
+<span class="normal">1949</span>
+<span class="normal">1950</span>
+<span class="normal">1951</span>
+<span class="normal">1952</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">schedule_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the winning (or pinned) strategy&#39;s weekly schedule as a</span>
 <span class="sd">    tidy, exportable table.</span>
 
-<span class="sd">    Session 51 (Ryan: &quot;the class should also trigger the phased</span>
-<span class="sd">    budget csv&quot;): this is DiscoveryReport&#39;s replacement for</span>
-<span class="sd">    ReportBuilder.schedule_csv(), now that DiscoveryReport can pin a</span>
-<span class="sd">    strategy directly instead of needing a second class once one&#39;s</span>
-<span class="sd">    been picked. Same shape as ReportBuilder&#39;s own version: one row</span>
-<span class="sd">    per week, three columns per channel (the original plan figure,</span>
-<span class="sd">    the recommended figure, and whether that week is a Blackout dark</span>
-<span class="sd">    week), both £ columns rounded to the nearest penny.</span>
+<span class="sd">    One row per week, three columns per channel (the original plan</span>
+<span class="sd">    figure, the recommended figure, and whether that week is a</span>
+<span class="sd">    Blackout dark week), both £ columns rounded to the nearest penny.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -2870,29 +2839,29 @@ CV, mean |bias| %, and identifiability valley_pct.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_discovery_report.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2296</span>
-<span class="normal">2297</span>
-<span class="normal">2298</span>
-<span class="normal">2299</span>
-<span class="normal">2300</span>
-<span class="normal">2301</span>
-<span class="normal">2302</span>
-<span class="normal">2303</span>
-<span class="normal">2304</span>
-<span class="normal">2305</span>
-<span class="normal">2306</span>
-<span class="normal">2307</span>
-<span class="normal">2308</span>
-<span class="normal">2309</span>
-<span class="normal">2310</span>
-<span class="normal">2311</span>
-<span class="normal">2312</span>
-<span class="normal">2313</span>
-<span class="normal">2314</span>
-<span class="normal">2315</span>
-<span class="normal">2316</span>
-<span class="normal">2317</span>
-<span class="normal">2318</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2226</span>
+<span class="normal">2227</span>
+<span class="normal">2228</span>
+<span class="normal">2229</span>
+<span class="normal">2230</span>
+<span class="normal">2231</span>
+<span class="normal">2232</span>
+<span class="normal">2233</span>
+<span class="normal">2234</span>
+<span class="normal">2235</span>
+<span class="normal">2236</span>
+<span class="normal">2237</span>
+<span class="normal">2238</span>
+<span class="normal">2239</span>
+<span class="normal">2240</span>
+<span class="normal">2241</span>
+<span class="normal">2242</span>
+<span class="normal">2243</span>
+<span class="normal">2244</span>
+<span class="normal">2245</span>
+<span class="normal">2246</span>
+<span class="normal">2247</span>
+<span class="normal">2248</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Cross-strategy table: one row per candidate lever, mean variance</span>
 <span class="sd">    CV, mean |bias| %, and identifiability valley_pct.</span>
 
@@ -2969,42 +2938,42 @@ control for true demand, so they show curve uncertainty alone.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_discovery_report.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2320</span>
-<span class="normal">2321</span>
-<span class="normal">2322</span>
-<span class="normal">2323</span>
-<span class="normal">2324</span>
-<span class="normal">2325</span>
-<span class="normal">2326</span>
-<span class="normal">2327</span>
-<span class="normal">2328</span>
-<span class="normal">2329</span>
-<span class="normal">2330</span>
-<span class="normal">2331</span>
-<span class="normal">2332</span>
-<span class="normal">2333</span>
-<span class="normal">2334</span>
-<span class="normal">2335</span>
-<span class="normal">2336</span>
-<span class="normal">2337</span>
-<span class="normal">2338</span>
-<span class="normal">2339</span>
-<span class="normal">2340</span>
-<span class="normal">2341</span>
-<span class="normal">2342</span>
-<span class="normal">2343</span>
-<span class="normal">2344</span>
-<span class="normal">2345</span>
-<span class="normal">2346</span>
-<span class="normal">2347</span>
-<span class="normal">2348</span>
-<span class="normal">2349</span>
-<span class="normal">2350</span>
-<span class="normal">2351</span>
-<span class="normal">2352</span>
-<span class="normal">2353</span>
-<span class="normal">2354</span>
-<span class="normal">2355</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">growth_readout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2250</span>
+<span class="normal">2251</span>
+<span class="normal">2252</span>
+<span class="normal">2253</span>
+<span class="normal">2254</span>
+<span class="normal">2255</span>
+<span class="normal">2256</span>
+<span class="normal">2257</span>
+<span class="normal">2258</span>
+<span class="normal">2259</span>
+<span class="normal">2260</span>
+<span class="normal">2261</span>
+<span class="normal">2262</span>
+<span class="normal">2263</span>
+<span class="normal">2264</span>
+<span class="normal">2265</span>
+<span class="normal">2266</span>
+<span class="normal">2267</span>
+<span class="normal">2268</span>
+<span class="normal">2269</span>
+<span class="normal">2270</span>
+<span class="normal">2271</span>
+<span class="normal">2272</span>
+<span class="normal">2273</span>
+<span class="normal">2274</span>
+<span class="normal">2275</span>
+<span class="normal">2276</span>
+<span class="normal">2277</span>
+<span class="normal">2278</span>
+<span class="normal">2279</span>
+<span class="normal">2280</span>
+<span class="normal">2281</span>
+<span class="normal">2282</span>
+<span class="normal">2283</span>
+<span class="normal">2284</span>
+<span class="normal">2285</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">growth_readout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Where can you grow: each channel&#39;s marginal return at higher</span>
 <span class="sd">    spend, as the model would recover it unphased and under the winner.</span>
 
@@ -3118,26 +3087,26 @@ control for true demand, so they show curve uncertainty alone.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_discovery_report.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2357</span>
-<span class="normal">2358</span>
-<span class="normal">2359</span>
-<span class="normal">2360</span>
-<span class="normal">2361</span>
-<span class="normal">2362</span>
-<span class="normal">2363</span>
-<span class="normal">2364</span>
-<span class="normal">2365</span>
-<span class="normal">2366</span>
-<span class="normal">2367</span>
-<span class="normal">2368</span>
-<span class="normal">2369</span>
-<span class="normal">2370</span>
-<span class="normal">2371</span>
-<span class="normal">2372</span>
-<span class="normal">2373</span>
-<span class="normal">2374</span>
-<span class="normal">2375</span>
-<span class="normal">2376</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_html</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2287</span>
+<span class="normal">2288</span>
+<span class="normal">2289</span>
+<span class="normal">2290</span>
+<span class="normal">2291</span>
+<span class="normal">2292</span>
+<span class="normal">2293</span>
+<span class="normal">2294</span>
+<span class="normal">2295</span>
+<span class="normal">2296</span>
+<span class="normal">2297</span>
+<span class="normal">2298</span>
+<span class="normal">2299</span>
+<span class="normal">2300</span>
+<span class="normal">2301</span>
+<span class="normal">2302</span>
+<span class="normal">2303</span>
+<span class="normal">2304</span>
+<span class="normal">2305</span>
+<span class="normal">2306</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_html</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Render the report as a single self-contained HTML document.</span>
 
 <span class="sd">    Parameters</span>

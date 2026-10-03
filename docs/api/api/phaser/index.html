@@ -832,14 +832,17 @@
 
 <h1 id="budgetphaser-blackout-redistribute-and-monthstep">BudgetPhaser, Blackout, Redistribute and MonthStep<a class="headerlink" href="#budgetphaser-blackout-redistribute-and-monthstep" title="Permanent link">&para;</a></h1>
 <p><code>BudgetPhaser</code> recommends the weekly spend phasing needed to reduce
-marginal-return uncertainty, while preserving monthly totals exactly.
-<code>Blackout</code> is one of the deviation shapes it accepts per channel — a hard
-on/off switch instead of a continuous weekly range. <code>Redistribute</code> is the
-third: a round-robin blackout whose freed budget moves to a recipient
-month, with an edge layer on top. It preserves annual totals exactly, but
-not monthly ones. <code>MonthStep</code> is the fourth: every whole month's spend is
-scaled up or down by a fixed step, with signs from orthogonal Hadamard
-columns across channels; it also preserves annual totals, not monthly ones.</p>
+marginal-return uncertainty. Each channel takes one of four shapes:</p>
+<ul>
+<li>a continuous weekly range (a float), which keeps every month's total;</li>
+<li><code>Blackout</code>, a hard on/off switch, which also keeps every month's total;</li>
+<li><code>Redistribute</code>, a dark month whose freed budget moves to another month,
+  with an optional peak month and a light weekly nudge on top;</li>
+<li><code>MonthStep</code>, every whole month scaled up or down by a fixed step, with
+  signs from orthogonal Hadamard columns across channels.</li>
+</ul>
+<p><code>Redistribute</code> and <code>MonthStep</code> keep each channel's annual total, not its
+monthly ones.</p>
 
 
 <div class="doc doc-object doc-class">
@@ -3237,7 +3240,7 @@ truncate it, longer ones repeat its weekly pattern), then:
     averaging fit() already applies to its own CV curve, extended
     here across per-channel revenue ranges too (promoted from the
     single-draw-then-averaged pattern used in
-    notebooks/02_phaser_walkthrough.ipynb).</p>
+    notebooks/archive/02_phaser_walkthrough.ipynb).</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -3335,7 +3338,7 @@ weeks) came out at roughly double the £ scale of the 52-week
 one — read by a client as "phase for longer, get more revenue,"
 when horizon here means "more experience/history has
 accumulated," not "more spend." This did not match
-notebooks/02_phaser_walkthrough.ipynb's own blackout_impact()
+notebooks/archive/02_phaser_walkthrough.ipynb's own blackout_impact()
 helper (the source of overview.html's published £ figures),
 which always prices against the plan's own fixed annual total
 regardless of horizon — "same plan, £0 extra spend, just a
@@ -3565,7 +3568,7 @@ dimensionless and was never affected by this).</p>
 <span class="sd">        averaging fit() already applies to its own CV curve, extended</span>
 <span class="sd">        here across per-channel revenue ranges too (promoted from the</span>
 <span class="sd">        single-draw-then-averaged pattern used in</span>
-<span class="sd">        notebooks/02_phaser_walkthrough.ipynb).</span>
+<span class="sd">        notebooks/archive/02_phaser_walkthrough.ipynb).</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -3587,7 +3590,7 @@ dimensionless and was never affected by this).</p>
 <span class="sd">        one — read by a client as &quot;phase for longer, get more revenue,&quot;</span>
 <span class="sd">        when horizon here means &quot;more experience/history has</span>
 <span class="sd">        accumulated,&quot; not &quot;more spend.&quot; This did not match</span>
-<span class="sd">        notebooks/02_phaser_walkthrough.ipynb&#39;s own blackout_impact()</span>
+<span class="sd">        notebooks/archive/02_phaser_walkthrough.ipynb&#39;s own blackout_impact()</span>
 <span class="sd">        helper (the source of overview.html&#39;s published £ figures),</span>
 <span class="sd">        which always prices against the plan&#39;s own fixed annual total</span>
 <span class="sd">        regardless of horizon — &quot;same plan, £0 extra spend, just a</span>

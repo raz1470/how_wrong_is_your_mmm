@@ -2484,8 +2484,8 @@ an unreliable CAC estimate too).</p>
             <span class="c1"># p10/p90 of the same per-sim error the mean above</span>
             <span class="c1"># averages -- lets a caller show bias as a band around</span>
             <span class="c1"># its point estimate, the way variance&#39;s own</span>
-            <span class="c1"># incremental_revenue_p10/p90 already do (session 50,</span>
-            <span class="c1"># discovery report&#39;s Bias section: see NOTES.md).</span>
+            <span class="c1"># incremental_revenue_p10/p90 already do (the discovery</span>
+            <span class="c1"># report&#39;s Bias section uses it).</span>
             <span class="n">error_pct_p10</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;error_pct&quot;</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)),</span>
             <span class="n">error_pct_p90</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;error_pct&quot;</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.9</span><span class="p">)),</span>
         <span class="p">)</span>
@@ -2533,8 +2533,8 @@ an unreliable CAC estimate too).</p>
             <span class="n">revenue</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;channel&quot;</span><span class="p">)[</span><span class="s2">&quot;incremental_revenue&quot;</span><span class="p">]</span>
             <span class="o">.</span><span class="n">agg</span><span class="p">(</span>
                 <span class="c1"># Mean alongside the existing p10/p90 -- a point</span>
-                <span class="c1"># estimate to show next to the range (session 50,</span>
-                <span class="c1"># discovery report&#39;s Variance section: see NOTES.md).</span>
+                <span class="c1"># estimate to show next to the range (the discovery</span>
+                <span class="c1"># report&#39;s Variance section uses it).</span>
                 <span class="n">incremental_revenue_mean</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span>
                 <span class="n">incremental_revenue_p10</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.1</span><span class="p">),</span>
                 <span class="n">incremental_revenue_p90</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.9</span><span class="p">),</span>

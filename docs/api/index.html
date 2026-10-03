@@ -640,15 +640,14 @@
 
 <h1 id="how_wrong_is_your_mmm">how_wrong_is_your_mmm<a class="headerlink" href="#how_wrong_is_your_mmm" title="Permanent link">&para;</a></h1>
 <p>Collinearity diagnostics and budget phasing for Marketing Mix Models.</p>
-<p>This is the API reference, generated from the package's own docstrings. If
-you're looking for the narrative version of what this package does and why,
-start with one of these instead:</p>
+<p>This is the API reference, generated from the package's own docstrings. For
+what the package does and why, start with one of these instead:</p>
 <ul>
-<li><a href="https://raz1470.github.io/how_wrong_is_your_mmm/overview.html"><strong>Overview</strong></a> —
-  a two-minute read: the headline numbers and the fix, no maths.</li>
-<li><a href="https://raz1470.github.io/how_wrong_is_your_mmm/collinearity_research.html"><strong>Multicollinearity Research</strong></a> —
-  the full method and the research behind it.</li>
-<li><a href="https://github.com/raz1470/how_wrong_is_your_mmm/tree/main/notebooks"><strong>Notebooks</strong></a> —
+<li><a href="https://raz1470.github.io/how_wrong_is_your_mmm/overview.html"><strong>Overview</strong></a>:
+  the problem, the fix and what it costs, on a worked example.</li>
+<li><a href="https://raz1470.github.io/how_wrong_is_your_mmm/example-report.html"><strong>Example report</strong></a>:
+  the HTML report <code>DiscoveryReport</code> produces, on simulated data.</li>
+<li><a href="https://github.com/raz1470/how_wrong_is_your_mmm/tree/main/notebooks"><strong>Notebooks</strong></a>:
   hands-on walkthroughs with real output.</li>
 </ul>
 <h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h2>
@@ -673,7 +672,7 @@ start with one of these instead:</p>
 </tr>
 <tr>
 <td><a href="api/phaser/"><code>BudgetPhaser</code></a></td>
-<td>Recommends a de-correlated weekly spend schedule, monthly totals preserved exactly.</td>
+<td>Recommends a de-correlated weekly spend schedule.</td>
 </tr>
 <tr>
 <td><a href="api/phaser/#how_wrong_is_your_mmm.Blackout"><code>Blackout</code></a></td>
@@ -681,7 +680,7 @@ start with one of these instead:</p>
 </tr>
 <tr>
 <td><a href="api/phaser/#how_wrong_is_your_mmm.Redistribute"><code>Redistribute</code></a></td>
-<td>A round-robin blackout + recipient-month + edge-layer phasing lever for <code>BudgetPhaser</code>/<code>DiscoveryReport</code>; preserves annual (not monthly) totals.</td>
+<td>A dark month, an optional peak month and a light weekly nudge, for <code>BudgetPhaser</code>/<code>DiscoveryReport</code>; preserves annual (not monthly) totals.</td>
 </tr>
 <tr>
 <td><a href="api/phaser/#how_wrong_is_your_mmm.MonthStep"><code>MonthStep</code></a></td>
@@ -693,9 +692,10 @@ start with one of these instead:</p>
 </tr>
 </tbody>
 </table>
-<p>Two lower-level building blocks — <a href="api/dgp/"><code>simulate_spend</code>/<code>simulate_sales</code></a>
-and <a href="api/mmm/"><code>fit_ols</code></a> — are also exported, mainly useful if you're
-extending the package rather than just using it.</p>
+<p>The lower-level building blocks are also exported, mainly useful if you're
+extending the package rather than just using it: the
+<a href="api/dgp/">simulation functions</a> (<code>simulate_spend</code>, <code>simulate_sales</code>,
+<code>simulate_demand</code> and friends) and <a href="api/mmm/"><code>fit_ols</code></a>.</p>
 <h2 id="minimal-example">Minimal example<a class="headerlink" href="#minimal-example" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">how_wrong_is_your_mmm</span><span class="w"> </span><span class="kn">import</span> <span class="n">CollinearityDiagnostic</span><span class="p">,</span> <span class="n">BudgetPhaser</span><span class="p">,</span> <span class="n">DiscoveryReport</span>
 
@@ -711,6 +711,7 @@ extending the package rather than just using it.</p>
 <span class="n">report</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
 <span class="n">report</span><span class="o">.</span><span class="n">to_html</span><span class="p">(</span><span class="s2">&quot;reports/example_brand.html&quot;</span><span class="p">)</span>
 <span class="n">report</span><span class="o">.</span><span class="n">schedule_csv</span><span class="p">(</span><span class="s2">&quot;reports/example_brand_schedule.csv&quot;</span><span class="p">)</span>
+<span class="n">report</span><span class="o">.</span><span class="n">growth_readout</span><span class="p">()</span>
 </code></pre></div>
 <p>Source: <a href="https://github.com/raz1470/how_wrong_is_your_mmm">github.com/raz1470/how_wrong_is_your_mmm</a></p>
 
