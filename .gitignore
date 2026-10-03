@@ -39,3 +39,7 @@ PREFERENCES.md
 # Per-draw bias output behind the overview's section 6 (about 2MB) --
 # regenerate with tools/overview_data/section6/harness.py
 tools/overview_data/section6/results/bias_*.csv
+
+# Per-draw output of the peak month checks (about 600KB) -- regenerate with
+# tools/peak_month_bias/peak_checks.py 200 15
+tools/peak_month_bias/peak_checks_*.csv
