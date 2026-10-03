@@ -19,7 +19,7 @@ Run every script from the repo root with `uv run python <script>`.
 ## Section 6
 
 Each point is averaged over four simulated datasets, with (demand,
-history, plan) seeds (6, 12, 13), (106, 112, 113), (206, 212, 213) and
+history, plan) seeds (6, 37, 13), (106, 112, 113), (206, 212, 213) and
 (306, 312, 313), tagged `base`, `s1`, `s2`, `s3`.
 
 1. `fullfit.py <n> <tag>` for n in 5, 10, 15 and each tag: variance,
@@ -41,8 +41,8 @@ regenerates them.
 - `mc_error.py` reproduces the table's bias column from its own draws.
 - `phase_panels.py` and `winner_spend.py` give the same results as on
   seed 12, since they depend on the plan only.
-- The section 6 full fits have not been re-run since the article was
-  built.
+- The section 6 full fits and bias runs were re-run on the new example
+  dataset and noise level.
 
 ## The example dataset
 
@@ -60,8 +60,9 @@ on 10 of the 25 seeds, and seed 37 is the one with the clearest margins.
 The headline figures barely changed: bias 28.8% to 15.3% (was 28.3% to
 15.1%), variance 0.23 to 0.07.
 
-Section 6 was not re-run. Its `base` dataset still uses history seed 12,
-and its noise is the four-channel level from that dataset.
+Section 6 was re-run to match. Its `base` dataset uses history seed 37,
+and all four datasets use the four-channel noise level from the new
+example, so all twelve fits and bias runs were redone.
 
 ## Bias draws
 
