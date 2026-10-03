@@ -83,9 +83,6 @@ tr.winner-row td { background: #ecfdf5; font-weight: 700; }
 .pacing-title { font-size: .82rem; font-weight: 700; margin-bottom: .3rem; }
 table.glossary-table td { text-align: left; vertical-align: top; }
 table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
-.ttb-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .75rem; margin: 1rem 0 .5rem; }
-@media (max-width: 620px) { .ttb-grid { grid-template-columns: 1fr; } }
-.ttb-grid .pacing-cell { padding: .6rem .5rem .2rem; }
 
 </style>
 </head>
@@ -100,12 +97,10 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
   <div class="report-title-eyebrow">Discovery</div>
   <h1 class="report-title">Which phasing strategy is worth pursuing?</h1>
   <p class="report-sub">A phasing strategy changes when the plan's spend
-  lands week to week. It does not touch the total budget or how it splits
-  across channels. This report sweeps 7 such strategies,
-  each applied the same way to every channel, and picks the one that does
-  the most to fix three separate ways a model can misread this plan: how
-  wide its revenue estimate is, how biased that estimate is, and whether
-  saturation and adstock can be recovered at all.</p>
+  lands. Each channel's annual budget stays the same. This report scores
+  6 strategies against
+  the unphased plan on three problems: variance, bias, and whether
+  saturation and adstock can be recovered.</p>
   <div class="cover-meta">
     <div class="meta-box"><div class="lbl">Client</div><div class="val">Demo client</div></div>
     <div class="meta-box"><div class="lbl">Plan year</div><div class="val">2027</div></div>
@@ -122,22 +117,19 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
   <a href="#appendix">5 &middot; Appendix</a>
 </nav>
 
-<div class="headline">Recommended strategy: <b>Combined</b>. It is the candidate that improves on the unphased plan across all three problems below; when no candidate manages that, the report falls back to whichever improves the worst-affected problem the most.</div>
+<div class="headline">Recommended strategy:
+<b>Combined</b>. Against the unphased plan: variance 70% better, bias 47% better, saturation range 54% narrower and adstock range 58% narrower. It is picked on variance, bias and identifiability. Cost is shown beside it and is not part of the pick.</div>
 
 <main>
 
 <section id="scenario-inputs">
   <div class="s-label">Section 1</div>
   <h2>Scenario inputs</h2>
-  <p>This section lays out everything the report is built on: each
-  channel's planned spend and ROI, the saturation and adstock it is
-  assumed to respond with, the actual weekly spend behind the plan, and
-  what all of that implies for weekly sales. Background demand accounts
-  for 70% of sales in this scenario, leaving the
-  remaining 30% for these channels to
-  explain, which is why the reliability problems in the sections that
-  follow matter. Everything here is reproducible from these inputs alone,
-  in a notebook, with no need for this report class.</p>
+  <p>Everything the report is built on: each channel's planned spend,
+  marginal return (ROI), saturation and adstock, the weekly spend behind
+  the plan, and what those imply for weekly sales. Background demand
+  accounts for 70% of sales, leaving
+  30% for the channels.</p>
   <div class="table-scroll">
   <table class="cross-table">
     <thead><tr><th>Channel</th><th>Spend</th><th>ROI</th><th>Saturation</th><th>Adstock</th></tr></thead>
@@ -180,12 +172,9 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
   </div>
 
   <h3>Implied contribution</h3>
-  <p>The chart below is the one place these inputs are combined into an
-  outcome rather than listed on their own: background demand plus each
-  channel's modelled contribution, stacked week by week into weekly
-  sales. Nothing here was supplied directly. It follows entirely from the
-  assumptions already given, which makes it a check on those assumptions
-  rather than a separate fact about the scenario.</p>
+  <p>Background demand plus each channel's contribution, stacked into
+  weekly sales. Nothing here was supplied directly. It follows from the
+  inputs above, which makes it a check on those assumptions.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Sales / revenue, weekly, by source</div>
@@ -201,22 +190,14 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
 <section id="diagnostics">
   <div class="s-label">Section 2</div>
   <h2>Diagnostics</h2>
-  <p>The next four charts describe the unphased plan exactly as supplied,
-  before any strategy has touched it. Each one isolates a different way a
-  model fit to this history and plan could go wrong: spend correlation,
-  the width of the resulting revenue estimate, bias from an imperfect read
-  of demand, and whether saturation and adstock can be told apart from
-  noise. Section 3 returns to the same four problems once <b>Combined</b>
-  has been applied, so the scale of the improvement is comparable line for
-  line.</p>
+  <p>The unphased plan, exactly as supplied: the spend correlation behind
+  the problem, then variance, bias and identifiability. Section 3 shows
+  the same charts after phasing.</p>
 
   <h3>Spend correlation</h3>
-  <p>Two channels whose spend rises and falls together give a regression
-  model very little to separate them with. The matrix below measures
-  exactly that: the Pearson correlation between each pair's weekly spend
-  across the plan year. The closer a cell is to 1, the more those two
-  channels' individual contributions have been confounded before the
-  model sees a single week of sales.</p>
+  <p>Channels whose spend moves together are hard for a model to tell
+  apart. Mean pairwise correlation across the plan year is
+  0.70.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Channel correlation, unphased</div>
@@ -228,13 +209,10 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
   </div>
 
   <h3>Variance</h3>
-  <p>When two channels' spend moves together, a model cannot fully credit
-  either one for the sales that followed. That is what an unphased plan
-  does: spend is locked to a single fixed schedule, so any two correlated
-  channels move in lockstep for the whole plan. The chart below shows what
-  this leaves behind: the range of incremental revenue the model would
-  estimate for each channel, wide enough that either end of it could pass
-  for the truth.</p>
+  <p>If the model were refit on a slightly different version of the same
+  history, how far would its answer move? The model is given the true
+  demand and curve shapes, so this is a best case.
+  The widest range is tv's: £2.79m to £6.94m, against a true £4.63m.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Incremental revenue, unphased</div>
@@ -248,19 +226,14 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
       </div>
       <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£0</text><line x1="237.6" y1="14" x2="237.6" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="237.6" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£2.00m</text><line x1="329.2" y1="14" x2="329.2" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="329.2" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£4.00m</text><line x1="420.8" y1="14" x2="420.8" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="420.8" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£6.00m</text><line x1="512.4" y1="14" x2="512.4" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="512.4" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£8.00m</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£10.00m</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Incremental revenue</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="273.9" y1="45.0" x2="463.8" y2="45.0" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="361.6" cy="45.0" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="357.8" y1="26.4" x2="357.8" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="471.8" y="49.0" font-size="11.5" fill="#2563eb" font-weight="700">£2.79m &ndash; £6.94m</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="332.5" y1="107.0" x2="512.6" y2="107.0" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="430.8" cy="107.0" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="420.2" y1="88.4" x2="420.2" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="520.6" y="111.0" font-size="11.5" fill="#d97706" font-weight="700">£4.07m &ndash; £8.00m</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="433.4" y1="169.0" x2="519.9" y2="169.0" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="481.8" cy="169.0" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="484.6" y1="150.4" x2="484.6" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="527.9" y="173.0" font-size="11.5" fill="#059669" font-weight="700">£6.28m &ndash; £8.16m</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="411.4" y1="231.0" x2="574.3" y2="231.0" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="488.9" cy="231.0" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="495.0" y1="212.4" x2="495.0" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="582.3" y="235.0" font-size="11.5" fill="#7c3aed" font-weight="700">£5.79m &ndash; £9.35m</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
     </div>
-    <p class="fig-cap">The dashed line marks the revenue implied by the
-    channel's true marginal return. The ring is the model's mean
-    incremental-revenue estimate, and the bar behind it is its p10 to p90
-    range across simulations. The further that range sits from the dashed
-    line, the more wrong a client relying on the model alone would be.</p>
+    <p class="fig-cap">Each channel's estimated incremental revenue on the
+    plan: the bar is the p10 to p90 range across simulations and the ring
+    its mean. The dashed line is the revenue implied by the marginal
+    return you supplied.</p>
   </div>
 
   <h3>Bias</h3>
-  <p>A model can only regress on the demand signal it is given, not on
-  demand itself. Here that signal is a proxy at
-  80% quality rather than the true series,
-  and the gap between the two pulls every channel's estimate away from its
-  true marginal return before phasing is even considered.
+  <p>Here the model sees demand only through a proxy (80% quality), as a real MMM would. Whatever the proxy misses gets credited to the channels. Every point estimate sits above the truth: tv by 49%, meta by 27%, search_generic by 8% and tiktok by 29%.
   The demand series is built to track your unphased spend at an assumed correlation of 0.65 (0.62 to 0.69 by channel). Spend data cannot confirm that value, so treat it as an assumption. Bias grows steeply with it. Bias is averaged over 100 draws of demand and its proxy, because any single draw can line up with one channel by chance.</p>
   <div class="fig">
     <div class="fig-hdr">
@@ -275,22 +248,16 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
       </div>
       <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£0</text><line x1="298.7" y1="14" x2="298.7" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="298.7" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£5.00m</text><line x1="451.3" y1="14" x2="451.3" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="451.3" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£10.00m</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£15.00m</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Incremental revenue</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="270.6" y1="45.0" x2="443.4" y2="45.0" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="356.7" cy="45.0" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="287.2" y1="26.4" x2="287.2" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="451.4" y="49.0" font-size="11.5" fill="#2563eb" font-weight="700">£4.08m &ndash; £9.74m</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="310.7" y1="107.0" x2="444.2" y2="107.0" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="378.5" cy="107.0" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="328.8" y1="88.4" x2="328.8" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="452.2" y="111.0" font-size="11.5" fill="#d97706" font-weight="700">£5.39m &ndash; £9.77m</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="348.6" y1="169.0" x2="427.2" y2="169.0" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="388.8" cy="169.0" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="371.7" y1="150.4" x2="371.7" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="435.2" y="173.0" font-size="11.5" fill="#059669" font-weight="700">£6.63m &ndash; £9.21m</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="371.1" y1="231.0" x2="518.0" y2="231.0" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="446.7" cy="231.0" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="378.7" y1="212.4" x2="378.7" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="526.0" y="235.0" font-size="11.5" fill="#7c3aed" font-weight="700">£7.37m &ndash; £12.18m</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
     </div>
-    <p class="fig-cap">"Believed" revenue is what a client would expect if
-    they took the biased estimate at face value. The ring marks that
-    figure, and the bar around it is the p10&ndash;p90 spread of the same
-    bias across simulations. The gap between the bar and the dashed
-    true-revenue line is the size of the error a client would never see
-    without this diagnostic.</p>
+    <p class="fig-cap">The ring is the revenue the biased estimate implies
+    and the bar its p10 to p90 range across simulations. The gap to the
+    dashed line is the bias.</p>
   </div>
 
   <h3>Identifiability</h3>
-  <p>A saturation curve and an adstock decay can only be recovered from
-  spend that varies enough, in the right ways, to tell one curvature from
-  another. Locked to a single plan, spend does not vary that way: many
-  different saturation and adstock values fit the observed data about
-  equally well. The client's plausible value is one point in that space,
-  and the chart below shows the whole range the model could just as
-  easily have recovered instead.</p>
+  <p>Can the model recover each channel's saturation and adstock? One
+  channel at a time, every combination of saturation exponent and adstock
+  decay is tried and the best fit kept. A range that covers most of the
+  search means the data cannot tell the curves apart.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Recovered saturation, by channel, unphased</div>
@@ -304,12 +271,9 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
       </div>
       <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.00</text><line x1="237.6" y1="14" x2="237.6" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="237.6" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.20</text><line x1="329.2" y1="14" x2="329.2" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="329.2" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.40</text><line x1="420.8" y1="14" x2="420.8" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="420.8" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.60</text><line x1="512.4" y1="14" x2="512.4" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="512.4" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.80</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">1.00</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Saturation exponent (b)</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="237.6" y1="45.0" x2="604.0" y2="45.0" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="423.3" cy="45.0" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="420.8" y1="26.4" x2="420.8" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="612.0" y="49.0" font-size="11.5" fill="#2563eb" font-weight="700">0.20 &ndash; 1.00</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="237.6" y1="107.0" x2="604.0" y2="107.0" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="458.1" cy="107.0" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="489.5" y1="88.4" x2="489.5" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="612.0" y="111.0" font-size="11.5" fill="#d97706" font-weight="700">0.20 &ndash; 1.00</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="409.3" y1="169.0" x2="604.0" y2="169.0" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="527.7" cy="169.0" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="558.2" y1="150.4" x2="558.2" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="612.0" y="173.0" font-size="11.5" fill="#059669" font-weight="700">0.57 &ndash; 1.00</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="237.6" y1="231.0" x2="604.0" y2="231.0" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="455.8" cy="231.0" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="466.6" y1="212.4" x2="466.6" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="612.0" y="235.0" font-size="11.5" fill="#7c3aed" font-weight="700">0.20 &ndash; 1.00</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
     </div>
-    <p class="fig-cap">Each row is one channel's own recovered saturation,
-    holding every other channel at its own supplied curvature. The bar is
-    the p10&ndash;p90 range across simulations and the ring its mean. A
-    wide bar means this channel's spend pattern does not pin down how
-    strongly it saturates, regardless of what value was assumed going
-    in.</p>
+    <p class="fig-cap">The range of saturation exponents the model
+    recovers for each channel (p10 to p90 across simulations) and its
+    mean, with every other channel held at its supplied curve.</p>
   </div>
   <div class="fig">
     <div class="fig-hdr">
@@ -324,28 +288,18 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
       </div>
       <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.00</text><line x1="260.5" y1="14" x2="260.5" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="260.5" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.20</text><line x1="375.0" y1="14" x2="375.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="375.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.40</text><line x1="489.5" y1="14" x2="489.5" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="489.5" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.60</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.80</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Adstock decay (lambda)</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="176.9" y1="45.0" x2="523.8" y2="45.0" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="405.7" cy="45.0" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="432.2" y1="26.4" x2="432.2" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="531.8" y="49.0" font-size="11.5" fill="#2563eb" font-weight="700">0.05 &ndash; 0.66</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="146.0" y1="107.0" x2="439.7" y2="107.0" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="304.4" cy="107.0" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="317.8" y1="88.4" x2="317.8" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="447.7" y="111.0" font-size="11.5" fill="#d97706" font-weight="700">0.00 &ndash; 0.51</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="146.0" y1="169.0" x2="285.1" y2="169.0" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="210.2" cy="169.0" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="203.2" y1="150.4" x2="203.2" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="293.1" y="173.0" font-size="11.5" fill="#059669" font-weight="700">0.00 &ndash; 0.24</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="146.0" y1="231.0" x2="352.1" y2="231.0" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="250.4" cy="231.0" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="260.5" y1="212.4" x2="260.5" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="360.1" y="235.0" font-size="11.5" fill="#7c3aed" font-weight="700">0.00 &ndash; 0.36</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
     </div>
-    <p class="fig-cap">Adstock asks a different question of the same data:
-    not how strongly a channel's spend translates into effect, but how
-    long that effect persists once spend stops. The same limitation
-    applies here. A wide bar means the plan's spend pattern leaves the
-    decay rate just as unresolved as the saturation curve above.</p>
+    <p class="fig-cap">The same for adstock decay: how long a week's
+    spend keeps working.</p>
   </div>
 </section>
 
 <section id="impact">
   <div class="s-label">Section 3</div>
   <h2>Impact</h2>
-  <p>Section 2 showed how bad each of these four problems is before any
-  fix. What follows is what phasing under <b>Combined</b> does to each of
-  them in turn, using the same charts and the same axes, so the
-  improvement is visible in place rather than asserted.</p>
+  <p>The same charts as Section 2, after phasing under <b>Combined</b>.</p>
 
   <h3>Spend correlation</h3>
-  <p>Phasing under <b>Combined</b> leaves each month's total spend
-  untouched and only reshapes the weekly pattern within it. That
-  reshaping is what breaks the collinearity: the matrix below is the same
-  one from Section 2, recomputed on the phased plan, and should be read
-  directly against it.</p>
+  <p>Mean pairwise correlation falls from 0.70 to 0.17. Each channel's annual budget is unchanged. Some budget moves between months.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Channel correlation, after phasing</div>
@@ -357,11 +311,10 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
   </div>
 
   <h3>Variance</h3>
-  <p>Under <b>Combined</b>, the incremental-revenue range from Section 2
-  narrows for every channel: tv 68%, meta 74%, search_generic 59%, tiktok 72%.</p>
+  <p>The range narrows for every channel: tv by 68%, meta by 74%, search_generic by 59% and tiktok by 72%.</p>
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">The range tightens</div>
+      <div class="fig-title">Incremental revenue range, before and after</div>
       <div class="fig-sub">Incremental revenue, the model-estimated range: unphased vs Combined</div>
     </div>
     <div class="fig-body">
@@ -373,17 +326,16 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
       </div>
       <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£0</text><line x1="237.6" y1="14" x2="237.6" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="237.6" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£2.00m</text><line x1="329.2" y1="14" x2="329.2" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="329.2" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£4.00m</text><line x1="420.8" y1="14" x2="420.8" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="420.8" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£6.00m</text><line x1="512.4" y1="14" x2="512.4" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="512.4" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£8.00m</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£10.00m</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Incremental revenue</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="273.9" y1="31.4" x2="463.8" y2="31.4" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="361.6" cy="31.4" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8" opacity="0.35"/><line x1="323.5" y1="58.6" x2="383.5" y2="58.6" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="353.8" cy="58.6" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="357.8" y1="26.4" x2="357.8" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="391.5" y="61.6" font-size="11.5" fill="#2563eb" font-weight="700">£3.88m &ndash; £5.19m</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="332.5" y1="93.4" x2="512.6" y2="93.4" stroke="#d97706" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="430.8" cy="93.4" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8" opacity="0.35"/><line x1="390.6" y1="120.6" x2="437.0" y2="120.6" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="413.0" cy="120.6" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="420.2" y1="88.4" x2="420.2" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="445.0" y="123.6" font-size="11.5" fill="#d97706" font-weight="700">£5.34m &ndash; £6.35m</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="433.4" y1="155.4" x2="519.9" y2="155.4" stroke="#059669" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="481.8" cy="155.4" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8" opacity="0.35"/><line x1="460.8" y1="182.6" x2="496.0" y2="182.6" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="478.8" cy="182.6" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="484.6" y1="150.4" x2="484.6" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="504.0" y="185.6" font-size="11.5" fill="#059669" font-weight="700">£6.87m &ndash; £7.64m</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="411.4" y1="217.4" x2="574.3" y2="217.4" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="488.9" cy="217.4" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8" opacity="0.35"/><line x1="458.5" y1="244.6" x2="504.4" y2="244.6" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="481.5" cy="244.6" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="495.0" y1="212.4" x2="495.0" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="512.4" y="247.6" font-size="11.5" fill="#7c3aed" font-weight="700">£6.82m &ndash; £7.82m</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
     </div>
-    <p class="fig-cap">The dashed line marks the revenue implied by the
-    true marginal return. The ring, the model's mean estimate, barely
-    moves, because the centre was never what phasing needed to fix; the
-    range around it is what narrows.</p>
+    <p class="fig-cap">The model's estimated range for incremental
+    revenue on the unphased plan (faded) and the phased plan (solid),
+    against the truth.</p>
   </div>
 
   <h3>Bias</h3>
-  <p>Under <b>Combined</b>, the mean estimation error shrinks for every channel: tv 49% &rarr; 29%, meta 27% &rarr; 13%, search_generic 8% &rarr; 9%, tiktok 29% &rarr; 10%.</p>
+  <p>Bias falls for tv from 49% to 29%, meta from 27% to 13% and tiktok from 29% to 10%. It rises for search_generic from 8% to 9%.</p>
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">The estimate moves toward the truth</div>
+      <div class="fig-title">Point estimates, before and after</div>
       <div class="fig-sub">Revenue implied by the biased estimate: unphased vs Combined</div>
     </div>
     <div class="fig-body">
@@ -395,23 +347,15 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
       </div>
       <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£0</text><line x1="298.7" y1="14" x2="298.7" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="298.7" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£5.00m</text><line x1="451.3" y1="14" x2="451.3" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="451.3" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£10.00m</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£15.00m</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Incremental revenue</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="270.6" y1="31.4" x2="443.4" y2="31.4" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="356.7" cy="31.4" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8" opacity="0.35"/><line x1="295.1" y1="58.6" x2="361.5" y2="58.6" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="328.3" cy="58.6" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="287.2" y1="26.4" x2="287.2" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="369.5" y="61.6" font-size="11.5" fill="#2563eb" font-weight="700">£4.88m &ndash; £7.06m</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="310.7" y1="93.4" x2="444.2" y2="93.4" stroke="#d97706" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="378.5" cy="93.4" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8" opacity="0.35"/><line x1="328.4" y1="120.6" x2="376.3" y2="120.6" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="352.4" cy="120.6" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="328.8" y1="88.4" x2="328.8" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="384.3" y="123.6" font-size="11.5" fill="#d97706" font-weight="700">£5.97m &ndash; £7.54m</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="348.6" y1="155.4" x2="427.2" y2="155.4" stroke="#059669" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="388.8" cy="155.4" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8" opacity="0.35"/><line x1="373.7" y1="182.6" x2="409.0" y2="182.6" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="391.1" cy="182.6" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="371.7" y1="150.4" x2="371.7" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="417.0" y="185.6" font-size="11.5" fill="#059669" font-weight="700">£7.46m &ndash; £8.61m</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="371.1" y1="217.4" x2="518.0" y2="217.4" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="446.7" cy="217.4" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8" opacity="0.35"/><line x1="376.4" y1="244.6" x2="426.4" y2="244.6" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="401.5" cy="244.6" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="378.7" y1="212.4" x2="378.7" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="434.4" y="247.6" font-size="11.5" fill="#7c3aed" font-weight="700">£7.55m &ndash; £9.18m</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
     </div>
-    <p class="fig-cap">"Believed" revenue is what a client would expect if
-    they took the biased estimate at face value. As phasing reduces the
-    proxy's remaining confound, the ring moves toward the dashed
-    true-revenue line and the p10&ndash;p90 band around it narrows with
-    it.</p>
+    <p class="fig-cap">The revenue the biased estimate implies, before
+    and after phasing, when demand is only seen through a proxy.</p>
   </div>
 
   <h3>Identifiability</h3>
-  <p>Under <b>Combined</b>, saturation ranges narrow by tv 26%, meta 61%, search_generic 57%, tiktok 74%
-  and adstock ranges narrow by tv 60%, meta 62%, search_generic 51%, tiktok 54%. The RSS valley itself
-  shrinks, from 41% to 6% of the
-  (b, lambda) grid within 1% of the best fit and averaged
-  across channels: the region of curvature values indistinguishable from
-  the true one is smaller, not just re-centred.</p>
+  <p>The saturation range narrows for every channel: tv by 26%, meta by 61%, search_generic by 57% and tiktok by 74%. The adstock range narrows for every channel: tv by 60%, meta by 62%, search_generic by 51% and tiktok by 54%.</p>
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Saturation range tightens, by channel</div>
+      <div class="fig-title">Saturation range, before and after</div>
       <div class="fig-sub">Recovered saturation exponent (b): unphased vs Combined</div>
     </div>
     <div class="fig-body">
@@ -423,16 +367,13 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
       </div>
       <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.00</text><line x1="237.6" y1="14" x2="237.6" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="237.6" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.20</text><line x1="329.2" y1="14" x2="329.2" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="329.2" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.40</text><line x1="420.8" y1="14" x2="420.8" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="420.8" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.60</text><line x1="512.4" y1="14" x2="512.4" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="512.4" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.80</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">1.00</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Saturation exponent (b)</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="237.6" y1="31.4" x2="604.0" y2="31.4" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="423.3" cy="31.4" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8" opacity="0.35"/><line x1="287.9" y1="58.6" x2="560.2" y2="58.6" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="425.1" cy="58.6" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="420.8" y1="26.4" x2="420.8" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="568.2" y="61.6" font-size="11.5" fill="#2563eb" font-weight="700">0.31 &ndash; 0.90</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="237.6" y1="93.4" x2="604.0" y2="93.4" stroke="#d97706" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="458.1" cy="93.4" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8" opacity="0.35"/><line x1="419.6" y1="120.6" x2="561.1" y2="120.6" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="491.0" cy="120.6" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="489.5" y1="88.4" x2="489.5" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="569.1" y="123.6" font-size="11.5" fill="#d97706" font-weight="700">0.60 &ndash; 0.91</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="409.3" y1="155.4" x2="604.0" y2="155.4" stroke="#059669" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="527.7" cy="155.4" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8" opacity="0.35"/><line x1="517.4" y1="182.6" x2="600.3" y2="182.6" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="558.3" cy="182.6" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="558.2" y1="150.4" x2="558.2" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="608.3" y="185.6" font-size="11.5" fill="#059669" font-weight="700">0.81 &ndash; 0.99</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="237.6" y1="217.4" x2="604.0" y2="217.4" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="455.8" cy="217.4" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8" opacity="0.35"/><line x1="421.0" y1="244.6" x2="514.4" y2="244.6" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="467.0" cy="244.6" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="466.6" y1="212.4" x2="466.6" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="522.4" y="247.6" font-size="11.5" fill="#7c3aed" font-weight="700">0.60 &ndash; 0.80</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
     </div>
-    <p class="fig-cap">Each row is one channel's own recovered saturation,
-    holding every other channel at its own supplied curvature. The bar is
-    the p10&ndash;p90 range across simulations and the ring its mean. A
-    wide bar means this channel's spend pattern does not pin down how
-    strongly it saturates, regardless of what value was assumed going
-    in.</p>
+    <p class="fig-cap">The range of saturation exponents the model
+    recovers for each channel (p10 to p90 across simulations) and its
+    mean, with every other channel held at its supplied curve.</p>
   </div>
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Adstock range tightens, by channel</div>
+      <div class="fig-title">Adstock range, before and after</div>
       <div class="fig-sub">Recovered adstock decay (lambda): unphased vs Combined</div>
     </div>
     <div class="fig-body">
@@ -444,11 +385,8 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
       </div>
       <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.00</text><line x1="260.5" y1="14" x2="260.5" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="260.5" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.20</text><line x1="375.0" y1="14" x2="375.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="375.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.40</text><line x1="489.5" y1="14" x2="489.5" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="489.5" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.60</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">0.80</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Adstock decay (lambda)</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="176.9" y1="31.4" x2="523.8" y2="31.4" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="405.7" cy="31.4" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8" opacity="0.35"/><line x1="350.2" y1="58.6" x2="488.9" y2="58.6" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="423.5" cy="58.6" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="432.2" y1="26.4" x2="432.2" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="496.9" y="61.6" font-size="11.5" fill="#2563eb" font-weight="700">0.36 &ndash; 0.60</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="146.0" y1="93.4" x2="439.7" y2="93.4" stroke="#d97706" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="304.4" cy="93.4" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8" opacity="0.35"/><line x1="257.3" y1="120.6" x2="369.8" y2="120.6" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="314.2" cy="120.6" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="317.8" y1="88.4" x2="317.8" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="377.8" y="123.6" font-size="11.5" fill="#d97706" font-weight="700">0.19 &ndash; 0.39</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="146.0" y1="155.4" x2="285.1" y2="155.4" stroke="#059669" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="210.2" cy="155.4" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8" opacity="0.35"/><line x1="170.8" y1="182.6" x2="239.4" y2="182.6" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="204.5" cy="182.6" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="203.2" y1="150.4" x2="203.2" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="247.4" y="185.6" font-size="11.5" fill="#059669" font-weight="700">0.04 &ndash; 0.16</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="146.0" y1="217.4" x2="352.1" y2="217.4" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="250.4" cy="217.4" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8" opacity="0.35"/><line x1="214.0" y1="244.6" x2="308.6" y2="244.6" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="260.8" cy="244.6" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="260.5" y1="212.4" x2="260.5" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="316.6" y="247.6" font-size="11.5" fill="#7c3aed" font-weight="700">0.12 &ndash; 0.28</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
     </div>
-    <p class="fig-cap">Adstock asks a different question of the same data:
-    not how strongly a channel's spend translates into effect, but how
-    long that effect persists once spend stops. The same limitation
-    applies here. A wide bar means the plan's spend pattern leaves the
-    decay rate just as unresolved as the saturation curve above.</p>
+    <p class="fig-cap">The same for adstock decay: how long a week's
+    spend keeps working.</p>
   </div>
 
   <h3>Where you can grow</h3>
@@ -456,9 +394,10 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
   returns at a higher spend level, and that depends on its saturation
   curve. Unphased, the model's answer for tv at
   double today's spend runs from £0.20 to
-  £0.63: the same data supports growing the
-  channel and holding it. Under <b>Combined</b> the ranges at double spend
-  are 63% narrower on average.</p>
+  £0.63, against
+  £0.38 under the supplied
+  curve. Under <b>Combined</b> the ranges at double spend are
+  63% narrower on average.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Return at double today's spend, by channel</div>
@@ -473,12 +412,11 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
       </div>
       <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£0.00</text><line x1="260.5" y1="14" x2="260.5" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="260.5" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£0.50</text><line x1="375.0" y1="14" x2="375.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="375.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£1.00</text><line x1="489.5" y1="14" x2="489.5" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="489.5" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£1.50</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£2.00</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Return on the next £1 at double today&#x27;s spend</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="192.2" y1="31.4" x2="290.7" y2="31.4" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="235.9" cy="31.4" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8" opacity="0.35"/><line x1="210.3" y1="58.6" x2="262.6" y2="58.6" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="235.5" cy="58.6" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="232.8" y1="26.4" x2="232.8" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="270.6" y="61.6" font-size="11.5" fill="#2563eb" font-weight="700">£0.28 &ndash; £0.51</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="255.9" y1="93.4" x2="458.2" y2="93.4" stroke="#d97706" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="335.2" cy="93.4" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8" opacity="0.35"/><line x1="306.8" y1="120.6" x2="373.1" y2="120.6" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="341.1" cy="120.6" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="338.6" y1="88.4" x2="338.6" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="381.1" y="123.6" font-size="11.5" fill="#d97706" font-weight="700">£0.70 &ndash; £0.99</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="388.5" y1="155.4" x2="526.5" y2="155.4" stroke="#059669" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="458.2" cy="155.4" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8" opacity="0.35"/><line x1="440.5" y1="182.6" x2="493.3" y2="182.6" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="467.0" cy="182.6" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="466.5" y1="150.4" x2="466.5" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="501.3" y="185.6" font-size="11.5" fill="#059669" font-weight="700">£1.29 &ndash; £1.52</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="260.8" y1="217.4" x2="479.7" y2="217.4" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="369.1" cy="217.4" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8" opacity="0.35"/><line x1="341.2" y1="244.6" x2="396.6" y2="244.6" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="370.5" cy="244.6" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="369.2" y1="212.4" x2="369.2" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="404.6" y="247.6" font-size="11.5" fill="#7c3aed" font-weight="700">£0.85 &ndash; £1.09</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
     </div>
-    <p class="fig-cap">Each row is one channel. The bar is the
-    p10&ndash;p90 range across simulations of the return the fitted curve
-    gives at double the planned weekly spend, and the ring its median.
-    Every other channel is held at its supplied curve, so the range shows
-    curve uncertainty alone. A real model carries the variance and bias
-    from the sections above on top of it.</p>
+    <p class="fig-cap">The return the fitted curve gives at double the
+    planned weekly spend: p10 to p90 across simulations, with the median.
+    Other channels are held at their supplied curves, so this is curve
+    uncertainty alone. A real model carries the variance and bias above
+    on top of it.</p>
   </div>
   <div class="table-scroll">
   <table class="cross-table">
@@ -493,34 +431,25 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
   </div>
 
   <h3>Cost</h3>
-  <p>Phasing is not free once a channel's response curve departs from
-  linear. By Jensen's inequality, reshaping spend within the plan changes
-  true plan-period revenue relative to the as-supplied schedule, even
-  though each channel's annual total is unchanged. Under <b>Combined</b> this
-  costs 3.41% of true plan-period revenue, averaged
-  across channels, against the unphased plan; Section 5 reports the same
-  measure for every candidate, from doing nothing through to
-  Blackout.</p>
+  <p><b>Combined</b> gives up 3.41% of plan-year revenue, averaged across channels. Spend that is bunched up runs further into each channel's saturation curve. Each channel's annual budget is unchanged and no extra
+  spend is needed.</p>
 </section>
 
 <section id="phased-spend">
   <div class="s-label">Section 4</div>
   <h2>Phased spend</h2>
-  <p>Each chart below shows one channel's weekly spend as supplied, in
-  pale, against its recommended pacing under <b>Combined</b>, in solid.
-  Each channel's annual total is identical on both sides, but this strategy also moves budget between months: a blackout run's budget lands in a recipient month, and a peak month is funded by a small cut to the others, so individual monthly totals differ. </p>
+  <p>Each panel shows one channel's planned weekly spend (pale) and its
+  phased schedule under <b>Combined</b> (solid). Each channel's annual total is identical on both sides, but this strategy also moves budget between months: a blackout run's budget lands in a recipient month, and a peak month is funded by a small cut to the others, so individual monthly totals differ.
+  </p>
   <div class="pacing-grid"><div class="pacing-cell"><div class="pacing-title">tv</div><svg class="chart" viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="137.5" text-anchor="end" font-size="10" fill="#9ca3af">£0</text><line x1="58" y1="104.0" x2="306" y2="104.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="107.5" text-anchor="end" font-size="10" fill="#9ca3af">£100k</text><line x1="58" y1="74.0" x2="306" y2="74.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="77.5" text-anchor="end" font-size="10" fill="#9ca3af">£200k</text><line x1="58" y1="44.0" x2="306" y2="44.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="47.5" text-anchor="end" font-size="10" fill="#9ca3af">£300k</text><line x1="58" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">£400k</text><line x1="58.0" y1="134.0" x2="58.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="58.0" y="150.0" text-anchor="start" font-size="10" fill="#9ca3af">Jan &#x27;27</text><line x1="140.7" y1="134.0" x2="140.7" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="140.7" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">May &#x27;27</text><line x1="223.3" y1="134.0" x2="223.3" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="223.3" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">Aug &#x27;27</text><line x1="306.0" y1="134.0" x2="306.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="150.0" text-anchor="end" font-size="10" fill="#9ca3af">Dec &#x27;27</text><line x1="58" y1="14" x2="58" y2="134.0" stroke="#d1d5db" stroke-width="1"/><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#d1d5db" stroke-width="1"/><text x="182.0" y="166" text-anchor="middle" font-size="10" fill="#9ca3af">Plan week</text><text x="12" y="74.0" text-anchor="middle" font-size="10" fill="#9ca3af" transform="rotate(-90 12 74.0)">Weekly spend</text><polyline points="58.0,100.3 62.9,97.7 67.7,99.5 72.6,100.0 77.5,104.9 82.3,100.6 87.2,109.2 92.0,111.8 96.9,111.6 101.8,105.2 106.6,108.4 111.5,108.9 116.4,103.1 121.2,102.6 126.1,104.5 130.9,117.9 135.8,110.4 140.7,111.1 145.5,110.3 150.4,106.0 155.3,95.6 160.1,105.6 165.0,109.3 169.8,103.0 174.7,106.0 179.6,105.1 184.4,107.8 189.3,104.7 194.2,101.7 199.0,110.1 203.9,108.2 208.7,98.5 213.6,97.2 218.5,102.2 223.3,102.7 228.2,98.9 233.1,101.2 237.9,97.5 242.8,89.2 247.6,94.8 252.5,91.4 257.4,97.4 262.2,95.0 267.1,91.0 272.0,102.7 276.8,95.8 281.7,96.1 286.5,94.5 291.4,86.5 296.3,90.5 301.1,98.0 306.0,92.2" fill="none" stroke="#b3c8f8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><polyline points="58.0,112.0 62.9,98.4 67.7,100.2 72.6,111.8 77.5,70.4 82.3,61.0 87.2,79.7 92.0,85.4 96.9,119.3 101.8,105.6 106.6,113.0 111.5,109.3 116.4,113.7 121.2,113.6 126.1,105.2 130.9,123.5 135.8,111.0 140.7,119.4 145.5,118.8 150.4,107.1 155.3,97.2 160.1,111.3 165.0,109.4 169.8,113.4 174.7,115.4 179.6,105.3 184.4,116.6 189.3,104.8 194.2,112.6 199.0,110.2 203.9,134.0 208.7,134.0 213.6,134.0 218.5,134.0 223.3,102.7 228.2,46.2 233.1,51.9 237.9,42.6 242.8,22.0 247.6,108.1 252.5,105.8 257.4,97.6 262.2,95.3 267.1,98.5 272.0,103.0 276.8,108.8 281.7,108.9 286.5,94.9 291.4,87.7 296.3,105.7 301.1,110.6 306.0,93.3" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div><div class="pacing-cell"><div class="pacing-title">meta</div><svg class="chart" viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="137.5" text-anchor="end" font-size="10" fill="#9ca3af">£0</text><line x1="58" y1="104.0" x2="306" y2="104.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="107.5" text-anchor="end" font-size="10" fill="#9ca3af">£50k</text><line x1="58" y1="74.0" x2="306" y2="74.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="77.5" text-anchor="end" font-size="10" fill="#9ca3af">£100k</text><line x1="58" y1="44.0" x2="306" y2="44.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="47.5" text-anchor="end" font-size="10" fill="#9ca3af">£150k</text><line x1="58" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">£200k</text><line x1="58.0" y1="134.0" x2="58.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="58.0" y="150.0" text-anchor="start" font-size="10" fill="#9ca3af">Jan &#x27;27</text><line x1="140.7" y1="134.0" x2="140.7" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="140.7" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">May &#x27;27</text><line x1="223.3" y1="134.0" x2="223.3" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="223.3" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">Aug &#x27;27</text><line x1="306.0" y1="134.0" x2="306.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="150.0" text-anchor="end" font-size="10" fill="#9ca3af">Dec &#x27;27</text><line x1="58" y1="14" x2="58" y2="134.0" stroke="#d1d5db" stroke-width="1"/><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#d1d5db" stroke-width="1"/><text x="182.0" y="166" text-anchor="middle" font-size="10" fill="#9ca3af">Plan week</text><text x="12" y="74.0" text-anchor="middle" font-size="10" fill="#9ca3af" transform="rotate(-90 12 74.0)">Weekly spend</text><polyline points="58.0,85.0 62.9,88.0 67.7,71.3 72.6,91.4 77.5,88.0 82.3,94.8 87.2,86.5 92.0,93.6 96.9,93.1 101.8,91.8 106.6,82.2 111.5,95.0 116.4,93.3 121.2,97.3 126.1,82.2 130.9,92.7 135.8,96.1 140.7,92.8 145.5,73.5 150.4,87.2 155.3,79.1 160.1,83.9 165.0,89.7 169.8,92.7 174.7,91.4 179.6,90.5 184.4,100.6 189.3,71.8 194.2,79.7 199.0,83.2 203.9,84.0 208.7,88.8 213.6,75.2 218.5,81.4 223.3,75.2 228.2,85.4 233.1,72.5 237.9,62.4 242.8,75.2 247.6,68.3 252.5,73.8 257.4,68.2 262.2,68.5 267.1,74.3 272.0,79.5 276.8,70.0 281.7,73.0 286.5,77.1 291.4,66.2 296.3,67.2 301.1,73.4 306.0,67.4" fill="none" stroke="#f2cfa8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><polyline points="58.0,83.8 62.9,102.5 67.7,69.6 72.6,104.9 77.5,85.6 82.3,92.7 87.2,100.7 92.0,105.6 96.9,93.1 101.8,134.0 106.6,134.0 111.5,134.0 116.4,134.0 121.2,108.0 126.1,97.4 130.9,90.2 135.8,93.8 140.7,105.4 145.5,71.1 150.4,85.3 155.3,95.9 160.1,90.6 165.0,23.2 169.8,30.8 174.7,27.4 179.6,25.3 184.4,97.8 189.3,89.0 194.2,94.7 199.0,78.9 203.9,81.9 208.7,102.6 213.6,72.8 218.5,97.5 223.3,83.0 228.2,100.0 233.1,69.4 237.9,83.9 242.8,72.3 247.6,87.8 252.5,70.6 257.4,64.7 262.2,88.0 267.1,81.8 272.0,95.8 276.8,89.2 281.7,69.9 286.5,74.3 291.4,21.2 296.3,22.9 301.1,33.2 306.0,23.2" fill="none" stroke="#d97706" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div><div class="pacing-cell"><div class="pacing-title">search_generic</div><svg class="chart" viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="137.5" text-anchor="end" font-size="10" fill="#9ca3af">£0</text><line x1="58" y1="94.0" x2="306" y2="94.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="97.5" text-anchor="end" font-size="10" fill="#9ca3af">£100k</text><line x1="58" y1="54.0" x2="306" y2="54.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="57.5" text-anchor="end" font-size="10" fill="#9ca3af">£200k</text><line x1="58" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">£300k</text><line x1="58.0" y1="134.0" x2="58.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="58.0" y="150.0" text-anchor="start" font-size="10" fill="#9ca3af">Jan &#x27;27</text><line x1="140.7" y1="134.0" x2="140.7" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="140.7" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">May &#x27;27</text><line x1="223.3" y1="134.0" x2="223.3" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="223.3" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">Aug &#x27;27</text><line x1="306.0" y1="134.0" x2="306.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="150.0" text-anchor="end" font-size="10" fill="#9ca3af">Dec &#x27;27</text><line x1="58" y1="14" x2="58" y2="134.0" stroke="#d1d5db" stroke-width="1"/><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#d1d5db" stroke-width="1"/><text x="182.0" y="166" text-anchor="middle" font-size="10" fill="#9ca3af">Plan week</text><text x="12" y="74.0" text-anchor="middle" font-size="10" fill="#9ca3af" transform="rotate(-90 12 74.0)">Weekly spend</text><polyline points="58.0,86.4 62.9,96.5 67.7,99.7 72.6,91.6 77.5,106.1 82.3,114.8 87.2,113.2 92.0,114.4 96.9,106.2 101.8,101.7 106.6,112.4 111.5,100.0 116.4,108.8 121.2,104.1 126.1,102.9 130.9,103.6 135.8,104.6 140.7,104.2 145.5,108.0 150.4,101.3 155.3,96.9 160.1,98.8 165.0,94.1 169.8,99.5 174.7,101.4 179.6,97.1 184.4,102.1 189.3,107.8 194.2,110.2 199.0,95.6 203.9,97.6 208.7,97.4 213.6,99.8 218.5,96.8 223.3,89.3 228.2,94.8 233.1,98.9 237.9,95.8 242.8,88.2 247.6,97.6 252.5,104.1 257.4,103.5 262.2,99.8 267.1,91.3 272.0,95.1 276.8,95.5 281.7,98.5 286.5,94.1 291.4,91.2 296.3,93.4 301.1,91.1 306.0,92.1" fill="none" stroke="#a8daca" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><polyline points="58.0,47.8 62.9,66.1 67.7,72.0 72.6,57.2 77.5,108.7 82.3,116.6 87.2,121.5 92.0,122.2 96.9,116.6 101.8,108.7 106.6,113.7 111.5,112.7 116.4,110.3 121.2,115.7 126.1,105.4 130.9,115.4 135.8,107.0 140.7,104.2 145.5,134.0 150.4,134.0 155.3,134.0 160.1,134.0 165.0,109.4 169.8,112.7 174.7,103.8 179.6,99.8 184.4,104.5 189.3,109.7 194.2,119.3 199.0,110.3 203.9,100.8 208.7,111.7 213.6,108.0 218.5,111.4 223.3,93.2 228.2,110.3 233.1,112.7 237.9,99.3 242.8,92.4 247.6,111.6 252.5,106.4 257.4,115.2 262.2,102.3 267.1,27.3 272.0,36.7 276.8,37.6 281.7,45.3 286.5,34.2 291.4,94.7 296.3,109.1 301.1,107.7 306.0,95.5" fill="none" stroke="#059669" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div><div class="pacing-cell"><div class="pacing-title">tiktok</div><svg class="chart" viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="137.5" text-anchor="end" font-size="10" fill="#9ca3af">£0</text><line x1="58" y1="104.0" x2="306" y2="104.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="107.5" text-anchor="end" font-size="10" fill="#9ca3af">£100k</text><line x1="58" y1="74.0" x2="306" y2="74.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="77.5" text-anchor="end" font-size="10" fill="#9ca3af">£200k</text><line x1="58" y1="44.0" x2="306" y2="44.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="47.5" text-anchor="end" font-size="10" fill="#9ca3af">£300k</text><line x1="58" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="50" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">£400k</text><line x1="58.0" y1="134.0" x2="58.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="58.0" y="150.0" text-anchor="start" font-size="10" fill="#9ca3af">Jan &#x27;27</text><line x1="140.7" y1="134.0" x2="140.7" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="140.7" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">May &#x27;27</text><line x1="223.3" y1="134.0" x2="223.3" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="223.3" y="150.0" text-anchor="middle" font-size="10" fill="#9ca3af">Aug &#x27;27</text><line x1="306.0" y1="134.0" x2="306.0" y2="139.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="150.0" text-anchor="end" font-size="10" fill="#9ca3af">Dec &#x27;27</text><line x1="58" y1="14" x2="58" y2="134.0" stroke="#d1d5db" stroke-width="1"/><line x1="58" y1="134.0" x2="306" y2="134.0" stroke="#d1d5db" stroke-width="1"/><text x="182.0" y="166" text-anchor="middle" font-size="10" fill="#9ca3af">Plan week</text><text x="12" y="74.0" text-anchor="middle" font-size="10" fill="#9ca3af" transform="rotate(-90 12 74.0)">Weekly spend</text><polyline points="58.0,101.6 62.9,115.3 67.7,108.2 72.6,112.6 77.5,109.6 82.3,113.0 87.2,111.7 92.0,113.3 96.9,113.3 101.8,109.7 106.6,115.5 111.5,109.0 116.4,112.1 121.2,111.2 126.1,107.5 130.9,109.2 135.8,106.2 140.7,118.8 145.5,113.9 150.4,107.4 155.3,112.4 160.1,110.9 165.0,106.8 169.8,108.7 174.7,114.5 179.6,109.9 184.4,108.9 189.3,110.3 194.2,109.9 199.0,108.5 203.9,112.8 208.7,108.7 213.6,110.2 218.5,106.0 223.3,104.8 228.2,108.2 233.1,102.6 237.9,103.0 242.8,103.9 247.6,101.4 252.5,104.9 257.4,105.2 262.2,104.1 267.1,104.5 272.0,101.7 276.8,109.9 281.7,104.5 286.5,109.7 291.4,103.0 296.3,101.2 301.1,101.1 306.0,97.6" fill="none" stroke="#d1baf9" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><polyline points="58.0,103.4 62.9,116.3 67.7,117.8 72.6,120.5 77.5,111.0 82.3,120.8 87.2,113.0 92.0,121.0 96.9,114.3 101.8,118.6 106.6,119.3 111.5,110.1 116.4,120.1 121.2,112.2 126.1,108.5 130.9,118.1 135.8,116.2 140.7,119.3 145.5,114.6 150.4,112.5 155.3,120.0 160.1,119.0 165.0,107.9 169.8,117.9 174.7,115.3 179.6,118.6 184.4,79.5 189.3,82.5 194.2,81.6 199.0,78.7 203.9,120.7 208.7,118.1 213.6,111.6 218.5,107.5 223.3,111.0 228.2,117.8 233.1,104.3 237.9,114.5 242.8,105.6 247.6,113.2 252.5,115.4 257.4,106.4 262.2,105.4 267.1,134.0 272.0,134.0 276.8,134.0 281.7,134.0 286.5,109.7 291.4,56.5 296.3,52.0 301.1,51.9 306.0,43.0" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div></div>
 </section>
 
 <section id="appendix">
   <div class="s-label">Section 5</div>
   <h2>Appendix: every strategy compared</h2>
-  <p>This section first explains what each candidate strategy does to the
-  plan, then scores every one of them, from doing nothing through to
-  <b>Blackout</b>, against the three reliability problems this package
-  diagnoses, alongside what phasing costs in revenue to achieve each
-  result. <b>Combined</b> is highlighted in the scores; every chart in
-  Sections 2 through 4 is built from that one row.</p>
+  <p>What each strategy does to the plan, then how each one scores
+  against the unphased plan. <b>Combined</b> is highlighted. Sections 2 to
+  4 are built from that row.</p>
   
   <h3>What each strategy does</h3>
   <div class="table-scroll">
@@ -541,32 +470,29 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
     <tbody><tr data-lever="unphased"><td>unphased</td><td>0%</td><td>0%</td><td>0%</td><td>0%</td><td>0.00%</td><td>1.0x</td></tr><tr data-lever="Weekly nudge"><td>Weekly nudge</td><td>24%</td><td>1%</td><td>-0%</td><td>18%</td><td>0.25%</td><td>1.3x</td></tr><tr data-lever="Dark month"><td>Dark month</td><td>64%</td><td>34%</td><td>42%</td><td>47%</td><td>1.82%</td><td>2.2x</td></tr><tr data-lever="Peak month"><td>Peak month</td><td>62%</td><td>22%</td><td>17%</td><td>41%</td><td>1.45%</td><td>2.5x</td></tr><tr data-lever="Combined" class="winner-row"><td>Combined <span class="winner-tag">Recommended</span></td><td>70%</td><td>47%</td><td>54%</td><td>58%</td><td>3.41%</td><td>2.5x</td></tr><tr data-lever="Month step"><td>Month step</td><td>36%</td><td>7%</td><td>1%</td><td>19%</td><td>0.24%</td><td>1.2x</td></tr><tr data-lever="Dark week"><td>Dark week</td><td>46%</td><td>8%</td><td>11%</td><td>35%</td><td>0.64%</td><td>1.5x</td></tr></tbody>
   </table>
   </div>
-  <p class="fig-cap">Impact is the percentage improvement over doing
-  nothing, averaged across channels. Saturation and adstock are the two
-  halves of the identifiability problem: each is how much narrower the
-  range of recovered values gets (p10 to p90, as in the range charts
-  above). The winning row is picked on variance, bias and a combined
-  identifiability measure of the two. Cost is the share of true plan-period revenue
-  given up to phasing, under each channel's assumed response curve and
-  again averaged across channels. It is zero when saturation is linear,
-  and largest for the strategies that push spend hardest into the
-  steepest part of the curve. Peak week is the single biggest week of
-  spend under each strategy, across every channel, as a multiple of that
-  same week's as-supplied plan: the practical check on whether a media
-  buyer can actually deploy it.</p>
+  <p class="fig-cap">Impact is the improvement on the unphased plan,
+  averaged across channels. Saturation and adstock are how much narrower
+  the recovered range gets. Cost is the share of plan-year revenue given
+  up under the supplied response curves. Peak week is the biggest week of
+  spend as a multiple of that week's plan: the check on whether a media
+  buyer can book it. The highlighted strategy is picked on variance, bias and identifiability, not on cost.</p>
   
-  <h3>Time to benefit: what 3 years of phasing looks like</h3>
-  <p>By year 3, <b>Combined</b> improves on the unphased plan by 82% on variance, 69% on bias, 75% on saturation and 73% on adstock, against 70%, 47%, 54% and 58% after the first year. Lower is better on every chart. The gap between the lines
-  is the benefit of phasing.</p>
-  <div class="ttb-grid"><div class="pacing-cell"><div class="pacing-title">Variance</div><div class="fig-sub" style="margin:-.2rem 0 .3rem">Mean CV of the marginal-return estimate</div><svg class="chart" viewBox="0 0 320 190" xmlns="http://www.w3.org/2000/svg"><line x1="44" y1="154.0" x2="306" y2="154.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="157.5" text-anchor="end" font-size="10" fill="#9ca3af">0.00</text><line x1="44" y1="126.0" x2="306" y2="126.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="129.5" text-anchor="end" font-size="10" fill="#9ca3af">0.05</text><line x1="44" y1="98.0" x2="306" y2="98.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="101.5" text-anchor="end" font-size="10" fill="#9ca3af">0.10</text><line x1="44" y1="70.0" x2="306" y2="70.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="73.5" text-anchor="end" font-size="10" fill="#9ca3af">0.15</text><line x1="44" y1="42.0" x2="306" y2="42.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="45.5" text-anchor="end" font-size="10" fill="#9ca3af">0.20</text><line x1="44" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">0.25</text><line x1="44.0" y1="154.0" x2="44.0" y2="159.0" stroke="#d1d5db" stroke-width="1"/><text x="44.0" y="170.0" text-anchor="start" font-size="10" fill="#9ca3af">Year 1</text><line x1="175.0" y1="154.0" x2="175.0" y2="159.0" stroke="#d1d5db" stroke-width="1"/><text x="175.0" y="170.0" text-anchor="middle" font-size="10" fill="#9ca3af">Year 2</text><line x1="306.0" y1="154.0" x2="306.0" y2="159.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="170.0" text-anchor="end" font-size="10" fill="#9ca3af">Year 3</text><line x1="44" y1="14" x2="44" y2="154.0" stroke="#d1d5db" stroke-width="1"/><line x1="44" y1="154.0" x2="306" y2="154.0" stroke="#d1d5db" stroke-width="1"/><polyline points="44.0,21.3 175.0,21.3 306.0,21.3" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44.0" cy="21.3" r="3" fill="#9ca3af"/><circle cx="175.0" cy="21.3" r="3" fill="#9ca3af"/><circle cx="306.0" cy="21.3" r="3" fill="#9ca3af"/><polyline points="44.0,114.3 175.0,125.9 306.0,130.6" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44.0" cy="114.3" r="3" fill="#2563eb"/><circle cx="175.0" cy="125.9" r="3" fill="#2563eb"/><circle cx="306.0" cy="130.6" r="3" fill="#2563eb"/></svg></div><div class="pacing-cell"><div class="pacing-title">Bias</div><div class="fig-sub" style="margin:-.2rem 0 .3rem">Mean absolute error, % of true return</div><svg class="chart" viewBox="0 0 320 190" xmlns="http://www.w3.org/2000/svg"><line x1="44" y1="154.0" x2="306" y2="154.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="157.5" text-anchor="end" font-size="10" fill="#9ca3af">5%</text><line x1="44" y1="126.0" x2="306" y2="126.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="129.5" text-anchor="end" font-size="10" fill="#9ca3af">10%</text><line x1="44" y1="98.0" x2="306" y2="98.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="101.5" text-anchor="end" font-size="10" fill="#9ca3af">15%</text><line x1="44" y1="70.0" x2="306" y2="70.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="73.5" text-anchor="end" font-size="10" fill="#9ca3af">20%</text><line x1="44" y1="42.0" x2="306" y2="42.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="45.5" text-anchor="end" font-size="10" fill="#9ca3af">25%</text><line x1="44" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">30%</text><line x1="44.0" y1="154.0" x2="44.0" y2="159.0" stroke="#d1d5db" stroke-width="1"/><text x="44.0" y="170.0" text-anchor="start" font-size="10" fill="#9ca3af">Year 1</text><line x1="175.0" y1="154.0" x2="175.0" y2="159.0" stroke="#d1d5db" stroke-width="1"/><text x="175.0" y="170.0" text-anchor="middle" font-size="10" fill="#9ca3af">Year 2</text><line x1="306.0" y1="154.0" x2="306.0" y2="159.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="170.0" text-anchor="end" font-size="10" fill="#9ca3af">Year 3</text><line x1="44" y1="14" x2="44" y2="154.0" stroke="#d1d5db" stroke-width="1"/><line x1="44" y1="154.0" x2="306" y2="154.0" stroke="#d1d5db" stroke-width="1"/><polyline points="44.0,23.6 175.0,23.6 306.0,23.6" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44.0" cy="23.6" r="3" fill="#9ca3af"/><circle cx="175.0" cy="23.6" r="3" fill="#9ca3af"/><circle cx="306.0" cy="23.6" r="3" fill="#9ca3af"/><polyline points="44.0,97.5 175.0,125.0 306.0,133.6" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44.0" cy="97.5" r="3" fill="#2563eb"/><circle cx="175.0" cy="125.0" r="3" fill="#2563eb"/><circle cx="306.0" cy="133.6" r="3" fill="#2563eb"/></svg></div><div class="pacing-cell"><div class="pacing-title">Saturation</div><div class="fig-sub" style="margin:-.2rem 0 .3rem">Width of the recovered exponent's p10-p90 range</div><svg class="chart" viewBox="0 0 320 190" xmlns="http://www.w3.org/2000/svg"><line x1="44" y1="154.0" x2="306" y2="154.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="157.5" text-anchor="end" font-size="10" fill="#9ca3af">0.00</text><line x1="44" y1="119.0" x2="306" y2="119.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="122.5" text-anchor="end" font-size="10" fill="#9ca3af">0.20</text><line x1="44" y1="84.0" x2="306" y2="84.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="87.5" text-anchor="end" font-size="10" fill="#9ca3af">0.40</text><line x1="44" y1="49.0" x2="306" y2="49.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" font-size="10" fill="#9ca3af">0.60</text><line x1="44" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">0.80</text><line x1="44.0" y1="154.0" x2="44.0" y2="159.0" stroke="#d1d5db" stroke-width="1"/><text x="44.0" y="170.0" text-anchor="start" font-size="10" fill="#9ca3af">Year 1</text><line x1="175.0" y1="154.0" x2="175.0" y2="159.0" stroke="#d1d5db" stroke-width="1"/><text x="175.0" y="170.0" text-anchor="middle" font-size="10" fill="#9ca3af">Year 2</text><line x1="306.0" y1="154.0" x2="306.0" y2="159.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="170.0" text-anchor="end" font-size="10" fill="#9ca3af">Year 3</text><line x1="44" y1="14" x2="44" y2="154.0" stroke="#d1d5db" stroke-width="1"/><line x1="44" y1="154.0" x2="306" y2="154.0" stroke="#d1d5db" stroke-width="1"/><polyline points="44.0,30.4 175.0,30.4 306.0,30.4" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44.0" cy="30.4" r="3" fill="#9ca3af"/><circle cx="175.0" cy="30.4" r="3" fill="#9ca3af"/><circle cx="306.0" cy="30.4" r="3" fill="#9ca3af"/><polyline points="44.0,97.6 175.0,117.7 306.0,123.2" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44.0" cy="97.6" r="3" fill="#2563eb"/><circle cx="175.0" cy="117.7" r="3" fill="#2563eb"/><circle cx="306.0" cy="123.2" r="3" fill="#2563eb"/></svg></div><div class="pacing-cell"><div class="pacing-title">Adstock</div><div class="fig-sub" style="margin:-.2rem 0 .3rem">Width of the recovered decay's p10-p90 range</div><svg class="chart" viewBox="0 0 320 190" xmlns="http://www.w3.org/2000/svg"><line x1="44" y1="154.0" x2="306" y2="154.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="157.5" text-anchor="end" font-size="10" fill="#9ca3af">0.10</text><line x1="44" y1="119.0" x2="306" y2="119.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="122.5" text-anchor="end" font-size="10" fill="#9ca3af">0.20</text><line x1="44" y1="84.0" x2="306" y2="84.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="87.5" text-anchor="end" font-size="10" fill="#9ca3af">0.30</text><line x1="44" y1="49.0" x2="306" y2="49.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" font-size="10" fill="#9ca3af">0.40</text><line x1="44" y1="14.0" x2="306" y2="14.0" stroke="#e5e7eb" stroke-width="1"/><text x="36" y="17.5" text-anchor="end" font-size="10" fill="#9ca3af">0.50</text><line x1="44.0" y1="154.0" x2="44.0" y2="159.0" stroke="#d1d5db" stroke-width="1"/><text x="44.0" y="170.0" text-anchor="start" font-size="10" fill="#9ca3af">Year 1</text><line x1="175.0" y1="154.0" x2="175.0" y2="159.0" stroke="#d1d5db" stroke-width="1"/><text x="175.0" y="170.0" text-anchor="middle" font-size="10" fill="#9ca3af">Year 2</text><line x1="306.0" y1="154.0" x2="306.0" y2="159.0" stroke="#d1d5db" stroke-width="1"/><text x="306.0" y="170.0" text-anchor="end" font-size="10" fill="#9ca3af">Year 3</text><line x1="44" y1="14" x2="44" y2="154.0" stroke="#d1d5db" stroke-width="1"/><line x1="44" y1="154.0" x2="306" y2="154.0" stroke="#d1d5db" stroke-width="1"/><polyline points="44.0,38.3 175.0,38.3 306.0,38.3" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44.0" cy="38.3" r="3" fill="#9ca3af"/><circle cx="175.0" cy="38.3" r="3" fill="#9ca3af"/><circle cx="306.0" cy="38.3" r="3" fill="#9ca3af"/><polyline points="44.0,125.7 175.0,143.5 306.0,148.4" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44.0" cy="125.7" r="3" fill="#2563eb"/><circle cx="175.0" cy="143.5" r="3" fill="#2563eb"/><circle cx="306.0" cy="148.4" r="3" fill="#2563eb"/></svg></div></div>
-  <div class="legend"><span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Unphased</span><span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#2563eb"/></svg> Combined</span></div>
-  <p class="fig-cap">Year 1 phases the plan year only, the same result as the
-  comparison table above. Year 2 also phases the last year of your
-  history, and year 3 the last two, as if phasing had started then, on
-  the spend you actually had. The grey line is flat because it is the same
-  data left unphased; only how much of it is phased changes. It is a
-  counterfactual on your own history, not a forecast, and it assumes sales
-  would have responded as the supplied response curves say.</p>
+  <h3>How the benefit builds over time</h3>
+  <p>After one year of <b>Combined</b>: variance 70% better, bias 47% better, saturation 54% better and adstock 58% better. After 3 years:
+  variance 82% better, bias 69% better, saturation 75% better and adstock 73% better.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">How the benefit builds over time</div>
+    </div>
+    <div class="fig-body">
+      <svg viewBox="0 0 700 300" width="100%" preserveAspectRatio="xMinYMin meet" role="img"><line x1="70" y1="248.0" x2="550" y2="248.0" stroke="#e5e7eb" stroke-width="1"/><text x="62" y="252.0" text-anchor="end" font-size="11" fill="#9ca3af">0%</text><line x1="70" y1="190.0" x2="550" y2="190.0" stroke="#e5e7eb" stroke-width="1"/><text x="62" y="194.0" text-anchor="end" font-size="11" fill="#9ca3af">25%</text><line x1="70" y1="132.0" x2="550" y2="132.0" stroke="#e5e7eb" stroke-width="1"/><text x="62" y="136.0" text-anchor="end" font-size="11" fill="#9ca3af">50%</text><line x1="70" y1="74.0" x2="550" y2="74.0" stroke="#e5e7eb" stroke-width="1"/><text x="62" y="78.0" text-anchor="end" font-size="11" fill="#9ca3af">75%</text><line x1="70" y1="16.0" x2="550" y2="16.0" stroke="#e5e7eb" stroke-width="1"/><text x="62" y="20.0" text-anchor="end" font-size="11" fill="#9ca3af">100%</text><text x="70.0" y="266" text-anchor="start" font-size="11" fill="#9ca3af">Unphased</text><text x="230.0" y="266" text-anchor="middle" font-size="11" fill="#9ca3af">1 year</text><text x="390.0" y="266" text-anchor="middle" font-size="11" fill="#9ca3af">2 years</text><text x="550.0" y="266" text-anchor="end" font-size="11" fill="#9ca3af">3 years</text><text x="310.0" y="292" text-anchor="middle" font-size="11" fill="#9ca3af">Years phased</text><text x="12" y="132.0" text-anchor="middle" font-size="11" fill="#9ca3af" transform="rotate(-90 12 132.0)">Improvement on the unphased plan</text><polyline points="70.0,248.0 230.0,85.3 390.0,65.1 550.0,56.9" fill="none" stroke="#111827" stroke-width="2.2" stroke-linejoin="round"/><circle cx="70.0" cy="248.0" r="3" fill="#111827"/><circle cx="230.0" cy="85.3" r="3" fill="#111827"/><circle cx="390.0" cy="65.1" r="3" fill="#111827"/><circle cx="550.0" cy="56.9" r="3" fill="#111827"/><text x="558.0" y="60.9" font-size="12" font-weight="700" fill="#111827">Variance 82%</text><polyline points="70.0,248.0 230.0,121.8 390.0,84.2 550.0,73.9" fill="none" stroke="#0d9488" stroke-width="2.2" stroke-linejoin="round"/><circle cx="70.0" cy="248.0" r="3" fill="#0d9488"/><circle cx="230.0" cy="121.8" r="3" fill="#0d9488"/><circle cx="390.0" cy="84.2" r="3" fill="#0d9488"/><circle cx="550.0" cy="73.9" r="3" fill="#0d9488"/><text x="558.0" y="77.9" font-size="12" font-weight="700" fill="#0d9488">Saturation 75%</text><polyline points="70.0,248.0 230.0,113.5 390.0,86.1 550.0,78.5" fill="none" stroke="#92400e" stroke-width="2.2" stroke-linejoin="round"/><circle cx="70.0" cy="248.0" r="3" fill="#92400e"/><circle cx="230.0" cy="113.5" r="3" fill="#92400e"/><circle cx="390.0" cy="86.1" r="3" fill="#92400e"/><circle cx="550.0" cy="78.5" r="3" fill="#92400e"/><text x="558.0" y="91.9" font-size="12" font-weight="700" fill="#92400e">Adstock 73%</text><polyline points="70.0,248.0 230.0,139.8 390.0,99.5 550.0,86.9" fill="none" stroke="#7c3aed" stroke-width="2.2" stroke-linejoin="round"/><circle cx="70.0" cy="248.0" r="3" fill="#7c3aed"/><circle cx="230.0" cy="139.8" r="3" fill="#7c3aed"/><circle cx="390.0" cy="99.5" r="3" fill="#7c3aed"/><circle cx="550.0" cy="86.9" r="3" fill="#7c3aed"/><text x="558.0" y="105.9" font-size="12" font-weight="700" fill="#7c3aed">Bias 69%</text></svg>
+    </div>
+    <p class="fig-cap">How much each measure improves on the unphased plan
+    as more of the data is phased. Year 1 phases the plan year only. Each
+    later year also phases one more year of your history, as if phasing
+    had started then. It is a counterfactual on your own spend, not a
+    forecast.</p>
+  </div>
   
 </section>
 

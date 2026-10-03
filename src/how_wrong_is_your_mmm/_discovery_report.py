@@ -54,6 +54,11 @@ unphased plus phasing's revenue cost, winning row highlighted. The only
 sweep-specific content in the report; sections 1-4 are all built from
 this table's winning row alone.
 
+The commentary is worded from the results (see _change_sentence and
+_bias_change_sentence), never asserted: a sentence says a range narrows
+only for the channels where it does, so the report stays true on any data
+and for any pinned strategy.
+
 Follows the package's shared-DGP design: one demand series drives every
 simulated sales column in this report, and saturation/adstock (per
 channel) are resolved once in __init__ and reused throughout, never
@@ -416,6 +421,194 @@ def _strategy_glossary_html(report: DiscoveryReport) -> str:
   <h3>How they compare</h3>"""
 
 
+# Above this many channels a per-channel sentence stops being readable, so
+# the report's commentary switches to a count and an average.
+_MAX_CHANNELS_IN_A_SENTENCE = 6
+# A change smaller than this (as a fraction) reads as "unchanged".
+_NO_CHANGE = 0.005
+
+
+def _join_and(items: list[str]) -> str:
+    """'a', 'a and b', 'a, b and c'."""
+    if len(items) <= 1:
+        return "".join(items)
+    return ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def _change_sentence(
+    changes: dict[str, float], subject: str, better_verb: str, worse_verb: str
+) -> str:
+    """One sentence on how a per-channel measure changed under phasing,
+    worded from the numbers so it stays true when some channels get worse.
+
+    `changes` maps channel to its improvement as a fraction (positive is
+    better). `subject`, `better_verb` and `worse_verb` supply the words,
+    e.g. "The range", "narrows", "widens".
+    """
+    better = {ch: v for ch, v in changes.items() if v > _NO_CHANGE}
+    worse = {ch: -v for ch, v in changes.items() if v < -_NO_CHANGE}
+    same = [ch for ch, v in changes.items() if abs(v) <= _NO_CHANGE]
+    n = len(changes)
+    if n > _MAX_CHANNELS_IN_A_SENTENCE:
+        mean = float(np.mean(list(changes.values())))
+        verb = better_verb if mean >= 0 else worse_verb
+        return (
+            f"{subject} {better_verb} for {len(better)} of {n} channels. "
+            f"On average it {verb} by {abs(mean):.0%}."
+        )
+
+    def listed(group: dict[str, float]) -> str:
+        return _join_and([f"{html.escape(ch)} by {v:.0%}" for ch, v in group.items()])
+
+    if len(better) == n:
+        return f"{subject} {better_verb} for every channel: {listed(better)}."
+    if len(worse) == n:
+        return f"{subject} {worse_verb} for every channel: {listed(worse)}."
+    parts = []
+    if better:
+        parts.append(f"{better_verb} for {listed(better)}")
+    if worse:
+        parts.append(f"{worse_verb} for {listed(worse)}")
+    if same:
+        parts.append(f"is unchanged for {_join_and([html.escape(c) for c in same])}")
+    return f"{subject} " + ". It ".join(parts) + "."
+
+
+def _bias_change_sentence(before: dict[str, float], after: dict[str, float]) -> str:
+    """One sentence on how each channel's absolute bias (%) moved."""
+    n = len(before)
+    fell = [ch for ch in before if after[ch] < before[ch] - 0.5]
+    rose = [ch for ch in before if after[ch] > before[ch] + 0.5]
+    if n > _MAX_CHANNELS_IN_A_SENTENCE:
+        return (
+            f"Bias falls for {len(fell)} of {n} channels. Mean absolute bias "
+            f"goes from {np.mean(list(before.values())):.0f}% to "
+            f"{np.mean(list(after.values())):.0f}%."
+        )
+
+    def listed(group: list[str]) -> str:
+        return _join_and(
+            [
+                f"{html.escape(ch)} from {before[ch]:.0f}% to {after[ch]:.0f}%"
+                for ch in group
+            ]
+        )
+
+    if len(fell) == n:
+        return f"Every point estimate moves toward the truth: {listed(fell)}."
+    parts = []
+    if fell:
+        parts.append(f"falls for {listed(fell)}")
+    if rose:
+        parts.append(f"rises for {listed(rose)}")
+    same = [ch for ch in before if ch not in fell and ch not in rose]
+    if same:
+        parts.append(f"is unchanged for {_join_and([html.escape(c) for c in same])}")
+    return "Bias " + ". It ".join(parts) + "."
+
+
+def _improvement_phrase(value: float, better: str, worse: str) -> str:
+    """'45% better', '3% worse' or 'unchanged', from an improvement as a
+    fraction."""
+    if abs(value) < _NO_CHANGE:
+        return "unchanged"
+    return f"{abs(value):.0%} {better if value > 0 else worse}"
+
+
+def _mean_pairwise(matrix: dict, channels: list[str]) -> float:
+    pairs = [matrix[a][b] for i, a in enumerate(channels) for b in channels[i + 1 :]]
+    return float(np.mean(pairs)) if pairs else 0.0
+
+
+_BENEFIT_SERIES = (
+    ("variance", "Variance", "#111827"),
+    ("saturation", "Saturation", "#0d9488"),
+    ("adstock", "Adstock", "#92400e"),
+    ("bias", "Bias", "#7c3aed"),
+)
+
+
+def _svg_benefit_lines(improvement: dict[str, list[float]], years: list[int]) -> str:
+    """One chart of how much each measure improves on the unphased plan as
+    more years are phased, every line starting from zero at "Unphased".
+    The same chart as docs/overview.html's "How the benefit builds over
+    time". `improvement` maps each measure to one fraction per year.
+    """
+    width, height = 700, 300
+    m_top, m_right, m_bottom, m_left = 16, 150, 52, 70
+    pw, ph = width - m_left - m_right, height - m_top - m_bottom
+    series = [
+        (name, color, [0.0] + [100 * v for v in improvement[key]])
+        for key, name, color in _BENEFIT_SERIES
+    ]
+    lowest = min(min(v) for _, _, v in series)
+    y_min = 25 * math.floor(lowest / 25) if lowest < 0 else 0
+    y_max = 100
+    n_pts = len(years) + 1
+
+    def sc_x(i: int) -> float:
+        return m_left + (i / (n_pts - 1)) * pw
+
+    def sc_y(v: float) -> float:
+        return m_top + ph - ((v - y_min) / (y_max - y_min)) * ph
+
+    parts = [
+        f'<svg viewBox="0 0 {width} {height}" width="100%" '
+        'preserveAspectRatio="xMinYMin meet" role="img">'
+    ]
+    for v in range(y_min, y_max + 1, 25):
+        stroke = "#9ca3af" if v == 0 and y_min < 0 else "#e5e7eb"
+        parts.append(
+            f'<line x1="{m_left}" y1="{sc_y(v):.1f}" x2="{m_left + pw}" '
+            f'y2="{sc_y(v):.1f}" stroke="{stroke}" stroke-width="1"/>'
+            f'<text x="{m_left - 8}" y="{sc_y(v) + 4:.1f}" text-anchor="end" '
+            f'font-size="11" fill="#9ca3af">{v}%</text>'
+        )
+    x_labels = ["Unphased"] + [f"{y} year{'s' if y > 1 else ''}" for y in years]
+    for i, label in enumerate(x_labels):
+        anchor = "start" if i == 0 else "end" if i == n_pts - 1 else "middle"
+        parts.append(
+            f'<text x="{sc_x(i):.1f}" y="{m_top + ph + 18}" text-anchor="{anchor}" '
+            f'font-size="11" fill="#9ca3af">{label}</text>'
+        )
+    parts.append(
+        f'<text x="{m_left + pw / 2:.1f}" y="{height - 8}" text-anchor="middle" '
+        'font-size="11" fill="#9ca3af">Years phased</text>'
+    )
+    y_mid = m_top + ph / 2
+    parts.append(
+        f'<text x="12" y="{y_mid:.1f}" text-anchor="middle" font-size="11" '
+        f'fill="#9ca3af" transform="rotate(-90 12 {y_mid:.1f})">'
+        "Improvement on the unphased plan</text>"
+    )
+    # End labels, highest first, pushed apart so they never overlap.
+    order = sorted(range(len(series)), key=lambda k: -series[k][2][-1])
+    label_y: dict[int, float] = {}
+    previous = None
+    for k in order:
+        y = sc_y(series[k][2][-1])
+        if previous is not None and y - previous < 14:
+            y = previous + 14
+        label_y[k] = previous = y
+    for k, (name, color, values) in enumerate(series):
+        points = " ".join(f"{sc_x(i):.1f},{sc_y(v):.1f}" for i, v in enumerate(values))
+        parts.append(
+            f'<polyline points="{points}" fill="none" stroke="{color}" '
+            'stroke-width="2.2" stroke-linejoin="round"/>'
+        )
+        parts.extend(
+            f'<circle cx="{sc_x(i):.1f}" cy="{sc_y(v):.1f}" r="3" fill="{color}"/>'
+            for i, v in enumerate(values)
+        )
+        parts.append(
+            f'<text x="{sc_x(n_pts - 1) + 8:.1f}" y="{label_y[k] + 4:.1f}" '
+            f'font-size="12" font-weight="700" fill="{color}">'
+            f"{name} {values[-1]:.0f}%</text>"
+        )
+    parts.append("</svg>")
+    return "".join(parts)
+
+
 def _time_to_benefit_html(report: DiscoveryReport) -> str:
     """Appendix subsection: the recommended strategy's benefit at year 1,
     2, 3... of repeating the plan, against the unphased plan measured over
@@ -425,83 +618,35 @@ def _time_to_benefit_html(report: DiscoveryReport) -> str:
     if not ttb:
         return ""
     years = ttb["years"]
-    labels = [f"Year {y}" for y in years]
     n_years = len(years)
     winner = html.escape(ttb["label"])
-    panels = (
-        (
-            "variance",
-            "Variance",
-            "Mean CV of the marginal-return estimate",
-            lambda v: f"{v:.2f}",
-        ),
-        (
-            "bias",
-            "Bias",
-            "Mean absolute error, % of true return",
-            lambda v: f"{v:.0f}%",
-        ),
-        (
-            "saturation",
-            "Saturation",
-            "Width of the recovered exponent's p10-p90 range",
-            lambda v: f"{v:.2f}",
-        ),
-        (
-            "adstock",
-            "Adstock",
-            "Width of the recovered decay's p10-p90 range",
-            lambda v: f"{v:.2f}",
-        ),
-    )
-    cells = ""
-    for key, title, sub, fmt in panels:
-        svg = _svg_multiline(
-            {
-                "Unphased": np.asarray(ttb["unphased"][key]),
-                "Phased": np.asarray(ttb["phased"][key]),
-            },
-            {"Unphased": "#9ca3af", "Phased": "#2563eb"},
-            width=320,
-            height=190,
-            pad_left=44,
-            normalize=False,
-            y_fmt=fmt,
-            x_label="",
-            x_tick_labels=labels,
-            n_x_ticks=n_years,
-            markers=True,
-        )
-        cells += (
-            f'<div class="pacing-cell"><div class="pacing-title">{title}</div>'
-            f'<div class="fig-sub" style="margin:-.2rem 0 .3rem">{sub}</div>{svg}</div>'
-        )
-    last = n_years - 1
     imp = ttb["improvement"]
-    headline = (
-        f"By year {years[-1]}, <b>{winner}</b> improves on the unphased plan by "
-        f"{100 * imp['variance'][last]:.0f}% on variance, "
-        f"{100 * imp['bias'][last]:.0f}% on bias, "
-        f"{100 * imp['saturation'][last]:.0f}% on saturation and "
-        f"{100 * imp['adstock'][last]:.0f}% on adstock, "
-        f"against {100 * imp['variance'][0]:.0f}%, "
-        f"{100 * imp['bias'][0]:.0f}%, "
-        f"{100 * imp['saturation'][0]:.0f}% and "
-        f"{100 * imp['adstock'][0]:.0f}% after the first year."
-    )
+
+    def at(i: int) -> str:
+        return (
+            f"variance {_improvement_phrase(imp['variance'][i], 'better', 'worse')}, "
+            f"bias {_improvement_phrase(imp['bias'][i], 'better', 'worse')}, "
+            f"saturation {_improvement_phrase(imp['saturation'][i], 'better', 'worse')} "
+            f"and adstock {_improvement_phrase(imp['adstock'][i], 'better', 'worse')}"
+        )
+
     return f"""
-  <h3>Time to benefit: what {n_years} years of phasing looks like</h3>
-  <p>{headline} Lower is better on every chart. The gap between the lines
-  is the benefit of phasing.</p>
-  <div class="ttb-grid">{cells}</div>
-  <div class="legend"><span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Unphased</span><span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#2563eb"/></svg> {winner}</span></div>
-  <p class="fig-cap">Year 1 phases the plan year only, the same result as the
-  comparison table above. Year 2 also phases the last year of your
-  history, and year 3 the last two, as if phasing had started then, on
-  the spend you actually had. The grey line is flat because it is the same
-  data left unphased; only how much of it is phased changes. It is a
-  counterfactual on your own history, not a forecast, and it assumes sales
-  would have responded as the supplied response curves say.</p>"""
+  <h3>How the benefit builds over time</h3>
+  <p>After one year of <b>{winner}</b>: {at(0)}. After {n_years} years:
+  {at(n_years - 1)}.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">How the benefit builds over time</div>
+    </div>
+    <div class="fig-body">
+      {_svg_benefit_lines(imp, years)}
+    </div>
+    <p class="fig-cap">How much each measure improves on the unphased plan
+    as more of the data is phased. Year 1 phases the plan year only. Each
+    later year also phases one more year of your history, as if phasing
+    had started then. It is a counterfactual on your own spend, not a
+    forecast.</p>
+  </div>"""
 
 
 def _svg_multiline(
@@ -2385,8 +2530,23 @@ def _render_html(report: DiscoveryReport) -> str:
         )
         for ch in channels
     }
-    variance_narrowing_text = ", ".join(
-        f"{ch} {variance_narrowing[ch]:.0%}" for ch in channels
+    variance_change_text = _change_sentence(
+        variance_narrowing, "The range", "narrows", "widens"
+    )
+    # The channel whose unphased range is widest relative to its true
+    # revenue, quoted in the Diagnostics section.
+    variance_widest = max(
+        channels,
+        key=lambda ch: (
+            (baseline["revenue_p90"][ch] - baseline["revenue_p10"][ch])
+            / max(true_revenue[ch], 1e-9)
+        ),
+    )
+    variance_widest_text = (
+        f"The widest range is {html.escape(variance_widest)}'s: "
+        f"{_fmt_gbp(baseline['revenue_p10'][variance_widest])} to "
+        f"{_fmt_gbp(baseline['revenue_p90'][variance_widest])}, against a true "
+        f"{_fmt_gbp(true_revenue[variance_widest])}."
     )
 
     # Bias section: same chart family as variance (£ revenue, dashed true
@@ -2420,10 +2580,43 @@ def _render_html(report: DiscoveryReport) -> str:
         for ch in channels
     ]
     bias_svg = _svg_forest(bias_forest_data)
-    bias_narrowing_text = ", ".join(
-        f"{ch} {abs(baseline['bias_pct'][ch]):.0f}% &rarr; {abs(best['bias_pct'][ch]):.0f}%"
-        for ch in channels
+    bias_change_text = _bias_change_sentence(
+        {ch: abs(baseline["bias_pct"][ch]) for ch in channels},
+        {ch: abs(best["bias_pct"][ch]) for ch in channels},
     )
+    signed_bias = {ch: baseline["bias_pct"][ch] for ch in channels}
+    if len(channels) > _MAX_CHANNELS_IN_A_SENTENCE:
+        bias_level_text = (
+            "Mean absolute bias across channels is "
+            f"{np.mean([abs(v) for v in signed_bias.values()]):.0f}%."
+        )
+    elif all(v > 0 for v in signed_bias.values()):
+        bias_level_text = (
+            "Every point estimate sits above the truth: "
+            + _join_and(
+                [f"{html.escape(ch)} by {v:.0f}%" for ch, v in signed_bias.items()]
+            )
+            + "."
+        )
+    else:
+        bias_level_text = (
+            "The point estimates miss the truth by "
+            + _join_and(
+                [f"{html.escape(ch)} {v:+.0f}%" for ch, v in signed_bias.items()]
+            )
+            + "."
+        )
+    if meta["demand_proxy_quality"] >= 1.0:
+        bias_setup_text = (
+            "Here the model is given a perfect demand proxy, so little bias "
+            "is expected."
+        )
+    else:
+        bias_setup_text = (
+            "Here the model sees demand only through a proxy "
+            f"({meta['demand_proxy_quality']:.0%} quality), as a real MMM would. "
+            "Whatever the proxy misses gets credited to the channels."
+        )
 
     # Identifiability section: same forest-chart family as sections 2/3,
     # not a picture of the RSS surface itself, which read as confusing
@@ -2479,9 +2672,6 @@ def _render_html(report: DiscoveryReport) -> str:
         lam_forest_data, x_label="Adstock decay (lambda)", fmt=_fmt_plain
     )
 
-    id_valley_before = baseline["scores"]["identifiability"]
-    id_valley_after = best["scores"]["identifiability"]
-    tol_pct = report.valley_tol_ * 100
     b_narrowing = {
         ch: _safe_improvement(
             _range_width((baseline["b_p10"][ch], baseline["b_p90"][ch])),
@@ -2496,8 +2686,12 @@ def _render_html(report: DiscoveryReport) -> str:
         )
         for ch in channels
     }
-    b_narrowing_text = ", ".join(f"{ch} {b_narrowing[ch]:.0%}" for ch in channels)
-    lam_narrowing_text = ", ".join(f"{ch} {lam_narrowing[ch]:.0%}" for ch in channels)
+    b_change_text = _change_sentence(
+        b_narrowing, "The saturation range", "narrows", "widens"
+    )
+    lam_change_text = _change_sentence(
+        lam_narrowing, "The adstock range", "narrows", "widens"
+    )
 
     # Where can you grow: the recovered marginal return at double today's
     # spend, unphased vs the winner. The same curve uncertainty the
@@ -2574,6 +2768,21 @@ def _render_html(report: DiscoveryReport) -> str:
         for ch in channels
     )
 
+    corr_before_mean = _mean_pairwise(baseline["correlation"], channels)
+    corr_after_mean = _mean_pairwise(best["correlation"], channels)
+    corr_move = (
+        "falls"
+        if corr_after_mean < corr_before_mean - _NO_CHANGE
+        else "rises"
+        if corr_after_mean > corr_before_mean + _NO_CHANGE
+        else "stays"
+    )
+    corr_change_text = (
+        f"Mean pairwise correlation stays at {corr_before_mean:.2f}."
+        if corr_move == "stays"
+        else f"Mean pairwise correlation {corr_move} from {corr_before_mean:.2f} "
+        f"to {corr_after_mean:.2f}."
+    )
     corr_before_html = _corr_table_html(baseline["correlation"], channels)
     corr_after_html = _corr_table_html(best["correlation"], channels)
 
@@ -2714,7 +2923,10 @@ def _render_html(report: DiscoveryReport) -> str:
         totals_sub = (
             "annual totals unchanged from unphased; budget moves between months"
         )
-        totals_cost = "though each channel's annual total is unchanged"
+        totals_kept = (
+            "Each channel's annual budget is unchanged. Some budget moves "
+            "between months."
+        )
         red = next(
             (v for v in winner_spec.values() if isinstance(v, Redistribute)), None
         )
@@ -2736,7 +2948,9 @@ def _render_html(report: DiscoveryReport) -> str:
         )
     else:
         totals_sub = "monthly totals unchanged from unphased"
-        totals_cost = "though the monthly totals are unchanged"
+        totals_kept = (
+            "Every month's total is unchanged. Only the timing within each month moves."
+        )
         totals_pacing = (
             "The monthly totals are identical on both sides; only the "
             "timing within each month has moved."
@@ -2979,6 +3193,52 @@ def _render_html(report: DiscoveryReport) -> str:
     # source rather than flattened into one line, so a second chart here
     # would just be a strictly-worse duplicate.
 
+    # Headline numbers and the cost sentence, worded from the scores so
+    # they stay true on any data.
+    base_scores, best_scores = baseline["scores"], best["scores"]
+
+    def gain(key: str) -> float:
+        return _safe_improvement(base_scores[key], best_scores[key])
+
+    headline_numbers = (
+        "Against the unphased plan: variance "
+        f"{_improvement_phrase(gain('variance'), 'better', 'worse')}, bias "
+        f"{_improvement_phrase(gain('bias'), 'better', 'worse')}, saturation range "
+        f"{_improvement_phrase(gain('saturation_range'), 'narrower', 'wider')} and "
+        "adstock range "
+        f"{_improvement_phrase(gain('adstock_range'), 'narrower', 'wider')}."
+    )
+    if abs(winner_cost_pct) < 0.005:
+        cost_text = (
+            f"<b>{winner}</b> gives up no plan-year revenue here: the timing "
+            "changes cost nothing under the supplied response curves."
+        )
+    elif winner_cost_pct > 0:
+        cost_text = (
+            f"<b>{winner}</b> gives up {winner_cost_pct:.2f}% of plan-year "
+            "revenue, averaged across channels. Spend that is bunched up "
+            "runs further into each channel's saturation curve."
+        )
+    else:
+        cost_text = (
+            f"<b>{winner}</b> adds {-winner_cost_pct:.2f}% to plan-year "
+            "revenue under the supplied response curves, averaged across "
+            "channels."
+        )
+    n_candidates = len(lever_labels) - 1
+    picked_text = (
+        "This strategy was set directly, not picked by the comparison."
+        if pinned
+        else "It is picked on variance, bias and identifiability. Cost is "
+        "shown beside it and is not part of the pick."
+    )
+    picked_caption = (
+        "The highlighted strategy was set directly, not picked."
+        if pinned
+        else "The highlighted strategy is picked on variance, bias and "
+        "identifiability, not on cost."
+    )
+
     def stat_box(label: str, value: str) -> str:
         return (
             f'<div class="meta-box"><div class="lbl">{label}</div>'
@@ -3006,12 +3266,10 @@ def _render_html(report: DiscoveryReport) -> str:
   <div class="report-title-eyebrow">Discovery</div>
   <h1 class="report-title">Which phasing strategy is worth pursuing?</h1>
   <p class="report-sub">A phasing strategy changes when the plan's spend
-  lands week to week. It does not touch the total budget or how it splits
-  across channels. This report sweeps {len(lever_labels)} such strategies,
-  each applied the same way to every channel, and picks the one that does
-  the most to fix three separate ways a model can misread this plan: how
-  wide its revenue estimate is, how biased that estimate is, and whether
-  saturation and adstock can be recovered at all.</p>
+  lands. Each channel's annual budget stays the same. This report scores
+  {n_candidates} {"strategy" if n_candidates == 1 else "strategies"} against
+  the unphased plan on three problems: variance, bias, and whether
+  saturation and adstock can be recovered.</p>
   <div class="cover-meta">
     {stat_box("Client", meta["client_name"] or "not set")}
     {stat_box("Plan year", meta["plan_year"] or "not set")}
@@ -3028,31 +3286,19 @@ def _render_html(report: DiscoveryReport) -> str:
   <a href="#appendix">5 &middot; Appendix</a>
 </nav>
 
-<div class="headline">{
-        "Pinned strategy: <b>" + winner + "</b>. This strategy was set "
-        "directly rather than picked by the sweep; Section 5 shows how it "
-        "compares to every other candidate."
-        if pinned
-        else "Recommended strategy: <b>" + winner + "</b>. It is the candidate "
-        "that improves on the unphased plan across all three problems below; "
-        "when no candidate manages that, the report falls back to whichever "
-        "improves the worst-affected problem the most."
-    }</div>
+<div class="headline">{"Pinned" if pinned else "Recommended"} strategy:
+<b>{winner}</b>. {headline_numbers} {picked_text}</div>
 
 <main>
 
 <section id="scenario-inputs">
   <div class="s-label">Section 1</div>
   <h2>Scenario inputs</h2>
-  <p>This section lays out everything the report is built on: each
-  channel's planned spend and ROI, the saturation and adstock it is
-  assumed to respond with, the actual weekly spend behind the plan, and
-  what all of that implies for weekly sales. Background demand accounts
-  for {meta["baseline_share"]:.0%} of sales in this scenario, leaving the
-  remaining {1 - meta["baseline_share"]:.0%} for these channels to
-  explain, which is why the reliability problems in the sections that
-  follow matter. Everything here is reproducible from these inputs alone,
-  in a notebook, with no need for this report class.</p>
+  <p>Everything the report is built on: each channel's planned spend,
+  marginal return (ROI), saturation and adstock, the weekly spend behind
+  the plan, and what those imply for weekly sales. Background demand
+  accounts for {meta["baseline_share"]:.0%} of sales, leaving
+  {1 - meta["baseline_share"]:.0%} for the channels.</p>
   <div class="table-scroll">
   <table class="cross-table">
     <thead><tr><th>Channel</th><th>Spend</th><th>ROI</th><th>Saturation</th><th>Adstock</th></tr></thead>
@@ -3075,12 +3321,9 @@ def _render_html(report: DiscoveryReport) -> str:
   {saturation_fig_html}
 
   <h3>Implied contribution</h3>
-  <p>The chart below is the one place these inputs are combined into an
-  outcome rather than listed on their own: background demand plus each
-  channel's modelled contribution, stacked week by week into weekly
-  sales. Nothing here was supplied directly. It follows entirely from the
-  assumptions already given, which makes it a check on those assumptions
-  rather than a separate fact about the scenario.</p>
+  <p>Background demand plus each channel's contribution, stacked into
+  weekly sales. Nothing here was supplied directly. It follows from the
+  inputs above, which makes it a check on those assumptions.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Sales / revenue, weekly, by source</div>
@@ -3096,22 +3339,14 @@ def _render_html(report: DiscoveryReport) -> str:
 <section id="diagnostics">
   <div class="s-label">Section 2</div>
   <h2>Diagnostics</h2>
-  <p>The next four charts describe the unphased plan exactly as supplied,
-  before any strategy has touched it. Each one isolates a different way a
-  model fit to this history and plan could go wrong: spend correlation,
-  the width of the resulting revenue estimate, bias from an imperfect read
-  of demand, and whether saturation and adstock can be told apart from
-  noise. Section 3 returns to the same four problems once <b>{winner}</b>
-  has been applied, so the scale of the improvement is comparable line for
-  line.</p>
+  <p>The unphased plan, exactly as supplied: the spend correlation behind
+  the problem, then variance, bias and identifiability. Section 3 shows
+  the same charts after phasing.</p>
 
   <h3>Spend correlation</h3>
-  <p>Two channels whose spend rises and falls together give a regression
-  model very little to separate them with. The matrix below measures
-  exactly that: the Pearson correlation between each pair's weekly spend
-  across the plan year. The closer a cell is to 1, the more those two
-  channels' individual contributions have been confounded before the
-  model sees a single week of sales.</p>
+  <p>Channels whose spend moves together are hard for a model to tell
+  apart. Mean pairwise correlation across the plan year is
+  {corr_before_mean:.2f}.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Channel correlation, unphased</div>
@@ -3123,13 +3358,10 @@ def _render_html(report: DiscoveryReport) -> str:
   </div>
 
   <h3>Variance</h3>
-  <p>When two channels' spend moves together, a model cannot fully credit
-  either one for the sales that followed. That is what an unphased plan
-  does: spend is locked to a single fixed schedule, so any two correlated
-  channels move in lockstep for the whole plan. The chart below shows what
-  this leaves behind: the range of incremental revenue the model would
-  estimate for each channel, wide enough that either end of it could pass
-  for the truth.</p>
+  <p>If the model were refit on a slightly different version of the same
+  history, how far would its answer move? The model is given the true
+  demand and curve shapes, so this is a best case.
+  {variance_widest_text}</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Incremental revenue, unphased</div>
@@ -3143,19 +3375,14 @@ def _render_html(report: DiscoveryReport) -> str:
       </div>
       {diag_variance_svg}
     </div>
-    <p class="fig-cap">The dashed line marks the revenue implied by the
-    channel's true marginal return. The ring is the model's mean
-    incremental-revenue estimate, and the bar behind it is its p10 to p90
-    range across simulations. The further that range sits from the dashed
-    line, the more wrong a client relying on the model alone would be.</p>
+    <p class="fig-cap">Each channel's estimated incremental revenue on the
+    plan: the bar is the p10 to p90 range across simulations and the ring
+    its mean. The dashed line is the revenue implied by the marginal
+    return you supplied.</p>
   </div>
 
   <h3>Bias</h3>
-  <p>A model can only regress on the demand signal it is given, not on
-  demand itself. Here that signal is a proxy at
-  {meta["demand_proxy_quality"]:.0%} quality rather than the true series,
-  and the gap between the two pulls every channel's estimate away from its
-  true marginal return before phasing is even considered.
+  <p>{bias_setup_text} {bias_level_text}
   {_demand_link_sentence(meta)}</p>
   <div class="fig">
     <div class="fig-hdr">
@@ -3170,22 +3397,16 @@ def _render_html(report: DiscoveryReport) -> str:
       </div>
       {diag_bias_svg}
     </div>
-    <p class="fig-cap">"Believed" revenue is what a client would expect if
-    they took the biased estimate at face value. The ring marks that
-    figure, and the bar around it is the p10&ndash;p90 spread of the same
-    bias across simulations. The gap between the bar and the dashed
-    true-revenue line is the size of the error a client would never see
-    without this diagnostic.</p>
+    <p class="fig-cap">The ring is the revenue the biased estimate implies
+    and the bar its p10 to p90 range across simulations. The gap to the
+    dashed line is the bias.</p>
   </div>
 
   <h3>Identifiability</h3>
-  <p>A saturation curve and an adstock decay can only be recovered from
-  spend that varies enough, in the right ways, to tell one curvature from
-  another. Locked to a single plan, spend does not vary that way: many
-  different saturation and adstock values fit the observed data about
-  equally well. The client's plausible value is one point in that space,
-  and the chart below shows the whole range the model could just as
-  easily have recovered instead.</p>
+  <p>Can the model recover each channel's saturation and adstock? One
+  channel at a time, every combination of saturation exponent and adstock
+  decay is tried and the best fit kept. A range that covers most of the
+  search means the data cannot tell the curves apart.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Recovered saturation, by channel, unphased</div>
@@ -3199,12 +3420,9 @@ def _render_html(report: DiscoveryReport) -> str:
       </div>
       {diag_b_svg}
     </div>
-    <p class="fig-cap">Each row is one channel's own recovered saturation,
-    holding every other channel at its own supplied curvature. The bar is
-    the p10&ndash;p90 range across simulations and the ring its mean. A
-    wide bar means this channel's spend pattern does not pin down how
-    strongly it saturates, regardless of what value was assumed going
-    in.</p>
+    <p class="fig-cap">The range of saturation exponents the model
+    recovers for each channel (p10 to p90 across simulations) and its
+    mean, with every other channel held at its supplied curve.</p>
   </div>
   <div class="fig">
     <div class="fig-hdr">
@@ -3219,28 +3437,18 @@ def _render_html(report: DiscoveryReport) -> str:
       </div>
       {diag_lam_svg}
     </div>
-    <p class="fig-cap">Adstock asks a different question of the same data:
-    not how strongly a channel's spend translates into effect, but how
-    long that effect persists once spend stops. The same limitation
-    applies here. A wide bar means the plan's spend pattern leaves the
-    decay rate just as unresolved as the saturation curve above.</p>
+    <p class="fig-cap">The same for adstock decay: how long a week's
+    spend keeps working.</p>
   </div>
 </section>
 
 <section id="impact">
   <div class="s-label">Section 3</div>
   <h2>Impact</h2>
-  <p>Section 2 showed how bad each of these four problems is before any
-  fix. What follows is what phasing under <b>{winner}</b> does to each of
-  them in turn, using the same charts and the same axes, so the
-  improvement is visible in place rather than asserted.</p>
+  <p>The same charts as Section 2, after phasing under <b>{winner}</b>.</p>
 
   <h3>Spend correlation</h3>
-  <p>Phasing under <b>{winner}</b> leaves each month's total spend
-  untouched and only reshapes the weekly pattern within it. That
-  reshaping is what breaks the collinearity: the matrix below is the same
-  one from Section 2, recomputed on the phased plan, and should be read
-  directly against it.</p>
+  <p>{corr_change_text} {totals_kept}</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Channel correlation, after phasing</div>
@@ -3252,11 +3460,10 @@ def _render_html(report: DiscoveryReport) -> str:
   </div>
 
   <h3>Variance</h3>
-  <p>Under <b>{winner}</b>, the incremental-revenue range from Section 2
-  narrows for every channel: {variance_narrowing_text}.</p>
+  <p>{variance_change_text}</p>
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">The range tightens</div>
+      <div class="fig-title">Incremental revenue range, before and after</div>
       <div class="fig-sub">Incremental revenue, the model-estimated range: unphased vs {
         winner
     }</div>
@@ -3272,19 +3479,16 @@ def _render_html(report: DiscoveryReport) -> str:
       </div>
       {variance_svg}
     </div>
-    <p class="fig-cap">The dashed line marks the revenue implied by the
-    true marginal return. The ring, the model's mean estimate, barely
-    moves, because the centre was never what phasing needed to fix; the
-    range around it is what narrows.</p>
+    <p class="fig-cap">The model's estimated range for incremental
+    revenue on the unphased plan (faded) and the phased plan (solid),
+    against the truth.</p>
   </div>
 
   <h3>Bias</h3>
-  <p>Under <b>{winner}</b>, the mean estimation error shrinks for every channel: {
-        bias_narrowing_text
-    }.</p>
+  <p>{bias_change_text}</p>
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">The estimate moves toward the truth</div>
+      <div class="fig-title">Point estimates, before and after</div>
       <div class="fig-sub">Revenue implied by the biased estimate: unphased vs {
         winner
     }</div>
@@ -3300,23 +3504,15 @@ def _render_html(report: DiscoveryReport) -> str:
       </div>
       {bias_svg}
     </div>
-    <p class="fig-cap">"Believed" revenue is what a client would expect if
-    they took the biased estimate at face value. As phasing reduces the
-    proxy's remaining confound, the ring moves toward the dashed
-    true-revenue line and the p10&ndash;p90 band around it narrows with
-    it.</p>
+    <p class="fig-cap">The revenue the biased estimate implies, before
+    and after phasing, when demand is only seen through a proxy.</p>
   </div>
 
   <h3>Identifiability</h3>
-  <p>Under <b>{winner}</b>, saturation ranges narrow by {b_narrowing_text}
-  and adstock ranges narrow by {lam_narrowing_text}. The RSS valley itself
-  shrinks, from {id_valley_before:.0f}% to {id_valley_after:.0f}% of the
-  (b, lambda) grid within {tol_pct:.0f}% of the best fit and averaged
-  across channels: the region of curvature values indistinguishable from
-  the true one is smaller, not just re-centred.</p>
+  <p>{b_change_text} {lam_change_text}</p>
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Saturation range tightens, by channel</div>
+      <div class="fig-title">Saturation range, before and after</div>
       <div class="fig-sub">Recovered saturation exponent (b): unphased vs {winner}</div>
     </div>
     <div class="fig-body">
@@ -3330,16 +3526,13 @@ def _render_html(report: DiscoveryReport) -> str:
       </div>
       {b_svg}
     </div>
-    <p class="fig-cap">Each row is one channel's own recovered saturation,
-    holding every other channel at its own supplied curvature. The bar is
-    the p10&ndash;p90 range across simulations and the ring its mean. A
-    wide bar means this channel's spend pattern does not pin down how
-    strongly it saturates, regardless of what value was assumed going
-    in.</p>
+    <p class="fig-cap">The range of saturation exponents the model
+    recovers for each channel (p10 to p90 across simulations) and its
+    mean, with every other channel held at its supplied curve.</p>
   </div>
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Adstock range tightens, by channel</div>
+      <div class="fig-title">Adstock range, before and after</div>
       <div class="fig-sub">Recovered adstock decay (lambda): unphased vs {winner}</div>
     </div>
     <div class="fig-body">
@@ -3353,11 +3546,8 @@ def _render_html(report: DiscoveryReport) -> str:
       </div>
       {lam_svg}
     </div>
-    <p class="fig-cap">Adstock asks a different question of the same data:
-    not how strongly a channel's spend translates into effect, but how
-    long that effect persists once spend stops. The same limitation
-    applies here. A wide bar means the plan's spend pattern leaves the
-    decay rate just as unresolved as the saturation curve above.</p>
+    <p class="fig-cap">The same for adstock decay: how long a week's
+    spend keeps working.</p>
   </div>
 
   <h3>Where you can grow</h3>
@@ -3365,9 +3555,10 @@ def _render_html(report: DiscoveryReport) -> str:
   returns at a higher spend level, and that depends on its saturation
   curve. Unphased, the model's answer for {html.escape(growth_widest)} at
   double today's spend runs from {_fmt_return(growth_widest_lo)} to
-  {_fmt_return(growth_widest_hi)}: the same data supports growing the
-  channel and holding it. Under <b>{winner}</b> the ranges at double spend
-  are {growth_change_text} on average.</p>
+  {_fmt_return(growth_widest_hi)}, against
+  {_fmt_return(_growth_truth(growth_widest, 2.0))} under the supplied
+  curve. Under <b>{winner}</b> the ranges at double spend are
+  {growth_change_text} on average.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Return at double today's spend, by channel</div>
@@ -3386,12 +3577,11 @@ def _render_html(report: DiscoveryReport) -> str:
       </div>
       {growth_svg}
     </div>
-    <p class="fig-cap">Each row is one channel. The bar is the
-    p10&ndash;p90 range across simulations of the return the fitted curve
-    gives at double the planned weekly spend, and the ring its median.
-    Every other channel is held at its supplied curve, so the range shows
-    curve uncertainty alone. A real model carries the variance and bias
-    from the sections above on top of it.</p>
+    <p class="fig-cap">The return the fitted curve gives at double the
+    planned weekly spend: p10 to p90 across simulations, with the median.
+    Other channels are held at their supplied curves, so this is curve
+    uncertainty alone. A real model carries the variance and bias above
+    on top of it.</p>
   </div>
   <div class="table-scroll">
   <table class="cross-table">
@@ -3406,34 +3596,25 @@ def _render_html(report: DiscoveryReport) -> str:
   </div>
 
   <h3>Cost</h3>
-  <p>Phasing is not free once a channel's response curve departs from
-  linear. By Jensen's inequality, reshaping spend within the plan changes
-  true plan-period revenue relative to the as-supplied schedule, even
-  {totals_cost}. Under <b>{winner}</b> this
-  costs {winner_cost_pct:.2f}% of true plan-period revenue, averaged
-  across channels, against the unphased plan; Section 5 reports the same
-  measure for every candidate, from doing nothing through to
-  Blackout.</p>
+  <p>{cost_text} Each channel's annual budget is unchanged and no extra
+  spend is needed.</p>
 </section>
 
 <section id="phased-spend">
   <div class="s-label">Section 4</div>
   <h2>Phased spend</h2>
-  <p>Each chart below shows one channel's weekly spend as supplied, in
-  pale, against its recommended pacing under <b>{winner}</b>, in solid.
-  {totals_pacing} {backphase_note}</p>
+  <p>Each panel shows one channel's planned weekly spend (pale) and its
+  phased schedule under <b>{winner}</b> (solid). {totals_pacing}
+  {backphase_note}</p>
   <div class="pacing-grid">{pacing_cells_html}</div>
 </section>
 
 <section id="appendix">
   <div class="s-label">Section 5</div>
   <h2>Appendix: every strategy compared</h2>
-  <p>This section first explains what each candidate strategy does to the
-  plan, then scores every one of them, from doing nothing through to
-  <b>Blackout</b>, against the three reliability problems this package
-  diagnoses, alongside what phasing costs in revenue to achieve each
-  result. <b>{winner}</b> is highlighted in the scores; every chart in
-  Sections 2 through 4 is built from that one row.</p>
+  <p>What each strategy does to the plan, then how each one scores
+  against the unphased plan. <b>{winner}</b> is highlighted. Sections 2 to
+  4 are built from that row.</p>
   {strategy_glossary_html}
   <div class="table-scroll">
   <table class="cross-table">
@@ -3441,19 +3622,12 @@ def _render_html(report: DiscoveryReport) -> str:
     <tbody>{impact_table_rows_html}</tbody>
   </table>
   </div>
-  <p class="fig-cap">Impact is the percentage improvement over doing
-  nothing, averaged across channels. Saturation and adstock are the two
-  halves of the identifiability problem: each is how much narrower the
-  range of recovered values gets (p10 to p90, as in the range charts
-  above). The winning row is picked on variance, bias and a combined
-  identifiability measure of the two. Cost is the share of true plan-period revenue
-  given up to phasing, under each channel's assumed response curve and
-  again averaged across channels. It is zero when saturation is linear,
-  and largest for the strategies that push spend hardest into the
-  steepest part of the curve. Peak week is the single biggest week of
-  spend under each strategy, across every channel, as a multiple of that
-  same week's as-supplied plan: the practical check on whether a media
-  buyer can actually deploy it.</p>
+  <p class="fig-cap">Impact is the improvement on the unphased plan,
+  averaged across channels. Saturation and adstock are how much narrower
+  the recovered range gets. Cost is the share of plan-year revenue given
+  up under the supplied response curves. Peak week is the biggest week of
+  spend as a multiple of that week's plan: the check on whether a media
+  buyer can book it. {picked_caption}</p>
   {time_to_benefit_html}
   {channel_constraints_html}
 </section>
@@ -3543,7 +3717,4 @@ tr.winner-row td { background: #ecfdf5; font-weight: 700; }
 .pacing-title { font-size: .82rem; font-weight: 700; margin-bottom: .3rem; }
 table.glossary-table td { text-align: left; vertical-align: top; }
 table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
-.ttb-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .75rem; margin: 1rem 0 .5rem; }
-@media (max-width: 620px) { .ttb-grid { grid-template-columns: 1fr; } }
-.ttb-grid .pacing-cell { padding: .6rem .5rem .2rem; }
 """

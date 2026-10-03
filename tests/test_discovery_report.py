@@ -1,6 +1,7 @@
 """Tests for _discovery_report.py — DiscoveryReport."""
 
 import html
+import itertools
 import re
 
 import numpy as np
@@ -10,14 +11,19 @@ import pytest
 from how_wrong_is_your_mmm._dgp import simulate_spend
 from how_wrong_is_your_mmm._discovery_report import (
     DiscoveryReport,
+    _bias_change_sentence,
+    _change_sentence,
     _corr_table_html,
     _default_levers,
+    _improvement_phrase,
     _is_unphased,
+    _join_and,
     _lighten_hex,
     _nice_axis_bounds,
     _peak_week_multiple,
     _pinned_strategy_label,
     _safe_improvement,
+    _svg_benefit_lines,
     _svg_dotplot,
     _svg_forest,
     _svg_multiline,
@@ -1029,10 +1035,9 @@ class TestToHtml:
             html_out.index("<h2>Impact</h2>") : html_out.index("<h2>Phased spend</h2>")
         ]
         assert "<b>The problem:</b>" not in impact_block
-        # The section uses full sentences, not a "<b>The impact:</b>"
-        # label, and should open by pointing back at Section 2 rather than
-        # re-explaining the problem from scratch.
-        assert "Section 2 showed how bad each of these four problems is" in impact_block
+        # It opens by pointing back at Section 2 rather than re-explaining
+        # the problem from scratch.
+        assert "The same charts as Section 2, after phasing" in impact_block
 
     def test_impact_section_ends_with_the_winners_cost(self):
         # The winning strategy's own Cost is quoted at the end of Section
@@ -1060,7 +1065,18 @@ class TestToHtml:
             appendix_block,
         )
         winner_cost_pct = float(row_match.group(1))
-        assert f"{winner_cost_pct:.2f}%" in impact_block
+        if abs(winner_cost_pct) < 0.005:
+            assert "gives up no plan-year revenue" in impact_block
+        else:
+            assert f"{abs(winner_cost_pct):.2f}%" in impact_block
+
+    def test_cost_is_quoted_when_curves_saturate(self):
+        report = fit_small(make_report(saturation=0.6))
+        html_out = report.to_html()
+        impact_block = html_out[
+            html_out.index("<h2>Impact</h2>") : html_out.index("<h2>Phased spend</h2>")
+        ]
+        assert "of plan-year revenue" in impact_block
 
 
 class TestPinnedStrategyLabel:
@@ -1163,6 +1179,118 @@ class TestPinnedStrategyFit:
         report = fit_small(make_report(strategy_pct=60.0))
         assert report.pinned_label_ in report.results_
         assert "scores" in report.results_[report.pinned_label_]
+
+
+class TestCommentaryFollowsTheNumbers:
+    """The report's sentences are worded from the results, so they stay
+    true when a strategy makes something worse."""
+
+    def test_join_and(self):
+        assert _join_and([]) == ""
+        assert _join_and(["a"]) == "a"
+        assert _join_and(["a", "b"]) == "a and b"
+        assert _join_and(["a", "b", "c"]) == "a, b and c"
+
+    def test_all_channels_better(self):
+        text = _change_sentence(
+            {"tv": 0.7, "meta": 0.5}, "The range", "narrows", "widens"
+        )
+        assert text == "The range narrows for every channel: tv by 70% and meta by 50%."
+
+    def test_all_channels_worse(self):
+        text = _change_sentence(
+            {"tv": -0.1, "meta": -0.2}, "The range", "narrows", "widens"
+        )
+        assert text == "The range widens for every channel: tv by 10% and meta by 20%."
+
+    def test_mixed_channels(self):
+        text = _change_sentence(
+            {"tv": 0.7, "meta": -0.2, "search": 0.0}, "The range", "narrows", "widens"
+        )
+        assert text == (
+            "The range narrows for tv by 70%. It widens for meta by 20%. "
+            "It is unchanged for search."
+        )
+
+    def test_many_channels_are_summarised(self):
+        changes = {f"c{i}": 0.5 for i in range(8)} | {"c8": -0.1}
+        text = _change_sentence(changes, "The range", "narrows", "widens")
+        assert text.startswith("The range narrows for 8 of 9 channels.")
+        assert "On average it narrows by 43%." in text
+
+    def test_bias_all_fall(self):
+        text = _bias_change_sentence(
+            {"tv": 42.0, "meta": 29.0}, {"tv": 28.0, "meta": 16.0}
+        )
+        assert text == (
+            "Every point estimate moves toward the truth: tv from 42% to 28% "
+            "and meta from 29% to 16%."
+        )
+
+    def test_bias_mixed(self):
+        text = _bias_change_sentence(
+            {"tv": 42.0, "meta": 9.0}, {"tv": 28.0, "meta": 12.0}
+        )
+        assert text == (
+            "Bias falls for tv from 42% to 28%. It rises for meta from 9% to 12%."
+        )
+
+    def test_improvement_phrase_names_the_direction(self):
+        assert _improvement_phrase(0.45, "better", "worse") == "45% better"
+        assert _improvement_phrase(-0.03, "better", "worse") == "3% worse"
+        assert _improvement_phrase(0.001, "better", "worse") == "unchanged"
+
+    def test_report_never_claims_every_channel_unless_true(self):
+        report = fit_small(make_report())
+        html_out = report.to_html()
+        best = report.results_[report.winner_]["bias_pct"]
+        base = report.results_["unphased"]["bias_pct"]
+        every_fell = all(abs(best[ch]) < abs(base[ch]) - 0.5 for ch in CHANNELS)
+        assert ("Every point estimate moves toward the truth" in html_out) == every_fell
+
+    def test_headline_states_the_winners_numbers(self):
+        html_out = fit_small(make_report()).to_html()
+        headline = html_out[html_out.index('<div class="headline">') :][:700]
+        assert "Against the unphased plan: variance" in headline
+        assert "picked on variance, bias and identifiability" in headline
+
+    def test_pinned_headline_does_not_claim_a_pick(self):
+        html_out = fit_small(make_report(strategy_pct=40.0)).to_html()
+        headline = html_out[html_out.index('<div class="headline">') :][:700]
+        assert "set directly" in headline
+        assert "is picked on variance" not in html_out
+
+
+BENEFIT_IMPROVEMENT = {
+    "variance": [0.70, 0.79, 0.82],
+    "saturation": [0.54, 0.71, 0.75],
+    "adstock": [0.58, 0.70, 0.73],
+    "bias": [0.45, 0.64, 0.71],
+}
+
+
+class TestSvgBenefitLines:
+    def test_one_line_per_measure_starting_from_zero(self):
+        svg = _svg_benefit_lines(BENEFIT_IMPROVEMENT, [1, 2, 3])
+        assert svg.count("<polyline") == 4
+        assert svg.count("<circle") == 16
+        for label in ("Unphased", "1 year", "2 years", "3 years"):
+            assert f">{label}<" in svg
+        assert ">Variance 82%<" in svg and ">Bias 71%<" in svg
+
+    def test_end_labels_do_not_overlap(self):
+        svg = _svg_benefit_lines(BENEFIT_IMPROVEMENT, [1, 2, 3])
+        ys = sorted(
+            float(y)
+            for y in re.findall(r'y="([\d.]+)" font-size="12" font-weight="700"', svg)
+        )
+        assert len(ys) == 4
+        assert all(b - a >= 14 - 1e-6 for a, b in itertools.pairwise(ys))
+
+    def test_axis_extends_below_zero_when_a_measure_gets_worse(self):
+        worse = BENEFIT_IMPROVEMENT | {"bias": [-0.10, -0.05, 0.02]}
+        svg = _svg_benefit_lines(worse, [1, 2, 3])
+        assert ">-25%<" in svg
 
 
 class TestGrowthReadout:
@@ -1552,9 +1680,14 @@ class TestTimeToBenefit:
     def test_html_shows_time_to_benefit_in_the_appendix(self):
         report = fit_small(make_long_report(), horizon_years=3)
         html_out = report.to_html()
-        assert "Time to benefit: what" in html_out
-        assert html_out.index("Time to benefit") > html_out.index('id="appendix"')
-        assert "Saturation" in html_out and "Adstock" in html_out
+        title = "<h3>How the benefit builds over time</h3>"
+        assert title in html_out
+        assert html_out.index(title) > html_out.index('id="appendix"')
+        chart = html_out[html_out.index(title) :]
+        # One chart, a line per measure, each labelled at its right end.
+        for name in ("Variance", "Saturation", "Adstock", "Bias"):
+            assert f">{name} " in chart
+        assert "Improvement on the unphased plan" in chart
 
     def test_comparison_table_splits_identifiability(self):
         html_out = fit_small(make_report()).to_html()
