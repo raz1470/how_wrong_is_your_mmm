@@ -35,3 +35,7 @@ SCOPE.md
 
 # Local working conventions doc, not for distribution
 PREFERENCES.md
+
+# Per-draw bias output behind the overview's section 6 (about 2MB) --
+# regenerate with tools/overview_data/section6/harness.py
+tools/overview_data/section6/results/bias_*.csv

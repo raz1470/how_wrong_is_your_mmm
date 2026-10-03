@@ -87,6 +87,11 @@ select = ["E", "F", "I", "N", "UP", "RUF"]
 # One-off exploratory scripts behind notebook 11 -- same relaxed treatment as
 # notebooks themselves, not maintained code.
 "tools/grid_sweep/_nb11_scratch/*.py" = ["N806", "E501", "F841"]
+# Research and data-build scripts kept as they were run -- a record, not
+# maintained code, so the same relaxed treatment.
+"tools/scratch/*.py" = ["N806", "N812", "E501", "E741", "F841", "RUF015", "RUF046", "RUF059", "UP031"]
+"tools/overview_data/**/*.py" = ["N806", "N812", "E501", "E741", "E701", "E702", "E731", "RUF015", "RUF059", "UP031"]
+"tools/peak_month_bias/*.py" = ["N806", "E501", "E701", "E702", "UP031"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
