@@ -34,7 +34,7 @@ uv venv --python 3.12 && uv sync
 
 ### Your inputs
 
-Every step takes the same inputs: your spend, and plausible values from your MMM.
+Every step takes the same inputs: your spend, and plausible values from your MMM. The baseline inputs are used by the report only.
 
 ```python
 # history: your multi-year weekly spend, one column per channel (DatetimeIndex)
@@ -44,6 +44,8 @@ marginal_returns = {"tv": 1.8, "paid_social": 2.4, "search": 4.1}  # revenue fro
 saturation = {"tv": 0.6, "paid_social": 0.75, "search": 0.9}  # curve exponent, 1.0 is linear
 adstock = {"tv": 0.5, "paid_social": 0.3, "search": 0.1}  # share of the effect carried into next week
 noise_std = 50_000  # weekly sales noise sd in GBP
+baseline_share = 0.7  # share of sales you would get with no marketing
+baseline_cv = 0.05  # how much that baseline moves week to week (sd / mean)
 ```
 
 ### 1. Diagnose
@@ -97,6 +99,8 @@ report = DiscoveryReport(
     saturation=saturation,
     adstock=adstock,
     revenue_noise_std=noise_std,
+    baseline_share=baseline_share,
+    baseline_cv=baseline_cv,
     client_name="Example Brand",
     # optional: pin a strategy instead of sweeping for one, with per-channel overrides
     # strategy_pct=60.0,
