@@ -186,6 +186,10 @@ def _channel_colors(channels: list[str]) -> dict[str, str]:
 # Tested 2026-09-28 against 3x (narrower saturation range, but cost ~3.7%
 # and a ~3.7x peak week) -- see NOTES.md session 69 continued.
 _DEFAULT_HIGH_MONTH_PCT = 150.0
+
+# Spend levels, as multiples of each channel's planned weekly spend, that the
+# growth readout quotes a marginal return at: today, +50% and +100%.
+_GROWTH_MULTIPLIERS = (1.0, 1.5, 2.0)
 # The default sweep's nudge size, in percent.
 _DEFAULT_NUDGE_PCT = 20.0
 
@@ -1769,6 +1773,7 @@ class DiscoveryReport:
             id_b_p90_draws = []
             id_lam_p10_draws = []
             id_lam_p90_draws = []
+            growth_draws = []
             corr_draws = []
             representative_schedule = None
 
@@ -1851,6 +1856,22 @@ class DiscoveryReport:
                     )
                 )
 
+                # Recovered marginal return at each growth multiple: p10,
+                # median and p90 across sims, as a (channel x quantile)
+                # frame per multiple.
+                marginal = diag_id.marginal_return_at(_GROWTH_MULTIPLIERS)
+                growth_draws.append(
+                    {
+                        m: pd.DataFrame(
+                            {
+                                ch: marginal[ch][m].quantile([0.1, 0.5, 0.9])
+                                for ch in self.channels_
+                            }
+                        ).T
+                        for m in _GROWTH_MULTIPLIERS
+                    }
+                )
+
             # Bias runs on its own, larger set of draws. Demand draw k is
             # paired with phased schedule k, the same schedule the loop
             # above used while k < n_phasing_seeds. The unphased schedule
@@ -1889,6 +1910,14 @@ class DiscoveryReport:
             id_b_p90 = pd.concat(id_b_p90_draws, axis=1).mean(axis=1)
             id_lam_p10 = pd.concat(id_lam_p10_draws, axis=1).mean(axis=1)
             id_lam_p90 = pd.concat(id_lam_p90_draws, axis=1).mean(axis=1)
+            growth = {}
+            for m in _GROWTH_MULTIPLIERS:
+                mean_q = sum(d[m] for d in growth_draws) / len(growth_draws)
+                growth[f"{m:g}"] = {
+                    "p10": mean_q[0.1].to_dict(),
+                    "p50": mean_q[0.5].to_dict(),
+                    "p90": mean_q[0.9].to_dict(),
+                }
             correlation = {
                 a: {
                     b: float(np.mean([m.loc[a, b] for m in corr_draws]))
@@ -1910,6 +1939,7 @@ class DiscoveryReport:
                 "b_p90": id_b_p90.to_dict(),
                 "lam_p10": id_lam_p10.to_dict(),
                 "lam_p90": id_lam_p90.to_dict(),
+                "growth": growth,
                 "correlation": correlation,
                 "scores": {
                     "variance": float(variance_cv.mean()),
@@ -2287,6 +2317,43 @@ class DiscoveryReport:
             )
         return pd.DataFrame(rows)
 
+    def growth_readout(self) -> pd.DataFrame:
+        """Where can you grow: each channel's marginal return at higher
+        spend, as the model would recover it unphased and under the winner.
+
+        One row per channel and spend level (today, +50%, +100% of planned
+        weekly spend). `true` is the return on the next GBP 1 at that level
+        under the supplied curve. The p10-p90 columns are the range of
+        recovered values across simulations, averaged across phasing draws.
+        The ranges hold every other channel at its supplied curve and
+        control for true demand, so they show curve uncertainty alone.
+
+        Raises
+        ------
+        RuntimeError if fit() hasn't been called yet.
+        """
+        if self.results_ is None:
+            raise RuntimeError("Call fit() before growth_readout().")
+        baseline = self.results_[self.levers_[0][0]]["growth"]
+        best = self.results_[self.winner_]["growth"]
+        rows = []
+        for ch in self.channels_:
+            for m in _GROWTH_MULTIPLIERS:
+                key = f"{m:g}"
+                rows.append(
+                    {
+                        "channel": ch,
+                        "spend_change_pct": round(100 * (m - 1.0)),
+                        "true": self.true_marginal_returns[ch]
+                        * m ** (self.saturation[ch] - 1.0),
+                        "unphased_p10": baseline[key]["p10"][ch],
+                        "unphased_p90": baseline[key]["p90"][ch],
+                        "phased_p10": best[key]["p10"][ch],
+                        "phased_p90": best[key]["p90"][ch],
+                    }
+                )
+        return pd.DataFrame(rows).round(4)
+
     def to_html(self, path: str | None = None) -> str:
         """Render the report as a single self-contained HTML document.
 
@@ -2508,6 +2575,81 @@ def _render_html(report: DiscoveryReport) -> str:
     }
     b_narrowing_text = ", ".join(f"{ch} {b_narrowing[ch]:.0%}" for ch in channels)
     lam_narrowing_text = ", ".join(f"{ch} {lam_narrowing[ch]:.0%}" for ch in channels)
+
+    # Where can you grow: the recovered marginal return at double today's
+    # spend, unphased vs the winner. The same curve uncertainty the
+    # saturation chart shows, restated as the decision it feeds.
+    def _fmt_return(v: float) -> str:
+        return f"£{v:.2f}"
+
+    def _growth_truth(ch: str, m: float) -> float:
+        return report.true_marginal_returns[ch] * m ** (report.saturation[ch] - 1.0)
+
+    def _growth_range(results: dict, ch: str, key: str) -> tuple[float, float]:
+        return (results["growth"][key]["p10"][ch], results["growth"][key]["p90"][ch])
+
+    growth_forest_data = [
+        {
+            "name": ch,
+            "color": colors[ch],
+            "before": {
+                "range": _growth_range(baseline, ch, "2"),
+                "point": baseline["growth"]["2"]["p50"][ch],
+            },
+            "after": {
+                "range": _growth_range(best, ch, "2"),
+                "point": best["growth"]["2"]["p50"][ch],
+            },
+            "truth": _growth_truth(ch, 2.0),
+        }
+        for ch in channels
+    ]
+    growth_svg = _svg_forest(
+        growth_forest_data,
+        x_label="Return on the next £1 at double today's spend",
+        fmt=_fmt_return,
+    )
+    growth_narrowing = float(
+        np.mean(
+            [
+                _safe_improvement(
+                    _range_width(_growth_range(baseline, ch, "2")),
+                    _range_width(_growth_range(best, ch, "2")),
+                )
+                for ch in channels
+            ]
+        )
+    )
+    growth_change_text = (
+        f"{growth_narrowing:.0%} narrower"
+        if growth_narrowing >= 0
+        else f"{-growth_narrowing:.0%} wider"
+    )
+    # The channel whose unphased range at double spend is widest relative
+    # to its true value: the clearest case of "the data cannot say".
+    growth_widest = max(
+        channels,
+        key=lambda ch: (
+            _range_width(_growth_range(baseline, ch, "2")) / _growth_truth(ch, 2.0)
+        ),
+    )
+    growth_widest_lo, growth_widest_hi = _growth_range(baseline, growth_widest, "2")
+
+    def _growth_cell(results: dict, ch: str, key: str) -> str:
+        lo, hi = _growth_range(results, ch, key)
+        return f"{_fmt_return(lo)} to {_fmt_return(hi)}"
+
+    growth_rows_html = "".join(
+        f"<tr><td>{html.escape(ch)}</td>"
+        f"<td>{_fmt_return(_growth_truth(ch, 1.0))}</td>"
+        f"<td>{_fmt_return(_growth_truth(ch, 1.5))}</td>"
+        f"<td>{_growth_cell(baseline, ch, '1.5')}</td>"
+        f"<td>{_growth_cell(best, ch, '1.5')}</td>"
+        f"<td>{_fmt_return(_growth_truth(ch, 2.0))}</td>"
+        f"<td>{_growth_cell(baseline, ch, '2')}</td>"
+        f"<td>{_growth_cell(best, ch, '2')}</td></tr>"
+        for ch in channels
+    )
 
     corr_before_html = _corr_table_html(baseline["correlation"], channels)
     corr_after_html = _corr_table_html(best["correlation"], channels)
@@ -3301,6 +3443,51 @@ def _render_html(report: DiscoveryReport) -> str:
     long that effect persists once spend stops. The same limitation
     applies here. A wide bar means the plan's spend pattern leaves the
     decay rate just as unresolved as the saturation curve above.</p>
+  </div>
+
+  <h3>Where you can grow</h3>
+  <p>Whether a channel can take more budget depends on what the next £1
+  returns at a higher spend level, and that depends on its saturation
+  curve. Unphased, the model's answer for {html.escape(growth_widest)} at
+  double today's spend runs from {_fmt_return(growth_widest_lo)} to
+  {_fmt_return(growth_widest_hi)}: the same data supports growing the
+  channel and holding it. Under <b>{winner}</b> the ranges at double spend
+  are {growth_change_text} on average.</p>
+  <div class="fig">
+    <div class="fig-hdr">
+      <div class="fig-title">Return at double today's spend, by channel</div>
+      <div class="fig-sub">Recovered return on the next £1 if weekly spend doubled: unphased vs {
+        winner
+    }</div>
+    </div>
+    <div class="fig-body">
+      <div class="legend">
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Unphased (today), range</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> {
+        html.escape(winner)
+    }, range</span>
+        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Median</span>
+        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Value under the supplied curve</span>
+      </div>
+      {growth_svg}
+    </div>
+    <p class="fig-cap">Each row is one channel. The bar is the
+    p10&ndash;p90 range across simulations of the return the fitted curve
+    gives at double the planned weekly spend, and the ring its median.
+    Every other channel is held at its supplied curve, so the range shows
+    curve uncertainty alone. A real model carries the variance and bias
+    from the sections above on top of it.</p>
+  </div>
+  <div class="table-scroll">
+  <table class="cross-table">
+    <thead>
+      <tr><th rowspan="2">Channel</th><th rowspan="2">Today, supplied</th>
+      <th colspan="3">At +50% spend</th><th colspan="3">At +100% spend</th></tr>
+      <tr><th>Supplied curve</th><th>Unphased</th><th>{html.escape(winner)}</th>
+      <th>Supplied curve</th><th>Unphased</th><th>{html.escape(winner)}</th></tr>
+    </thead>
+    <tbody>{growth_rows_html}</tbody>
+  </table>
   </div>
 
   <h3>Cost</h3>

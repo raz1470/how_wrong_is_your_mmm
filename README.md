@@ -124,6 +124,7 @@ report.to_html("reports/example_brand.html")  # self-contained HTML, open it in 
 report.schedule_csv(
     "reports/example_brand_schedule.csv"
 )  # the recommended weekly schedule as a CSV
+report.growth_readout()  # each channel's return at +50% and +100% spend, unphased vs phased
 ```
 
 `reports/` is git-ignored by default (see `.gitignore`). Save your own generated reports there, or wherever suits your workflow. See it end to end at the [example report](https://raz1470.github.io/how_wrong_is_your_mmm/example-report.html) above.

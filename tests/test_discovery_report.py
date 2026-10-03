@@ -1177,6 +1177,54 @@ class TestPinnedStrategyFit:
         assert "scores" in report.results_[report.pinned_label_]
 
 
+class TestGrowthReadout:
+    """Marginal return at higher spend, unphased vs the winner."""
+
+    def test_before_fit_raises(self):
+        with pytest.raises(RuntimeError, match="fit"):
+            make_report().growth_readout()
+
+    def test_every_lever_stores_growth_ranges(self):
+        report = fit_small(make_report())
+        for label, *_ in report.levers_:
+            growth = report.results_[label]["growth"]
+            assert set(growth) == {"1", "1.5", "2"}
+            for level in growth.values():
+                assert set(level) == {"p10", "p50", "p90"}
+                for ch in CHANNELS:
+                    assert level["p10"][ch] <= level["p50"][ch] <= level["p90"][ch]
+
+    def test_readout_has_a_row_per_channel_and_level(self):
+        readout = fit_small(make_report()).growth_readout()
+        assert len(readout) == 3 * len(CHANNELS)
+        assert sorted(readout["spend_change_pct"].unique()) == [0, 50, 100]
+        assert list(readout.columns) == [
+            "channel",
+            "spend_change_pct",
+            "true",
+            "unphased_p10",
+            "unphased_p90",
+            "phased_p10",
+            "phased_p90",
+        ]
+
+    def test_true_return_follows_the_supplied_curve(self):
+        report = fit_small(make_report(saturation=0.5))
+        readout = report.growth_readout().set_index(["channel", "spend_change_pct"])
+        for ch in CHANNELS:
+            today = report.true_marginal_returns[ch]
+            assert readout.loc[(ch, 0), "true"] == pytest.approx(today, abs=1e-4)
+            assert readout.loc[(ch, 100), "true"] == pytest.approx(
+                today * 2.0**-0.5, abs=1e-4
+            )
+
+    def test_html_has_the_section(self):
+        html_out = fit_small(make_report()).to_html()
+        assert "<h3>Where you can grow</h3>" in html_out
+        assert "Return at double today's spend, by channel" in html_out
+        assert "At +100% spend" in html_out
+
+
 class TestFitDefaults:
     def test_n_phasing_seeds_default_is_15(self):
         import inspect
