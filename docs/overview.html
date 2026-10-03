@@ -545,7 +545,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     </div>
     <div class="fig-body">
       <div class="legend">
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> Believed revenue, model-estimated range</span>
+        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#111827"/></svg> Model-estimated range</span>
         <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#111827" stroke-width="1.8"/></svg> Point estimate</span>
         <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Ground truth</span>
       </div>
@@ -654,7 +654,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <li><strong>Variance.</strong> Each channel has to move in weeks when the others don't. Random moves, drawn separately for each channel, do this.</li>
     <li><strong>Bias.</strong> The moves must have nothing to do with demand. A schedule drawn at random before the year starts can't follow it.</li>
     <li><strong>Adstock.</strong> A change has to be held for longer than the carryover lasts. Adstock smooths away a one-week blip, but a dark run or a month-long step survives it.</li>
-    <li><strong>Saturation.</strong> The channel needs spend well above its plan, held long enough to outlast adstock. Going dark doesn't help here: zero spend gives zero response whatever the curve's shape. That holds for the power curve we use. With an S-shaped curve low spend can carry information too, and we haven't tested that. A month that takes on extra budget adds a point well up the curve.</li>
+    <li><strong>Saturation.</strong> The channel needs spend well above its plan, held long enough to outlast adstock. Going dark doesn't help here: zero spend gives zero response whatever the curve's shape.</li>
   </ul>
 
   <h3>The strategies</h3>
@@ -721,7 +721,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <li><strong>Peak</strong>: the biggest single week as a multiple of its plan.</li>
   </ul>
 
-  <p>Each figure is an average over simulated draws, so it would move a little on a fresh set. The Monte Carlo standard error is about 0.002 on variance, under 0.01 on the saturation and adstock ranges and about 0.5 points on bias. The unphased row has no schedule draws to average over, so it is less certain: about 0.02 on variance and 0.02 on the ranges.</p>
+  <p>Each figure is an average over many simulated runs, so it would move a little if we ran them again. Treat small gaps between strategies as ties.</p>
 
   <p>Combined is best on all four diagnostics. Variance falls from 0.24 to 0.07 and bias from 28.3% to 15.1%. The saturation range more than halves from 0.71 to 0.32 and the adstock range falls from 0.43 to 0.18.</p>
 
@@ -734,9 +734,9 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <ul class="probs">
     <li><strong>Revenue given up.</strong> Returns diminish as spend rises, so budget moved from a quiet week into a busy one earns less than it did. The cost follows how far spend is pushed up the curve, where each extra pound earns least. That is also what pins saturation down.</li>
     <li><strong>Platform learning phases.</strong> Ad platforms can re-enter a learning phase after a large budget change and deliver worse while they do. We don't model this. It is why the weekly nudges are capped at 20%. Dark months and peak months are much bigger moves, which is why the peak column matters.</li>
-    <li><strong>What your channels can take.</strong> TV is often booked upfront. Generic search can't absorb 2.5 times its budget if the searches aren't there. A dark month on one channel may dent another, such as TV driving search. We don't model any of this, and each channel can be given a lighter strategy.</li>
-    <li><strong>Demand.</strong> In our data generating process demand adds to sales and doesn't change how well media works. If your media works harder when demand is high, moving spend out of busy weeks costs more than we show.</li>
   </ul>
+
+  <p>Keep in mind that in our data generating process demand adds to sales and doesn't change how well media works. If your media works harder when demand is high, moving spend out of busy weeks costs more than we show.</p>
 
 </section>
 
@@ -802,7 +802,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <h3>Impact 2: Bias</h3>
 
-  <p>Three of the four point estimates move toward the ground truth. TikTok's bias falls from 29.2% to 9.8%, TV's from 49.2% to 29.1% and Meta's from 27.2% to 12.9%. Search Generic started closest and doesn't move: 7.6% before and 8.6% after, a difference within simulation error.</p>
+  <p>Three of the four point estimates move toward the ground truth. TikTok's bias falls from 29.2% to 9.8%, TV's from 49.2% to 29.1% and Meta's from 27.2% to 12.9%. Search Generic started closest and doesn't move: 7.6% before and 8.6% after, a gap too small to read anything into.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -1074,6 +1074,9 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p style="font-weight:700; margin-bottom: .3rem;">Won't this put my channels into learning mode?</p>
   <p>Possibly. Ad platforms can re-enter a learning phase after a large budget change, which is why the weekly nudges are capped at 20% (see section 4). Dark weeks and the budget they free up are bigger moves, so check the peak week before you commit. If a channel can't take them, give it a lighter strategy rather than leaving it out. In our tests a channel left at its plan while the others were phased ended up with more bias than before, because it was the only one still following demand. It's a compromise between data science and marketing, and each channel can be set separately.</p>
 
+  <p style="font-weight:700; margin-bottom: .3rem;">What if a channel can't take a dark month or a peak month?</p>
+  <p>Some can't. TV is often booked upfront. Generic search can't absorb 2.5 times its budget if the searches aren't there. A dark month on one channel may dent another, such as TV driving search. We don't model any of this, so give that channel a lighter strategy.</p>
+
   <p style="font-weight:700; margin-bottom: .3rem;">What about brand search and affiliates?</p>
   <p>They are the hardest case for bias. With most channels you set a budget and demand only shapes it. With brand search and affiliates, demand sets the spend directly: you pay per click or per sale, so a good week for the business is automatically a big week for the channel. An MMM reads that as the channel driving the sales and gives it too much credit. This is endogeneity, and more data doesn't fix it while spend keeps following sales. A weekly nudge doesn't apply, because there is no fixed budget to nudge. A dark period does. Switching the channel off for a few weeks is a move in spend that demand didn't cause, which is exactly what the model is missing.</p>
 
@@ -1081,7 +1084,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p>A weekly spend number per channel for the plan year. Each channel's annual budget stays the same. The Combined strategy moves some budget between months, so the monthly totals change as well as the weekly split. Nothing about the buy itself changes, only when the money lands.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">How do I phase a plan I haven't finalised yet?</p>
-  <p><code>BudgetPhaser</code> needs a starting weekly shape to work with, so build one the normal way: take your annual per-channel budget from your MMM and optimiser, and spread it across the year using whatever seasonality or demand pattern you'd use anyway. That first pass doesn't need to be right, phasing is about to rework it regardless. Feed it in alongside your spend history, and the output is your real weekly booking plan, phased from day one instead of retrofitted onto something the agency's already committed to.</p>
+  <p>The budget phaser needs a starting weekly shape to work with, so build one the normal way: take your annual per-channel budget from your MMM and optimiser, and spread it across the year using whatever seasonality or demand pattern you'd use anyway. That first pass doesn't need to be right, phasing is about to rework it regardless. Feed it in alongside your spend history, and the output is your real weekly booking plan, phased from day one instead of retrofitted onto something the agency's already committed to.</p>
 </section>
 
 <!-- SECTION 9: BRINGING IT TOGETHER -->
