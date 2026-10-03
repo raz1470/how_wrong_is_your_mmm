@@ -24,10 +24,10 @@ MR = [0.5, 1.0, 1.5, 1.2]
 SAT = [0.60, 0.75, 0.90, 0.70]
 ADS = [0.50, 0.30, 0.10, 0.20]
 NH, NP = 104, 52
-NOISE = 23107.358063223437
+NOISE = 22984.207524395773
 
 
-def build(n, demand_seed=6, hist_seed=12, plan_seed=13, report_seed=None):
+def build(n, demand_seed=6, hist_seed=37, plan_seed=13, report_seed=None):
     D = simulate_demand(NH + NP, process="trend", seed=demand_seed)
     ch = [f"Channel {i + 1}" for i in range(n)]
     h = simulate_spend(

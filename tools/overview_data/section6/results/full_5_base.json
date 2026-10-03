@@ -1,161 +1,64 @@
 {
  "n": 5,
+ "tag": "base",
  "winner": "Combined",
- "seconds": 224.0865557193756,
+ "seconds": 164.42204761505127,
  "levers": {
   "unphased": {
-   "variance": 0.33061999999999997,
-   "bias": 33.364733333333334,
-   "identifiability": 54.58453999999999,
-   "saturation_range": 0.7209999999999999,
-   "adstock_range": 0.5298,
-   "cost_pct": 0.0,
-   "per_channel_bias": {
-    "Channel 1": 48.621626666666664,
-    "Channel 2": 26.955633333333335,
-    "Channel 3": 7.987086666666669,
-    "Channel 4": 29.23432,
-    "Channel 5": 54.025
-   },
-   "per_channel_cv": {
-    "Channel 1": 0.5043,
-    "Channel 2": 0.2601,
-    "Channel 3": 0.1189,
-    "Channel 4": 0.208,
-    "Channel 5": 0.5618
-   }
+   "variance": 0.33058,
+   "bias": 34.673032,
+   "identifiability": 54.506359999999994,
+   "saturation_range": 0.7799999999999999,
+   "adstock_range": 0.5711999999999999,
+   "cost_pct": 0.0
   },
   "Weekly nudge": {
-   "variance": 0.2572866666666667,
-   "bias": 33.874227999999995,
-   "identifiability": 47.865756,
-   "saturation_range": 0.7212333333333332,
+   "variance": 0.2596360000000001,
+   "bias": 29.87816266666666,
+   "identifiability": 46.85956266666667,
+   "saturation_range": 0.7511,
    "adstock_range": 0.49072000000000005,
-   "cost_pct": 0.09063224347395481,
-   "per_channel_bias": {
-    "Channel 1": 60.50999999999999,
-    "Channel 2": 24.624986666666658,
-    "Channel 3": 7.7703266666666675,
-    "Channel 4": 22.325966666666666,
-    "Channel 5": 54.139860000000006
-   },
-   "per_channel_cv": {
-    "Channel 1": 0.41263333333333335,
-    "Channel 2": 0.19347333333333333,
-    "Channel 3": 0.09028,
-    "Channel 4": 0.14448000000000003,
-    "Channel 5": 0.4455666666666667
-   }
+   "cost_pct": 0.14589167893620414
   },
   "Dark month": {
-   "variance": 0.14123466666666668,
-   "bias": 18.994480000000003,
-   "identifiability": 20.1538,
-   "saturation_range": 0.4974333333333334,
-   "adstock_range": 0.32272,
-   "cost_pct": 1.5570309505769901,
-   "per_channel_bias": {
-    "Channel 1": 32.493500000000004,
-    "Channel 2": 25.943933333333334,
-    "Channel 3": 10.660253333333333,
-    "Channel 4": 14.338646666666666,
-    "Channel 5": 11.536066666666667
-   },
-   "per_channel_cv": {
-    "Channel 1": 0.23636000000000004,
-    "Channel 2": 0.08628000000000001,
-    "Channel 3": 0.053566666666666665,
-    "Channel 4": 0.06923333333333331,
-    "Channel 5": 0.2607333333333333
-   }
+   "variance": 0.14358933333333332,
+   "bias": 19.365121333333335,
+   "identifiability": 19.839689333333332,
+   "saturation_range": 0.49416666666666664,
+   "adstock_range": 0.32384,
+   "cost_pct": 1.6921609997331226
   },
   "Peak month": {
-   "variance": 0.12436266666666666,
-   "bias": 30.34948266666667,
-   "identifiability": 28.280222666666667,
-   "saturation_range": 0.6353,
-   "adstock_range": 0.34635999999999995,
-   "cost_pct": 1.2091587621060234,
-   "per_channel_bias": {
-    "Channel 1": 55.90224,
-    "Channel 2": 23.320413333333338,
-    "Channel 3": 10.421546666666666,
-    "Channel 4": 16.24357333333333,
-    "Channel 5": 45.85964000000001
-   },
-   "per_channel_cv": {
-    "Channel 1": 0.18887333333333337,
-    "Channel 2": 0.09549333333333333,
-    "Channel 3": 0.052419999999999994,
-    "Channel 4": 0.06978,
-    "Channel 5": 0.21524666666666664
-   }
+   "variance": 0.12178133333333334,
+   "bias": 29.16186666666667,
+   "identifiability": 27.534703999999998,
+   "saturation_range": 0.6385666666666665,
+   "adstock_range": 0.34719999999999995,
+   "cost_pct": 1.338944107948093
   },
   "Combined": {
-   "variance": 0.10211599999999998,
-   "bias": 16.876714666666665,
-   "identifiability": 13.549690666666669,
-   "saturation_range": 0.4499999999999999,
-   "adstock_range": 0.236,
-   "cost_pct": 2.868715848313926,
-   "per_channel_bias": {
-    "Channel 1": 29.910386666666668,
-    "Channel 2": 17.86474,
-    "Channel 3": 8.581013333333335,
-    "Channel 4": 9.724,
-    "Channel 5": 18.303433333333334
-   },
-   "per_channel_cv": {
-    "Channel 1": 0.15780666666666668,
-    "Channel 2": 0.07835333333333333,
-    "Channel 3": 0.043206666666666664,
-    "Channel 4": 0.05550666666666667,
-    "Channel 5": 0.17570666666666665
-   }
+   "variance": 0.10103999999999999,
+   "bias": 16.706201333333333,
+   "identifiability": 13.382857333333334,
+   "saturation_range": 0.44786666666666675,
+   "adstock_range": 0.23824000000000006,
+   "cost_pct": 2.977211926937595
   },
   "Month step": {
-   "variance": 0.21044266666666664,
-   "bias": 33.845333333333336,
-   "identifiability": 45.06093466666667,
-   "saturation_range": 0.7212666666666665,
-   "adstock_range": 0.46407999999999994,
-   "cost_pct": 0.3314594672294125,
-   "per_channel_bias": {
-    "Channel 1": 53.095533333333336,
-    "Channel 2": 15.915533333333332,
-    "Channel 3": 10.944033333333332,
-    "Channel 4": 20.16669333333333,
-    "Channel 5": 69.10487333333334
-   },
-   "per_channel_cv": {
-    "Channel 1": 0.3376133333333334,
-    "Channel 2": 0.15012666666666663,
-    "Channel 3": 0.08539333333333331,
-    "Channel 4": 0.12433999999999996,
-    "Channel 5": 0.35473999999999994
-   }
+   "variance": 0.20446266666666668,
+   "bias": 30.21062,
+   "identifiability": 44.213749333333325,
+   "saturation_range": 0.7585333333333333,
+   "adstock_range": 0.4660400000000001,
+   "cost_pct": 0.37597392513570016
   },
   "Dark week": {
-   "variance": 0.188544,
-   "bias": 32.59546666666667,
-   "identifiability": 32.556534666666664,
-   "saturation_range": 0.6681666666666666,
-   "adstock_range": 0.41196,
-   "cost_pct": 0.612760308856924,
-   "per_channel_bias": {
-    "Channel 1": 68.84874666666666,
-    "Channel 2": 18.165213333333334,
-    "Channel 3": 7.018886666666665,
-    "Channel 4": 15.399453333333334,
-    "Channel 5": 53.54503333333334
-   },
-   "per_channel_cv": {
-    "Channel 1": 0.30770666666666663,
-    "Channel 2": 0.13663333333333333,
-    "Channel 3": 0.06662666666666665,
-    "Channel 4": 0.09382,
-    "Channel 5": 0.3379333333333333
-   }
+   "variance": 0.189556,
+   "bias": 30.069987999999995,
+   "identifiability": 32.424898666666664,
+   "saturation_range": 0.6701666666666666,
+   "adstock_range": 0.4056,
+   "cost_pct": 0.7680466166035985
   }
  }
 }

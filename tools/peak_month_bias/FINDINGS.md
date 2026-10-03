@@ -5,6 +5,11 @@ article's original dataset (41.3% mean absolute bias against 35.9%, 200
 draws). On three other simulated datasets it improves bias. Two checks on
 why, both run by `peak_checks.py` at 200 draws.
 
+The "original dataset" is history seed 12. The article's example has
+since moved to history seed 37, where Peak month improves bias at 15
+channels (41% on that dataset alone). The finding below still holds:
+what changes between datasets is the unphased plan's bias.
+
 ## Result
 
 Peak month does not reduce bias at 15 channels. It moves it between

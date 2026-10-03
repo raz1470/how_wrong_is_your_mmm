@@ -27,7 +27,9 @@ N_DRAWS = int(sys.argv[1]) if len(sys.argv) > 1 else 100
 N_CH = int(sys.argv[2]) if len(sys.argv) > 2 else 15
 OUT = Path(__file__).parent
 
-r = build(N_CH)
+# The dataset these checks were run on. The article's example has since
+# moved to history seed 37, which is harness.build's default.
+r = build(N_CH, hist_seed=12)
 chans = list(r.plan_df.columns)
 peak = Redistribute(dark_weeks=0, edge_cap_pct=0.0, high_month_pct=150.0)
 levers = {

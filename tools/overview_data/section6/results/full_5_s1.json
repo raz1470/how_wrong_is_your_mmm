@@ -2,63 +2,63 @@
  "n": 5,
  "tag": "s1",
  "winner": "Combined",
- "seconds": 192.27989149093628,
+ "seconds": 151.84413123130798,
  "levers": {
   "unphased": {
-   "variance": 0.31198000000000004,
-   "bias": 41.280918666666665,
-   "identifiability": 60.89931999999999,
+   "variance": 0.31036,
+   "bias": 41.27205466666667,
+   "identifiability": 60.7429,
    "saturation_range": 0.8,
    "adstock_range": 0.5724,
    "cost_pct": 0.0
   },
   "Weekly nudge": {
-   "variance": 0.23386666666666667,
-   "bias": 37.718832,
-   "identifiability": 48.878472,
-   "saturation_range": 0.7680999999999999,
-   "adstock_range": 0.4969200000000001,
-   "cost_pct": 0.16364971051685315
+   "variance": 0.23262933333333335,
+   "bias": 37.71712666666667,
+   "identifiability": 48.570869333333334,
+   "saturation_range": 0.7677999999999999,
+   "adstock_range": 0.49428,
+   "cost_pct": 0.16362076610711174
   },
   "Dark month": {
-   "variance": 0.125712,
-   "bias": 20.159896,
-   "identifiability": 16.40404266666667,
-   "saturation_range": 0.47496666666666665,
-   "adstock_range": 0.29124000000000005,
-   "cost_pct": 1.7274600610394035
+   "variance": 0.12504533333333331,
+   "bias": 20.158708,
+   "identifiability": 16.25546,
+   "saturation_range": 0.47459999999999997,
+   "adstock_range": 0.28887999999999997,
+   "cost_pct": 1.7266300645316643
   },
   "Peak month": {
-   "variance": 0.10897333333333332,
-   "bias": 28.925376,
-   "identifiability": 24.835450666666667,
-   "saturation_range": 0.6481333333333332,
-   "adstock_range": 0.30876000000000003,
-   "cost_pct": 1.2913765131797843
+   "variance": 0.10839599999999998,
+   "bias": 28.924283999999993,
+   "identifiability": 24.689476,
+   "saturation_range": 0.6465333333333334,
+   "adstock_range": 0.30784,
+   "cost_pct": 1.290470547355442
   },
   "Combined": {
-   "variance": 0.08950933333333334,
-   "bias": 16.127731999999998,
-   "identifiability": 10.321266666666668,
-   "saturation_range": 0.4193666666666667,
-   "adstock_range": 0.21144,
-   "cost_pct": 3.1338843122624302
+   "variance": 0.08903466666666666,
+   "bias": 16.126988,
+   "identifiability": 10.214396000000002,
+   "saturation_range": 0.4173333333333333,
+   "adstock_range": 0.21023999999999998,
+   "cost_pct": 3.132319199051409
   },
   "Month step": {
-   "variance": 0.18991066666666664,
-   "bias": 32.47239733333333,
-   "identifiability": 43.98045066666667,
-   "saturation_range": 0.7677666666666665,
-   "adstock_range": 0.47692000000000007,
-   "cost_pct": 0.3832570351414403
+   "variance": 0.1889,
+   "bias": 32.471956,
+   "identifiability": 43.745846666666665,
+   "saturation_range": 0.7671333333333332,
+   "adstock_range": 0.4735600000000001,
+   "cost_pct": 0.3828267765151949
   },
   "Dark week": {
-   "variance": 0.176468,
-   "bias": 34.722273333333334,
-   "identifiability": 31.078526666666665,
-   "saturation_range": 0.6965999999999999,
-   "adstock_range": 0.40468000000000004,
-   "cost_pct": 0.7481075088646338
+   "variance": 0.17553066666666667,
+   "bias": 34.720289333333334,
+   "identifiability": 30.823069333333336,
+   "saturation_range": 0.6961999999999999,
+   "adstock_range": 0.40316,
+   "cost_pct": 0.7477876061771277
   }
  }
 }
