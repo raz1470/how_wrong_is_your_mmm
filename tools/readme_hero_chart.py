@@ -7,14 +7,12 @@ the timing question (how much does accumulated phased history tighten
 the estimate for a fixed upcoming plan), the same way notebook 03 does
 for CV.
 
-Design, since the original generator script was never saved (see
-NOTES.md): keep one £-plan fixed (the same `plan_df` throughout, "the
+Design: keep one £-plan fixed (the same `plan_df` throughout, "the
 same plan" the README caption promises) and vary only the training
 data fitted before evaluating it against that plan:
   - Today: fit on 208 weeks of natural (unphased, correlated) history.
   - After 1 year: fit on that history plus one more year of phased
-    spend (the report's own winning lever as of session 56/item 7's
-    widened sweep: Blackout, dark=4 weeks/month, prob=1.0 -- dominates
+    spend (Blackout, dark=4 weeks/month, prob=1.0 -- dominates
     +/-80% edge+balanced on all three rigor axes on this scenario, see
     notebooks/05_strategy_comparison.ipynb, at a materially higher cost
     which this chart does not show since it only tracks estimate width).

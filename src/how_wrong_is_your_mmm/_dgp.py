@@ -652,9 +652,9 @@ def simulate_spend(
     noise_std = _noise_std_from_correlation(correlation)
 
     # The internal draw ALWAYS happens, even when `demand` is supplied, so that
-    # supplying a series does not shift the channel-noise draws below. Session
-    # 41's nudge_shape lesson: changing a generator's call sequence silently
-    # moves every seeded number already published from this function.
+    # supplying a series does not shift the channel-noise draws below.
+    # Changing a generator's call sequence silently moves every seeded
+    # number already published from this function.
     drawn_demand = rng.standard_normal(n_obs)
     if demand is None:
         demand_arr = drawn_demand

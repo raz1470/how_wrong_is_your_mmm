@@ -21,7 +21,7 @@ behaviour exactly. An omitted driver this class genuinely can't see
 can still leave CV looking healthy while the point estimate itself is badly
 biased. Read the coefficient of variation (CV) below as "how identifiable is
 this design", not "how correct is this model." See
-docs/collinearity_research.html for the full scope discussion.
+docs/overview.html for the full scope discussion.
 
 One pipeline, two entry points:
   - Synthetic spend: pass correlation, spend is generated internally for N channels.
@@ -697,8 +697,8 @@ class CollinearityDiagnostic:
                 # p10/p90 of the same per-sim error the mean above
                 # averages -- lets a caller show bias as a band around
                 # its point estimate, the way variance's own
-                # incremental_revenue_p10/p90 already do (session 50,
-                # discovery report's Bias section: see NOTES.md).
+                # incremental_revenue_p10/p90 already do (the discovery
+                # report's Bias section uses it).
                 error_pct_p10=("error_pct", lambda s: s.quantile(0.1)),
                 error_pct_p90=("error_pct", lambda s: s.quantile(0.9)),
             )
@@ -746,8 +746,8 @@ class CollinearityDiagnostic:
                 revenue.groupby("channel")["incremental_revenue"]
                 .agg(
                     # Mean alongside the existing p10/p90 -- a point
-                    # estimate to show next to the range (session 50,
-                    # discovery report's Variance section: see NOTES.md).
+                    # estimate to show next to the range (the discovery
+                    # report's Variance section uses it).
                     incremental_revenue_mean="mean",
                     incremental_revenue_p10=lambda s: s.quantile(0.1),
                     incremental_revenue_p90=lambda s: s.quantile(0.9),

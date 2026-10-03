@@ -161,9 +161,9 @@ class TestDeprecatedTrueElasticitiesAlias:
 class TestSimulateSpendUnchanged:
     """The demand/demand_share additions must not move any published number.
 
-    Golden values captured from the pre-change implementation. Session 41's
-    nudge_shape lesson: changing a generator's call sequence silently moves
-    every seeded schedule and every figure published from one.
+    Golden values captured from the pre-change implementation. Changing a
+    generator's call sequence silently moves every seeded schedule and
+    every figure published from one.
     """
 
     @pytest.mark.parametrize("seed", [0, 7, 42])
@@ -755,9 +755,9 @@ class TestSimulateDemandProxy:
 
 class TestChannelContributions:
     """channel_contributions: the per-week true-contribution formula
-    simulate_sales sums internally, exposed directly -- see session 46,
-    NOTES.md (promoted so a notebook can price a real or hypothetical
-    future plan without going through DiscoveryReport)."""
+    simulate_sales sums internally, exposed directly so a notebook can
+    price a real or hypothetical future plan without going through
+    DiscoveryReport."""
 
     spend_df = simulate_spend(n_obs=52, seed=0)
 

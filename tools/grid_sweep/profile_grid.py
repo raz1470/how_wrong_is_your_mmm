@@ -89,8 +89,7 @@ def _window_standardised(x):
     history+plan window; simulate_spend's correlation targeting assumes unit
     variance in whatever window it's actually handed. For white_noise here
     the gap is modest (measured: plan-window sd ~1.20 before this fix) but
-    it is the same bug, so it is fixed the same way. Session-44 propagation:
-    was only in adstock_threat.py's build_world, now here too.
+    it is the same bug, so it is fixed the same way.
     """
     x = np.asarray(x, dtype=float)
     return (x - x.mean()) / x.std()

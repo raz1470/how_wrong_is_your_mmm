@@ -219,11 +219,10 @@ class TestSvgMultiline:
         assert "<circle" not in svg
 
     def test_edge_x_tick_labels_anchor_inward(self):
-        # Session 50: the rightmost x-axis tick sits exactly on the
-        # plot's own right edge -- text-anchor="middle" there overflowed
-        # the SVG's own viewBox (found in session 49's 6-channel stress
-        # test, fixed here). First/last ticks now anchor inward; interior
-        # ticks are unaffected.
+        # The rightmost x-axis tick sits exactly on the plot's own right
+        # edge -- text-anchor="middle" there overflows the SVG's own
+        # viewBox. First/last ticks anchor inward; interior ticks are
+        # unaffected.
         svg = _svg_multiline(
             {"a": list(range(10))},
             {"a": "#000"},
@@ -267,7 +266,7 @@ class TestSvgStackedArea:
 
     def test_edge_x_tick_labels_anchor_inward(self):
         # Same fix, same shared tick-rendering shape as _svg_multiline's
-        # own edge-anchor test above (session 50).
+        # own edge-anchor test above.
         svg = _svg_stacked_area(
             ["a"],
             {"a": list(range(1, 11))},
@@ -305,10 +304,9 @@ class TestSvgDotplot:
         assert "search" in svg
 
     def test_multiple_rows_get_zebra_striping(self):
-        # No longer exercised via to_html() (the report's own marginal-
-        # return dot-plot was dropped as a duplicate of the ROI column in
-        # session 47) -- keep the multi-row striping path covered
-        # directly.
+        # Not exercised via to_html() (the report has no marginal-return
+        # dot-plot, it would duplicate the ROI column) -- keep the
+        # multi-row striping path covered directly.
         svg = _svg_dotplot(
             [
                 {"name": "tv", "color": "#000", "value": 0.5},
@@ -337,9 +335,8 @@ class TestLightenHex:
 
 class TestCorrTableHtml:
     def test_renders_plain_correlation_value_per_cell(self):
-        # Session 50: briefly grew a delta feature, then Ryan asked to
-        # drop it again the same session ("info overload, shall we
-        # revert to just showing the correlation?") -- see NOTES.md.
+        # The table shows the correlation only, no change-from-unphased
+        # delta (too much in one cell).
         matrix = {"a": {"a": 1.0, "b": 0.5}, "b": {"a": 0.5, "b": 1.0}}
         html_out = _corr_table_html(matrix, ["a", "b"])
         assert "corr-delta" not in html_out
@@ -347,10 +344,10 @@ class TestCorrTableHtml:
         assert html_out.count(">0.50<") == 2
 
     def test_column_headers_get_the_vertical_header_class(self):
-        # Session 50: long/more channel names pushed the table wider than
-        # the page -- column headers render vertically (see the
-        # .corr-table CSS) so column width no longer scales with name
-        # length. Row headers (the left-hand th per row) stay horizontal.
+        # Long or many channel names would push the table wider than the
+        # page -- column headers render vertically (see the .corr-table
+        # CSS) so column width does not scale with name length. Row
+        # headers (the left-hand th per row) stay horizontal.
         matrix = {"a": {"a": 1.0, "b": 0.5}, "b": {"a": 0.5, "b": 1.0}}
         html_out = _corr_table_html(matrix, ["a", "b"])
         assert html_out.count('<th class="col-hdr">') == 2
@@ -360,9 +357,9 @@ class TestCorrTableHtml:
 
 class TestSvgForest:
     def test_row_label_margin_grows_for_long_channel_names(self):
-        # Session 49: a fixed 100px left margin (sized for "search")
-        # clipped a longer real-world name ("search_generic") against the
-        # SVG's own left edge -- caught testing a 6-channel scenario.
+        # A fixed 100px left margin (sized for "search") clips a longer
+        # real-world name ("search_generic") against the SVG's own left
+        # edge.
         short = _svg_forest(
             [{"name": "tv", "color": "#000", "before": 1.0, "after": 2.0}]
         )
@@ -392,10 +389,10 @@ class TestSvgForest:
         assert "tv" in svg
 
     def test_combined_range_and_point_mark_draws_both(self):
-        # Session 50: variance/saturation/adstock want a point estimate
-        # alongside their existing range, bias wants a band around its
-        # existing point -- one shape, {"range": (lo, hi), "point": p},
-        # drawn as a range bar (<line>) plus a ring (<circle>) on top.
+        # Variance/saturation/adstock show a point estimate alongside
+        # their range, bias shows a band around its point -- one shape,
+        # {"range": (lo, hi), "point": p}, drawn as a range bar (<line>)
+        # plus a ring (<circle>) on top.
         svg = _svg_forest(
             [
                 {
@@ -413,9 +410,9 @@ class TestSvgForest:
         assert 'fill="#fff"' in svg
 
     def test_combined_mark_label_shows_the_range_only_not_the_point(self):
-        # Ryan: keep the point estimate/band on the chart, but don't
-        # also spell out "(point X)" in the text label -- the ring
-        # already carries that visually.
+        # The point estimate/band is on the chart, so the text label
+        # doesn't also spell out "(point X)" -- the ring already carries
+        # that visually.
         svg = _svg_forest(
             [
                 {
@@ -538,8 +535,8 @@ class TestFit:
             assert set(report.results_[label]["bias_pct"]) == set(CHANNELS)
 
     def test_revenue_mean_sits_inside_its_own_p10_p90(self):
-        # Session 50: a point estimate for the Variance section's forest
-        # chart, alongside the range it already had.
+        # A point estimate for the Variance section's forest chart,
+        # alongside its range.
         report = fit_small(make_report())
         for label in report.results_:
             r = report.results_[label]
@@ -551,8 +548,8 @@ class TestFit:
                 )
 
     def test_bias_pct_p10_p90_bracket_the_mean(self):
-        # Session 50: an uncertainty band for the Bias section's forest
-        # chart, around the mean error it already had.
+        # An uncertainty band for the Bias section's forest chart, around
+        # its mean error.
         report = fit_small(make_report())
         for label in report.results_:
             r = report.results_[label]
@@ -562,9 +559,9 @@ class TestFit:
                 )
 
     def test_identifiability_summary_keys(self):
-        # identifiability is now keyed by channel (IdentifiabilityDiagnostic
+        # identifiability is keyed by channel (IdentifiabilityDiagnostic
         # profiles each channel's own curvature separately), not one shared
-        # summary -- see NOTES.md, session 45.
+        # summary.
         report = fit_small(make_report())
         expected = {
             "b_mean",
@@ -699,8 +696,7 @@ class TestToHtml:
         assert "</html>" in html_out
 
     def test_toc_links_match_section_ids(self):
-        # Session 50: Ryan asked for hyperlinks to each section at the
-        # top of the report -- every href in the cover's nav must land on
+        # The cover links to each section -- every href in the cover's nav must land on
         # a section that actually exists further down the page.
         report = fit_small(make_report())
         html_out = report.to_html()
@@ -734,11 +730,10 @@ class TestToHtml:
         assert len(ids) == len(set(ids))
 
     def test_impact_correlation_shows_after_only_not_side_by_side(self):
-        # Session 49: the Impact section's before/after correlation pair
-        # forced a horizontal scroll at more channels (see the dropped
-        # .corr-col fix, superseded by this) -- Ryan didn't want to
-        # scroll for it, so Impact shows only "after"; "before" lives in
-        # Diagnostics (Section 2) for readers who want the comparison.
+        # A before/after correlation pair side by side forces a
+        # horizontal scroll at more channels, so Impact shows only
+        # "after"; "before" lives in Diagnostics (Section 2) for readers
+        # who want the comparison.
         report = fit_small(make_report())
         html_out = report.to_html()
         impact_block = html_out[
@@ -749,13 +744,12 @@ class TestToHtml:
         assert "Before phasing" not in impact_block
 
     def test_variance_bias_saturation_adstock_show_point_estimates(self):
-        # Session 50: variance/saturation/adstock each gained a point
-        # estimate alongside their existing range; bias gained a range
-        # around its existing point. All four now render the combined
-        # mark's white-fill ring (fill="#fff") -- both in Diagnostics
-        # (single-state) and Impact (before/after) sections. The ring is
-        # visual only -- Ryan asked that the value labels NOT also spell
-        # out "(point X)" in text.
+        # Variance/saturation/adstock each show a point estimate alongside
+        # their range; bias shows a range around its point. All four
+        # render the combined mark's white-fill ring (fill="#fff") -- both
+        # in Diagnostics (single-state) and Impact (before/after)
+        # sections. The ring is visual only: the value labels do NOT also
+        # spell out "(point X)" in text.
         report = fit_small(make_report())
         html_out = report.to_html()
         diagnostics_block = html_out[
@@ -775,9 +769,9 @@ class TestToHtml:
             assert f'data-lever="{label}"' in html_out
 
     def test_no_dropdown_or_strategy_selector(self):
-        # Session 46: the strategy-family dropdown was dropped -- the
-        # channel-summary table is now static inputs only, and the impact
-        # table shows every lever as a row rather than filtering to one.
+        # There is no strategy-family dropdown -- the channel-summary
+        # table is static inputs only, and the impact table shows every
+        # lever as a row rather than filtering to one.
         report = fit_small(make_report())
         html_out = report.to_html()
         assert "<select" not in html_out
@@ -824,8 +818,8 @@ class TestToHtml:
         )
 
     def test_recommended_pacing_has_one_cell_per_channel(self):
-        # Session 50: Section 1's own spend chart also adopted the
-        # pacing-grid/pacing-cell markup (see the scenario-inputs test
+        # Section 1's own spend chart also uses the pacing-grid/pacing-cell
+        # markup (see the scenario-inputs test
         # below), so this counts within Section 4 only.
         report = fit_small(make_report())
         html_out = report.to_html()
@@ -839,8 +833,8 @@ class TestToHtml:
             assert f'<div class="pacing-title">{ch}</div>' in phased_spend_block
 
     def test_recommended_pacing_uses_channel_colour_not_grey(self):
-        # Session 49: grey read as too faint -- pacing chart now uses each
-        # channel's own colour (pale for "as supplied", solid for the
+        # Grey reads as too faint -- the pacing chart uses each channel's
+        # own colour (pale for "as supplied", solid for the
         # winner's schedule) instead of a channel-blind grey/black pair.
         from how_wrong_is_your_mmm._discovery_report import _channel_colors
 
@@ -895,10 +889,9 @@ class TestToHtml:
         assert "Sales / revenue, weekly, by source" in html_out
 
     def test_scenario_inputs_spend_is_a_per_channel_grid(self):
-        # Session 50 (Ryan: "scenario inputs spend -> shall we show them
-        # as grid plots like the section 4?"): one small chart per
-        # channel, own colour, same pacing-grid/pacing-cell markup
-        # Section 4 uses for its own before/after pacing charts.
+        # Scenario inputs spend: one small chart per channel, own colour,
+        # same pacing-grid/pacing-cell markup Section 4 uses for its own
+        # before/after pacing charts.
         report = fit_small(make_report())
         html_out = report.to_html()
         scenario_block = html_out[
@@ -912,15 +905,15 @@ class TestToHtml:
             assert f'<div class="pacing-title">{ch}</div>' in spend_fig
 
     def test_no_standalone_demand_chart(self):
-        # Session 47: dropped -- a zero-mean synthetic series with no
-        # interpretive hook on its own; its effect on sales is already
+        # No standalone demand chart -- a zero-mean synthetic series with
+        # no interpretive hook on its own; its effect on sales is already
         # visible in Implied Contribution's Baseline band.
         report = fit_small(make_report())
         html_out = report.to_html()
         assert "Demand (standardised)" not in html_out
 
     def test_spend_chart_comes_before_response_curves(self):
-        # Session 47: ground in the actual data first, then show what was
+        # Ground in the actual data first, then show what was
         # assumed about how it responds -- not the other way round.
         report = fit_small(make_report(saturation=0.7, adstock=0.3))
         html_out = report.to_html()
@@ -932,16 +925,15 @@ class TestToHtml:
         )
 
     def test_no_marginal_return_dotplot_duplicate_of_roi_column(self):
-        # Session 47: dropped as a duplicate of the channel-summary ROI
-        # column -- same numbers, no new information.
+        # No marginal-return dot-plot: it would duplicate the
+        # channel-summary ROI column.
         report = fit_small(make_report())
         html_out = report.to_html()
         assert "Channel marginal return" not in html_out
 
     def test_spend_chart_uses_supplied_plan_not_winner_schedule(self):
-        # Session 46 bug, still applies now the chart lives in Section 1:
-        # it should show history_df + plan_df as given, not the winner
-        # lever's rephased schedule.
+        # The Section 1 spend chart should show history_df + plan_df as
+        # given, not the winner lever's rephased schedule.
         report = fit_small(make_report())
         html_out = report.to_html()
         assert (
@@ -950,9 +942,9 @@ class TestToHtml:
         )
 
     def test_no_separate_total_sales_chart_duplicate_of_contribution(self):
-        # Session 47: the old flat "Baseline + demand + channel
-        # contributions, no noise" single-line chart was dropped as a
-        # duplicate of the Implied Contribution stacked chart's own total.
+        # No flat "Baseline + demand + channel contributions, no noise"
+        # single-line chart: it would duplicate the Implied Contribution
+        # stacked chart's own total.
         report = fit_small(make_report())
         html_out = report.to_html()
         assert "no noise -- what these inputs imply" not in html_out
@@ -964,8 +956,8 @@ class TestToHtml:
         assert "2024" in html_out
 
     def test_diagnostics_section_shows_all_four_problems_unphased_only(self):
-        # Session 48: a new Diagnostics section shows the unphased problem
-        # on its own, ahead of the phasing-strategy numbers.
+        # The Diagnostics section shows the unphased problem on its own,
+        # ahead of the phasing-strategy numbers.
         report = fit_small(make_report(saturation=0.7, adstock=0.3))
         html_out = report.to_html()
         assert "<h2>Diagnostics</h2>" in html_out
@@ -989,7 +981,7 @@ class TestToHtml:
         assert 'opacity="0.35"' not in diagnostics_block
 
     def test_sections_renumbered_with_diagnostics_second(self):
-        # Session 49: problem (Diagnostics) -> impact (Impact) -> what to
+        # Order: problem (Diagnostics) -> impact (Impact) -> what to
         # do (Phased spend) -> appendix (every strategy compared).
         report = fit_small(make_report())
         html_out = report.to_html()
@@ -1009,9 +1001,9 @@ class TestToHtml:
         )
 
     def test_impact_table_lives_only_in_appendix(self):
-        # Session 49: the strategy-impact table moved out of "Phasing
-        # strategy" into its own appendix -- Section 4 (Phased spend) is
-        # just the pacing chart for the one winning strategy.
+        # The strategy-impact table lives in its own appendix -- Section 4
+        # (Phased spend) is just the pacing chart for the one winning
+        # strategy.
         report = fit_small(make_report())
         html_out = report.to_html()
         phased_spend_block = html_out[
@@ -1028,25 +1020,23 @@ class TestToHtml:
         assert f'data-lever="{report.winner_}" class="winner-row"' in appendix_block
 
     def test_impact_section_does_not_restate_the_problem(self):
-        # Session 49: Section 3 (Impact) assumes Section 2 (Diagnostics)
-        # already established the problem -- it shouldn't repeat "The
-        # problem:" callouts the old per-metric sections used to open with.
+        # Section 3 (Impact) assumes Section 2 (Diagnostics) already
+        # established the problem -- it shouldn't repeat "The problem:"
+        # callouts.
         report = fit_small(make_report())
         html_out = report.to_html()
         impact_block = html_out[
             html_out.index("<h2>Impact</h2>") : html_out.index("<h2>Phased spend</h2>")
         ]
         assert "<b>The problem:</b>" not in impact_block
-        # Session 50's prose rewrite dropped the "<b>The impact:</b>" label
-        # in favour of full sentences, but the section should still open
-        # by pointing back at Section 2 rather than re-explaining the
-        # problem from scratch.
+        # The section uses full sentences, not a "<b>The impact:</b>"
+        # label, and should open by pointing back at Section 2 rather than
+        # re-explaining the problem from scratch.
         assert "Section 2 showed how bad each of these four problems is" in impact_block
 
     def test_impact_section_ends_with_the_winners_cost(self):
-        # Session 50: Ryan asked for the winning strategy's own Cost
-        # quoted at the end of Section 3, rather than only visible in the
-        # Section 5 appendix table -- computed the same way as that
+        # The winning strategy's own Cost is quoted at the end of Section
+        # 3, not only in the appendix table -- computed the same way as that
         # table's own Cost column (mean %, across channels, of true
         # plan-period revenue given up under the winner vs unphased).
         report = fit_small(make_report())
@@ -1104,9 +1094,7 @@ class TestPinnedStrategyLabel:
 
 
 class TestPinnedStrategyConstruction:
-    # Session 51 (Ryan: "we want to be able to use this class and pick a
-    # strategy and set channel constraints" -- the feature that replaced
-    # the separate ReportBuilder class).
+    # Pinning a strategy and setting per-channel constraints.
     def test_strategy_pct_none_leaves_levers_unchanged(self):
         report = make_report()
         assert report.pinned_label_ is None
@@ -1232,10 +1220,9 @@ class TestFitDefaults:
         default = (
             inspect.signature(DiscoveryReport.fit).parameters["n_phasing_seeds"].default
         )
-        # Session 63 (Ryan: "we need results to be reliable"): raised from 5
-        # after per-channel bias for higher-marginal-return channels (meta,
-        # search_generic on the canonical scenario) hadn't converged at 5 --
-        # see NOTES.md session 63.
+        # 5 was too few: per-channel results for higher-marginal-return
+        # channels (meta, search_generic on the canonical scenario) had
+        # not converged.
         assert default == 15
 
     def test_n_bias_draws_default_is_100(self):
@@ -1252,7 +1239,6 @@ class TestFitDefaults:
         import inspect
 
         default = inspect.signature(DiscoveryReport.fit).parameters["id_n_sims"].default
-        # Ryan, 2026-09-25: "shouldnt we just do 50 everwhere?"
         assert default == 50
 
 
@@ -1509,9 +1495,8 @@ class TestPinnedStrategyHtml:
         assert "<h3>Channel constraints</h3>" not in html_out
 
     def test_pinned_lever_appears_in_appendix_comparison_table(self):
-        # Session 51 Q&A (Ryan: "keep both tables"): the sweep-comparison
-        # table stays even when a strategy is pinned, with the pinned
-        # strategy as one more row in it.
+        # The sweep-comparison table stays even when a strategy is pinned,
+        # with the pinned strategy as one more row in it.
         report = fit_small(make_report(strategy_pct=60.0))
         html_out = report.to_html()
         assert f'data-lever="{report.pinned_label_}"' in html_out

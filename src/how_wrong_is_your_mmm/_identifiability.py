@@ -17,7 +17,7 @@ the recovered value across draws (b_sd/lam_sd) and the RSS valley's width:
 a flat valley means many curvatures fit about equally well, which is what
 "b is unmeasurable" actually means in practice.
 
-Per-channel, not shared (reversed from the original session 44/45 design):
+Per-channel, not shared:
 each channel gets its OWN plausible saturation/adstock and its OWN
 recovered value -- a channel's spend pattern (how much it varies week to
 week, its own autocorrelation) determines how well ITS curvature can be
@@ -34,9 +34,6 @@ the response shape, which is separate from omitted-variable bias (see
 CollinearityDiagnostic). Mixing the two would make a null result
 unattributable, so unlike CollinearityDiagnostic's `controls` this is not
 optional.
-
-Promoted from tools/grid_sweep/profile_grid.py (session 45's item 5).
-Per-channel profiling added later the same session, at Ryan's request.
 """
 
 from __future__ import annotations

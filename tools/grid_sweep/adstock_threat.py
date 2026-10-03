@@ -53,7 +53,7 @@ from how_wrong_is_your_mmm import (
 # low-pass filter, so its effect depends on where demand's own energy sits in
 # the frequency band. A result measured only on white noise would not transfer.
 #
-# "trend" is the specific, falsifiable prediction from session 43: it should
+# "trend" is the specific, falsifiable prediction: it should
 # be the WORST case of all, because a trend's energy sits at zero frequency
 # and passes through the adstock low-pass filter essentially untouched, while
 # the high-frequency variation phasing adds is exactly what carryover
@@ -125,7 +125,7 @@ N_PHASING_SEEDS = int(os.environ.get("N_PHASING_SEEDS", 6))
 N_DEMAND_SEEDS = int(os.environ.get("N_DEMAND_SEEDS", 16))
 
 DECAYS = (0.0, 0.3, 0.5, 0.7)  # capped at 0.7: 0.9 is past what "carryover basically
-# gone by week 4" (session 44) means, and the negative-bias crossover for
+# gone by week 4" means, and the negative-bias crossover for
 # seasonal_ar1/continuous levers past ~0.85 lives entirely outside that band.
 
 LEVERS = [

@@ -2,16 +2,9 @@
 directly with per-channel overrides, and report the impact against each
 of the three reliability problems this package diagnoses.
 
-Originally split into two classes: this one for "which strategy should I
-even consider?" (sweep a grid, auto-pick a winner), and a separate
-ReportBuilder for "here's the phased CSV for the % change you told me to
-use" once a strategy had been picked elsewhere (session 45's two-report
-split). Session 51 merged them back into this one class, at Ryan's
-request ("we don't really need a second class now, instead we want to be
-able to use this class and pick a strategy and set channel constraints"):
-pass strategy_pct (optionally with channel_constraints) to pin a strategy
+Pass strategy_pct (optionally with channel_constraints) to pin a strategy
 directly instead of sweeping for one, and call schedule_csv() for the
-exportable weekly table -- ReportBuilder is gone, see NOTES.md.
+exportable weekly table.
 
 Every DEFAULT candidate strategy is applied identically to every channel
 -- there is no per-channel number to report for the swept grid, only a
@@ -24,8 +17,8 @@ comparison table, and is used directly as the winner, with
 channel_constraints letting specific channels override it individually --
 shown in their own small Appendix table.
 
-Report structure (session 49: "problem, then impact, then what to do about
-it" -- still no dropdown, no JS anywhere on the page). Sections 1-4 are
+Report structure: problem, then impact, then what to do about it, with no
+dropdown and no JS anywhere on the page. Sections 1-4 are
 all about ONE strategy in play -- the swept winner, or the pinned strategy
 when one is given -- but nothing in their construction assumes a sweep
 happened. Only the appendix is sweep-specific:
@@ -37,37 +30,33 @@ happened. Only the appendix is sweep-specific:
    "implied contribution" stacked-area chart (baseline, incl. demand, +
    each channel's modelled contribution, summing to weekly sales) -- the
    package's own synthetic outcome from the assumptions above, explicitly
-   not something supplied. No standalone demand chart (session 47,
-   dropped -- a zero-mean synthetic series with no interpretive hook on
-   its own; its effect is already visible in Implied Contribution's
-   Baseline band). Reproducible from these inputs alone, in a notebook,
+   not something supplied. There is no standalone demand chart: it is a
+   zero-mean synthetic series with no interpretive hook on its own, and
+   its effect is already visible in Implied Contribution's Baseline band.
+   Reproducible from these inputs alone, in a notebook,
    without this report class.
 2. Diagnostics -- how bad the unphased problem is, full stop, before any
    fix is shown: spend correlation, variance, bias and identifiability
    (saturation + adstock), each as the unphased state only, via
-   _svg_forest's single=True mode (session 48).
+   _svg_forest's single=True mode.
 3. Impact -- the same four charts, now before vs after: what phasing
    under the winning strategy does to each problem Section 2 just showed.
-   Consolidates what used to be four separate before/after sections
-   (session 49) -- each one now skips restating "the problem" (Section 2
-   already showed it) and goes straight to "the impact."
+   It does not restate the problem, and ends with the growth readout (the
+   return at higher spend) and the cost.
 4. Phased spend -- small-multiples "recommended pacing" chart, one per
    channel, as-supplied vs the winning strategy's own phased schedule.
-   Used to sit alongside the strategy-impact table in one "Phasing
-   strategy" section (session 47); session 49 split them, since the
-   pacing chart is about the ONE winning strategy while the table below
-   is about comparing every candidate.
+   Kept apart from the strategy-impact table: the pacing chart is about
+   the ONE winning strategy, the table about comparing every candidate.
 
 Appendix: every strategy compared -- the strategy-impact table, one row
 per candidate lever, variance/bias/identifiability improvement over
 unphased plus phasing's revenue cost, winning row highlighted. The only
 sweep-specific content in the report; sections 1-4 are all built from
-this table's winning row alone (session 49).
+this table's winning row alone.
 
-Follows the package's shared-DGP design (session 44): one demand series
-drives every simulated sales column in this report, and saturation/adstock
--- per channel since identifiability was made per-channel later the same
-session -- are resolved once in __init__ and reused throughout, never
+Follows the package's shared-DGP design: one demand series drives every
+simulated sales column in this report, and saturation/adstock (per
+channel) are resolved once in __init__ and reused throughout, never
 redrawn per candidate or per section. Only the OLS model's KNOWLEDGE of
 demand changes between sections -- known for variance and identifiability,
 a measurement-error proxy (at the client's supplied plausible quality) for
@@ -104,11 +93,8 @@ from how_wrong_is_your_mmm._phaser import (
     _get_month_labels,
 )
 
-# Categorical channel palette (moved here from the now-removed
-# ReportBuilder in session 51 -- this is DiscoveryReport's own chart
-# colouring now, not borrowed from a sibling report). First three slots
-# match the existing overview.html/collinearity_research.html brand
-# colours (tv/meta/search); slot 4 (violet) has been checked for
+# Categorical channel palette. First three slots match docs/overview.html's
+# brand colours (tv/meta/search); slot 4 (violet) has been checked for
 # colour-vision-deficiency accessibility and passes, with one WARN band
 # requiring direct labels, which every chart here already has. Slots 5+
 # are a reasonable extension, not yet checked the same way -- fine for
@@ -141,50 +127,13 @@ def _channel_colors(channels: list[str]) -> dict[str, str]:
     return {ch: _PALETTE[i % len(_PALETTE)] for i, ch in enumerate(channels)}
 
 
-# NOTE (2026-09-21): the default grid below was later cut to +/-20% only
-# plus the original Blackout(dark=1); the history that follows explains why
-# the stronger settings existed and is kept for the record.
-#
-# Default combo grid -- mirrors notebooks/05_strategy_comparison.ipynb's
-# own LEVERS list verbatim (the rebuilt notebook that replaced the
-# archived notebooks/archive/11_phasing_strategy.ipynb, session 52). That
-# archived notebook is where "edge+balanced beats Blackout on bias,
-# variance, saturation AND adstock, at lower cost" was first established,
-# on a grid that only ever tried uniform/edge across four intensities plus
-# a single Blackout(dark=1) -- dark=1 is a no-op for the contiguous-run
-# fix below (one week is trivially "consecutive"), so that finding never
-# actually exercised Blackout's stronger settings. Session 56's
-# exploration (NOTES.md, SCOPE.md build-order item 7) found two things
-# this grid was blind to: `nudge_shape="seesaw"` (alternating sign at the
-# cap) is a genuine bias/cost vs variance trade-off against edge, not a
-# strict win; and forcing a capped Blackout's dark weeks into a single
-# consecutive run instead of a scattered subset beats scattered selection
-# on both adstock and saturation identifiability at every matched
-# setting, with dark=3/prob=0.8 roughly halving saturation/adstock
-# identifiability error at ~3x edge+balanced+80%'s cost and dark=4/
-# prob=1.0 reaching the best identifiability found anywhere in that
-# exploration. Both are added below so a real sweep can actually surface
-# them instead of needing to be read out of _phaser.py's source.
-#
-# IMPORTANT: _pick_winner (below) scores rigor only, never operational
-# feasibility, and dark>=3 at prob near 1.0 wins on rigor by forcing
-# whichever single week survives each month to carry ~3-4x its normal
-# budget -- not something a media buyer would actually schedule. Ryan's
-# call, once this widened grid surfaced that gap (session 59): a report's
-# swept report.winner_ is not automatically "the recommendation" once
-# these settings are in the running, and docs/overview.html and the
-# README deliberately keep quoting +/-80% (edge, balanced), the strongest
-# *deployable* shape, rather than whatever _pick_winner literally returns.
-# A feasibility-aware lever (or a cost/feasibility-aware picker) is the
-# real fix and isn't designed yet -- see SCOPE.md's bespoke-lever sketch.
-# Which candidate a given report's winner_ is stays _pick_winner's own
-# dominance/worst-axis call below, not a claim fixed here -- callers that
-# care about deployability should check the Cost column themselves, same
-# as this module's own docs pages now do. Each entry is
-# (label, per-channel spec, nudge_shape, balance_signs).
+# _pick_winner scores rigor only, never operational feasibility, so a
+# report's winner_ is not automatically the recommendation: callers that
+# care about deployability should check the Cost and Peak week columns.
+# Each sweep entry is (label, per-channel spec, nudge_shape, balance_signs).
 # The default sweep's high month (Redistribute.high_month_pct): 2.5x plan.
-# Tested 2026-09-28 against 3x (narrower saturation range, but cost ~3.7%
-# and a ~3.7x peak week) -- see NOTES.md session 69 continued.
+# 3x gives a narrower saturation range, but costs about 3.7% of revenue
+# and puts the peak week at about 3.7x plan.
 _DEFAULT_HIGH_MONTH_PCT = 150.0
 
 # Spend levels, as multiples of each channel's planned weekly spend, that the
@@ -675,9 +624,9 @@ def _svg_multiline(
             f'font-size="10" fill="#9ca3af">{y_tick_fmt(v)}</text>'
         )
     # First/last tick sit exactly on the plot's own left/right edge --
-    # text-anchor="middle" there overflows the SVG's own viewBox (bug
-    # found stress-testing longer x-tick labels, session 49: see
-    # NOTES.md). Edge ticks anchor inward instead; interior ticks keep
+    # text-anchor="middle" there overflows the SVG's own viewBox with
+    # longer x-tick labels. Edge ticks anchor inward instead; interior
+    # ticks keep
     # centring on their own gridline.
     first_tick, last_tick = tick_idx[0], tick_idx[-1]
     for i in tick_idx:
@@ -806,9 +755,9 @@ def _svg_stacked_area(
             f'font-size="10" fill="#9ca3af">{fmt(v)}</text>'
         )
     # First/last tick sit exactly on the plot's own left/right edge --
-    # text-anchor="middle" there overflows the SVG's own viewBox (bug
-    # found stress-testing longer x-tick labels, session 49: see
-    # NOTES.md). Edge ticks anchor inward instead; interior ticks keep
+    # text-anchor="middle" there overflows the SVG's own viewBox with
+    # longer x-tick labels. Edge ticks anchor inward instead; interior
+    # ticks keep
     # centring on their own gridline.
     first_tick, last_tick = tick_idx[0], tick_idx[-1]
     for i in tick_idx:
@@ -885,13 +834,8 @@ def _corr_table_html(matrix: dict, channels: list[str]) -> str:
     heat-shaded from the correlation value (no JS -- computed at render time,
     same reasoning as _svg_multiline).
 
-    Session 50: briefly grew an optional `before` matrix to print each
-    cell's change from unphased (Ryan: "spend correlation impact --
-    should we put the delta?"), then dropped it again the same session
-    (Ryan: "info overload, shall we revert to just showing the
-    correlation?") -- see NOTES.md. Column headers render vertically
-    (the .corr-table CSS) so more/longer channel names don't force the
-    table wider than the page, also session 50.
+    Column headers render vertically (the .corr-table CSS) so more or
+    longer channel names don't force the table wider than the page.
     """
 
     def cell_style(v: float) -> str:
@@ -975,7 +919,7 @@ def _nice_axis_bounds(
 
 def _hi(v: float | tuple[float, float] | dict) -> float:
     """Upper end of a range mark, the value itself for a point mark, or
-    the larger of the range/point for a combined mark (session 50) --
+    the larger of the range/point for a combined mark --
     lets _svg_forest's axis/label code treat all three the same way."""
     if isinstance(v, dict):
         return max(v["range"][1], v["point"])
@@ -984,10 +928,9 @@ def _hi(v: float | tuple[float, float] | dict) -> float:
 
 def _label_source(v: float | tuple[float, float] | dict) -> float | tuple[float, float]:
     """The (lo, hi) or point value a mark's text label is built from.
-    For a combined range+point mark (session 50), that's the range --
-    same label text as before the point estimate was added; the ring
-    drawn on the chart carries the point visually instead (Ryan: keep
-    the point estimate/band, don't also spell it out in the label)."""
+    For a combined range+point mark that's the range: the ring drawn on
+    the chart carries the point visually, so the label doesn't also spell
+    it out."""
     return v["range"] if isinstance(v, dict) else v
 
 
@@ -1011,12 +954,11 @@ def _svg_forest(
     drawn as a rounded range bar; a single float -- drawn as a dot, for a
     mean-estimate quantity with no p10/p90 to show; or a dict
     {"range": (p10, p90), "point": float} -- drawn as both together, a
-    ring marking the point estimate on top of the range bar (session 50:
-    variance/saturation/adstock show a point estimate alongside their
-    existing range, bias shows a band around its existing point). A
-    combined mark's text label still reads off its range only, matching
-    the plain-range label from before the point estimate existed -- the
-    ring carries the point visually rather than in the label text. The
+    ring marking the point estimate on top of the range bar
+    (variance/saturation/adstock show a point estimate alongside their
+    range, bias shows a band around its point). A combined mark's text
+    label reads off its range only -- the ring carries the point visually
+    rather than in the label text. The
     two states in one chart don't have to match shape, though every
     section built so far uses one shape throughout.
 
@@ -1035,8 +977,7 @@ def _svg_forest(
     """
     # m_left scales with the longest channel name -- the fixed 100px
     # default (sized for "search") clipped longer real-world names like
-    # "search_generic" against the SVG's own left edge (session 49,
-    # caught testing a 6-channel scenario).
+    # "search_generic" against the SVG's own left edge.
     longest_name = max(len(ch["name"]) for ch in data)
     m_top, m_right, m_bottom, m_left = 14, 96, 40, max(100, 20 + 9 * longest_name)
     height = m_top + m_bottom + row_h * len(data)
@@ -1309,13 +1250,11 @@ class DiscoveryReport:
         default) and adstock decay lambda in [0, 1) (0.0 = no carryover,
         default) to assume PER CHANNEL -- either a dict covering every
         channel in history_df/plan_df, or a single float that broadcasts
-        to every channel (the old shared-value behaviour). Each channel
+        to every channel. Each channel
         gets its own value because IdentifiabilityDiagnostic's grid search
         is now per-channel too: a channel's OWN spend pattern determines
         how well its OWN curvature can be pinned down, which differs by
-        channel even when every channel shares the same assumed curvature
-        (session 45, changed from the original single-shared-float design
-        at Ryan's request -- see NOTES.md).
+        channel even when every channel shares the same assumed curvature.
     revenue_noise_pct:
         Weekly sales noise sd as a fraction of average weekly sales (the
         calibrated total from calibrate_baseline). Default 0.02 (2%).
@@ -1348,11 +1287,7 @@ class DiscoveryReport:
         your own list to add or narrow candidates, keeping an unphased
         baseline entry first.
     strategy_pct, strategy_nudge_shape, strategy_balanced:
-        Pin a single strategy instead of sweeping for one (session 51,
-        Ryan: "we want to be able to use this class and pick a strategy
-        and set channel constraints" -- this replaced the separate
-        ReportBuilder class, which used to be the "I've picked one, give
-        me the CSV" report once a strategy was chosen elsewhere).
+        Pin a single strategy instead of sweeping for one.
         strategy_pct is the same per-channel spec _default_levers uses for
         one candidate: a float (symmetric +/-X% for every channel), a
         Blackout, a Redistribute (its edge_cap_pct is the intensity;
@@ -1957,8 +1892,8 @@ class DiscoveryReport:
         self.results_ = results
         self.valley_tol_ = valley_tol
         # A pinned strategy (self.pinned_label_) skips _pick_winner's
-        # dominance check entirely -- session 51, Ryan picked the strategy
-        # himself, there is nothing left to choose between. The sweep
+        # dominance check entirely: the strategy was chosen by the caller,
+        # so there is nothing left to choose between. The sweep
         # still ran above (so the pinned candidate scores alongside every
         # other lever for the Appendix comparison table), only the
         # winner-SELECTION step is bypassed.
@@ -1985,14 +1920,9 @@ class DiscoveryReport:
         """Return the winning (or pinned) strategy's weekly schedule as a
         tidy, exportable table.
 
-        Session 51 (Ryan: "the class should also trigger the phased
-        budget csv"): this is DiscoveryReport's replacement for
-        ReportBuilder.schedule_csv(), now that DiscoveryReport can pin a
-        strategy directly instead of needing a second class once one's
-        been picked. Same shape as ReportBuilder's own version: one row
-        per week, three columns per channel (the original plan figure,
-        the recommended figure, and whether that week is a Blackout dark
-        week), both £ columns rounded to the nearest penny.
+        One row per week, three columns per channel (the original plan
+        figure, the recommended figure, and whether that week is a
+        Blackout dark week), both £ columns rounded to the nearest penny.
 
         Parameters
         ----------
@@ -2221,7 +2151,7 @@ class DiscoveryReport:
 
     def _pick_winner(self, results: dict[str, dict]) -> str:
         """Report-wide "highest impact" strategy: dominance check, else
-        worst-axis (session 45 architecture decision -- see NOTES.md).
+        worst-axis.
 
         Candidates are every lever except the unphased baseline (the first
         entry in self.levers_, by convention -- there is nothing to pick
@@ -2388,7 +2318,7 @@ def _render_html(report: DiscoveryReport) -> str:
     winner = meta["winner"]
     baseline = report.results_[baseline_label]
     best = report.results_[winner]
-    # Session 51: a pinned strategy (report.pinned_label_) skips
+    # A pinned strategy (report.pinned_label_) skips
     # _pick_winner entirely, so the headline needs different wording --
     # there was no dominance check to describe.
     pinned = report.pinned_label_ is not None
@@ -2425,10 +2355,8 @@ def _render_html(report: DiscoveryReport) -> str:
     # £ p10-p90 range per channel) rather than a raw CV bar -- CV is the
     # metric the diagnostic optimizes, but £ revenue range is the number a
     # client actually feels, and matches docs/overview.html's own framing
-    # of this same problem. Session 50 (Ryan: "for variance I think have
-    # the point estimate makes sense too"): each mark now also carries
-    # its mean incremental revenue as a point estimate, drawn as a ring
-    # on the range bar rather than only the p10-p90 ends.
+    # of this same problem. Each mark also carries its mean incremental
+    # revenue as a point estimate, drawn as a ring on the range bar.
     variance_forest_data = [
         {
             "name": ch,
@@ -2464,11 +2392,8 @@ def _render_html(report: DiscoveryReport) -> str:
     # Bias section: same chart family as variance (£ revenue, dashed true
     # line). "Believed revenue" is what a client would think they got if
     # they trusted the biased estimate: true revenue inflated/deflated by
-    # the mean error %. Session 50 (Ryan: "for bias I wonder whether we
-    # have the uncertainty bands"): bias_pct_p10/p90 (CollinearityDiagnostic
-    # now exposes these alongside its existing mean_error_pct, see
-    # _diagnostic.py) give a real band around that point, the same
-    # combined range+point mark variance's own section now uses.
+    # the mean error %. bias_pct_p10/p90 give a band around that point,
+    # the same combined range+point mark the variance section uses.
     def _believed_revenue(ch: str, results: dict) -> float:
         return true_revenue[ch] * (1.0 + results["bias_pct"][ch] / 100.0)
 
@@ -2501,21 +2426,19 @@ def _render_html(report: DiscoveryReport) -> str:
     )
 
     # Identifiability section: same forest-chart family as sections 2/3,
-    # not the abandoned RSS "valley" picture (that showed the RSS surface
-    # itself, which read as confusing rather than illuminating -- see
-    # NOTES.md). What the client actually wants to know: given a plausible
+    # not a picture of the RSS surface itself, which read as confusing
+    # rather than illuminating. What the client wants to know: given a plausible
     # saturation/adstock per channel, how wide is the range of estimates
     # recovered when fitting unphased vs {winner}? One chart per parameter,
     # one row per channel -- IdentifiabilityDiagnostic profiles each
     # channel's own curvature separately, holding every other channel at
-    # its own true value (session 45's per-channel redesign).
+    # its own true value.
     def _fmt_plain(v: float) -> str:
         return f"{v:.2f}"
 
-    # Session 50 (Ryan: "for ad stock and saturation I wonder if we have
-    # the point estimates too"): IdentifiabilityDiagnostic's own summary
-    # already carries b_mean/lam_mean averaged across sims (see
-    # `identifiability` above) -- no new draws needed, just read it.
+    # Point estimates: IdentifiabilityDiagnostic's own summary already
+    # carries b_mean/lam_mean averaged across sims (see `identifiability`
+    # above), so no new draws are needed.
     b_forest_data = [
         {
             "name": ch,
@@ -2654,15 +2577,12 @@ def _render_html(report: DiscoveryReport) -> str:
     corr_before_html = _corr_table_html(baseline["correlation"], channels)
     corr_after_html = _corr_table_html(best["correlation"], channels)
 
-    # Diagnostics section (session 48): the unphased "before" half of each
-    # of the four problem charts above, shown on its own ahead of any
-    # phasing solution -- this is "how bad is the problem", full stop,
-    # before the reader has seen a fix. Built by re-shaping the same
-    # baseline-only fields already computed for the before/after sections
-    # (no new numbers), via _svg_forest's single=True mode. The paired
-    # sections below keep their own before/after charts for now -- once a
-    # future Impact section exists to carry the "after" half on its own,
-    # those can drop back to before-only too and point here instead.
+    # Diagnostics section: the unphased "before" half of each of the four
+    # problem charts above, shown on its own ahead of any phasing solution
+    # -- "how bad is the problem", before the reader has seen a fix. Built
+    # by re-shaping the baseline-only fields already computed for the
+    # before/after charts (no new numbers), via _svg_forest's single=True
+    # mode.
     diag_variance_data = [
         {k: v for k, v in ch.items() if k != "after"} | {"value": ch["before"]}
         for ch in variance_forest_data
@@ -2695,9 +2615,8 @@ def _render_html(report: DiscoveryReport) -> str:
 
     # Channel summary, part (a): plain per-channel inputs -- spend, ROI,
     # saturation, adstock, nothing modelled and nothing lever-dependent, so
-    # no dropdown, no JS. Session 46: the old combined table conflated
-    # "what you gave us" with "what the model estimates under a strategy",
-    # which read as confusing -- split apart, this half is the intro. ROI
+    # no dropdown, no JS. Kept apart from what the model estimates under a
+    # strategy, so "what you gave us" is never mixed with it. ROI
     # is true_marginal_returns[ch], the same £-per-£1-at-the-margin figure
     # the appendix dot-plot already shows -- no new computation.
     channel_summary_rows_html = "".join(
@@ -2710,9 +2629,9 @@ def _render_html(report: DiscoveryReport) -> str:
     )
 
     # Scenario inputs, part (b): implied contribution -- the synthetic
-    # OUTCOME these inputs produce, not something supplied (Ryan flagged
-    # this distinction: putting it in the input table above would
-    # misrepresent a modelled number as client data). Stacked area,
+    # OUTCOME these inputs produce, not something supplied (putting it in
+    # the input table above would misrepresent a modelled number as client
+    # data). Stacked area,
     # baseline at the bottom, each channel on top, summing to weekly
     # sales/revenue -- same terms channel_contributions/simulate_sales use
     # internally, exposed directly (true_contributions and
@@ -2782,8 +2701,8 @@ def _render_html(report: DiscoveryReport) -> str:
         }
 
     # Winning strategy's own Cost, as a one-line callout at the end of
-    # Section 3 (session 50, Ryan: quote the winner's cost there instead
-    # of leaving it visible only to someone who scrolls to the appendix).
+    # Section 3, so it is not visible only to someone who scrolls to the
+    # appendix.
     winner_cost_pct = float(np.mean(list(lever_cost_pct[winner].values())))
 
     # Redistribute and MonthStep strategies move budget BETWEEN months (a
@@ -2827,9 +2746,8 @@ def _render_html(report: DiscoveryReport) -> str:
         f"only, {totals_sub}"
     )
 
-    # Session 51 (Ryan: "in the appendix we need to show channel
-    # constraints too"): only rendered when the pinned strategy actually
-    # overrides specific channels -- an unpinned, swept report has no
+    # Channel constraints table: only rendered when the pinned strategy
+    # actually overrides specific channels -- an unpinned, swept report has no
     # per-channel overrides to show, and a pinned strategy with none set
     # doesn't need an empty table either.
     channel_constraints_html = ""
@@ -2898,8 +2816,7 @@ def _render_html(report: DiscoveryReport) -> str:
     # plan-period only), so no history slicing needed here the way the
     # appendix spend chart needs it. Each channel's OWN colour, pale vs
     # solid (via _lighten_hex), not a channel-blind grey/black pair --
-    # grey in particular read as too faint against the page background
-    # (session 49 feedback).
+    # grey in particular read as too faint against the page background.
     # Only the plan year is shown, even when back-phasing (see the
     # constructor's backphase_years) phased earlier weeks of history too.
     n_plan_weeks = len(report.supplied_plan_df)
@@ -3028,11 +2945,10 @@ def _render_html(report: DiscoveryReport) -> str:
             "</em></p>"
         )
 
-    # Session 50 (Ryan: "scenario inputs spend -> shall we show them as
-    # grid plots like the section 4?"): one small chart per channel,
-    # own axis and colour, same pacing-grid/pacing-cell markup Section 4
-    # already uses for its own before/after pacing charts -- rather than
-    # one combined multi-line chart needing a channel legend to read.
+    # Scenario inputs spend: one small chart per channel, own axis and
+    # colour, same pacing-grid/pacing-cell markup Section 4 uses for its
+    # before/after pacing charts -- rather than one combined multi-line
+    # chart needing a channel legend to read.
     spend_cells_html = "".join(
         f'<div class="pacing-cell"><div class="pacing-title">{html.escape(ch)}</div>'
         + _svg_multiline(
@@ -3055,8 +2971,7 @@ def _render_html(report: DiscoveryReport) -> str:
     # No standalone demand chart -- it's a zero-mean synthetic series with
     # no interpretive hook on its own, and its actual effect on sales is
     # already visible in Implied Contribution's Baseline band below
-    # (baseline level + demand fluctuation combined). Session 47: dropped
-    # per Ryan, same reasoning as the other duplicates above.
+    # (baseline level + demand fluctuation combined).
     #
     # No separate "Sales / revenue, weekly" total-line chart any more --
     # the Implied Contribution stacked-area chart above already shows
