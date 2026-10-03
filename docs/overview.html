@@ -444,7 +444,6 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <p>With your own data, pick the pattern closest to how your sales behave apart from marketing: steady growth, a strong yearly cycle, or neither.</p>
 
-
   <h3>Step 2: Choose the response</h3>
 
   <p>Before we can generate sales/revenue, we need to set up the response function for marketing channels. Each channel gets a marginal return, a saturation curve (how quickly extra spend stops paying back) and an adstock decay (how long an ad keeps working after the week it runs). For the purpose of this article we use plausible values, but in practice you should use the results from your MMM. That might seem circular, but the aim is realistic sales data where the true response is known. That lets us measure how much damage correlated spend does, and how much budget phasing repairs.</p>
@@ -479,7 +478,6 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <li><strong>Demand proxy.</strong> We can't observe demand directly, but we can use a proxy such as a category search index. How closely a proxy tracks demand can't be measured either, so we assume a correlation of 0.8.</li>
     <li><strong>Noise.</strong> Random week-to-week variation that nothing in the model explains, with a standard deviation of 2% of average weekly sales. This is pure noise: demand, including the part a proxy misses, is modelled separately above. Each simulation redraws it, which shows how far the estimates move across plausible versions of the same history.</li>
   </ul>
-
 
   <div class="fig">
     <div class="fig-hdr">
@@ -1120,39 +1118,6 @@ function fmtGBP(vM) {
   return `£${vM.toFixed(2)}m`;
 }
 
-
-// Text measurement for layout. getComputedTextLength() is the obvious call
-// and it does NOT work here: these charts draw from an inline script before
-// the browser has laid the page out, so it returns 0 at draw time and the
-// correct width only afterwards, which silently collapses any layout built
-// on it. A detached canvas measures the same font with no layout dependency.
-const _measureCtx = document.createElement('canvas').getContext('2d');
-const FONT_STACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif";
-function textWidth(str, fontSize, weight) {
-  _measureCtx.font = `${weight || 400} ${fontSize}px ${FONT_STACK}`;
-  return _measureCtx.measureText(str).width;
-}
-
-// Lay out a horizontal legend from measured widths rather than a character
-// count. The old `label.length * 5.1` estimate was calibrated against a
-// 9.5-unit font; when FS.sub grew to 12 it ran "noisy but usable" into the
-// next swatch. Wraps to a new row past maxX.
-function legendRow(parent, items, x0, y, fontSize, maxX, rowGap) {
-  let x = x0, yy = y;
-  for (const it of items) {
-    const w = textWidth(it.label, fontSize);
-    if (maxX && x > x0 && x + 14 + w > maxX) { x = x0; yy += rowGap || 16; }
-    if (it.dash !== undefined) {
-      parent.appendChild(el('line', { x1: x, y1: yy - 3.5, x2: x + 11, y2: yy - 3.5, stroke: it.color, 'stroke-width': 2.4, ...(it.dash ? { 'stroke-dasharray': it.dash } : {}) }));
-    } else {
-      parent.appendChild(el('rect', { x, y: yy - 8, width: 9, height: 9, fill: it.color, rx: 2 }));
-    }
-    parent.appendChild(el('text', { x: x + 14, y: yy, 'font-size': fontSize, fill: '#6b7280' }, it.label));
-    x += 14 + w + 16;
-  }
-  return yy;
-}
-
 // ── Chart sizing ───────────────────────────────────────────────────────────
 // SVG font sizes are declared in viewBox units, so what a reader actually sees
 // is the declared size times the scale factor (rendered width / viewBox width).
@@ -1445,54 +1410,6 @@ chart('chartProblemAdstock', '0 0 700 210',
   () => drawForest('chartProblemAdstock', ADSTOCK_DATA, ADSTOCK_OPTS),
   () => drawForestNarrow('chartProblemAdstock', ADSTOCK_DATA, ADSTOCK_OPTS));
 
-// ── Chart: Cause (correlated spend time series) ─────────────────────────────
-function drawCause() {
-  const svg = document.getElementById('chartCause');
-  if (!svg) return;
-
-  const W = 700, H = 232;
-  const m = { top: 12, right: 30, bottom: 46, left: 76 };
-  const pw = W - m.left - m.right;
-  const ph = H - m.top - m.bottom;
-
-  const T = 52;
-  const maxV = 160000;
-
-  const scX = i => m.left + (i / (T - 1)) * pw;
-  const scY = v => m.top + ph - (v / maxV) * ph;
-  const pathD = data => data.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
-
-  const g = el('g', {});
-
-  const yTicks = [0, 50000, 100000, 150000];
-  for (const v of yTicks) {
-    const y = scY(v);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
-    g.appendChild(el('text', { x: m.left - 8, y: y + 4, 'text-anchor': 'end', 'font-size': FS.axis, fill: '#9ca3af' }, `£${v / 1000}k`));
-  }
-
-  const xTicks = [0, 12, 25, 38, 51];
-  for (const t of xTicks) {
-    const x = scX(t);
-    g.appendChild(el('line', { x1: x, y1: m.top + ph, x2: x, y2: m.top + ph + 5, stroke: '#d1d5db', 'stroke-width': 1 }));
-    g.appendChild(el('text', { x, y: m.top + ph + 16, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af' }, `Wk ${t + 1}`));
-  }
-
-  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-
-  g.appendChild(el('text', { x: m.left + pw / 2, y: m.top + ph + 32, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af' }, 'Week'));
-  g.appendChild(el('text', { x: 16, y: m.top + ph / 2, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af', transform: `rotate(-90 16 ${m.top + ph / 2})` }, 'Weekly spend (£k)'));
-
-  for (const key of CH_ORDER) {
-    g.appendChild(el('path', { d: pathD(PLAN[key]), fill: 'none', stroke: CH_COLOR[key], 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.85 }));
-  }
-
-  svg.appendChild(g);
-}
-
-
-
 // ── Chart: Impact (today / 1yr / 2yr forest plot, all-Blackout scenario) ────
 // Straight from notebooks/02_phaser_walkthrough.ipynb's blackout_impact(),
 // section "What does the reliability gain look like in £, and how fast does it
@@ -1682,7 +1599,6 @@ function drawSaturationImpactNarrow() { drawForestPairedNarrow('chartImpactSatur
 function drawAdstockImpact() { drawForestPaired('chartImpactAdstock', ADSTOCK_IMPACT, ADSTOCK_OPTS); }
 function drawAdstockImpactNarrow() { drawForestPairedNarrow('chartImpactAdstock', ADSTOCK_IMPACT, ADSTOCK_OPTS); }
 
-
 // ── Chart: Correlation matrix, before vs after phasing ─────────────────────
 // CORR_BEFORE/CORR_AFTER are already-fit numbers from DiscoveryReport itself
 // (results_['unphased'/winner_]['correlation']), not a live in-browser
@@ -1776,8 +1692,6 @@ function drawCorrMatrixPanels(svg, wide, mode) {
   svg.appendChild(g);
 }
 function drawCorrMatrix() { const svg = document.getElementById('chartCorr'); if (svg) drawCorrMatrixPanels(svg, true, 'pair'); }
-function drawCorrBefore() { const svg = document.getElementById('chartCorrBefore'); if (svg) drawCorrMatrixPanels(svg, true, 'before'); }
-
 
 // ── Chart: Per-channel lever sensitivity ───────────────────────────────────
 // From notebooks/01_scenario_walkthrough.ipynb section "5 · The algorithm"
@@ -1843,7 +1757,6 @@ function drawLever() {
 
   svg.appendChild(g);
 }
-
 
 // ── Chart: does the fix hold across correlation x channel count (FAQ) ──
 // Produced by notebooks/04_channel_scaling_walkthrough.ipynb, section "Does the
@@ -1933,73 +1846,6 @@ function drawGrid() {
   svg.appendChild(g);
 }
 
-
-// ── Chart: how fast the benefit arrives, by lever setting (FAQ) ───────────
-// From notebooks/03_time_to_benefit.ipynb section 3 (lever_table /
-// reduction_by_lever), reproduced with print statements for the exact
-// per-plan-length values the notebook only plots. Variance-only (no
-// saturation/adstock in this fit -- notebook 03 isolates timing on purpose),
-// same four-channel scenario, three levers run at full amplitude against a
-// growing plan period. Each point is that plan length's own max-CV reduction
-// vs its own unphased baseline (the unphased CV itself is redrawn per plan
-// length, so it is not perfectly flat -- see the notebook for the raw table).
-function drawWhen() {
-  const svg = document.getElementById('chartWhen');
-  if (!svg) return;
-  const W = 700, H = 270;
-  const m = { top: 16, right: 56, bottom: 56, left: 66 };
-  const pw = W - m.left - m.right, ph = H - m.top - m.bottom;
-  const weeks = [4, 13, 26, 52, 104, 208];
-  const ticks = [[4, '1 mo'], [13, '3 mo'], [26, '6 mo'], [52, '1 yr'], [104, '2 yr'], [208, '4 yr']];
-  const series = [
-    { name: '±80% (uniform)', color: '#9ca3af', v: [14.7, 25.1, 25.8, 48.5, 53.8, 68.7] },
-    { name: '±80% (edge, balanced)', color: '#2563eb', v: [16.2, 34.8, 53.4, 63.6, 69.3, 79.8] },
-    { name: 'Blackout', color: '#111827', v: [7.9, 21.6, 35.6, 53.2, 60.6, 74.1] },
-  ];
-  // Log-spaced x-axis: plan length doubles roughly every step (4 -> 13 -> 26
-  // -> 52 -> 104 -> 208), so a linear axis crams the first three ticks into
-  // a fifth of the plot width and their labels collide. Log spacing gives
-  // each step roughly equal room.
-  const xMin = 4, xMax = 208, yMax = 85;
-  const scX = w => m.left + (Math.log(w) - Math.log(xMin)) / (Math.log(xMax) - Math.log(xMin)) * pw;
-  const scY = v => m.top + ph - (v / yMax) * ph;
-  const g = el('g', {});
-  for (let v = 0; v <= 80; v += 20) {
-    const y = scY(v);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
-    g.appendChild(el('text', { x: m.left - 8, y: y + 3, 'text-anchor': 'end', 'font-size': FS.axis, fill: '#9ca3af' }, `${v}%`));
-  }
-  for (const [w, lbl] of ticks) {
-    g.appendChild(el('text', { x: scX(w), y: m.top + ph + 18, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af' }, lbl));
-  }
-  // Threshold reference lines used by the caption's "weeks to 30%/50%" claims.
-  for (const ref of [30, 50]) {
-    const y = scY(ref);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#d1d5db', 'stroke-width': 1, 'stroke-dasharray': '3,3' }));
-    g.appendChild(el('text', { x: m.left + 4, y: y - 4, 'font-size': FS.sub, fill: '#9ca3af' }, `${ref}%`));
-  }
-  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-  const endLabels = [];
-  for (const sr of series) {
-    const d = sr.v.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(weeks[i]).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
-    g.appendChild(el('path', { d, fill: 'none', stroke: sr.color, 'stroke-width': 2.25, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
-    sr.v.forEach((v, i) => g.appendChild(el('circle', { cx: scX(weeks[i]), cy: scY(v), r: 2.5, fill: sr.color })));
-    // Value only -- the series name is already in the HTML legend above the
-    // chart, and the full name plus value ran well past the right margin.
-    endLabels.push({ y: scY(sr.v[sr.v.length - 1]), x: scX(weeks[weeks.length - 1]) + 8, text: `${sr.v[sr.v.length - 1].toFixed(1)}%`, color: sr.color });
-  }
-  endLabels.sort((a, b) => a.y - b.y);
-  for (let i = 1; i < endLabels.length; i++) {
-    if (endLabels[i].y - endLabels[i - 1].y < 12) endLabels[i].y = endLabels[i - 1].y + 12;
-  }
-  endLabels.forEach(l => g.appendChild(el('text', { x: l.x, y: l.y + 3.5, 'font-size': FS.val, 'font-weight': '700', fill: l.color }, l.text)));
-  g.appendChild(el('text', { x: m.left + pw / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af' }, 'Plan length the lever has been running'));
-  g.appendChild(el('text', { x: 16, y: m.top + ph / 2, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af', transform: `rotate(-90 16 ${m.top + ph / 2})` }, 'Max-CV reduction vs unphased'));
-  svg.appendChild(g);
-}
-
-
 // ── Chart: what correlation costs you ──────────────────────────────────────
 // The example scenario
 // re-run at correlation 0.1..0.9, each channel's spend spread held at the
@@ -2036,7 +1882,6 @@ function drawCorrCost() {
   svg.appendChild(g);
 }
 
-
 // Scrollspy: keep the sticky section nav's "active" tab in sync with whichever
 // section is actually in view, rather than leaving it permanently on the first
 // link (the nav didn't need this while it scrolled out of sight with the page;
@@ -2068,7 +1913,6 @@ function drawCorrCost() {
   sections.forEach((s) => observer.observe(s));
 })();
 
-
 // ── Narrow-screen renderers ────────────────────────────────────────────────
 // Each mirrors its wide counterpart's data exactly and differs only in layout:
 // a ~340-unit coordinate space so FSN lands near 12px, thinned tick labels,
@@ -2076,35 +1920,7 @@ function drawCorrCost() {
 // got. Anything dropped here (line end-labels, mainly) is already named by the
 // figure's HTML legend, which is real text and does not scale with the viewBox.
 
-function drawCauseNarrow(svg) {
-  const W = 340, H = 210;
-  const m = { top: 8, right: 8, bottom: 40, left: 44 };
-  const pw = W - m.left - m.right, ph = H - m.top - m.bottom;
-  const T = 52, maxV = 160000;
-  const scX = i => m.left + (i / (T - 1)) * pw;
-  const scY = v => m.top + ph - (v / maxV) * ph;
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  const g = el('g', {});
-  for (const v of [0, 80000, 160000]) {
-    const y = scY(v);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
-    g.appendChild(el('text', { x: m.left - 6, y: y + 3, 'text-anchor': 'end', 'font-size': FSN.axis, fill: '#9ca3af' }, `£${v / 1000}k`));
-  }
-  for (const [i, lbl] of [[0, 'Wk 1'], [25, 'Wk 26'], [51, 'Wk 52']]) {
-    const a = i === 0 ? 'start' : i === 51 ? 'end' : 'middle';
-    g.appendChild(el('text', { x: scX(i), y: m.top + ph + 16, 'text-anchor': a, 'font-size': FSN.axis, fill: '#9ca3af' }, lbl));
-  }
-  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-  const pathD = d => d.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
-  for (const key of CH_ORDER) {
-    g.appendChild(el('path', { d: pathD(PLAN[key]), fill: 'none', stroke: CH_COLOR[key], 'stroke-width': 1.6, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.85 }));
-  }
-  g.appendChild(el('text', { x: m.left + pw / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': FSN.axis, fill: '#9ca3af' }, 'Weekly spend (£k)'));
-  svg.appendChild(g);
-}
-
 function drawCorrMatrixNarrow(svg) { drawCorrMatrixPanels(svg, false, 'pair'); }
-function drawCorrBeforeNarrow(svg) { drawCorrMatrixPanels(svg, false, 'before'); }
 
 function drawLeverNarrow(svg) {
   const W = 340, H = 230;
@@ -2145,51 +1961,6 @@ function drawLeverNarrow(svg) {
   svg.appendChild(g);
 }
 
-function drawWhenNarrow(svg) {
-  const W = 340, H = 300;
-  // Top margin holds a three-row legend: the wide layout's line end-labels
-  // need a right gutter there is no room for at this width.
-  const m = { top: 62, right: 10, bottom: 44, left: 38 };
-  const pw = W - m.left - m.right, ph = H - m.top - m.bottom;
-  const weeks = [4, 13, 26, 52, 104, 208];
-  const ticks = [[4, '1 mo'], [13, '3 mo'], [26, '6 mo'], [52, '1 yr'], [104, '2 yr'], [208, '4 yr']];
-  const series = [
-    { name: '±80% (uniform)', color: '#9ca3af', v: [14.7, 25.1, 25.8, 48.5, 53.8, 68.7] },
-    { name: '±80% (edge, balanced)', color: '#2563eb', v: [16.2, 34.8, 53.4, 63.6, 69.3, 79.8] },
-    { name: 'Blackout', color: '#111827', v: [7.9, 21.6, 35.6, 53.2, 60.6, 74.1] },
-  ];
-  const xMin = 4, xMax = 208, yMax = 85;
-  const scX = w => m.left + (Math.log(w) - Math.log(xMin)) / (Math.log(xMax) - Math.log(xMin)) * pw;
-  const scY = v => m.top + ph - (v / yMax) * ph;
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  const g = el('g', {});
-  legendRow(g, series.map(sr => ({ label: sr.name, color: sr.color })), 2, 12, FSN.sub, W - 4, 16);
-  for (let v = 0; v <= 80; v += 20) {
-    const y = scY(v);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
-    g.appendChild(el('text', { x: m.left - 6, y: y + 3, 'text-anchor': 'end', 'font-size': FSN.axis, fill: '#9ca3af' }, `${v}%`));
-  }
-  // Threshold reference lines used by the caption's "weeks to 30%/50%" claims.
-  for (const ref of [30, 50]) {
-    const y = scY(ref);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#d1d5db', 'stroke-width': 1, 'stroke-dasharray': '3,3' }));
-    g.appendChild(el('text', { x: m.left + pw - 4, y: y - 3, 'text-anchor': 'end', 'font-size': FSN.sub, fill: '#9ca3af' }, `${ref}%`));
-  }
-  ticks.forEach(([w, lbl], i) => {
-    const a = i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle';
-    g.appendChild(el('text', { x: scX(w), y: m.top + ph + 16, 'text-anchor': a, 'font-size': FSN.axis, fill: '#9ca3af' }, lbl));
-  });
-  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-  for (const sr of series) {
-    const d = sr.v.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(weeks[i]).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
-    g.appendChild(el('path', { d, fill: 'none', stroke: sr.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
-    sr.v.forEach((v, i) => g.appendChild(el('circle', { cx: scX(weeks[i]), cy: scY(v), r: 2.2, fill: sr.color })));
-  }
-  g.appendChild(el('text', { x: m.left + pw / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': FSN.axis, fill: '#9ca3af' }, 'Plan length the lever has been running'));
-  svg.appendChild(g);
-}
-
 function drawCorrCostNarrow(svg) {
   const W = 340, H = 300;
   const m = { top: 24, right: 8, bottom: 62, left: 40 };
@@ -2221,11 +1992,8 @@ function drawCorrCostNarrow(svg) {
 // spend factor reaches at 0.7). Adstock: IdentifiabilityDiagnostic, 50 draws,
 // demand built once at 0.7. Unphased, report defaults.
 const CORR_BIAS = [{ x: '0.1', v: 3.3 }, { x: '0.2', v: 7.5 }, { x: '0.3', v: 12.4 }, { x: '0.4', v: 18.2 }, { x: '0.5', v: 25.5 }, { x: '0.6', v: 35.3 }, { x: '0.7', v: 49.1 }, { x: '0.8', v: 70.0 }, { x: '0.88', v: 89.9 }];
-const CORR_ADSTOCK = [{ x: '0.1', v: 0.363 }, { x: '0.2', v: 0.396 }, { x: '0.3', v: 0.423 }, { x: '0.4', v: 0.453 }, { x: '0.5', v: 0.483 }, { x: '0.6', v: 0.513 }, { x: '0.7', v: 0.513 }, { x: '0.8', v: 0.543 }, { x: '0.9', v: 0.543 }];
 const BIAS_SWEEP = { data: CORR_BIAS, color: CH_COLOR.tv, yMax: 100, yStep: 25, fmt: v => `${Math.round(v)}%`,
   yTitle: "How far TV's estimate is too high", xTitle: 'Link between spend and demand' };
-const ADSTOCK_SWEEP = { data: CORR_ADSTOCK, color: CH_COLOR.meta, yMax: 0.9, yStep: 0.3, fmt: v => v.toFixed(2),
-  yTitle: "Width of Meta's adstock range", xTitle: 'Correlation between channels' };
 function drawSweepBars(svg, c) {
   const W = 700, H = 300;
   const m = { top: 24, right: 24, bottom: 56, left: 82 };
@@ -2296,7 +2064,6 @@ function drawPhasePanelsAt(svg, W, H, cols, fsTitle) {
 }
 function drawPhasePanels(svg) { drawPhasePanelsAt(svg, 700, 360, 3, FS.sub); }
 function drawPhasePanelsNarrow(svg) { svg.setAttribute('viewBox', '0 0 340 480'); drawPhasePanelsAt(svg, 340, 480, 2, FSN.sub); }
-
 
 // Time to benefit (section 5). DiscoveryReport backphase view on the example
 // scenario: the winner run over 1, 2 or all 3
