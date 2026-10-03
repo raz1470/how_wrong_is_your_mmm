@@ -716,7 +716,9 @@ class TestToHtml:
         assert '<div class="draft-banner">' in report.to_html()
 
     def test_full_mode_has_no_draft_banner(self):
-        report = fit_small(make_report(), fast_mode=False, n_sims=5, n_phasing_seeds=1)
+        report = fit_small(
+            make_report(), fast_mode=False, n_sims=5, n_phasing_seeds=1, n_bias_draws=2
+        )
         assert '<div class="draft-banner">' not in report.to_html()
 
     def test_writes_to_path(self, tmp_path):
@@ -1187,6 +1189,16 @@ class TestFitDefaults:
         # search_generic on the canonical scenario) hadn't converged at 5 --
         # see NOTES.md session 63.
         assert default == 15
+
+    def test_n_bias_draws_default_is_100(self):
+        import inspect
+
+        default = (
+            inspect.signature(DiscoveryReport.fit).parameters["n_bias_draws"].default
+        )
+        # 15 bias draws was too few at 10 or more channels: a strategy's
+        # bias result could flip sign on draw noise alone.
+        assert default == 100
 
     def test_id_n_sims_default_is_50(self):
         import inspect
@@ -1746,12 +1758,59 @@ class TestZeroHeadWeeks:
 class TestBiasDraws:
     """The bias section averages over several demand draws, not one."""
 
-    def test_one_draw_per_phasing_seed(self):
+    def test_bias_draws_are_separate_from_phasing_seeds(self):
         report = fit_small(
-            make_report(), fast_mode=False, n_sims=5, id_n_sims=2, n_phasing_seeds=3
+            make_report(),
+            fast_mode=False,
+            n_sims=5,
+            id_n_sims=2,
+            n_phasing_seeds=2,
+            n_bias_draws=5,
         )
-        assert report.n_bias_draws_ == 3
-        assert sorted(report._bias_demand_cache) == [0, 1, 2]
+        assert report.n_bias_draws_ == 5
+        assert sorted(report._bias_demand_cache) == [0, 1, 2, 3, 4]
+
+    def test_more_bias_draws_leave_the_other_sections_unchanged(self):
+        kwargs = dict(fast_mode=False, n_sims=5, id_n_sims=2, n_phasing_seeds=2)
+        few = fit_small(make_report(), n_bias_draws=2, **kwargs)
+        many = fit_small(make_report(), n_bias_draws=6, **kwargs)
+        for label in few.results_:
+            a, b = few.results_[label]["scores"], many.results_[label]["scores"]
+            for axis in ("variance", "identifiability", "saturation_range"):
+                assert a[axis] == b[axis]
+            assert a["bias"] != b["bias"]
+
+    def test_fewer_bias_draws_than_phasing_seeds(self):
+        report = fit_small(
+            make_report(),
+            fast_mode=False,
+            n_sims=5,
+            id_n_sims=2,
+            n_phasing_seeds=3,
+            n_bias_draws=1,
+        )
+        assert sorted(report._bias_demand_cache) == [0]
+
+    def test_fast_mode_uses_two_bias_draws(self):
+        report = fit_small(make_report(), n_bias_draws=50)
+        assert report.n_bias_draws_ == 2
+
+    def test_zero_bias_draws_raises(self):
+        with pytest.raises(ValueError, match="n_bias_draws"):
+            fit_small(make_report(), fast_mode=False, n_bias_draws=0)
+
+    def test_time_to_benefit_uses_the_bias_draws(self):
+        report = fit_small(
+            make_long_report(),
+            fast_mode=False,
+            n_sims=5,
+            id_n_sims=2,
+            n_phasing_seeds=1,
+            n_bias_draws=4,
+            horizon_years=2,
+        )
+        assert sorted(report._bias_demand_cache) == [0, 1, 2, 3]
+        assert len(report.time_to_benefit_["phased"]["bias"]) == 2
 
     def test_draw_zero_is_the_report_demand(self):
         report = make_report()

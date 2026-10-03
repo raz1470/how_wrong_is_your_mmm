@@ -1672,6 +1672,7 @@ class DiscoveryReport:
         self,
         n_sims: int = 50,
         n_phasing_seeds: int = 15,
+        n_bias_draws: int = 100,
         id_n_sims: int = 50,
         id_b_candidates: np.ndarray | None = None,
         id_lam_candidates: np.ndarray | None = None,
@@ -1689,23 +1690,23 @@ class DiscoveryReport:
             Noise draws per CollinearityDiagnostic fit (variance and bias
             sections). Default 50.
         n_phasing_seeds:
-            Independent phased-schedule draws averaged per lever (the
-            unphased baseline always uses exactly 1 -- there's nothing
-            random to average over). Also the number of demand draws the
-            bias section averages over: phasing seed j is paired with
-            demand draw j and proxy seed proxy_seed + j, and the unphased
-            baseline runs one bias fit per draw. Default 15 (raised from 5, session
-            63): at 5, per-channel bias numbers for channels whose true
-            marginal return is high relative to tv's (meta, search_generic
-            on the canonical scenario) hadn't converged -- individual
-            channels swung between "improved" and "no better than
-            unphased" depending on which single Redistribute round-robin
-            assignment the 5 draws happened to sample, even though the
-            report-wide winner pick was unaffected (dominated by
-            low-marginal-return channels' much larger swings). 15 draws
-            matched 20 draws' numbers on the canonical scenario to within
-            about a point; lower this for fast iteration, and note
-            fast_mode already uses 2 for that reason.
+            Independent phased-schedule draws averaged per lever for the
+            variance and identifiability sections (the unphased baseline
+            always uses exactly 1 -- there's nothing random to average
+            over). Default 15. Each draw costs one variance fit and one
+            identifiability grid, so this is the expensive setting.
+        n_bias_draws:
+            Demand draws the bias section averages over. Draw k pairs
+            demand draw k and proxy seed proxy_seed + k with phased
+            schedule k (the same schedule the variance section uses for
+            k < n_phasing_seeds); the unphased baseline runs one bias fit
+            per draw on its single schedule. Default 100. Bias needs far
+            more draws than variance: any single demand draw can line up
+            with one channel by chance, and with 10 or more channels 15
+            draws leaves enough noise to flip a strategy's bias result
+            from better to worse than unphased, and with it the winner.
+            A bias fit is one cheap regression per noise draw, so 100
+            draws adds little to the run time.
         id_n_sims:
             Noise draws per IdentifiabilityDiagnostic fit. Default 50,
             matching n_sims. The grid solves every draw in one lstsq per
@@ -1721,7 +1722,7 @@ class DiscoveryReport:
             uses proxy_seed + j.
         fast_mode:
             If True, uses cheap settings throughout (n_sims=10,
-            n_phasing_seeds=2, id_n_sims=5) -- for iterating on the report
+            n_phasing_seeds=2, n_bias_draws=2, id_n_sims=5) -- for iterating on the report
             itself, not for numbers to hand a client. to_html() watermarks
             a fast-mode report as a draft.
         horizon_years:
@@ -1740,11 +1741,14 @@ class DiscoveryReport:
         if fast_mode:
             n_sims = 10
             n_phasing_seeds = 2
+            n_bias_draws = 2
             id_n_sims = 5
+        if n_bias_draws < 1:
+            raise ValueError("n_bias_draws must be at least 1")
 
         results: dict[str, dict] = {}
         schedules: dict[str, pd.DataFrame] = {}
-        self.n_bias_draws_ = n_phasing_seeds
+        self.n_bias_draws_ = n_bias_draws
 
         for label, spec, nudge_shape, balance_signs in self.levers_:
             unphased = _is_unphased(spec)
@@ -1794,15 +1798,6 @@ class DiscoveryReport:
                 revenue_p10_draws.append(var_summary["incremental_revenue_p10"])
                 revenue_p90_draws.append(var_summary["incremental_revenue_p90"])
                 corr_draws.append(diag_var.correlation_matrix)
-
-                # Phasing seed j is paired with demand draw j. The unphased
-                # schedule has no phasing randomness, so it runs its bias
-                # fit once per draw instead (below the loop).
-                draws_here = range(n_phasing_seeds) if unphased else [j]
-                for k in draws_here:
-                    mean_err, sims = self._bias_fit(combined, k, n_sims, proxy_seed + k)
-                    bias_draws.append(mean_err)
-                    bias_sims.append(sims)
 
                 diag_id = IdentifiabilityDiagnostic(
                     spend_df=combined,
@@ -1855,6 +1850,25 @@ class DiscoveryReport:
                         }
                     )
                 )
+
+            # Bias runs on its own, larger set of draws. Demand draw k is
+            # paired with phased schedule k, the same schedule the loop
+            # above used while k < n_phasing_seeds. The unphased schedule
+            # has no phasing randomness, so every draw reuses it.
+            for k in range(n_bias_draws):
+                phased_plan = (
+                    representative_schedule
+                    if unphased
+                    else self._phase(spec, nudge_shape, balance_signs, self.seed + k)
+                )
+                mean_err, sims = self._bias_fit(
+                    pd.concat([self.history_df, phased_plan]),
+                    k,
+                    n_sims,
+                    proxy_seed + k,
+                )
+                bias_draws.append(mean_err)
+                bias_sims.append(sims)
 
             variance_cv = pd.concat(variance_draws, axis=1).mean(axis=1)
             revenue_mean = pd.concat(revenue_mean_draws, axis=1).mean(axis=1)
@@ -1927,6 +1941,7 @@ class DiscoveryReport:
                 horizon_years=horizon_years,
                 n_sims=n_sims,
                 n_phasing_seeds=n_phasing_seeds,
+                n_bias_draws=n_bias_draws,
                 id_n_sims=id_n_sims,
                 id_b_candidates=id_b_candidates,
                 id_lam_candidates=id_lam_candidates,
@@ -2003,7 +2018,7 @@ class DiscoveryReport:
         mean_err = diag_bias.summary().set_index("channel")["mean_error_pct"]
         return mean_err, diag_bias.results_[["channel", "error_pct"]]
 
-    def _three_scores(
+    def _scores_without_bias(
         self,
         combined: pd.DataFrame,
         demand: np.ndarray,
@@ -2012,33 +2027,26 @@ class DiscoveryReport:
         id_b_candidates: np.ndarray | None,
         id_lam_candidates: np.ndarray | None,
         valley_tol: float,
-        proxy_seed: int,
         noise_seed: int,
-        bias_draw: int = 0,
     ) -> dict[str, float]:
-        """Report-wide variance / bias / identifiability scores for one
-        history+plan spend frame -- the same three measures fit() scores
-        every lever on (mean CV, mean |bias %|, mean valley %), on an
-        arbitrary-length frame."""
-        common = {
-            "spend_df": combined,
-            "true_marginal_returns": self.true_marginal_returns,
-            "base_sales": self.calibration_.baseline_level,
-            "revenue_noise_std": self.revenue_noise_std,
-            "demand": demand,
-            "demand_coef": self.calibration_.demand_coef,
-            "saturation": self.saturation,
-            "adstock": self.adstock,
-            "reference_spend": self.reference_spend_,
-        }
-        diag_var = CollinearityDiagnostic(**common)
+        """Report-wide variance and identifiability scores for one
+        history+plan spend frame -- the measures fit() scores every lever
+        on (mean CV, mean valley %, mean range widths), on an
+        arbitrary-length frame. Bias is scored separately because it runs
+        on its own number of draws."""
+        diag_var = CollinearityDiagnostic(
+            spend_df=combined,
+            true_marginal_returns=self.true_marginal_returns,
+            base_sales=self.calibration_.baseline_level,
+            revenue_noise_std=self.revenue_noise_std,
+            demand=demand,
+            demand_coef=self.calibration_.demand_coef,
+            saturation=self.saturation,
+            adstock=self.adstock,
+            reference_spend=self.reference_spend_,
+        )
         diag_var.fit(n_sims=n_sims, controls=True)
         variance = float(diag_var.summary()["coef_of_variation"].mean())
-
-        mean_err, _ = self._bias_fit(
-            combined, bias_draw, n_sims, proxy_seed + bias_draw
-        )
-        bias = float(mean_err.abs().mean())
 
         diag_id = IdentifiabilityDiagnostic(
             spend_df=combined,
@@ -2071,7 +2079,6 @@ class DiscoveryReport:
         )
         return {
             "variance": variance,
-            "bias": bias,
             "identifiability": identifiability,
             "saturation": float(b_range),
             "adstock": float(lam_range),
@@ -2082,6 +2089,7 @@ class DiscoveryReport:
         horizon_years: int,
         n_sims: int,
         n_phasing_seeds: int,
+        n_bias_draws: int,
         id_n_sims: int,
         id_b_candidates: np.ndarray | None,
         id_lam_candidates: np.ndarray | None,
@@ -2131,34 +2139,43 @@ class DiscoveryReport:
             head = history.iloc[: len(history) - n_back]
             window = pd.concat([history.iloc[len(history) - n_back :], plan])
             labels = _get_month_labels(window)
-            draws = []
-            for j in range(n_phasing_seeds):
-                sd = self.seed + j
+
+            def phased_frame(j: int) -> pd.DataFrame:
                 phased_window = _generate_phased_schedule(
                     window,
                     labels,
                     alpha=1.0,
                     max_weekly_deviation_pct=spec,
-                    seed=sd,
+                    seed=self.seed + j,
                     nudge_shape=nudge_shape,
                     balance_signs=balance_signs,
                 )
-                draws.append(
-                    self._three_scores(
-                        pd.concat([head, phased_window]),
-                        self.demand_,
-                        n_sims,
-                        id_n_sims,
-                        id_b_candidates,
-                        id_lam_candidates,
-                        valley_tol,
-                        proxy_seed,
-                        sd,
-                        bias_draw=j,
-                    )
+                return pd.concat([head, phased_window])
+
+            draws = [
+                self._scores_without_bias(
+                    phased_frame(j),
+                    self.demand_,
+                    n_sims,
+                    id_n_sims,
+                    id_b_candidates,
+                    id_lam_candidates,
+                    valley_tol,
+                    self.seed + j,
                 )
+                for j in range(n_phasing_seeds)
+            ]
+            # Same pairing as fit(): demand draw j with phased schedule j,
+            # then the mean error per channel across draws.
+            bias_errs = [
+                self._bias_fit(phased_frame(j), j, n_sims, proxy_seed + j)[0]
+                for j in range(n_bias_draws)
+            ]
+            bias = float(pd.concat(bias_errs, axis=1).mean(axis=1).abs().mean())
             for ax in axes:
-                phased[ax].append(float(np.mean([d[ax] for d in draws])))
+                phased[ax].append(
+                    bias if ax == "bias" else float(np.mean([d[ax] for d in draws]))
+                )
 
         improvement = {
             ax: [_safe_improvement(u, p) for u, p in zip(unphased[ax], phased[ax])]
