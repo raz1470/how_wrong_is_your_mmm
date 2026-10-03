@@ -41,8 +41,7 @@ happened. Only the appendix is sweep-specific:
    _svg_forest's single=True mode.
 3. Impact -- the same four charts, now before vs after: what phasing
    under the winning strategy does to each problem Section 2 just showed.
-   It does not restate the problem, and ends with the growth readout (the
-   return at higher spend) and the cost.
+   It does not restate the problem, and ends with the cost.
 4. Phased spend -- small-multiples "recommended pacing" chart, one per
    channel, as-supplied vs the winning strategy's own phased schedule.
    Kept apart from the strategy-impact table: the pacing chart is about
@@ -141,9 +140,6 @@ def _channel_colors(channels: list[str]) -> dict[str, str]:
 # and puts the peak week at about 3.7x plan.
 _DEFAULT_HIGH_MONTH_PCT = 150.0
 
-# Spend levels, as multiples of each channel's planned weekly spend, that the
-# growth readout quotes a marginal return at: today, +50% and +100%.
-_GROWTH_MULTIPLIERS = (1.0, 1.5, 2.0)
 # The default sweep's nudge size, in percent.
 _DEFAULT_NUDGE_PCT = 20.0
 
@@ -413,11 +409,13 @@ def _strategy_glossary_html(report: DiscoveryReport) -> str:
     <tbody>{rows}</tbody>
   </table>
   </div>
-  <p class="fig-cap">Every strategy leaves each channel's annual budget and the
-  split across channels untouched; only the timing changes. "Monthly and
-  annual" means each calendar month still gets its planned budget, so
-  changes stay inside the month. "Annual only" means budget can move between
-  months.</p>
+  <ul class="fig-notes">
+    <li>Every strategy keeps each channel's annual budget and the split
+    across channels. Only the timing changes.</li>
+    <li><b>Monthly and annual</b>: each calendar month keeps its planned
+    budget, so changes stay inside the month.</li>
+    <li><b>Annual only</b>: budget can move between months.</li>
+  </ul>
   <h3>How they compare</h3>"""
 
 
@@ -955,22 +953,15 @@ def _demand_link_sentence(meta: dict) -> str:
     The link strength (demand_spend_corr) cannot be read off spend data, so
     the report states it as the assumption it is.
     """
-    corrs = list(meta["realised_demand_corr"].values())
-    span = f"{min(corrs):.2f} to {max(corrs):.2f}"
-    n = meta["n_bias_draws"]
     if meta["demand_supplied"]:
+        corrs = list(meta["realised_demand_corr"].values())
         return (
-            "The demand series was supplied with the spend. Its correlation "
-            f"with each channel's unphased spend is {span}. Bias is averaged "
-            f"over {n} draws of the proxy."
+            "The supplied demand series has a correlation of "
+            f"{min(corrs):.2f} to {max(corrs):.2f} with each channel's spend."
         )
     return (
-        "The demand series is built to track your unphased spend at an assumed "
-        f"correlation of {meta['demand_spend_corr']:.2f} ({span} by channel). "
-        "Spend data cannot confirm that value, so treat it as an assumption. "
-        f"Bias grows steeply with it. Bias is averaged over {n} draws of "
-        "demand and its proxy, because any single draw can line up with one "
-        "channel by chance."
+        "Demand is assumed to track spend at a correlation of "
+        f"{meta['demand_spend_corr']:.2f}, which spend data cannot confirm."
     )
 
 
@@ -1853,7 +1844,6 @@ class DiscoveryReport:
             id_b_p90_draws = []
             id_lam_p10_draws = []
             id_lam_p90_draws = []
-            growth_draws = []
             corr_draws = []
             representative_schedule = None
 
@@ -1936,22 +1926,6 @@ class DiscoveryReport:
                     )
                 )
 
-                # Recovered marginal return at each growth multiple: p10,
-                # median and p90 across sims, as a (channel x quantile)
-                # frame per multiple.
-                marginal = diag_id.marginal_return_at(_GROWTH_MULTIPLIERS)
-                growth_draws.append(
-                    {
-                        m: pd.DataFrame(
-                            {
-                                ch: marginal[ch][m].quantile([0.1, 0.5, 0.9])
-                                for ch in self.channels_
-                            }
-                        ).T
-                        for m in _GROWTH_MULTIPLIERS
-                    }
-                )
-
             # Bias runs on its own, larger set of draws. Demand draw k is
             # paired with phased schedule k, the same schedule the loop
             # above used while k < n_phasing_seeds. The unphased schedule
@@ -1990,14 +1964,6 @@ class DiscoveryReport:
             id_b_p90 = pd.concat(id_b_p90_draws, axis=1).mean(axis=1)
             id_lam_p10 = pd.concat(id_lam_p10_draws, axis=1).mean(axis=1)
             id_lam_p90 = pd.concat(id_lam_p90_draws, axis=1).mean(axis=1)
-            growth = {}
-            for m in _GROWTH_MULTIPLIERS:
-                mean_q = sum(d[m] for d in growth_draws) / len(growth_draws)
-                growth[f"{m:g}"] = {
-                    "p10": mean_q[0.1].to_dict(),
-                    "p50": mean_q[0.5].to_dict(),
-                    "p90": mean_q[0.9].to_dict(),
-                }
             correlation = {
                 a: {
                     b: float(np.mean([m.loc[a, b] for m in corr_draws]))
@@ -2019,7 +1985,6 @@ class DiscoveryReport:
                 "b_p90": id_b_p90.to_dict(),
                 "lam_p10": id_lam_p10.to_dict(),
                 "lam_p90": id_lam_p90.to_dict(),
-                "growth": growth,
                 "correlation": correlation,
                 "scores": {
                     "variance": float(variance_cv.mean()),
@@ -2392,43 +2357,6 @@ class DiscoveryReport:
             )
         return pd.DataFrame(rows)
 
-    def growth_readout(self) -> pd.DataFrame:
-        """Where can you grow: each channel's marginal return at higher
-        spend, as the model would recover it unphased and under the winner.
-
-        One row per channel and spend level (today, +50%, +100% of planned
-        weekly spend). `true` is the return on the next GBP 1 at that level
-        under the supplied curve. The p10-p90 columns are the range of
-        recovered values across simulations, averaged across phasing draws.
-        The ranges hold every other channel at its supplied curve and
-        control for true demand, so they show curve uncertainty alone.
-
-        Raises
-        ------
-        RuntimeError if fit() hasn't been called yet.
-        """
-        if self.results_ is None:
-            raise RuntimeError("Call fit() before growth_readout().")
-        baseline = self.results_[self.levers_[0][0]]["growth"]
-        best = self.results_[self.winner_]["growth"]
-        rows = []
-        for ch in self.channels_:
-            for m in _GROWTH_MULTIPLIERS:
-                key = f"{m:g}"
-                rows.append(
-                    {
-                        "channel": ch,
-                        "spend_change_pct": round(100 * (m - 1.0)),
-                        "true": self.true_marginal_returns[ch]
-                        * m ** (self.saturation[ch] - 1.0),
-                        "unphased_p10": baseline[key]["p10"][ch],
-                        "unphased_p90": baseline[key]["p90"][ch],
-                        "phased_p10": best[key]["p10"][ch],
-                        "phased_p90": best[key]["p90"][ch],
-                    }
-                )
-        return pd.DataFrame(rows).round(4)
-
     def to_html(self, path: str | None = None) -> str:
         """Render the report as a single self-contained HTML document.
 
@@ -2613,9 +2541,9 @@ def _render_html(report: DiscoveryReport) -> str:
         )
     else:
         bias_setup_text = (
-            "Here the model sees demand only through a proxy "
-            f"({meta['demand_proxy_quality']:.0%} quality), as a real MMM would. "
-            "Whatever the proxy misses gets credited to the channels."
+            "The model sees demand through a proxy "
+            f"({meta['demand_proxy_quality']:.0%} quality), so whatever the "
+            "proxy misses gets credited to the channels."
         )
 
     # Identifiability section: same forest-chart family as sections 2/3,
@@ -2691,81 +2619,6 @@ def _render_html(report: DiscoveryReport) -> str:
     )
     lam_change_text = _change_sentence(
         lam_narrowing, "The adstock range", "narrows", "widens"
-    )
-
-    # Where can you grow: the recovered marginal return at double today's
-    # spend, unphased vs the winner. The same curve uncertainty the
-    # saturation chart shows, restated as the decision it feeds.
-    def _fmt_return(v: float) -> str:
-        return f"£{v:.2f}"
-
-    def _growth_truth(ch: str, m: float) -> float:
-        return report.true_marginal_returns[ch] * m ** (report.saturation[ch] - 1.0)
-
-    def _growth_range(results: dict, ch: str, key: str) -> tuple[float, float]:
-        return (results["growth"][key]["p10"][ch], results["growth"][key]["p90"][ch])
-
-    growth_forest_data = [
-        {
-            "name": ch,
-            "color": colors[ch],
-            "before": {
-                "range": _growth_range(baseline, ch, "2"),
-                "point": baseline["growth"]["2"]["p50"][ch],
-            },
-            "after": {
-                "range": _growth_range(best, ch, "2"),
-                "point": best["growth"]["2"]["p50"][ch],
-            },
-            "truth": _growth_truth(ch, 2.0),
-        }
-        for ch in channels
-    ]
-    growth_svg = _svg_forest(
-        growth_forest_data,
-        x_label="Return on the next £1 at double today's spend",
-        fmt=_fmt_return,
-    )
-    growth_narrowing = float(
-        np.mean(
-            [
-                _safe_improvement(
-                    _range_width(_growth_range(baseline, ch, "2")),
-                    _range_width(_growth_range(best, ch, "2")),
-                )
-                for ch in channels
-            ]
-        )
-    )
-    growth_change_text = (
-        f"{growth_narrowing:.0%} narrower"
-        if growth_narrowing >= 0
-        else f"{-growth_narrowing:.0%} wider"
-    )
-    # The channel whose unphased range at double spend is widest relative
-    # to its true value: the clearest case of "the data cannot say".
-    growth_widest = max(
-        channels,
-        key=lambda ch: (
-            _range_width(_growth_range(baseline, ch, "2")) / _growth_truth(ch, 2.0)
-        ),
-    )
-    growth_widest_lo, growth_widest_hi = _growth_range(baseline, growth_widest, "2")
-
-    def _growth_cell(results: dict, ch: str, key: str) -> str:
-        lo, hi = _growth_range(results, ch, key)
-        return f"{_fmt_return(lo)} to {_fmt_return(hi)}"
-
-    growth_rows_html = "".join(
-        f"<tr><td>{html.escape(ch)}</td>"
-        f"<td>{_fmt_return(_growth_truth(ch, 1.0))}</td>"
-        f"<td>{_fmt_return(_growth_truth(ch, 1.5))}</td>"
-        f"<td>{_growth_cell(baseline, ch, '1.5')}</td>"
-        f"<td>{_growth_cell(best, ch, '1.5')}</td>"
-        f"<td>{_fmt_return(_growth_truth(ch, 2.0))}</td>"
-        f"<td>{_growth_cell(baseline, ch, '2')}</td>"
-        f"<td>{_growth_cell(best, ch, '2')}</td></tr>"
-        for ch in channels
     )
 
     corr_before_mean = _mean_pairwise(baseline["correlation"], channels)
@@ -3550,51 +3403,6 @@ def _render_html(report: DiscoveryReport) -> str:
     spend keeps working.</p>
   </div>
 
-  <h3>Where you can grow</h3>
-  <p>Whether a channel can take more budget depends on what the next £1
-  returns at a higher spend level, and that depends on its saturation
-  curve. Unphased, the model's answer for {html.escape(growth_widest)} at
-  double today's spend runs from {_fmt_return(growth_widest_lo)} to
-  {_fmt_return(growth_widest_hi)}, against
-  {_fmt_return(_growth_truth(growth_widest, 2.0))} under the supplied
-  curve. Under <b>{winner}</b> the ranges at double spend are
-  {growth_change_text} on average.</p>
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Return at double today's spend, by channel</div>
-      <div class="fig-sub">Recovered return on the next £1 if weekly spend doubled: unphased vs {
-        winner
-    }</div>
-    </div>
-    <div class="fig-body">
-      <div class="legend">
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Unphased (today), range</span>
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> {
-        html.escape(winner)
-    }, range</span>
-        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Median</span>
-        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Value under the supplied curve</span>
-      </div>
-      {growth_svg}
-    </div>
-    <p class="fig-cap">The return the fitted curve gives at double the
-    planned weekly spend: p10 to p90 across simulations, with the median.
-    Other channels are held at their supplied curves, so this is curve
-    uncertainty alone. A real model carries the variance and bias above
-    on top of it.</p>
-  </div>
-  <div class="table-scroll">
-  <table class="cross-table">
-    <thead>
-      <tr><th rowspan="2">Channel</th><th rowspan="2">Today, supplied</th>
-      <th colspan="3">At +50% spend</th><th colspan="3">At +100% spend</th></tr>
-      <tr><th>Supplied curve</th><th>Unphased</th><th>{html.escape(winner)}</th>
-      <th>Supplied curve</th><th>Unphased</th><th>{html.escape(winner)}</th></tr>
-    </thead>
-    <tbody>{growth_rows_html}</tbody>
-  </table>
-  </div>
-
   <h3>Cost</h3>
   <p>{cost_text} Each channel's annual budget is unchanged and no extra
   spend is needed.</p>
@@ -3622,12 +3430,17 @@ def _render_html(report: DiscoveryReport) -> str:
     <tbody>{impact_table_rows_html}</tbody>
   </table>
   </div>
-  <p class="fig-cap">Impact is the improvement on the unphased plan,
-  averaged across channels. Saturation and adstock are how much narrower
-  the recovered range gets. Cost is the share of plan-year revenue given
-  up under the supplied response curves. Peak week is the biggest week of
-  spend as a multiple of that week's plan: the check on whether a media
-  buyer can book it. {picked_caption}</p>
+  <ul class="fig-notes">
+    <li><b>Impact</b>: the improvement on the unphased plan, averaged
+    across channels.</li>
+    <li><b>Saturation and adstock</b>: how much narrower the recovered
+    range gets.</li>
+    <li><b>Cost</b>: the share of plan-year revenue given up under the
+    supplied response curves.</li>
+    <li><b>Peak week</b>: the biggest week of spend as a multiple of that
+    week's plan. It is the check on whether a media buyer can book it.</li>
+    <li>{picked_caption}</li>
+  </ul>
   {time_to_benefit_html}
   {channel_constraints_html}
 </section>
@@ -3690,6 +3503,8 @@ h3 { font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em; margin: 1.75r
 .fig-sub { font-size: .8rem; color: var(--muted); margin-top: .15rem; }
 .fig-body { padding: 1.1rem 1.1rem .3rem; }
 .fig-cap { padding: .6rem 1.1rem .95rem; font-size: .82rem; color: var(--muted); }
+.fig-notes { margin: .6rem 0 .95rem; padding-left: 2.2rem; font-size: .82rem; color: var(--muted); }
+.fig-notes li { margin-bottom: .2rem; }
 svg.chart { display: block; width: 100%; }
 .legend { display: flex; flex-wrap: wrap; gap: .85rem; padding: .1rem 1.1rem .95rem; font-size: .78rem; }
 .li { display: flex; align-items: center; gap: .35rem; }

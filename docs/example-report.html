@@ -56,6 +56,8 @@ h3 { font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em; margin: 1.75r
 .fig-sub { font-size: .8rem; color: var(--muted); margin-top: .15rem; }
 .fig-body { padding: 1.1rem 1.1rem .3rem; }
 .fig-cap { padding: .6rem 1.1rem .95rem; font-size: .82rem; color: var(--muted); }
+.fig-notes { margin: .6rem 0 .95rem; padding-left: 2.2rem; font-size: .82rem; color: var(--muted); }
+.fig-notes li { margin-bottom: .2rem; }
 svg.chart { display: block; width: 100%; }
 .legend { display: flex; flex-wrap: wrap; gap: .85rem; padding: .1rem 1.1rem .95rem; font-size: .78rem; }
 .li { display: flex; align-items: center; gap: .35rem; }
@@ -233,8 +235,8 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
   </div>
 
   <h3>Bias</h3>
-  <p>Here the model sees demand only through a proxy (80% quality), as a real MMM would. Whatever the proxy misses gets credited to the channels. Every point estimate sits above the truth: tv by 49%, meta by 27%, search_generic by 8% and tiktok by 29%.
-  The demand series is built to track your unphased spend at an assumed correlation of 0.65 (0.62 to 0.69 by channel). Spend data cannot confirm that value, so treat it as an assumption. Bias grows steeply with it. Bias is averaged over 100 draws of demand and its proxy, because any single draw can line up with one channel by chance.</p>
+  <p>The model sees demand through a proxy (80% quality), so whatever the proxy misses gets credited to the channels. Every point estimate sits above the truth: tv by 49%, meta by 27%, search_generic by 8% and tiktok by 29%.
+  Demand is assumed to track spend at a correlation of 0.65, which spend data cannot confirm.</p>
   <div class="fig">
     <div class="fig-hdr">
       <div class="fig-title">Revenue implied by the biased estimate, unphased</div>
@@ -389,47 +391,6 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
     spend keeps working.</p>
   </div>
 
-  <h3>Where you can grow</h3>
-  <p>Whether a channel can take more budget depends on what the next £1
-  returns at a higher spend level, and that depends on its saturation
-  curve. Unphased, the model's answer for tv at
-  double today's spend runs from £0.20 to
-  £0.63, against
-  £0.38 under the supplied
-  curve. Under <b>Combined</b> the ranges at double spend are
-  63% narrower on average.</p>
-  <div class="fig">
-    <div class="fig-hdr">
-      <div class="fig-title">Return at double today's spend, by channel</div>
-      <div class="fig-sub">Recovered return on the next £1 if weekly spend doubled: unphased vs Combined</div>
-    </div>
-    <div class="fig-body">
-      <div class="legend">
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af" opacity="0.35"/></svg> Unphased (today), range</span>
-        <span class="li"><svg width="16" height="8"><rect width="16" height="8" fill="#9ca3af"/></svg> Combined, range</span>
-        <span class="li"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/></svg> Median</span>
-        <span class="li"><svg width="12" height="14"><line x1="6" y1="1" x2="6" y2="13" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/></svg> Value under the supplied curve</span>
-      </div>
-      <svg class="chart" viewBox="0 0 700 302" xmlns="http://www.w3.org/2000/svg"><rect x="146" y="76.0" width="458" height="62.0" fill="#f9fafb"/><rect x="146" y="200.0" width="458" height="62.0" fill="#f9fafb"/><line x1="146.0" y1="14" x2="146.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="146.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£0.00</text><line x1="260.5" y1="14" x2="260.5" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="260.5" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£0.50</text><line x1="375.0" y1="14" x2="375.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="375.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£1.00</text><line x1="489.5" y1="14" x2="489.5" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="489.5" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£1.50</text><line x1="604.0" y1="14" x2="604.0" y2="262.0" stroke="#e5e7eb" stroke-width="1"/><text x="604.0" y="278.0" text-anchor="middle" font-size="10" fill="#9ca3af">£2.00</text><text x="375.0" y="292.0" text-anchor="middle" font-size="10" fill="#9ca3af">Return on the next £1 at double today&#x27;s spend</text><rect x="146" y="14" width="458" height="248.0" fill="none" stroke="#e5e7eb" stroke-width="1"/><line x1="192.2" y1="31.4" x2="290.7" y2="31.4" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="235.9" cy="31.4" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8" opacity="0.35"/><line x1="210.3" y1="58.6" x2="262.6" y2="58.6" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round"/><circle cx="235.5" cy="58.6" r="3.5" fill="#fff" stroke="#2563eb" stroke-width="1.8"/><line x1="232.8" y1="26.4" x2="232.8" y2="63.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="270.6" y="61.6" font-size="11.5" fill="#2563eb" font-weight="700">£0.28 &ndash; £0.51</text><text x="136" y="49.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#2563eb">tv</text><line x1="255.9" y1="93.4" x2="458.2" y2="93.4" stroke="#d97706" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="335.2" cy="93.4" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8" opacity="0.35"/><line x1="306.8" y1="120.6" x2="373.1" y2="120.6" stroke="#d97706" stroke-width="5.5" stroke-linecap="round"/><circle cx="341.1" cy="120.6" r="3.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><line x1="338.6" y1="88.4" x2="338.6" y2="125.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="381.1" y="123.6" font-size="11.5" fill="#d97706" font-weight="700">£0.70 &ndash; £0.99</text><text x="136" y="111.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#d97706">meta</text><line x1="388.5" y1="155.4" x2="526.5" y2="155.4" stroke="#059669" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="458.2" cy="155.4" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8" opacity="0.35"/><line x1="440.5" y1="182.6" x2="493.3" y2="182.6" stroke="#059669" stroke-width="5.5" stroke-linecap="round"/><circle cx="467.0" cy="182.6" r="3.5" fill="#fff" stroke="#059669" stroke-width="1.8"/><line x1="466.5" y1="150.4" x2="466.5" y2="187.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="501.3" y="185.6" font-size="11.5" fill="#059669" font-weight="700">£1.29 &ndash; £1.52</text><text x="136" y="173.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#059669">search_generic</text><line x1="260.8" y1="217.4" x2="479.7" y2="217.4" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round" opacity="0.35"/><circle cx="369.1" cy="217.4" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8" opacity="0.35"/><line x1="341.2" y1="244.6" x2="396.6" y2="244.6" stroke="#7c3aed" stroke-width="5.5" stroke-linecap="round"/><circle cx="370.5" cy="244.6" r="3.5" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/><line x1="369.2" y1="212.4" x2="369.2" y2="249.6" stroke="#111827" stroke-width="1.6" stroke-dasharray="3,2"/><text x="404.6" y="247.6" font-size="11.5" fill="#7c3aed" font-weight="700">£0.85 &ndash; £1.09</text><text x="136" y="235.0" text-anchor="end" font-size="12.5" font-weight="700" fill="#7c3aed">tiktok</text></svg>
-    </div>
-    <p class="fig-cap">The return the fitted curve gives at double the
-    planned weekly spend: p10 to p90 across simulations, with the median.
-    Other channels are held at their supplied curves, so this is curve
-    uncertainty alone. A real model carries the variance and bias above
-    on top of it.</p>
-  </div>
-  <div class="table-scroll">
-  <table class="cross-table">
-    <thead>
-      <tr><th rowspan="2">Channel</th><th rowspan="2">Today, supplied</th>
-      <th colspan="3">At +50% spend</th><th colspan="3">At +100% spend</th></tr>
-      <tr><th>Supplied curve</th><th>Unphased</th><th>Combined</th>
-      <th>Supplied curve</th><th>Unphased</th><th>Combined</th></tr>
-    </thead>
-    <tbody><tr><td>tv</td><td>£0.50</td><td>£0.43</td><td>£0.25 to £0.71</td><td>£0.33 to £0.53</td><td>£0.38</td><td>£0.20 to £0.63</td><td>£0.28 to £0.51</td></tr><tr><td>meta</td><td>£1.00</td><td>£0.90</td><td>£0.58 to £1.36</td><td>£0.78 to £1.03</td><td>£0.84</td><td>£0.48 to £1.36</td><td>£0.70 to £0.99</td></tr><tr><td>search_generic</td><td>£1.50</td><td>£1.44</td><td>£1.13 to £1.67</td><td>£1.34 to £1.54</td><td>£1.40</td><td>£1.06 to £1.66</td><td>£1.29 to £1.52</td></tr><tr><td>tiktok</td><td>£1.20</td><td>£1.06</td><td>£0.60 to £1.50</td><td>£0.95 to £1.17</td><td>£0.97</td><td>£0.50 to £1.46</td><td>£0.85 to £1.09</td></tr></tbody>
-  </table>
-  </div>
-
   <h3>Cost</h3>
   <p><b>Combined</b> gives up 3.41% of plan-year revenue, averaged across channels. Spend that is bunched up runs further into each channel's saturation curve. Each channel's annual budget is unchanged and no extra
   spend is needed.</p>
@@ -458,11 +419,13 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
     <tbody><tr><td class="strat-name">unphased</td><td class="strat-what">The plan exactly as supplied. Every other row is measured against this one.</td><td>Monthly and annual</td></tr><tr><td class="strat-name">Weekly nudge</td><td class="strat-what">Every week moves by exactly 20%, half of a month&#x27;s weeks up and half down in a random order, then the month is rescaled to its planned total.</td><td>Monthly and annual</td></tr><tr><td class="strat-name">Dark month</td><td class="strat-what">Each channel goes dark for 4 consecutive weeks once a year, in a different month per channel. The freed budget is moved into one other month.</td><td>Annual only</td></tr><tr><td class="strat-name">Peak month</td><td class="strat-what">One month a year runs at 2.5x plan, in a different month per channel, paid for by a small equal cut to the channel&#x27;s other months.</td><td>Annual only</td></tr><tr><td class="strat-name">Combined</td><td class="strat-what">Each channel goes dark for 4 consecutive weeks once a year, in a different month per channel. The freed budget is moved into one other month. One month a year runs at 2.5x plan, in a different month per channel, paid for by a small equal cut to the channel&#x27;s other months. Every week outside those months is nudged up or down by exactly 20% (half up, half down).</td><td>Annual only</td></tr><tr><td class="strat-name">Month step</td><td class="strat-what">Each month&#x27;s whole budget is stepped up or down by 20%, in a balanced pattern that is unrelated between channels. The weekly shape inside a month is unchanged, so budgets change at most 12 times a year.</td><td>Annual only</td></tr><tr><td class="strat-name">Dark week</td><td class="strat-what">Once a quarter a channel goes dark for 1 week (zero spend) in one month. That month&#x27;s other weeks absorb the budget.</td><td>Monthly and annual</td></tr></tbody>
   </table>
   </div>
-  <p class="fig-cap">Every strategy leaves each channel's annual budget and the
-  split across channels untouched; only the timing changes. "Monthly and
-  annual" means each calendar month still gets its planned budget, so
-  changes stay inside the month. "Annual only" means budget can move between
-  months.</p>
+  <ul class="fig-notes">
+    <li>Every strategy keeps each channel's annual budget and the split
+    across channels. Only the timing changes.</li>
+    <li><b>Monthly and annual</b>: each calendar month keeps its planned
+    budget, so changes stay inside the month.</li>
+    <li><b>Annual only</b>: budget can move between months.</li>
+  </ul>
   <h3>How they compare</h3>
   <div class="table-scroll">
   <table class="cross-table">
@@ -470,12 +433,17 @@ table.glossary-table td.strat-name { font-weight: 600; white-space: nowrap; }
     <tbody><tr data-lever="unphased"><td>unphased</td><td>0%</td><td>0%</td><td>0%</td><td>0%</td><td>0.00%</td><td>1.0x</td></tr><tr data-lever="Weekly nudge"><td>Weekly nudge</td><td>24%</td><td>1%</td><td>-0%</td><td>18%</td><td>0.25%</td><td>1.3x</td></tr><tr data-lever="Dark month"><td>Dark month</td><td>64%</td><td>34%</td><td>42%</td><td>47%</td><td>1.82%</td><td>2.2x</td></tr><tr data-lever="Peak month"><td>Peak month</td><td>62%</td><td>22%</td><td>17%</td><td>41%</td><td>1.45%</td><td>2.5x</td></tr><tr data-lever="Combined" class="winner-row"><td>Combined <span class="winner-tag">Recommended</span></td><td>70%</td><td>47%</td><td>54%</td><td>58%</td><td>3.41%</td><td>2.5x</td></tr><tr data-lever="Month step"><td>Month step</td><td>36%</td><td>7%</td><td>1%</td><td>19%</td><td>0.24%</td><td>1.2x</td></tr><tr data-lever="Dark week"><td>Dark week</td><td>46%</td><td>8%</td><td>11%</td><td>35%</td><td>0.64%</td><td>1.5x</td></tr></tbody>
   </table>
   </div>
-  <p class="fig-cap">Impact is the improvement on the unphased plan,
-  averaged across channels. Saturation and adstock are how much narrower
-  the recovered range gets. Cost is the share of plan-year revenue given
-  up under the supplied response curves. Peak week is the biggest week of
-  spend as a multiple of that week's plan: the check on whether a media
-  buyer can book it. The highlighted strategy is picked on variance, bias and identifiability, not on cost.</p>
+  <ul class="fig-notes">
+    <li><b>Impact</b>: the improvement on the unphased plan, averaged
+    across channels.</li>
+    <li><b>Saturation and adstock</b>: how much narrower the recovered
+    range gets.</li>
+    <li><b>Cost</b>: the share of plan-year revenue given up under the
+    supplied response curves.</li>
+    <li><b>Peak week</b>: the biggest week of spend as a multiple of that
+    week's plan. It is the check on whether a media buyer can book it.</li>
+    <li>The highlighted strategy is picked on variance, bias and identifiability, not on cost.</li>
+  </ul>
   
   <h3>How the benefit builds over time</h3>
   <p>After one year of <b>Combined</b>: variance 70% better, bias 47% better, saturation 54% better and adstock 58% better. After 3 years:
