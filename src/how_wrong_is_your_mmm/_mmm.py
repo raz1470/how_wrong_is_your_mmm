@@ -9,10 +9,9 @@ This function itself never applies adstock or saturation -- callers that
 need curvature (CollinearityDiagnostic, IdentifiabilityDiagnostic) transform
 spend_df through their own supplied saturation/adstock first (see
 _curvature_transform) and convert the resulting coefficient back to a
-marginal return afterwards. That is the correctly-specified fit as of
-session 46, not a placeholder: this package diagnoses a client-supplied MMM
-rather than fitting curvature itself, so there is no later-phase engine
-swap pending here.
+marginal return afterwards. That is the correctly-specified fit, not a
+placeholder: this package diagnoses a client-supplied MMM rather than
+fitting curvature itself.
 """
 
 import numpy as np

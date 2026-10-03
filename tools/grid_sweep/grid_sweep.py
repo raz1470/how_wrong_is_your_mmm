@@ -81,8 +81,7 @@ LEVERS = [
 
 def _window_standardised(x):
     """Re-standardise a slice of a longer demand series to mean 0 / sd 1 in
-    its OWN window -- see adstock_threat.py's docstring of the same name.
-    Session-44 propagation: fixed there first, now here too."""
+    its OWN window -- see adstock_threat.py's docstring of the same name."""
     x = np.asarray(x, dtype=float)
     return (x - x.mean()) / x.std()
 

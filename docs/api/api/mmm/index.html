@@ -341,6 +341,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../identifiability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Identifiability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../phaser/" class="md-nav__link">
         
   
@@ -369,14 +397,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../report/" class="md-nav__link">
+      <a href="../discovery_report/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Report
+    DiscoveryReport
   
 
     
@@ -582,14 +610,16 @@ saturation, just channel marginal returns (£ revenue per £ spend).</p>
 
 <a href="#how_wrong_is_your_mmm.fit_ols" class="headerlink" title="Permanent link">&para;</a></h2>
 <div class="doc-signature highlight"><pre><span></span><code><span class="nf">fit_ols</span><span class="p">(</span>
-    <span class="n">spend_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">sales</span><span class="p">:</span> <span class="n">Series</span>
+    <span class="n">spend_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">sales</span><span class="p">:</span> <span class="n">Series</span><span class="p">,</span>
+    <span class="n">controls</span><span class="p">:</span> <span class="n">DataFrame</span> <span class="o">|</span> <span class="n">Series</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
 </code></pre></div>
 
     <div class="doc doc-contents first">
 
         <p>Fit a simple OLS MMM and return estimated channel marginal returns.</p>
-<p>Model: sales = intercept + sum(beta[c] * spend[c] for c in channels)</p>
+<p>Model: sales = intercept + sum(beta[c] * spend[c]) + sum(gamma[k] * control[k])</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -635,6 +665,30 @@ saturation, just channel marginal returns (£ revenue per £ spend).</p>
                 <em>required</em>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>controls</code>
+            </td>
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span> | <span title="pandas.Series">Series</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional extra regressors -- typically a latent demand series or a
+client-supplied proxy for it. Omitting a control that drives both spend
+and sales leaves the channel coefficients biased; including it removes
+the bias but widens them, because the control is collinear with spend
+by construction. Toggling this argument is how that trade is measured.</p>
+<p>Note the width cost is real: in this package's DGP a demand control has
+corr(spend_c, demand) = sqrt(demand_share * correlation), so at
+demand_share=1 it is MORE collinear with each channel than the channels
+are with each other.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -650,7 +704,7 @@ saturation, just channel marginal returns (£ revenue per £ spend).</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code>dict mapping channel name to estimated marginal return (£ revenue per</code>
+                  <code>dict mapping name to estimated coefficient, covering the channels and any</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -660,7 +714,17 @@ saturation, just channel marginal returns (£ revenue per £ spend).</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                  <code>£ spend).</code>
+                  <code>controls. Callers that iterate over their own channel list are unaffected</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code>by the extra keys.</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -674,14 +738,7 @@ saturation, just channel marginal returns (£ revenue per £ spend).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/how_wrong_is_your_mmm/_mmm.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">21</span>
 <span class="normal">22</span>
 <span class="normal">23</span>
 <span class="normal">24</span>
@@ -700,13 +757,52 @@ saturation, just channel marginal returns (£ revenue per £ spend).</p>
 <span class="normal">37</span>
 <span class="normal">38</span>
 <span class="normal">39</span>
-<span class="normal">40</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit_ols</span><span class="p">(</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit_ols</span><span class="p">(</span>
     <span class="n">spend_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">sales</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+    <span class="n">controls</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit a simple OLS MMM and return estimated channel marginal returns.</span>
 
-<span class="sd">    Model: sales = intercept + sum(beta[c] * spend[c] for c in channels)</span>
+<span class="sd">    Model: sales = intercept + sum(beta[c] * spend[c]) + sum(gamma[k] * control[k])</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -714,19 +810,49 @@ saturation, just channel marginal returns (£ revenue per £ spend).</p>
 <span class="sd">        DataFrame with one column per channel.</span>
 <span class="sd">    sales:</span>
 <span class="sd">        Series of sales values to fit against.</span>
+<span class="sd">    controls:</span>
+<span class="sd">        Optional extra regressors -- typically a latent demand series or a</span>
+<span class="sd">        client-supplied proxy for it. Omitting a control that drives both spend</span>
+<span class="sd">        and sales leaves the channel coefficients biased; including it removes</span>
+<span class="sd">        the bias but widens them, because the control is collinear with spend</span>
+<span class="sd">        by construction. Toggling this argument is how that trade is measured.</span>
+
+<span class="sd">        Note the width cost is real: in this package&#39;s DGP a demand control has</span>
+<span class="sd">        corr(spend_c, demand) = sqrt(demand_share * correlation), so at</span>
+<span class="sd">        demand_share=1 it is MORE collinear with each channel than the channels</span>
+<span class="sd">        are with each other.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    dict mapping channel name to estimated marginal return (£ revenue per</span>
-<span class="sd">    £ spend).</span>
+<span class="sd">    dict mapping name to estimated coefficient, covering the channels and any</span>
+<span class="sd">    controls. Callers that iterate over their own channel list are unaffected</span>
+<span class="sd">    by the extra keys.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">channels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">spend_df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
-    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">(</span>
-        <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">spend_df</span><span class="p">))]</span> <span class="o">+</span> <span class="p">[</span><span class="n">spend_df</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">]</span>
-    <span class="p">)</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span>
+    <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">spend_df</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">controls</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">controls</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">):</span>
+            <span class="n">controls</span> <span class="o">=</span> <span class="n">controls</span><span class="o">.</span><span class="n">to_frame</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">controls</span><span class="o">.</span><span class="n">name</span> <span class="ow">or</span> <span class="s2">&quot;control&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">controls</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">spend_df</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;controls has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">controls</span><span class="p">)</span><span class="si">}</span><span class="s2"> rows but spend_df has &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">spend_df</span><span class="p">)</span><span class="si">}</span><span class="s2"> -- they must match.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">controls</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;control column &#39;</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">&#39; collides with a channel name in &quot;</span>
+                    <span class="s2">&quot;spend_df; rename it.&quot;</span>
+                <span class="p">)</span>
+            <span class="n">names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+            <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">controls</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">())</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">spend_df</span><span class="p">)),</span> <span class="o">*</span><span class="n">cols</span><span class="p">])</span>
     <span class="n">y</span> <span class="o">=</span> <span class="n">sales</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
     <span class="n">coeffs</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">lstsq</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">rcond</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">{</span><span class="n">c</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">coeffs</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">channels</span><span class="p">)}</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">n</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">coeffs</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">names</span><span class="p">)}</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

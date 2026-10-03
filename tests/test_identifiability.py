@@ -112,11 +112,12 @@ class TestFit:
         diag = make_diag().fit(n_sims=4)
         assert set(diag.results_) == set(CHANNELS)
         for ch in CHANNELS:
-            assert diag.results_[ch].shape == (4, 3)
+            assert diag.results_[ch].shape == (4, 4)
             assert list(diag.results_[ch].columns) == [
                 "sim",
                 "recovered_b",
                 "recovered_lam",
+                "recovered_coef",
             ]
 
     def test_rss_surface_shape_matches_grids_per_channel(self):
@@ -250,3 +251,66 @@ class TestIdentifiabilityShrinksWithMoreCurvature:
         # Other channels shouldn't blow out just because tv went flat.
         for ch in ("meta", "search"):
             assert flat_widths[ch] == pytest.approx(varied_widths[ch], abs=0.35)
+
+
+CURVED_SAT = {"tv": 0.6, "meta": 0.8, "search": 1.0}
+
+
+class TestMarginalReturnAt:
+    """Recovered marginal return away from today's spend level."""
+
+    def fitted(self, **kwargs):
+        defaults = dict(true_saturation=CURVED_SAT, revenue_noise_std=50.0)
+        defaults.update(kwargs)
+        return make_diag(**defaults).fit(n_sims=6)
+
+    def test_before_fit_raises(self):
+        with pytest.raises(RuntimeError, match="fit"):
+            make_diag().marginal_return_at()
+
+    def test_fit_keeps_the_channel_coefficient(self):
+        diag = self.fitted()
+        for ch in CHANNELS:
+            assert "recovered_coef" in diag.results_[ch].columns
+
+    def test_one_row_per_sim_one_column_per_multiplier(self):
+        out = self.fitted().marginal_return_at((1.0, 1.5, 2.0))
+        assert set(out) == set(CHANNELS)
+        for df in out.values():
+            assert df.shape == (6, 3)
+            assert list(df.columns) == [1.0, 1.5, 2.0]
+
+    def test_non_positive_multiplier_raises(self):
+        diag = self.fitted()
+        with pytest.raises(ValueError, match="positive"):
+            diag.marginal_return_at((0.0,))
+        with pytest.raises(ValueError, match="positive"):
+            diag.true_marginal_return_at((-1.0,))
+
+    def test_truth_at_today_is_the_supplied_marginal_return(self):
+        truth = make_diag(true_saturation=CURVED_SAT).true_marginal_return_at()
+        for ch in CHANNELS:
+            assert truth.loc[ch, 1.0] == pytest.approx(
+                make_diag().true_marginal_returns[ch]
+            )
+
+    def test_truth_falls_with_spend_only_when_saturating(self):
+        truth = make_diag(true_saturation=CURVED_SAT).true_marginal_return_at()
+        assert truth.loc["tv", 2.0] == pytest.approx(0.5 * 2.0 ** (0.6 - 1.0))
+        assert truth.loc["tv", 2.0] < truth.loc["tv", 1.5] < truth.loc["tv", 1.0]
+        assert truth.loc["search", 2.0] == pytest.approx(truth.loc["search", 1.0])
+
+    def test_recovers_the_truth_at_low_noise(self):
+        # True curvature sits on the grid, so with little noise the fitted
+        # curve and its marginal return at every level match the truth.
+        diag = self.fitted(revenue_noise_std=1e-6)
+        truth = diag.true_marginal_return_at()
+        for ch, df in diag.marginal_return_at().items():
+            np.testing.assert_allclose(df.mean(), truth.loc[ch], rtol=1e-4)
+
+    def test_reference_spend_sets_the_level(self):
+        ref = {ch: 2.0 * float(SPEND_DF[ch].mean()) for ch in CHANNELS}
+        diag = self.fitted(revenue_noise_std=1e-6, reference_spend=ref)
+        truth = diag.true_marginal_return_at()
+        for ch, df in diag.marginal_return_at().items():
+            np.testing.assert_allclose(df.mean(), truth.loc[ch], rtol=1e-4)

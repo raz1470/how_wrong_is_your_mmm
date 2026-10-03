@@ -73,7 +73,7 @@ def _tile_plan(plan_df: pd.DataFrame, n_weeks: int) -> pd.DataFrame:
     next year repeats this year's weekly pattern, not a claim about an
     actual future plan — callers should treat it accordingly. Matches the
     tiling approach already used ad hoc in
-    notebooks/02_phaser_walkthrough.ipynb for its own 2-year figures.
+    notebooks/archive/02_phaser_walkthrough.ipynb for its own 2-year figures.
 
     Parameters
     ----------
@@ -2153,7 +2153,7 @@ class BudgetPhaser:
             averaging fit() already applies to its own CV curve, extended
             here across per-channel revenue ranges too (promoted from the
             single-draw-then-averaged pattern used in
-            notebooks/02_phaser_walkthrough.ipynb).
+            notebooks/archive/02_phaser_walkthrough.ipynb).
 
         Parameters
         ----------
@@ -2175,7 +2175,7 @@ class BudgetPhaser:
             one — read by a client as "phase for longer, get more revenue,"
             when horizon here means "more experience/history has
             accumulated," not "more spend." This did not match
-            notebooks/02_phaser_walkthrough.ipynb's own blackout_impact()
+            notebooks/archive/02_phaser_walkthrough.ipynb's own blackout_impact()
             helper (the source of overview.html's published £ figures),
             which always prices against the plan's own fixed annual total
             regardless of horizon — "same plan, £0 extra spend, just a

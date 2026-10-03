@@ -1,0 +1,64 @@
+{
+ "n": 5,
+ "tag": "s1",
+ "winner": "Combined",
+ "seconds": 192.27989149093628,
+ "levers": {
+  "unphased": {
+   "variance": 0.31198000000000004,
+   "bias": 41.280918666666665,
+   "identifiability": 60.89931999999999,
+   "saturation_range": 0.8,
+   "adstock_range": 0.5724,
+   "cost_pct": 0.0
+  },
+  "Weekly nudge": {
+   "variance": 0.23386666666666667,
+   "bias": 37.718832,
+   "identifiability": 48.878472,
+   "saturation_range": 0.7680999999999999,
+   "adstock_range": 0.4969200000000001,
+   "cost_pct": 0.16364971051685315
+  },
+  "Dark month": {
+   "variance": 0.125712,
+   "bias": 20.159896,
+   "identifiability": 16.40404266666667,
+   "saturation_range": 0.47496666666666665,
+   "adstock_range": 0.29124000000000005,
+   "cost_pct": 1.7274600610394035
+  },
+  "Peak month": {
+   "variance": 0.10897333333333332,
+   "bias": 28.925376,
+   "identifiability": 24.835450666666667,
+   "saturation_range": 0.6481333333333332,
+   "adstock_range": 0.30876000000000003,
+   "cost_pct": 1.2913765131797843
+  },
+  "Combined": {
+   "variance": 0.08950933333333334,
+   "bias": 16.127731999999998,
+   "identifiability": 10.321266666666668,
+   "saturation_range": 0.4193666666666667,
+   "adstock_range": 0.21144,
+   "cost_pct": 3.1338843122624302
+  },
+  "Month step": {
+   "variance": 0.18991066666666664,
+   "bias": 32.47239733333333,
+   "identifiability": 43.98045066666667,
+   "saturation_range": 0.7677666666666665,
+   "adstock_range": 0.47692000000000007,
+   "cost_pct": 0.3832570351414403
+  },
+  "Dark week": {
+   "variance": 0.176468,
+   "bias": 34.722273333333334,
+   "identifiability": 31.078526666666665,
+   "saturation_range": 0.6965999999999999,
+   "adstock_range": 0.40468000000000004,
+   "cost_pct": 0.7481075088646338
+  }
+ }
+}

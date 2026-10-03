@@ -627,7 +627,7 @@ class TestGeneratePhasedScheduleBlackoutCapped:
 
 class TestGeneratePhasedScheduleBlackoutContiguous:
     """dark=3, prob=0.8, contiguous beats a scattered dark=3 selection on
-    identifiability at matched cost (see NOTES.md) -- the whole point is
+    identifiability at matched cost -- the whole point is
     that the dark weeks a capped Blackout picks form a single
     uninterrupted run, not an arbitrary subset."""
 

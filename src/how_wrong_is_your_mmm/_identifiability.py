@@ -17,7 +17,7 @@ the recovered value across draws (b_sd/lam_sd) and the RSS valley's width:
 a flat valley means many curvatures fit about equally well, which is what
 "b is unmeasurable" actually means in practice.
 
-Per-channel, not shared (reversed from the original session 44/45 design):
+Per-channel, not shared:
 each channel gets its OWN plausible saturation/adstock and its OWN
 recovered value -- a channel's spend pattern (how much it varies week to
 week, its own autocorrelation) determines how well ITS curvature can be
@@ -34,9 +34,6 @@ the response shape, which is separate from omitted-variable bias (see
 CollinearityDiagnostic). Mixing the two would make a null result
 unattributable, so unlike CollinearityDiagnostic's `controls` this is not
 optional.
-
-Promoted from tools/grid_sweep/profile_grid.py (session 45's item 5).
-Per-channel profiling added later the same session, at Ryan's request.
 """
 
 from __future__ import annotations
@@ -307,6 +304,7 @@ class IdentifiabilityDiagnostic:
             best_rss = np.full(n_sims, np.inf)
             best_b = np.zeros(n_sims)
             best_lam = np.zeros(n_sims)
+            best_coef = np.zeros(n_sims)
             surface = np.zeros((len(self.b_candidates), len(self.lam_candidates)))
 
             for i, b in enumerate(self.b_candidates):
@@ -322,6 +320,9 @@ class IdentifiabilityDiagnostic:
                     best_rss = np.where(better, rss, best_rss)
                     best_b = np.where(better, b, best_b)
                     best_lam = np.where(better, lam, best_lam)
+                    # Column 0 of the design is the intercept, so the
+                    # profiled channel's coefficient is row idx + 1.
+                    best_coef = np.where(better, beta[idx + 1], best_coef)
 
             surfaces[ch] = surface
             results[ch] = pd.DataFrame(
@@ -329,12 +330,86 @@ class IdentifiabilityDiagnostic:
                     "sim": range(n_sims),
                     "recovered_b": best_b,
                     "recovered_lam": best_lam,
+                    "recovered_coef": best_coef,
                 }
             )
 
         self.rss_surface_ = surfaces
         self.results_ = results
         return self
+
+    def _reference_level(self, ch: str) -> float:
+        """The steady weekly spend level the marginal return is quoted at:
+        the supplied reference_spend, else simulate_sales's own default
+        (the mean of the channel's adstocked spend)."""
+        if self.reference_spend is not None:
+            return float(self.reference_spend[ch])
+        x = self.spend_df[ch].to_numpy(dtype=float)
+        return float(apply_adstock(x, self.true_adstock[ch]).mean())
+
+    def marginal_return_at(
+        self, spend_multipliers: tuple[float, ...] = (1.0, 1.5, 2.0)
+    ) -> dict[str, pd.DataFrame]:
+        """Recovered marginal return at other spend levels, per channel.
+
+        Each simulation's best-fitting curve for a channel is
+        coef * x**b, so its marginal return at a steady weekly spend x is
+        coef * b * x**(b - 1). This evaluates that at each multiple of the
+        channel's reference spend: 1.0 is today's level, 2.0 is double.
+        Adstock is normalised, so a steady spend level passes through it
+        unchanged and the decay does not enter.
+
+        A curve that is poorly pinned down gives a wide spread here even
+        when the marginal return at today's spend is well estimated,
+        because the answer away from today's spend depends on b.
+
+        Parameters
+        ----------
+        spend_multipliers:
+            Multiples of reference spend to evaluate at. All must be
+            positive.
+
+        Returns
+        -------
+        dict of channel -> DataFrame with one row per simulation and one
+        column per multiplier.
+        """
+        if self.results_ is None:
+            raise RuntimeError("Call fit() before marginal_return_at().")
+        if any(m <= 0 for m in spend_multipliers):
+            raise ValueError("spend_multipliers must all be positive")
+        out = {}
+        for ch in self.channels_:
+            x_ref = self._reference_level(ch)
+            b = self.results_[ch]["recovered_b"].to_numpy()
+            coef = self.results_[ch]["recovered_coef"].to_numpy()
+            out[ch] = pd.DataFrame(
+                {m: coef * b * (m * x_ref) ** (b - 1.0) for m in spend_multipliers}
+            )
+        return out
+
+    def true_marginal_return_at(
+        self, spend_multipliers: tuple[float, ...] = (1.0, 1.5, 2.0)
+    ) -> pd.DataFrame:
+        """True marginal return at each multiple of reference spend, per
+        channel: the supplied marginal return times multiplier**(b - 1).
+
+        Returns
+        -------
+        pd.DataFrame indexed by channel, one column per multiplier.
+        """
+        if any(m <= 0 for m in spend_multipliers):
+            raise ValueError("spend_multipliers must all be positive")
+        return pd.DataFrame(
+            {
+                m: {
+                    ch: self.true_marginal_returns[ch]
+                    * m ** (self.true_saturation[ch] - 1.0)
+                    for ch in self.channels_
+                }
+                for m in spend_multipliers
+            }
+        )
 
     def valley_width(self, tol: float = 0.01) -> dict[str, float]:
         """Per channel: fraction of that channel's (b, lambda) grid within

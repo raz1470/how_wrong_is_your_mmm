@@ -12,7 +12,7 @@ rescaling within each month so the monthly total is preserved. Same shape, same
 movement, no true zeros. If (a), identification collapses back toward +/-80%.
 If (b), it barely moves.
 
-Session 44 continued: run across both of profile_grid's TRUTHS, not just one
+Run across both of profile_grid's TRUTHS, not just one
 corner -- "go low, not dark" is about to become a recommendation and needs to
 hold at (0.8, 0.3) as well as (0.6, 0.5) before it does.
 """

@@ -270,7 +270,7 @@ class TestPlannedSpend:
             assert row["incremental_revenue_p90"] == round(direct.loc[channel, 0.9], 4)
 
     def test_incremental_revenue_mean_is_a_point_estimate_in_the_range(self):
-        # Session 50: a point estimate alongside the range, for the
+        # A point estimate alongside the range, for the
         # discovery report's Variance section to show both in one mark.
         summary = self.diag.summary(
             planned_spend={"tv": 1_000_000, "meta": 800_000, "search": 600_000}
@@ -510,7 +510,7 @@ class TestDemandAndControls:
         assert bias_controlled < bias_omitted / 3
 
     def test_error_pct_p10_p90_bracket_the_mean(self):
-        # Session 50: error_pct_p10/p90 let a caller show bias as a band
+        # error_pct_p10/p90 let a caller show bias as a band
         # around mean_error_pct (discovery report's Bias section), same
         # spirit as incremental_revenue's own p10/p90 around its mean.
         diag = CollinearityDiagnostic(
@@ -624,10 +624,9 @@ class TestFloatQualityControls:
 
 class TestCurvatureAwareFit:
     """saturation/adstock on fit(): correctly-specified curvature, not
-    misspecification. Session 46 -- fit() used to always fit a linear OLS
-    on raw spend even when saturation/adstock made simulate_sales's truth
-    curved, which left a bias phasing couldn't touch (session 45's
-    finding). See _curvature_transform in _diagnostic.py.
+    misspecification. A linear OLS on raw spend, when saturation/adstock
+    make simulate_sales's truth curved, leaves a bias phasing can't touch.
+    See _curvature_transform in _diagnostic.py.
     """
 
     def test_noop_at_defaults_matches_raw_spend(self):
@@ -636,10 +635,9 @@ class TestCurvatureAwareFit:
         assert diag.anchor_factor_ == {ch: 1.0 for ch in CHANNELS}
 
     def test_curvature_supplied_recovers_true_marginal_return(self):
-        # The regression test for the fix itself: session 45 found that a
-        # near-perfect demand proxy (quality=0.999) still left ~25% bias
-        # once saturation/adstock were realistic, because fit() ignored
-        # them. With the curvature transform, that same near-perfect proxy
+        # Regression test: without the curvature transform a near-perfect
+        # demand proxy (quality=0.999) still left ~25% bias once
+        # saturation/adstock were realistic. With it, that same proxy
         # should recover the true marginal return closely.
         diag = CollinearityDiagnostic(
             correlation=0.7,
@@ -722,7 +720,7 @@ class TestCurvatureAwareFit:
 
 class TestPlannedSpendDataFrame:
     """summary(planned_spend=<DataFrame>): the curvature-aware revenue
-    path -- see session 46 continued, NOTES.md. A notebook can call this
+    path. A notebook can call this
     directly with any weekly spend pattern; DiscoveryReport does exactly
     this with its own phased schedules, no report-only formula involved.
     """

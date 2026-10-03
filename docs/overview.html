@@ -444,7 +444,6 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <p>With your own data, pick the pattern closest to how your sales behave apart from marketing: steady growth, a strong yearly cycle, or neither.</p>
 
-
   <h3>Step 2: Choose the response</h3>
 
   <p>Before we can generate sales/revenue, we need to set up the response function for marketing channels. Each channel gets a marginal return, a saturation curve (how quickly extra spend stops paying back) and an adstock decay (how long an ad keeps working after the week it runs). For the purpose of this article we use plausible values, but in practice you should use the results from your MMM. That might seem circular, but the aim is realistic sales data where the true response is known. That lets us measure how much damage correlated spend does, and how much budget phasing repairs.</p>
@@ -453,7 +452,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <table class="dtable scen">
       <caption>The scenario used throughout this article</caption>
       <thead>
-        <tr><th>Channel</th><th>Marginal return</th><th>Saturation</th><th>Adstock</th></tr>
+        <tr><th>Channel</th><th>Marginal return (£ per extra £1)</th><th>Saturation</th><th>Adstock</th></tr>
       </thead>
       <tbody>
         <tr><td>TV</td><td>0.50</td><td>0.60</td><td>0.50</td></tr>
@@ -464,7 +463,9 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     </table>
   </div>
 
-  <p>To keep things simple we use a power-curve saturation and geometric adstock, but this can be adapted to match the response you are using in your MMM. Saturation is the exponent on spend: 1.0 is a straight line, and the lower the value, the faster extra spend stops paying back. Adstock is the share of an ad's effect that carries into the next week, so TV keeps half and Search Generic keeps a tenth. The response function also requires an assumption for baseline, what sales would be with no marketing. We use a plausible value of 70%, but again you should use the value from your MMM results.</p>
+  <p>Marginal return is the revenue the next £1 brings in at the channel's planned weekly spend: £0.50 for TV and £1.50 for Search Generic. To keep things simple we use a power-curve saturation and geometric adstock, but this can be adapted to match the response you are using in your MMM. Saturation is the exponent on spend: 1.0 is a straight line, and the lower the value, the faster extra spend stops paying back. Adstock is the share of an ad's effect that carries into the next week, so TV keeps half and Search Generic keeps a tenth. The response function also requires an assumption for baseline, what sales would be with no marketing. We use a plausible value of 70%, but again you should use the value from your MMM results.</p>
+
+  <p>Every variance and bias figure in this article is conditional on these inputs. They show what a model would get wrong if the world worked this way. They are not a measurement of your own MMM.</p>
 
   <h3>Step 3: Generate sales/revenue</h3>
 
@@ -479,7 +480,6 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <li><strong>Demand proxy.</strong> We can't observe demand directly, but we can use a proxy such as a category search index. How closely a proxy tracks demand can't be measured either, so we assume a correlation of 0.8.</li>
     <li><strong>Noise.</strong> Random week-to-week variation that nothing in the model explains, with a standard deviation of 2% of average weekly sales. This is pure noise: demand, including the part a proxy misses, is modelled separately above. Each simulation redraws it, which shows how far the estimates move across plausible versions of the same history.</li>
   </ul>
-
 
   <div class="fig">
     <div class="fig-hdr">
@@ -504,7 +504,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 <!-- SECTION 2: THE PROBLEM -->
 <section id="problem">
   <p class="s-label">2 · The problem</p>
-  <h2>Your model is more unsure than it lets on, in three separate ways</h2>
+  <h2>Three separate ways your model can mislead you</h2>
 
   <p>Now let's move on to assessing the problem. There are three areas we are going to focus on:</p>
 
@@ -537,7 +537,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <h3>Problem 2: Bias</h3>
 
-  <p>We fit the same way as for variance, with one change: the model gets the demand proxy instead of the true demand, just as a real MMM would. How large the bias is depends on the particular demand series and proxy we happen to draw, so a single draw could flatter or exaggerate it. We therefore draw 15 versions of demand and its proxy, run the 50 simulations on each, and compare the average estimate with the ground truth.</p>
+  <p>We fit the same way as for variance, with one change: the model gets the demand proxy instead of the true demand, just as a real MMM would. How large the bias is depends on the particular demand series and proxy we happen to draw, so a single draw could flatter or exaggerate it. We therefore draw 100 versions of demand and its proxy, run the 50 simulations on each, and compare the average estimate with the ground truth.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -551,10 +551,10 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
       </div>
       <svg class="chart" id="chartProblemBias" viewBox="0 0 700 210" preserveAspectRatio="xMinYMin meet"></svg>
     </div>
-    <p class="fig-cap">The forest plot shows the model's estimated range for incremental revenue (p10 to p90 across all 750 refits) and compares it to the ground truth.</p>
+    <p class="fig-cap">The forest plot shows the model's estimated range for incremental revenue (p10 to p90 across all 5,000 refits) and compares it to the ground truth.</p>
   </div>
 
-  <p>Pay attention to how the point estimates sit above the ground truth for every channel: TV by 42%, Meta by 29%, TikTok by 31% and Search Generic by 9%. This is driven by spend following demand. When demand lifts sales, spend is up too, and whatever the proxy misses gets credited to the channels. This is omitted variable bias, and unlike variance it doesn't average out with more data. Refitting the same mis-specified model on more weeks just gets you a tighter estimate of the wrong number.</p>
+  <p>Pay attention to how the point estimates sit above the ground truth for every channel: TV by 49%, Meta by 27%, TikTok by 29% and Search Generic by 8%. This is driven by spend following demand. When demand lifts sales, spend is up too, and whatever the proxy misses gets credited to the channels. This is omitted variable bias, and unlike variance it doesn't average out with more data. Refitting the same mis-specified model on more weeks just gets you a tighter estimate of the wrong number.</p>
 
   <h3>Problem 3: Identifiability</h3>
 
@@ -620,7 +620,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <p>Bias works differently. It depends on how closely spend follows demand rather than how closely channels follow each other. So here we hold the channels at 0.7 and sweep the link between spend and demand instead (0.65 in our data generating process).</p>
 
-  <p>With a weak link TV's estimate is only a few percent too high. At our 0.65 it is 42% too high and at 0.88 it is 90% too high. 0.88 is the strongest link possible when the channels sit at 0.7.</p>
+  <p>Even with a weak link of 0.1 TV's estimate is 15% too high. At our 0.65 it is 49% too high and at 0.88 it is 91% too high. 0.88 is the strongest link possible when the channels sit at 0.7.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -654,7 +654,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <li><strong>Variance.</strong> Each channel has to move in weeks when the others don't. Random moves, drawn separately for each channel, do this.</li>
     <li><strong>Bias.</strong> The moves must have nothing to do with demand. A schedule drawn at random before the year starts can't follow it.</li>
     <li><strong>Adstock.</strong> A change has to be held for longer than the carryover lasts. Adstock smooths away a one-week blip, but a dark run or a month-long step survives it.</li>
-    <li><strong>Saturation.</strong> The channel needs spend well above its plan, held long enough to outlast adstock. Going dark doesn't help here: zero spend gives zero response whatever the curve's shape. A month that takes on extra budget adds a point well up the curve.</li>
+    <li><strong>Saturation.</strong> The channel needs spend well above its plan, held long enough to outlast adstock. Going dark doesn't help here: zero spend gives zero response whatever the curve's shape. That holds for the power curve we use. With an S-shaped curve low spend can carry information too, and we haven't tested that. A month that takes on extra budget adds a point well up the curve.</li>
   </ul>
 
   <h3>The strategies</h3>
@@ -662,9 +662,9 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p>We test six strategies. The first three are building blocks, each aimed at one of the jobs above. The fourth runs all three together. The last two are lighter alternatives.</p>
 
   <ul class="probs">
-    <li><strong>Weekly nudge.</strong> Every week moves up or down by exactly 20%. Ups and downs are balanced within the month. It is there for variance.</li>
-    <li><strong>Dark month.</strong> Once a year each channel goes dark for four weeks in a row. That budget moves into one other month. Channels take turns so no two go dark in the same month. It is there for bias and adstock.</li>
-    <li><strong>Peak month.</strong> One month a year runs at 2.5 times plan. A small equal cut to the channel's other months pays for it. Channels take turns so no two peak in the same month. It is there for saturation.</li>
+    <li><strong>Weekly nudge.</strong> Every week moves up or down by 20%. Ups and downs are balanced within the month, and the month is then rescaled to its planned total, which can lift the biggest week to 1.25 times plan. It is there for variance.</li>
+    <li><strong>Dark month.</strong> Once a year each channel goes dark for four weeks in a row. That budget moves into one other month. Channels take turns, so with up to 12 channels no two go dark in the same month. It is there for bias and adstock.</li>
+    <li><strong>Peak month.</strong> One month a year runs at 2.5 times plan. A small equal cut to the channel's other months pays for it. Channels take turns, so with up to 12 channels no two peak in the same month. It is there for saturation.</li>
     <li><strong>Combined.</strong> All three together: the dark month, the peak month, and the weekly nudge in every other month.</li>
     <li><strong>Month step.</strong> Each whole month moves up or down by 20%. Every channel gets six up months and six down months. No two channels follow the same pattern.</li>
     <li><strong>Dark week.</strong> One week a quarter goes dark, in a month picked at random. The rest of that month absorbs its budget.</li>
@@ -690,7 +690,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <h3>Which works best</h3>
 
-  <p>We run every strategy through the measures from section 2 and compare it with the unphased plan. Each strategy is averaged over 15 random draws of its schedule.</p>
+  <p>We run every strategy through the measures from section 2 and compare it with the unphased plan. Each strategy is averaged over 15 random draws of its schedule, and bias over 100 draws of demand.</p>
 
   <div class="dtable-wrap">
     <table class="dtable">
@@ -699,13 +699,13 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
         <tr><th>Strategy</th><th>Variance</th><th>Bias</th><th>Saturation</th><th>Adstock</th><th>Cost</th><th>Peak</th></tr>
       </thead>
       <tbody>
-        <tr><td>Unphased</td><td>0.24</td><td>27.7%</td><td>0.71</td><td>0.43</td><td>&mdash;</td><td>1.0x</td></tr>
-        <tr><td>Weekly nudge</td><td>0.18</td><td>27.6%</td><td>0.71</td><td>0.35</td><td>0.25%</td><td>1.3x</td></tr>
-        <tr><td>Dark month</td><td>0.08</td><td>18.4%</td><td>0.41</td><td>0.23</td><td>1.82%</td><td>2.2x</td></tr>
-        <tr><td>Peak month</td><td>0.09</td><td>23.4%</td><td>0.58</td><td>0.25</td><td>1.45%</td><td>2.5x</td></tr>
-        <tr class="winner"><td>Combined</td><td>0.07</td><td>15.2%</td><td>0.32</td><td>0.18</td><td>3.41%</td><td>2.5x</td></tr>
-        <tr><td>Month step</td><td>0.15</td><td>24.9%</td><td>0.70</td><td>0.35</td><td>0.24%</td><td>1.2x</td></tr>
-        <tr><td>Dark week</td><td>0.13</td><td>25.6%</td><td>0.63</td><td>0.28</td><td>0.64%</td><td>1.5x</td></tr>
+        <tr><td>Unphased</td><td>0.24</td><td>28.3%</td><td>0.71</td><td>0.43</td><td>&mdash;</td><td>1.0x</td></tr>
+        <tr><td>Weekly nudge</td><td>0.18</td><td>27.9%</td><td>0.71</td><td>0.35</td><td>0.25%</td><td>1.3x</td></tr>
+        <tr><td>Dark month</td><td>0.08</td><td>18.7%</td><td>0.41</td><td>0.23</td><td>1.82%</td><td>2.2x</td></tr>
+        <tr><td>Peak month</td><td>0.09</td><td>21.9%</td><td>0.58</td><td>0.25</td><td>1.45%</td><td>2.5x</td></tr>
+        <tr class="winner"><td>Combined</td><td>0.07</td><td>15.1%</td><td>0.32</td><td>0.18</td><td>3.41%</td><td>2.5x</td></tr>
+        <tr><td>Month step</td><td>0.15</td><td>26.3%</td><td>0.70</td><td>0.35</td><td>0.24%</td><td>1.2x</td></tr>
+        <tr><td>Dark week</td><td>0.13</td><td>26.0%</td><td>0.63</td><td>0.28</td><td>0.64%</td><td>1.5x</td></tr>
       </tbody>
     </table>
   </div>
@@ -717,17 +717,25 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
     <li><strong>Variance</strong>: the coefficient of variation, averaged over the four channels.</li>
     <li><strong>Bias</strong>: the mean absolute % gap from the truth, averaged over the four channels.</li>
     <li><strong>Saturation and adstock</strong>: the average width of each channel's range from section 2.</li>
-    <li><strong>Cost</strong>: plan-year revenue given up.</li>
+    <li><strong>Cost</strong>: the share of the revenue each channel drives in the plan year that is given up, averaged over the four channels.</li>
     <li><strong>Peak</strong>: the biggest single week as a multiple of its plan.</li>
   </ul>
 
-  <p>Combined is best on all four diagnostics. Variance falls from 0.24 to 0.07 and bias from 27.7% to 15.2%. The saturation range more than halves from 0.71 to 0.32 and the adstock range falls from 0.43 to 0.18.</p>
+  <p>Each figure is an average over simulated draws, so it would move a little on a fresh set. The Monte Carlo standard error is about 0.002 on variance, under 0.01 on the saturation and adstock ranges and about 0.5 points on bias. The unphased row has no schedule draws to average over, so it is less certain: about 0.02 on variance and 0.02 on the ranges.</p>
+
+  <p>Combined is best on all four diagnostics. Variance falls from 0.24 to 0.07 and bias from 28.3% to 15.1%. The saturation range more than halves from 0.71 to 0.32 and the adstock range falls from 0.43 to 0.18.</p>
+
+  <p>It also costs the most. Dark month is the closest alternative: it gets 92% of Combined's variance gain and 73% of its bias gain for about half the cost (1.82% against 3.41%). What it can't do is pin down saturation as well, where its range is 0.41 against Combined's 0.32. Weekly nudge is the weakest: Month step matches or beats it on every measure at the same cost.</p>
+
+  <p>Accuracy does not come for free. We think Combined's extra accuracy is worth its cost, so it is the strategy we carry forward. If that cost is too high for you, Dark month is the place to start.</p>
 
   <h3>What it costs</h3>
 
   <ul class="probs">
     <li><strong>Revenue given up.</strong> Returns diminish as spend rises, so budget moved from a quiet week into a busy one earns less than it did. The cost follows how far spend is pushed up the curve, where each extra pound earns least. That is also what pins saturation down.</li>
-    <li><strong>Platform learning phases.</strong> Ad platforms can re-enter a learning phase after a large budget change and deliver worse while they do. We don't model this. It is why every strategy caps its nudges at 20%, and why the peak column matters.</li>
+    <li><strong>Platform learning phases.</strong> Ad platforms can re-enter a learning phase after a large budget change and deliver worse while they do. We don't model this. It is why the weekly nudges are capped at 20%. Dark months and peak months are much bigger moves, which is why the peak column matters.</li>
+    <li><strong>What your channels can take.</strong> TV is often booked upfront. Generic search can't absorb 2.5 times its budget if the searches aren't there. A dark month on one channel may dent another, such as TV driving search. We don't model any of this, and each channel can be given a lighter strategy.</li>
+    <li><strong>Demand.</strong> In our data generating process demand adds to sales and doesn't change how well media works. If your media works harder when demand is high, moving spend out of busy weeks costs more than we show.</li>
   </ul>
 
 </section>
@@ -794,11 +802,11 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <h3>Impact 2: Bias</h3>
 
-  <p>Every point estimate moves toward the ground truth. TikTok's bias falls from 31.0% to 9.4% and TV's from 41.5% to 28.4%. Meta falls from 29.4% to 15.6%. Search Generic started closest and goes from 8.8% to 7.4%.</p>
+  <p>Three of the four point estimates move toward the ground truth. TikTok's bias falls from 29.2% to 9.8%, TV's from 49.2% to 29.1% and Meta's from 27.2% to 12.9%. Search Generic started closest and doesn't move: 7.6% before and 8.6% after, a difference within simulation error.</p>
 
   <div class="fig">
     <div class="fig-hdr">
-      <div class="fig-title">Point estimates move toward the truth</div>
+      <div class="fig-title">Most point estimates move toward the truth</div>
     </div>
     <div class="fig-body">
       <div class="legend">
@@ -854,7 +862,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <p>Everything above is after one year of phasing. The model is fitted on three years and only the last of them is phased. If the phasing keeps running the gains keep coming as more of the three-year window is phased.</p>
 
-  <p>Most of the gain lands in the first year. Year one delivers 85% of the three-year improvement in variance, 72% for saturation and 79% for adstock. Bias improves the slowest: 45% better after one year and 71% after three. The lines flatten by year three.</p>
+  <p>Most of the gain lands in the first year. Year one delivers 85% of the three-year improvement in variance, 72% for saturation and 79% for adstock. Bias improves the slowest: 47% better after one year and 69% after three. The lines flatten by year three.</p>
 
   <div class="fig">
     <div class="fig-hdr">
@@ -868,7 +876,9 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
 
   <h3>What it costs</h3>
 
-  <p>Combined gives up 3.41% of plan-year revenue, the most of the six strategies. The annual plan stays at £19.0m and no extra spend is needed. Only the timing changes.</p>
+  <p>Combined gives up 3.41% of the revenue the four channels drive in the plan year, the most of the six strategies. That is about £0.9m of £25.6m, or 1.5% of total sales. The annual plan stays at £19.0m and no extra spend is needed. Only the timing changes.</p>
+
+  <p>The cost depends on the saturation curves, which section 2 showed are hard to pin down. Keeping the same schedule and moving every channel's exponent across that range, the cost runs from 0.3% when the curves are straight lines to 5.3% at an exponent of 0.4.</p>
 </section>
 
 <!-- SECTION 6: SCALING UP -->
@@ -1053,7 +1063,7 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p>You supply a plausible estimate, not a proven one. The package uses it as the ground truth to measure against: it simulates revenue from that assumption, refits the model across many plausible versions of your history, and reports how far the answer moves. That spread tells you how reliable your model is, not whether your assumed number was right.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Why not just run a geo-lift test instead?</p>
-  <p>Geo-experiments are the gold standard, but they test one channel at a time, need a region you can go dark in and take months to read. You can't run one for TV, Meta, Search Generic and TikTok at the same time. The tools are also less reliable than they look: in the <a href="https://research.getrecast.com/geolift-sim-study" target="_blank" rel="noopener">Recast study</a> from the introduction, Meta's GeoLift missed around 90% of real effects. Phasing improves the data for every channel at once. If you do have budget for a test, save it for creative testing: <a href="https://www.nielsen.com/insights/2017/perspectives-want-a-successful-ad-get-creative/" target="_blank" rel="noopener">Nielsen</a> found creative quality drives as much of a campaign's sales impact as every other factor combined.</p>
+  <p>If you can run them, you should. Geo-experiments are the gold standard for a single channel. They take planning: you need regions you can hold out, and each test takes weeks or months to read. Testing several channels at once is possible with multi-cell designs, but it needs more regions and more budget. They aren't immune to noise either: one <a href="https://research.getrecast.com/geolift-sim-study" target="_blank" rel="noopener">simulation study by Recast</a> found Meta's GeoLift missed around 90% of real effects in its set-up. Phasing is not a replacement. It improves the data your MMM sees for every channel at once, and an experiment can then calibrate the channels that matter most.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Doesn't a Bayesian model already fix this?</p>
   <p>Not on its own. Priors are genuinely useful, and Google's own <a href="https://research.google/pubs/bayesian-methods-for-media-mix-modeling-with-carryover-and-shape-effects/" target="_blank" rel="noopener">Bayesian MMM paper</a> shows why: they stabilise noisy estimates, and its flexible functional forms capture how spend decays and saturates over time. But priors can't invent information that was never in the data. That paper says as much itself, noting that the optimal media mix it produces “has a large variance due to the variance of the parameter estimates”. If TV and Meta always moved together, no prior tells you which one actually drove sales.</p>
@@ -1062,7 +1072,10 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p>Genuinely useful, and worth doing if you can. Google's own <a href="https://research.google/pubs/geo-level-bayesian-hierarchical-media-mix-modeling/" target="_blank" rel="noopener">geo-level hierarchical paper</a> shows that pooling across regions gives tighter intervals than national data alone. But your planning cycle is national, so TV and Search rise and fall together in every region: more rows, the same correlation inside each one. National TV and OOH are bought without a regional breakout, so any geo split there is an allocation rule rather than a measurement, and the paper is candid about what that costs: estimates "generally deteriorate as more media variables are imputed using the national level data". Small regions are noisy on top of that. It helps, but it can't manufacture variation your plan never had.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">Won't this put my channels into learning mode?</p>
-  <p>Possibly. Ad platforms can re-enter a learning phase after a large budget change, which is why every strategy caps its nudges at 20% (see section 4). Dark weeks and the budget they free up are bigger moves, so check the peak week before you commit. If a channel can't take them, give it a lighter strategy rather than leaving it out. In our tests a channel left at its plan while the others were phased ended up with more bias than before, because it was the only one still following demand. It's a compromise between data science and marketing, and each channel can be set separately.</p>
+  <p>Possibly. Ad platforms can re-enter a learning phase after a large budget change, which is why the weekly nudges are capped at 20% (see section 4). Dark weeks and the budget they free up are bigger moves, so check the peak week before you commit. If a channel can't take them, give it a lighter strategy rather than leaving it out. In our tests a channel left at its plan while the others were phased ended up with more bias than before, because it was the only one still following demand. It's a compromise between data science and marketing, and each channel can be set separately.</p>
+
+  <p style="font-weight:700; margin-bottom: .3rem;">What about brand search and affiliates?</p>
+  <p>They are the hardest case for bias. With most channels you set a budget and demand only shapes it. With brand search and affiliates, demand sets the spend directly: you pay per click or per sale, so a good week for the business is automatically a big week for the channel. An MMM reads that as the channel driving the sales and gives it too much credit. This is endogeneity, and more data doesn't fix it while spend keeps following sales. A weekly nudge doesn't apply, because there is no fixed budget to nudge. A dark period does. Switching the channel off for a few weeks is a move in spend that demand didn't cause, which is exactly what the model is missing.</p>
 
   <p style="font-weight:700; margin-bottom: .3rem;">What do I actually hand my media agency?</p>
   <p>A weekly spend number per channel for the plan year. Each channel's annual budget stays the same. The Combined strategy moves some budget between months, so the monthly totals change as well as the weekly split. Nothing about the buy itself changes, only when the money lands.</p>
@@ -1076,15 +1089,16 @@ table.dtable.shape-table td.shape-name { white-space: nowrap; }
   <p class="s-label">9 · Bringing it together</p>
   <h2>It was never the model's fault</h2>
 
-  <p>Marketing budgets are planned together, follow demand and rarely leave their usual range. That leaves your MMM unsure in three separate ways. Its estimates have more variance than it lets on. They are biased by the demand it never saw. And it can't tell the shape of your response curves. This article measures all three at once.</p>
+  <p>Marketing budgets are planned together, follow demand and rarely leave their usual range. That leaves your MMM unsure in three separate ways. Its estimates move a long way from one refit to the next. They are biased by the demand it never saw. And it can't tell the shape of your response curves. This article measures all three at once.</p>
 
-  <p>Budget phasing goes after the cause, which is spend that carries too little information. It changes when each channel spends and keeps each channel's annual budget. On our scenario the Combined strategy cuts variance by 70% and bias by 45%. The saturation and adstock ranges narrow by 54% and 58%. It costs 3.41% of plan-year revenue. It holds from 5 to 15 channels, although the bias gain shrinks as channels are added. A Bayesian model doesn't get around any of this: priors can't create variation the data never had.</p>
+  <p>Budget phasing goes after the cause, which is spend that carries too little information. It changes when each channel spends and keeps each channel's annual budget. On our scenario the Combined strategy cuts variance by 70% and bias by 47%. The saturation and adstock ranges narrow by 54% and 58%. It costs 3.41% of the revenue the channels drive, about £0.9m here. It holds from 5 to 15 channels, although the bias gain shrinks as channels are added. A Bayesian model doesn't get around any of this: priors can't create variation the data never had.</p>
 
   <h3>What comes next</h3>
 
-  <p>This is a first version. Three things would make it more useful:</p>
+  <p>This is a first version. Four things would make it more useful:</p>
   <ul class="probs">
     <li><strong>Plug in your own MMM.</strong> Today the package refits its own simple MMM. The next step is to run the same checks with the model you already use, such as PyMC-Marketing, Meridian or Robyn. The inputs from section 1 could then come straight from its results.</li>
+    <li><strong>A strategy for each channel.</strong> Today one strategy is applied to every channel. But channels don't start in the same place. One may already have low variance and bias and need no phasing. Another may need the full Combined treatment. The next step is to recommend the lightest strategy that fixes each channel, so you only pay the cost where it buys something.</li>
     <li><strong>Keep phasing and re-plan.</strong> The schedule is set once for the year. A rolling version would re-plan each quarter from what was actually spent. It would aim the next quarter at the channels whose ranges are still widest.</li>
     <li><strong>Optimise benefit against cost.</strong> Today the strategy is picked on variance, bias and identifiability, and the cost is shown next to it. The next step is to put a £ value on better estimates: the extra revenue from a better budget allocation, minus the revenue phasing gives up. That gives each strategy a payback period.</li>
   </ul>
@@ -1118,39 +1132,6 @@ function el(tag, attrs, text) {
 function fmtGBP(vM) {
   if (vM < 1) return `£${Math.round(vM * 1000)}k`;
   return `£${vM.toFixed(2)}m`;
-}
-
-
-// Text measurement for layout. getComputedTextLength() is the obvious call
-// and it does NOT work here: these charts draw from an inline script before
-// the browser has laid the page out, so it returns 0 at draw time and the
-// correct width only afterwards, which silently collapses any layout built
-// on it. A detached canvas measures the same font with no layout dependency.
-const _measureCtx = document.createElement('canvas').getContext('2d');
-const FONT_STACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif";
-function textWidth(str, fontSize, weight) {
-  _measureCtx.font = `${weight || 400} ${fontSize}px ${FONT_STACK}`;
-  return _measureCtx.measureText(str).width;
-}
-
-// Lay out a horizontal legend from measured widths rather than a character
-// count. The old `label.length * 5.1` estimate was calibrated against a
-// 9.5-unit font; when FS.sub grew to 12 it ran "noisy but usable" into the
-// next swatch. Wraps to a new row past maxX.
-function legendRow(parent, items, x0, y, fontSize, maxX, rowGap) {
-  let x = x0, yy = y;
-  for (const it of items) {
-    const w = textWidth(it.label, fontSize);
-    if (maxX && x > x0 && x + 14 + w > maxX) { x = x0; yy += rowGap || 16; }
-    if (it.dash !== undefined) {
-      parent.appendChild(el('line', { x1: x, y1: yy - 3.5, x2: x + 11, y2: yy - 3.5, stroke: it.color, 'stroke-width': 2.4, ...(it.dash ? { 'stroke-dasharray': it.dash } : {}) }));
-    } else {
-      parent.appendChild(el('rect', { x, y: yy - 8, width: 9, height: 9, fill: it.color, rx: 2 }));
-    }
-    parent.appendChild(el('text', { x: x + 14, y: yy, 'font-size': fontSize, fill: '#6b7280' }, it.label));
-    x += 14 + w + 16;
-  }
-  return yy;
 }
 
 // ── Chart sizing ───────────────────────────────────────────────────────────
@@ -1380,10 +1361,10 @@ const BIAS_DATA = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c] }));
 // "believed revenue" in £ against a true-revenue dashed line (same units
 // as the variance chart), not a percentage. believed = true_revenue *
 // (1 + bias_pct/100); truth reuses the same true_revenue as PROBLEM_DATA.
-BIAS_DATA[0] = { ...BIAS_DATA[0], p10: 3.957, p90: 9.177, point: 6.545, truth: 4.625 };
-BIAS_DATA[1] = { ...BIAS_DATA[1], p10: 5.666, p90: 9.780, point: 7.747, truth: 5.987 };
-BIAS_DATA[2] = { ...BIAS_DATA[2], p10: 6.631, p90: 9.391, point: 8.044, truth: 7.394 };
-BIAS_DATA[3] = { ...BIAS_DATA[3], p10: 7.711, p90: 12.333, point: 9.984, truth: 7.621 };
+BIAS_DATA[0] = { ...BIAS_DATA[0], p10: 4.080, p90: 9.741, point: 6.900, truth: 4.625 };
+BIAS_DATA[1] = { ...BIAS_DATA[1], p10: 5.393, p90: 9.767, point: 7.614, truth: 5.987 };
+BIAS_DATA[2] = { ...BIAS_DATA[2], p10: 6.634, p90: 9.208, point: 7.953, truth: 7.394 };
+BIAS_DATA[3] = { ...BIAS_DATA[3], p10: 7.371, p90: 12.185, point: 9.847, truth: 7.621 };
 
 const ADSTOCK_DATA = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c] }));
 ADSTOCK_DATA[0] = { ...ADSTOCK_DATA[0], p10: 0.05, p90: 0.66, point: 0.45, truth: 0.50 };
@@ -1445,54 +1426,6 @@ chart('chartProblemAdstock', '0 0 700 210',
   () => drawForest('chartProblemAdstock', ADSTOCK_DATA, ADSTOCK_OPTS),
   () => drawForestNarrow('chartProblemAdstock', ADSTOCK_DATA, ADSTOCK_OPTS));
 
-// ── Chart: Cause (correlated spend time series) ─────────────────────────────
-function drawCause() {
-  const svg = document.getElementById('chartCause');
-  if (!svg) return;
-
-  const W = 700, H = 232;
-  const m = { top: 12, right: 30, bottom: 46, left: 76 };
-  const pw = W - m.left - m.right;
-  const ph = H - m.top - m.bottom;
-
-  const T = 52;
-  const maxV = 160000;
-
-  const scX = i => m.left + (i / (T - 1)) * pw;
-  const scY = v => m.top + ph - (v / maxV) * ph;
-  const pathD = data => data.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
-
-  const g = el('g', {});
-
-  const yTicks = [0, 50000, 100000, 150000];
-  for (const v of yTicks) {
-    const y = scY(v);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
-    g.appendChild(el('text', { x: m.left - 8, y: y + 4, 'text-anchor': 'end', 'font-size': FS.axis, fill: '#9ca3af' }, `£${v / 1000}k`));
-  }
-
-  const xTicks = [0, 12, 25, 38, 51];
-  for (const t of xTicks) {
-    const x = scX(t);
-    g.appendChild(el('line', { x1: x, y1: m.top + ph, x2: x, y2: m.top + ph + 5, stroke: '#d1d5db', 'stroke-width': 1 }));
-    g.appendChild(el('text', { x, y: m.top + ph + 16, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af' }, `Wk ${t + 1}`));
-  }
-
-  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-
-  g.appendChild(el('text', { x: m.left + pw / 2, y: m.top + ph + 32, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af' }, 'Week'));
-  g.appendChild(el('text', { x: 16, y: m.top + ph / 2, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af', transform: `rotate(-90 16 ${m.top + ph / 2})` }, 'Weekly spend (£k)'));
-
-  for (const key of CH_ORDER) {
-    g.appendChild(el('path', { d: pathD(PLAN[key]), fill: 'none', stroke: CH_COLOR[key], 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.85 }));
-  }
-
-  svg.appendChild(g);
-}
-
-
-
 // ── Chart: Impact (today / 1yr / 2yr forest plot, all-Blackout scenario) ────
 // Straight from notebooks/02_phaser_walkthrough.ipynb's blackout_impact(),
 // section "What does the reliability gain look like in £, and how fast does it
@@ -1526,10 +1459,10 @@ VARIANCE_IMPACT[3] = { ...VARIANCE_IMPACT[3], before: { p10: 5.795, p90: 9.351, 
 // Same fix as BIAS_DATA above: believed revenue (£m) vs. true revenue,
 // not % error -- matches _discovery_report.py's bias_svg exactly.
 const BIAS_IMPACT = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c], sub: `£${CH_SPEND[c].toFixed(1)}m spend` }));
-BIAS_IMPACT[0] = { ...BIAS_IMPACT[0], before: { p10: 3.957, p90: 9.177, point: 6.545 }, after: { p10: 4.767, p90: 7.269, point: 5.938 }, truth: 4.625 };
-BIAS_IMPACT[1] = { ...BIAS_IMPACT[1], before: { p10: 5.666, p90: 9.780, point: 7.747 }, after: { p10: 6.103, p90: 7.789, point: 6.923 }, truth: 5.987 };
-BIAS_IMPACT[2] = { ...BIAS_IMPACT[2], before: { p10: 6.631, p90: 9.391, point: 8.044 }, after: { p10: 7.399, p90: 8.440, point: 7.940 }, truth: 7.394 };
-BIAS_IMPACT[3] = { ...BIAS_IMPACT[3], before: { p10: 7.711, p90: 12.333, point: 9.984 }, after: { p10: 7.327, p90: 9.248, point: 8.339 }, truth: 7.621 };
+BIAS_IMPACT[0] = { ...BIAS_IMPACT[0], before: { p10: 4.080, p90: 9.741, point: 6.900 }, after: { p10: 4.882, p90: 7.056, point: 5.971 }, truth: 4.625 };
+BIAS_IMPACT[1] = { ...BIAS_IMPACT[1], before: { p10: 5.393, p90: 9.767, point: 7.614 }, after: { p10: 5.974, p90: 7.543, point: 6.758 }, truth: 5.987 };
+BIAS_IMPACT[2] = { ...BIAS_IMPACT[2], before: { p10: 6.634, p90: 9.208, point: 7.953 }, after: { p10: 7.456, p90: 8.615, point: 8.027 }, truth: 7.394 };
+BIAS_IMPACT[3] = { ...BIAS_IMPACT[3], before: { p10: 7.371, p90: 12.185, point: 9.847 }, after: { p10: 7.546, p90: 9.183, point: 8.369 }, truth: 7.621 };
 
 const SATURATION_IMPACT = CH_ORDER.map(c => ({ name: CH_NAME[c], color: CH_COLOR[c] }));
 SATURATION_IMPACT[0] = { ...SATURATION_IMPACT[0], sub: 'true 0.60', before: { p10: 0.20, p90: 1.00, point: 0.61 }, after: { p10: 0.31, p90: 0.90, point: 0.61 }, truth: 0.60 };
@@ -1682,7 +1615,6 @@ function drawSaturationImpactNarrow() { drawForestPairedNarrow('chartImpactSatur
 function drawAdstockImpact() { drawForestPaired('chartImpactAdstock', ADSTOCK_IMPACT, ADSTOCK_OPTS); }
 function drawAdstockImpactNarrow() { drawForestPairedNarrow('chartImpactAdstock', ADSTOCK_IMPACT, ADSTOCK_OPTS); }
 
-
 // ── Chart: Correlation matrix, before vs after phasing ─────────────────────
 // CORR_BEFORE/CORR_AFTER are already-fit numbers from DiscoveryReport itself
 // (results_['unphased'/winner_]['correlation']), not a live in-browser
@@ -1776,8 +1708,6 @@ function drawCorrMatrixPanels(svg, wide, mode) {
   svg.appendChild(g);
 }
 function drawCorrMatrix() { const svg = document.getElementById('chartCorr'); if (svg) drawCorrMatrixPanels(svg, true, 'pair'); }
-function drawCorrBefore() { const svg = document.getElementById('chartCorrBefore'); if (svg) drawCorrMatrixPanels(svg, true, 'before'); }
-
 
 // ── Chart: Per-channel lever sensitivity ───────────────────────────────────
 // From notebooks/01_scenario_walkthrough.ipynb section "5 · The algorithm"
@@ -1843,7 +1773,6 @@ function drawLever() {
 
   svg.appendChild(g);
 }
-
 
 // ── Chart: does the fix hold across correlation x channel count (FAQ) ──
 // Produced by notebooks/04_channel_scaling_walkthrough.ipynb, section "Does the
@@ -1933,73 +1862,6 @@ function drawGrid() {
   svg.appendChild(g);
 }
 
-
-// ── Chart: how fast the benefit arrives, by lever setting (FAQ) ───────────
-// From notebooks/03_time_to_benefit.ipynb section 3 (lever_table /
-// reduction_by_lever), reproduced with print statements for the exact
-// per-plan-length values the notebook only plots. Variance-only (no
-// saturation/adstock in this fit -- notebook 03 isolates timing on purpose),
-// same four-channel scenario, three levers run at full amplitude against a
-// growing plan period. Each point is that plan length's own max-CV reduction
-// vs its own unphased baseline (the unphased CV itself is redrawn per plan
-// length, so it is not perfectly flat -- see the notebook for the raw table).
-function drawWhen() {
-  const svg = document.getElementById('chartWhen');
-  if (!svg) return;
-  const W = 700, H = 270;
-  const m = { top: 16, right: 56, bottom: 56, left: 66 };
-  const pw = W - m.left - m.right, ph = H - m.top - m.bottom;
-  const weeks = [4, 13, 26, 52, 104, 208];
-  const ticks = [[4, '1 mo'], [13, '3 mo'], [26, '6 mo'], [52, '1 yr'], [104, '2 yr'], [208, '4 yr']];
-  const series = [
-    { name: '±80% (uniform)', color: '#9ca3af', v: [14.7, 25.1, 25.8, 48.5, 53.8, 68.7] },
-    { name: '±80% (edge, balanced)', color: '#2563eb', v: [16.2, 34.8, 53.4, 63.6, 69.3, 79.8] },
-    { name: 'Blackout', color: '#111827', v: [7.9, 21.6, 35.6, 53.2, 60.6, 74.1] },
-  ];
-  // Log-spaced x-axis: plan length doubles roughly every step (4 -> 13 -> 26
-  // -> 52 -> 104 -> 208), so a linear axis crams the first three ticks into
-  // a fifth of the plot width and their labels collide. Log spacing gives
-  // each step roughly equal room.
-  const xMin = 4, xMax = 208, yMax = 85;
-  const scX = w => m.left + (Math.log(w) - Math.log(xMin)) / (Math.log(xMax) - Math.log(xMin)) * pw;
-  const scY = v => m.top + ph - (v / yMax) * ph;
-  const g = el('g', {});
-  for (let v = 0; v <= 80; v += 20) {
-    const y = scY(v);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
-    g.appendChild(el('text', { x: m.left - 8, y: y + 3, 'text-anchor': 'end', 'font-size': FS.axis, fill: '#9ca3af' }, `${v}%`));
-  }
-  for (const [w, lbl] of ticks) {
-    g.appendChild(el('text', { x: scX(w), y: m.top + ph + 18, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af' }, lbl));
-  }
-  // Threshold reference lines used by the caption's "weeks to 30%/50%" claims.
-  for (const ref of [30, 50]) {
-    const y = scY(ref);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#d1d5db', 'stroke-width': 1, 'stroke-dasharray': '3,3' }));
-    g.appendChild(el('text', { x: m.left + 4, y: y - 4, 'font-size': FS.sub, fill: '#9ca3af' }, `${ref}%`));
-  }
-  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-  const endLabels = [];
-  for (const sr of series) {
-    const d = sr.v.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(weeks[i]).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
-    g.appendChild(el('path', { d, fill: 'none', stroke: sr.color, 'stroke-width': 2.25, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
-    sr.v.forEach((v, i) => g.appendChild(el('circle', { cx: scX(weeks[i]), cy: scY(v), r: 2.5, fill: sr.color })));
-    // Value only -- the series name is already in the HTML legend above the
-    // chart, and the full name plus value ran well past the right margin.
-    endLabels.push({ y: scY(sr.v[sr.v.length - 1]), x: scX(weeks[weeks.length - 1]) + 8, text: `${sr.v[sr.v.length - 1].toFixed(1)}%`, color: sr.color });
-  }
-  endLabels.sort((a, b) => a.y - b.y);
-  for (let i = 1; i < endLabels.length; i++) {
-    if (endLabels[i].y - endLabels[i - 1].y < 12) endLabels[i].y = endLabels[i - 1].y + 12;
-  }
-  endLabels.forEach(l => g.appendChild(el('text', { x: l.x, y: l.y + 3.5, 'font-size': FS.val, 'font-weight': '700', fill: l.color }, l.text)));
-  g.appendChild(el('text', { x: m.left + pw / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af' }, 'Plan length the lever has been running'));
-  g.appendChild(el('text', { x: 16, y: m.top + ph / 2, 'text-anchor': 'middle', 'font-size': FS.axis, fill: '#9ca3af', transform: `rotate(-90 16 ${m.top + ph / 2})` }, 'Max-CV reduction vs unphased'));
-  svg.appendChild(g);
-}
-
-
 // ── Chart: what correlation costs you ──────────────────────────────────────
 // The example scenario
 // re-run at correlation 0.1..0.9, each channel's spend spread held at the
@@ -2036,7 +1898,6 @@ function drawCorrCost() {
   svg.appendChild(g);
 }
 
-
 // Scrollspy: keep the sticky section nav's "active" tab in sync with whichever
 // section is actually in view, rather than leaving it permanently on the first
 // link (the nav didn't need this while it scrolled out of sight with the page;
@@ -2068,7 +1929,6 @@ function drawCorrCost() {
   sections.forEach((s) => observer.observe(s));
 })();
 
-
 // ── Narrow-screen renderers ────────────────────────────────────────────────
 // Each mirrors its wide counterpart's data exactly and differs only in layout:
 // a ~340-unit coordinate space so FSN lands near 12px, thinned tick labels,
@@ -2076,35 +1936,7 @@ function drawCorrCost() {
 // got. Anything dropped here (line end-labels, mainly) is already named by the
 // figure's HTML legend, which is real text and does not scale with the viewBox.
 
-function drawCauseNarrow(svg) {
-  const W = 340, H = 210;
-  const m = { top: 8, right: 8, bottom: 40, left: 44 };
-  const pw = W - m.left - m.right, ph = H - m.top - m.bottom;
-  const T = 52, maxV = 160000;
-  const scX = i => m.left + (i / (T - 1)) * pw;
-  const scY = v => m.top + ph - (v / maxV) * ph;
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  const g = el('g', {});
-  for (const v of [0, 80000, 160000]) {
-    const y = scY(v);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
-    g.appendChild(el('text', { x: m.left - 6, y: y + 3, 'text-anchor': 'end', 'font-size': FSN.axis, fill: '#9ca3af' }, `£${v / 1000}k`));
-  }
-  for (const [i, lbl] of [[0, 'Wk 1'], [25, 'Wk 26'], [51, 'Wk 52']]) {
-    const a = i === 0 ? 'start' : i === 51 ? 'end' : 'middle';
-    g.appendChild(el('text', { x: scX(i), y: m.top + ph + 16, 'text-anchor': a, 'font-size': FSN.axis, fill: '#9ca3af' }, lbl));
-  }
-  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-  const pathD = d => d.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(i).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
-  for (const key of CH_ORDER) {
-    g.appendChild(el('path', { d: pathD(PLAN[key]), fill: 'none', stroke: CH_COLOR[key], 'stroke-width': 1.6, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.85 }));
-  }
-  g.appendChild(el('text', { x: m.left + pw / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': FSN.axis, fill: '#9ca3af' }, 'Weekly spend (£k)'));
-  svg.appendChild(g);
-}
-
 function drawCorrMatrixNarrow(svg) { drawCorrMatrixPanels(svg, false, 'pair'); }
-function drawCorrBeforeNarrow(svg) { drawCorrMatrixPanels(svg, false, 'before'); }
 
 function drawLeverNarrow(svg) {
   const W = 340, H = 230;
@@ -2145,51 +1977,6 @@ function drawLeverNarrow(svg) {
   svg.appendChild(g);
 }
 
-function drawWhenNarrow(svg) {
-  const W = 340, H = 300;
-  // Top margin holds a three-row legend: the wide layout's line end-labels
-  // need a right gutter there is no room for at this width.
-  const m = { top: 62, right: 10, bottom: 44, left: 38 };
-  const pw = W - m.left - m.right, ph = H - m.top - m.bottom;
-  const weeks = [4, 13, 26, 52, 104, 208];
-  const ticks = [[4, '1 mo'], [13, '3 mo'], [26, '6 mo'], [52, '1 yr'], [104, '2 yr'], [208, '4 yr']];
-  const series = [
-    { name: '±80% (uniform)', color: '#9ca3af', v: [14.7, 25.1, 25.8, 48.5, 53.8, 68.7] },
-    { name: '±80% (edge, balanced)', color: '#2563eb', v: [16.2, 34.8, 53.4, 63.6, 69.3, 79.8] },
-    { name: 'Blackout', color: '#111827', v: [7.9, 21.6, 35.6, 53.2, 60.6, 74.1] },
-  ];
-  const xMin = 4, xMax = 208, yMax = 85;
-  const scX = w => m.left + (Math.log(w) - Math.log(xMin)) / (Math.log(xMax) - Math.log(xMin)) * pw;
-  const scY = v => m.top + ph - (v / yMax) * ph;
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  const g = el('g', {});
-  legendRow(g, series.map(sr => ({ label: sr.name, color: sr.color })), 2, 12, FSN.sub, W - 4, 16);
-  for (let v = 0; v <= 80; v += 20) {
-    const y = scY(v);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#e5e7eb', 'stroke-width': 1 }));
-    g.appendChild(el('text', { x: m.left - 6, y: y + 3, 'text-anchor': 'end', 'font-size': FSN.axis, fill: '#9ca3af' }, `${v}%`));
-  }
-  // Threshold reference lines used by the caption's "weeks to 30%/50%" claims.
-  for (const ref of [30, 50]) {
-    const y = scY(ref);
-    g.appendChild(el('line', { x1: m.left, y1: y, x2: m.left + pw, y2: y, stroke: '#d1d5db', 'stroke-width': 1, 'stroke-dasharray': '3,3' }));
-    g.appendChild(el('text', { x: m.left + pw - 4, y: y - 3, 'text-anchor': 'end', 'font-size': FSN.sub, fill: '#9ca3af' }, `${ref}%`));
-  }
-  ticks.forEach(([w, lbl], i) => {
-    const a = i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle';
-    g.appendChild(el('text', { x: scX(w), y: m.top + ph + 16, 'text-anchor': a, 'font-size': FSN.axis, fill: '#9ca3af' }, lbl));
-  });
-  g.appendChild(el('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-  g.appendChild(el('line', { x1: m.left, y1: m.top + ph, x2: m.left + pw, y2: m.top + ph, stroke: '#d1d5db', 'stroke-width': 1 }));
-  for (const sr of series) {
-    const d = sr.v.map((v, i) => `${i === 0 ? 'M' : 'L'}${scX(weeks[i]).toFixed(1)},${scY(v).toFixed(1)}`).join(' ');
-    g.appendChild(el('path', { d, fill: 'none', stroke: sr.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
-    sr.v.forEach((v, i) => g.appendChild(el('circle', { cx: scX(weeks[i]), cy: scY(v), r: 2.2, fill: sr.color })));
-  }
-  g.appendChild(el('text', { x: m.left + pw / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': FSN.axis, fill: '#9ca3af' }, 'Plan length the lever has been running'));
-  svg.appendChild(g);
-}
-
 function drawCorrCostNarrow(svg) {
   const W = 340, H = 300;
   const m = { top: 24, right: 8, bottom: 62, left: 40 };
@@ -2220,12 +2007,9 @@ function drawCorrCostNarrow(svg) {
 // demand_spend_corr swept (the 0.9 request is capped at 0.88, the most the
 // spend factor reaches at 0.7). Adstock: IdentifiabilityDiagnostic, 50 draws,
 // demand built once at 0.7. Unphased, report defaults.
-const CORR_BIAS = [{ x: '0.1', v: 3.3 }, { x: '0.2', v: 7.5 }, { x: '0.3', v: 12.4 }, { x: '0.4', v: 18.2 }, { x: '0.5', v: 25.5 }, { x: '0.6', v: 35.3 }, { x: '0.7', v: 49.1 }, { x: '0.8', v: 70.0 }, { x: '0.88', v: 89.9 }];
-const CORR_ADSTOCK = [{ x: '0.1', v: 0.363 }, { x: '0.2', v: 0.396 }, { x: '0.3', v: 0.423 }, { x: '0.4', v: 0.453 }, { x: '0.5', v: 0.483 }, { x: '0.6', v: 0.513 }, { x: '0.7', v: 0.513 }, { x: '0.8', v: 0.543 }, { x: '0.9', v: 0.543 }];
+const CORR_BIAS = [{ x: '0.1', v: 15.2 }, { x: '0.2', v: 19.2 }, { x: '0.3', v: 23.7 }, { x: '0.4', v: 28.9 }, { x: '0.5', v: 35.4 }, { x: '0.6', v: 43.8 }, { x: '0.7', v: 55.6 }, { x: '0.8', v: 73.6 }, { x: '0.88', v: 90.8 }];
 const BIAS_SWEEP = { data: CORR_BIAS, color: CH_COLOR.tv, yMax: 100, yStep: 25, fmt: v => `${Math.round(v)}%`,
   yTitle: "How far TV's estimate is too high", xTitle: 'Link between spend and demand' };
-const ADSTOCK_SWEEP = { data: CORR_ADSTOCK, color: CH_COLOR.meta, yMax: 0.9, yStep: 0.3, fmt: v => v.toFixed(2),
-  yTitle: "Width of Meta's adstock range", xTitle: 'Correlation between channels' };
 function drawSweepBars(svg, c) {
   const W = 700, H = 300;
   const m = { top: 24, right: 24, bottom: 56, left: 82 };
@@ -2297,7 +2081,6 @@ function drawPhasePanelsAt(svg, W, H, cols, fsTitle) {
 function drawPhasePanels(svg) { drawPhasePanelsAt(svg, 700, 360, 3, FS.sub); }
 function drawPhasePanelsNarrow(svg) { svg.setAttribute('viewBox', '0 0 340 480'); drawPhasePanelsAt(svg, 340, 480, 2, FSN.sub); }
 
-
 // Time to benefit (section 5). DiscoveryReport backphase view on the example
 // scenario: the winner run over 1, 2 or all 3
 // years of the 3-year window, % improvement vs unphased.
@@ -2305,7 +2088,7 @@ const TTB = [
   { name: 'Variance', color: '#111827', v: [0, 70.1, 78.8, 82.4] },
   { name: 'Saturation', color: '#0d9488', v: [0, 54.4, 70.6, 75.1] },
   { name: 'Adstock', color: '#92400e', v: [0, 58.0, 69.8, 73.1] },
-  { name: 'Bias', color: '#7c3aed', v: [0, 45.1, 64.3, 71.1] },
+  { name: 'Bias', color: '#7c3aed', v: [0, 46.7, 64.0, 69.4] },
 ];
 function drawTTBAt(svg, W, H, m, fs, fsLab, xTitleY, xLabs) {
   const pw = W - m.left - m.right, ph = H - m.top - m.bottom;
@@ -2320,6 +2103,8 @@ function drawTTBAt(svg, W, H, m, fs, fsLab, xTitleY, xLabs) {
     g.appendChild(el('text', { x: scX(i), y: m.top + ph + 18, 'text-anchor': anchor, 'font-size': fs, fill: '#9ca3af' }, t));
   });
   g.appendChild(el('text', { x: m.left + pw / 2, y: xTitleY, 'text-anchor': 'middle', 'font-size': fs, fill: '#9ca3af' }, 'Years of the three-year window phased'));
+  const yTitleX = fs * 0.5 + 6;
+  g.appendChild(el('text', { x: yTitleX, y: m.top + ph / 2, 'text-anchor': 'middle', 'font-size': fs, fill: '#9ca3af', transform: `rotate(-90 ${yTitleX} ${m.top + ph / 2})` }, 'Improvement on the unphased plan'));
   const labY = TTB.map(sr => scY(sr.v[3]));
   for (let k = 1; k < labY.length; k++) if (labY[k] - labY[k - 1] < fsLab + 2) labY[k] = labY[k - 1] + fsLab + 2;
   TTB.forEach((sr, si) => {
@@ -2330,8 +2115,8 @@ function drawTTBAt(svg, W, H, m, fs, fsLab, xTitleY, xLabs) {
   });
   svg.appendChild(g);
 }
-function drawTTB(svg) { drawTTBAt(svg, 700, 300, { top: 16, right: 150, bottom: 52, left: 56 }, FS.axis, FS.val, 292, ['Unphased', '1 year', '2 years', '3 years']); }
-function drawTTBNarrow(svg) { svg.setAttribute('viewBox', '0 0 340 300'); drawTTBAt(svg, 340, 300, { top: 16, right: 104, bottom: 52, left: 40 }, FSN.sub, FSN.sub, 292, ['None', '1', '2', '3']); }
+function drawTTB(svg) { drawTTBAt(svg, 700, 300, { top: 16, right: 150, bottom: 52, left: 70 }, FS.axis, FS.val, 292, ['Unphased', '1 year', '2 years', '3 years']); }
+function drawTTBNarrow(svg) { svg.setAttribute('viewBox', '0 0 340 300'); drawTTBAt(svg, 340, 300, { top: 16, right: 104, bottom: 52, left: 54 }, FSN.sub, FSN.sub, 292, ['None', '1', '2', '3']); }
 
 // Scaling up (section 6). DiscoveryReport default sweep at 5/10/15 channels on the example setup,
 // noise held at GBP 23,107 (2% of the 4-channel example's sales) at every count.
@@ -2344,7 +2129,7 @@ const SCALE_SERIES = [
   ['peakmonth', '#2563eb', 2.2], ['darkmonth', '#b45309', 2.2], ['combined', '#111827', 2.4],
 ];
 function drawScaleAt(svg, W, H, fs, fsTitle, xLabs) {
-  const cols = 2, gapX = W > 400 ? 44 : 18, gapY = 30, left = W > 400 ? 44 : 34, top = 4, bottom = 34;
+  const cols = 2, gapX = W > 400 ? 44 : 18, gapY = 30, left = W > 400 ? 60 : 50, top = 4, bottom = 34;
   const pw = (W - left - gapX * (cols - 1) - 6) / cols, ph = (H - top - bottom - gapY) / 2 - 24;
   const yMin = -20, yMax = 80;
   const g = el('g', {});
@@ -2366,6 +2151,8 @@ function drawScaleAt(svg, W, H, fs, fsTitle, xLabs) {
     });
   });
   g.appendChild(el('text', { x: left + (W - left) / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': fs, fill: '#9ca3af' }, 'Number of channels'));
+  const yTitleX = fs * 0.5 + 6, yTitleY = top + (H - top - bottom) / 2;
+  g.appendChild(el('text', { x: yTitleX, y: yTitleY, 'text-anchor': 'middle', 'font-size': fs, fill: '#9ca3af', transform: `rotate(-90 ${yTitleX} ${yTitleY})` }, 'Improvement on the unphased plan'));
   svg.appendChild(g);
 }
 function drawScale(svg) { drawScaleAt(svg, 700, 460, FS.axis, FS.sub + 1, ['5', '10', '15']); }
@@ -2373,7 +2160,7 @@ function drawScaleNarrow(svg) { svg.setAttribute('viewBox', '0 0 340 420'); draw
 
 // Section 5 opener: the winner's phased spend for every channel (example
 // scenario, the report's representative schedule, seed 0). From
-// Claude outputs/regen_v4/winner_spend.py.
+// tools/overview_data/winner_spend.py.
 const WINNER_SPEND = {"dates":["2027-01-04","2027-01-11","2027-01-18","2027-01-25","2027-02-01","2027-02-08","2027-02-15","2027-02-22","2027-03-01","2027-03-08","2027-03-15","2027-03-22","2027-03-29","2027-04-05","2027-04-12","2027-04-19","2027-04-26","2027-05-03","2027-05-10","2027-05-17","2027-05-24","2027-05-31","2027-06-07","2027-06-14","2027-06-21","2027-06-28","2027-07-05","2027-07-12","2027-07-19","2027-07-26","2027-08-02","2027-08-09","2027-08-16","2027-08-23","2027-08-30","2027-09-06","2027-09-13","2027-09-20","2027-09-27","2027-10-04","2027-10-11","2027-10-18","2027-10-25","2027-11-01","2027-11-08","2027-11-15","2027-11-22","2027-11-29","2027-12-06","2027-12-13","2027-12-20","2027-12-27"],"plan":{"tv":[112208,121092,114950,113342,96973,111347,82788,74101,74694,96143,85439,83740,102874,104746,98453,53741,78587,76259,79160,93473,128072,94526,82354,103315,93391,96220,87415,97685,107600,79665,86055,118412,122623,106040,104260,117065,109448,121818,149335,130578,141922,122077,129840,143278,104367,127168,126393,131526,158384,145012,120030,139281],"meta":[81617,76694,104549,70968,76630,65382,79092,67330,68084,70360,86363,64985,67874,61183,86305,68771,63118,68620,100774,78053,91553,83481,73866,68822,71081,72499,55610,103713,90514,84659,83356,75405,98014,87670,97920,80996,102524,119346,97943,109492,100336,109596,109235,99455,90899,106604,101746,94807,113014,111273,100999,111027],"search_generic":[119078,93740,85626,106064,69836,48083,51912,48936,69386,80695,53880,85105,62956,74666,77755,75899,73379,74415,65035,81841,92826,88008,99645,86261,81497,92315,79672,65612,59438,96053,90931,91479,85420,92891,111698,97909,87854,95466,114389,90933,74639,76217,85605,106700,97262,96352,88716,99756,106964,101490,107321,104627],"tiktok":[108100,62476,85866,71444,81246,70097,74232,69077,68849,80839,61527,83480,72862,75886,88484,82695,92787,50635,66841,88577,72103,77120,90759,84214,64915,80436,83641,78940,80446,84907,70619,84401,79194,93370,97428,85854,104824,103197,100374,108764,96917,95953,99516,98268,107609,80476,98287,81089,103364,109308,109512,121346]},"phased":{"tv":[73398,118813,112787,74139,211981,243401,180974,161983,49030,94663,70104,82451,67528,68075,95978,34927,76612,48742,50597,89617,122789,75522,81964,68550,61966,95764,57990,97205,71380,79273,0,0,0,0,104260,292662,273621,304545,373337,86481,93994,121276,128989,118345,103446,84030,83519,130365,154320,94195,77967,135708],"meta":[83726,52451,107251,48534,80670,68830,55508,47254,68084,0,0,0,0,43292,61067,72990,66991,47592,104837,81200,63496,72372,184665,172055,177703,181249,60308,74984,65442,91812,86765,52326,102023,60837,84937,56667,107593,83497,102786,76924,105737,115496,76743,87016,63624,74616,106824,99539,188021,185125,168033,184715],"search_generic":[215548,169683,154996,191991,63303,43585,31370,29572,43515,63259,50686,53373,59223,45807,71554,46563,67527,74415,0,0,0,0,61569,53299,75534,85560,73847,60814,36728,59353,83068,55713,65028,56573,102039,59366,53269,86828,104038,56045,69003,46975,79141,266750,243156,240879,221789,249390,98340,62205,65779,96192],"tiktok":[102141,59032,54088,45004,76542,44025,69934,43385,65629,51373,48875,79576,46303,72759,84838,52858,59309,49109,64826,71589,46620,49863,86937,53778,62181,51366,181745,171530,174802,184497,44477,53157,74817,88209,76702,54075,99036,64999,94832,69420,61859,91865,95277,0,0,0,0,81089,258409,273270,273780,303364]}};
 function drawWinnerSpendAt(svg, W, H, cols, fs, fsTitle) {
   const D = WINNER_SPEND, chs = ['tv', 'meta', 'search_generic', 'tiktok'];

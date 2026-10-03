@@ -1,14 +1,17 @@
 # BudgetPhaser, Blackout, Redistribute and MonthStep
 
 `BudgetPhaser` recommends the weekly spend phasing needed to reduce
-marginal-return uncertainty, while preserving monthly totals exactly.
-`Blackout` is one of the deviation shapes it accepts per channel — a hard
-on/off switch instead of a continuous weekly range. `Redistribute` is the
-third: a round-robin blackout whose freed budget moves to a recipient
-month, with an edge layer on top. It preserves annual totals exactly, but
-not monthly ones. `MonthStep` is the fourth: every whole month's spend is
-scaled up or down by a fixed step, with signs from orthogonal Hadamard
-columns across channels; it also preserves annual totals, not monthly ones.
+marginal-return uncertainty. Each channel takes one of four shapes:
+
+- a continuous weekly range (a float), which keeps every month's total;
+- `Blackout`, a hard on/off switch, which also keeps every month's total;
+- `Redistribute`, a dark month whose freed budget moves to another month,
+  with an optional peak month and a light weekly nudge on top;
+- `MonthStep`, every whole month scaled up or down by a fixed step, with
+  signs from orthogonal Hadamard columns across channels.
+
+`Redistribute` and `MonthStep` keep each channel's annual total, not its
+monthly ones.
 
 ::: how_wrong_is_your_mmm.BudgetPhaser
 

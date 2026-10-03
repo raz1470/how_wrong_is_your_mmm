@@ -1,0 +1,3198 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Collinearity diagnostics and budget phasing for Marketing Mix Models">
+      
+      
+      
+        <link rel="canonical" href="https://raz1470.github.io/how_wrong_is_your_mmm/api/api/discovery_report/">
+      
+      
+        <link rel="prev" href="../phaser/">
+      
+      
+        <link rel="next" href="../dgp/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>DiscoveryReport - how_wrong_is_your_mmm</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#discoveryreport" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="how_wrong_is_your_mmm" class="md-header__button md-logo" aria-label="how_wrong_is_your_mmm" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            how_wrong_is_your_mmm
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              DiscoveryReport
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/raz1470/how_wrong_is_your_mmm" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    raz1470/how_wrong_is_your_mmm
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="how_wrong_is_your_mmm" class="md-nav__button md-logo" aria-label="how_wrong_is_your_mmm" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    how_wrong_is_your_mmm
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/raz1470/how_wrong_is_your_mmm" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    raz1470/how_wrong_is_your_mmm
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../diagnostic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagnostic
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../identifiability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Identifiability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../phaser/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Phaser
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DiscoveryReport
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DiscoveryReport
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how_wrong_is_your_mmm.DiscoveryReport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DiscoveryReport
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DiscoveryReport">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how_wrong_is_your_mmm.DiscoveryReport.fit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how_wrong_is_your_mmm.DiscoveryReport.schedule_csv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        schedule_csv
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how_wrong_is_your_mmm.DiscoveryReport.summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how_wrong_is_your_mmm.DiscoveryReport.growth_readout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        growth_readout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how_wrong_is_your_mmm.DiscoveryReport.to_html" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        to_html
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dgp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DGP (simulation)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mmm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OLS fitting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how_wrong_is_your_mmm.DiscoveryReport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DiscoveryReport
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DiscoveryReport">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how_wrong_is_your_mmm.DiscoveryReport.fit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how_wrong_is_your_mmm.DiscoveryReport.schedule_csv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        schedule_csv
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how_wrong_is_your_mmm.DiscoveryReport.summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how_wrong_is_your_mmm.DiscoveryReport.growth_readout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        growth_readout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how_wrong_is_your_mmm.DiscoveryReport.to_html" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        to_html
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="discoveryreport">DiscoveryReport<a class="headerlink" href="#discoveryreport" title="Permanent link">&para;</a></h1>
+<p>Sweeps candidate phasing strategies (or pins one directly, with per-channel
+overrides) and packages <code>CollinearityDiagnostic</code> + <code>IdentifiabilityDiagnostic</code>
+output into a single, client-ready HTML report — the impact on variance,
+bias and identifiability, and the recommended weekly schedule as an
+exportable CSV. No code required to read it.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="how_wrong_is_your_mmm.DiscoveryReport" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">DiscoveryReport</span>
+
+
+<a href="#how_wrong_is_your_mmm.DiscoveryReport" class="headerlink" title="Permanent link">&para;</a></h2>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">DiscoveryReport</span><span class="p">(</span>
+    <span class="n">history_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">plan_df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">true_marginal_returns</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">baseline_share</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span>
+    <span class="n">baseline_cv</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+    <span class="n">demand_proxy_quality</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span><span class="p">,</span>
+    <span class="n">saturation</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">adstock</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+    <span class="n">revenue_noise_pct</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
+    <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">levers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">strategy_pct</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="o">|</span> <span class="n">Blackout</span>
+    <span class="o">|</span> <span class="n">Redistribute</span>
+    <span class="o">|</span> <span class="n">MonthStep</span>
+    <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">strategy_nudge_shape</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;edge&quot;</span><span class="p">,</span>
+    <span class="n">strategy_balanced</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">channel_constraints</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span>
+        <span class="nb">str</span><span class="p">,</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Blackout</span> <span class="o">|</span> <span class="n">Redistribute</span> <span class="o">|</span> <span class="n">MonthStep</span>
+    <span class="p">]</span>
+    <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">client_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="n">plan_year</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">demand_process</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;trend&quot;</span><span class="p">,</span>
+    <span class="n">backphase_years</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">demand_spend_corr</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_DEMAND_SPEND_CORR</span><span class="p">,</span>
+    <span class="n">demand</span><span class="p">:</span> <span class="n">ndarray</span> <span class="o">|</span> <span class="n">Series</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Sweep candidate phasing strategies and report their impact on all
+three reliability problems this package diagnoses.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>history_df</code>
+            </td>
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Same shape BudgetPhaser/CollinearityDiagnostic expect: weekly
+DatetimeIndex, one column per channel, matching columns in both.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>plan_df</code>
+            </td>
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Same shape BudgetPhaser/CollinearityDiagnostic expect: weekly
+DatetimeIndex, one column per channel, matching columns in both.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>true_marginal_returns</code>
+            </td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="float">float</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Dict mapping channel to a plausible marginal return (see
+CollinearityDiagnostic's own docstring for why there's no safe
+universal default). Defaults to the package's illustrative
+0.5/1.0/1.5, which only matches history_df/plan_df named
+tv/meta/search.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>baseline_share</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Forwarded to calibrate_baseline() to derive base_sales and
+demand_coef from ROI + spend, rather than supplying either
+directly (see calibrate_baseline's own docstring). baseline_cv
+defaults to 0.05, NOT calibrate_baseline's own 0.0 -- a flat
+baseline creates no omitted-variable bias at all, which would
+make the bias section have nothing to show. Set it from your own
+MMM's baseline decomposition if you have one.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.7</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>baseline_cv</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Forwarded to calibrate_baseline() to derive base_sales and
+demand_coef from ROI + spend, rather than supplying either
+directly (see calibrate_baseline's own docstring). baseline_cv
+defaults to 0.05, NOT calibrate_baseline's own 0.0 -- a flat
+baseline creates no omitted-variable bias at all, which would
+make the bias section have nothing to show. Set it from your own
+MMM's baseline decomposition if you have one.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.7</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>demand_proxy_quality</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The bias section's client-supplied plausible proxy quality, in
+(0, 1] -- forwarded to CollinearityDiagnostic's <code>controls</code> as a
+float (see that class's docstring: builds a measurement-error
+proxy at this quality from the report's own demand series).
+1.0 means an almost-perfect proxy (little bias left to show);
+lower values are more pessimistic about what you can actually
+control for in practice. Default 0.8.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.8</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>saturation</code>
+            </td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="float">float</span>] | <span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The plausible saturation exponent b in (0, 1] (1.0 = linear,
+default) and adstock decay lambda in [0, 1) (0.0 = no carryover,
+default) to assume PER CHANNEL -- either a dict covering every
+channel in history_df/plan_df, or a single float that broadcasts
+to every channel. Each channel
+gets its own value because IdentifiabilityDiagnostic's grid search
+is now per-channel too: a channel's OWN spend pattern determines
+how well its OWN curvature can be pinned down, which differs by
+channel even when every channel shares the same assumed curvature.</p>
+              </div>
+            </td>
+            <td>
+                  <code>1.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>adstock</code>
+            </td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="float">float</span>] | <span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The plausible saturation exponent b in (0, 1] (1.0 = linear,
+default) and adstock decay lambda in [0, 1) (0.0 = no carryover,
+default) to assume PER CHANNEL -- either a dict covering every
+channel in history_df/plan_df, or a single float that broadcasts
+to every channel. Each channel
+gets its own value because IdentifiabilityDiagnostic's grid search
+is now per-channel too: a channel's OWN spend pattern determines
+how well its OWN curvature can be pinned down, which differs by
+channel even when every channel shares the same assumed curvature.</p>
+              </div>
+            </td>
+            <td>
+                  <code>1.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>revenue_noise_pct</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Weekly sales noise sd as a fraction of average weekly sales (the
+calibrated total from calibrate_baseline). Default 0.02 (2%).
+This is pure noise: week-to-week variation that neither the media
+nor demand explains. Demand, including the part the proxy misses,
+is modelled separately (baseline_cv, demand_proxy_quality), so
+this should be smaller than a real MMM's residual sd, which
+contains both. Resolved to GBP once, in <strong>init</strong>, and stored on
+revenue_noise_std. Variance CV scales about linearly with it. Bias
+barely depends on it.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.02</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>revenue_noise_std</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional GBP override for the weekly noise sd. When set,
+revenue_noise_pct is ignored. Either way the resolved GBP value is
+forwarded to every internal
+CollinearityDiagnostic/IdentifiabilityDiagnostic.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>levers</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span>[<span title="tuple">tuple</span>[<span title="str">str</span>, <span title="dict">dict</span>, <span title="str">str</span>, <span title="bool">bool</span>]] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The candidate strategies to sweep, as a list of
+(label, per-channel max_weekly_deviation_pct spec, nudge_shape,
+balance_signs) tuples. Defaults to unphased, then +/-20% at two
+nudge shapes (uniform, unbalanced -- vs edge, balanced), then the
+Redistribute family (round-robin blackout + recipient month + edge
+layer), plain and with a 2.5x high month, and the MonthStep family
+(month-level Hadamard steps), each at +/-20%, then the original
+single-week Blackout once a quarter -- 7 candidates total, see
+_default_levers. Higher intensities and Blackout's stronger
+settings are pinnable (strategy_pct) or passable here, but are not
+swept by default. notebooks/05_strategy_comparison.ipynb
+is the live one now). The first entry is expected to be the
+unphased baseline every other candidate is compared against; pass
+your own list to add or narrow candidates, keeping an unphased
+baseline entry first.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>strategy_pct</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span> | <a class="autorefs autorefs-internal" title="Blackout (how_wrong_is_your_mmm._phaser.Blackout)" href="../phaser/#how_wrong_is_your_mmm.Blackout">Blackout</a> | <a class="autorefs autorefs-internal" title="Redistribute (how_wrong_is_your_mmm._phaser.Redistribute)" href="../phaser/#how_wrong_is_your_mmm.Redistribute">Redistribute</a> | <a class="autorefs autorefs-internal" title="MonthStep (how_wrong_is_your_mmm._phaser.MonthStep)" href="../phaser/#how_wrong_is_your_mmm.MonthStep">MonthStep</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Pin a single strategy instead of sweeping for one.
+strategy_pct is the same per-channel spec <em>default_levers uses for
+one candidate: a float (symmetric +/-X% for every channel), a
+Blackout, a Redistribute (its edge_cap_pct is the intensity;
+strategy_nudge_shape and strategy_balanced are ignored for it --
+the edge layer is always edge, balanced) or a MonthStep (its
+step_pct is the intensity; the nudge shape and balance are ignored
+too). Redistribute and MonthStep move budget between months, so
+only annual totals are preserved. When set, this exact strategy is
+added to the sweep as one more candidate (labelled "Pinned: ...") and used directly as
+self.winner</em> -- _pick_winner's dominance check never runs, so
+Sections 1-4, the Appendix's headline callouts and schedule_csv()
+are all built from the strategy you chose, not one the sweep
+picked. Left at the default (None), behaviour is unchanged: the
+sweep runs and picks a winner exactly as before.
+strategy_nudge_shape ("uniform" or "edge") and strategy_balanced
+control the pinned strategy's own shape, same meaning as every
+other lever's nudge_shape/balance_signs. Ignored when strategy_pct
+is None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>strategy_nudge_shape</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span> | <a class="autorefs autorefs-internal" title="Blackout (how_wrong_is_your_mmm._phaser.Blackout)" href="../phaser/#how_wrong_is_your_mmm.Blackout">Blackout</a> | <a class="autorefs autorefs-internal" title="Redistribute (how_wrong_is_your_mmm._phaser.Redistribute)" href="../phaser/#how_wrong_is_your_mmm.Redistribute">Redistribute</a> | <a class="autorefs autorefs-internal" title="MonthStep (how_wrong_is_your_mmm._phaser.MonthStep)" href="../phaser/#how_wrong_is_your_mmm.MonthStep">MonthStep</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Pin a single strategy instead of sweeping for one.
+strategy_pct is the same per-channel spec <em>default_levers uses for
+one candidate: a float (symmetric +/-X% for every channel), a
+Blackout, a Redistribute (its edge_cap_pct is the intensity;
+strategy_nudge_shape and strategy_balanced are ignored for it --
+the edge layer is always edge, balanced) or a MonthStep (its
+step_pct is the intensity; the nudge shape and balance are ignored
+too). Redistribute and MonthStep move budget between months, so
+only annual totals are preserved. When set, this exact strategy is
+added to the sweep as one more candidate (labelled "Pinned: ...") and used directly as
+self.winner</em> -- _pick_winner's dominance check never runs, so
+Sections 1-4, the Appendix's headline callouts and schedule_csv()
+are all built from the strategy you chose, not one the sweep
+picked. Left at the default (None), behaviour is unchanged: the
+sweep runs and picks a winner exactly as before.
+strategy_nudge_shape ("uniform" or "edge") and strategy_balanced
+control the pinned strategy's own shape, same meaning as every
+other lever's nudge_shape/balance_signs. Ignored when strategy_pct
+is None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>strategy_balanced</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span> | <a class="autorefs autorefs-internal" title="Blackout (how_wrong_is_your_mmm._phaser.Blackout)" href="../phaser/#how_wrong_is_your_mmm.Blackout">Blackout</a> | <a class="autorefs autorefs-internal" title="Redistribute (how_wrong_is_your_mmm._phaser.Redistribute)" href="../phaser/#how_wrong_is_your_mmm.Redistribute">Redistribute</a> | <a class="autorefs autorefs-internal" title="MonthStep (how_wrong_is_your_mmm._phaser.MonthStep)" href="../phaser/#how_wrong_is_your_mmm.MonthStep">MonthStep</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Pin a single strategy instead of sweeping for one.
+strategy_pct is the same per-channel spec <em>default_levers uses for
+one candidate: a float (symmetric +/-X% for every channel), a
+Blackout, a Redistribute (its edge_cap_pct is the intensity;
+strategy_nudge_shape and strategy_balanced are ignored for it --
+the edge layer is always edge, balanced) or a MonthStep (its
+step_pct is the intensity; the nudge shape and balance are ignored
+too). Redistribute and MonthStep move budget between months, so
+only annual totals are preserved. When set, this exact strategy is
+added to the sweep as one more candidate (labelled "Pinned: ...") and used directly as
+self.winner</em> -- _pick_winner's dominance check never runs, so
+Sections 1-4, the Appendix's headline callouts and schedule_csv()
+are all built from the strategy you chose, not one the sweep
+picked. Left at the default (None), behaviour is unchanged: the
+sweep runs and picks a winner exactly as before.
+strategy_nudge_shape ("uniform" or "edge") and strategy_balanced
+control the pinned strategy's own shape, same meaning as every
+other lever's nudge_shape/balance_signs. Ignored when strategy_pct
+is None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>channel_constraints</code>
+            </td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="float">float</span> | <a class="autorefs autorefs-internal" title="Blackout (how_wrong_is_your_mmm._phaser.Blackout)" href="../phaser/#how_wrong_is_your_mmm.Blackout">Blackout</a> | <a class="autorefs autorefs-internal" title="Redistribute (how_wrong_is_your_mmm._phaser.Redistribute)" href="../phaser/#how_wrong_is_your_mmm.Redistribute">Redistribute</a> | <a class="autorefs autorefs-internal" title="MonthStep (how_wrong_is_your_mmm._phaser.MonthStep)" href="../phaser/#how_wrong_is_your_mmm.MonthStep">MonthStep</a>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Per-channel overrides applied on top of strategy_pct for specific
+channels (a float, Blackout, Redistribute or MonthStep) -- e.g.
+{"meta": 20.0} pins meta to +/-20% regardless of what strategy_pct
+says for every other channel, or {"meta":
+Blackout(max_dark_weeks_per_month=1)} switches meta to blackout-mode
+while the rest of the plan follows strategy_pct. Requires
+strategy_pct to be set (there is nothing to override otherwise);
+raises ValueError on an unknown channel name. Shown in the
+Appendix as its own small table, alongside the pinned strategy's
+row in the main comparison table.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>client_name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Free-text labels shown on the report cover.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>plan_year</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Free-text labels shown on the report cover.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>seed</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Base random seed for demand and phasing draws.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>backphase_years</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Default 0. If N &gt; 0, the last N years (52 weeks each) of
+history_df are phased too, as if phasing had started N years
+before the plan: the report's "plan" becomes that history tail plus
+plan_df, so every section (impact, ranges, phased spend) shows the
+N+1-year effect instead of one year. A counterfactual on your own
+spend: nothing is simulated beyond what the report already
+simulates from spend. N can cover all of history_df, in which case
+the whole supplied window is phased.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>demand_process</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Shape of the unlinked part of the report's demand series. Forwarded
+to link_demand_to_spend(). Default "trend" (a random walk with
+drift). The linked part takes the shape of the supplied spend
+itself. At the default demand_spend_corr and a pairwise channel
+correlation of 0.7, this setting shapes about 45% of demand's
+variance. Ignored when <code>demand</code> is supplied.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;trend&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>demand_spend_corr</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Assumed corr(spend, demand), averaged over channels, in [0, 1].
+Sets how strongly the report's demand series tracks the unphased
+spend. Default 0.65, the middle of a 0.5 to 0.8 range judged
+plausible for media plans that partly follow demand. Spend data
+cannot reveal the true value, so the report states it as an
+assumption. Bias grows steeply with it. Ignored when <code>demand</code> is
+supplied.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="how_wrong_is_your_mmm._dgp.DEFAULT_DEMAND_SPEND_CORR">DEFAULT_DEMAND_SPEND_CORR</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>demand</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span> | <span title="pandas.Series">Series</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional demand series of length len(history_df) + len(plan_df),
+e.g. the series passed to simulate_spend(demand=...) when the
+spend is simulated. Used instead of building one with
+link_demand_to_spend(). Standardised to mean 0 / sd 1 on the way
+in, since calibrate_baseline's demand_coef assumes that scale.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+                  <details class="mkdocstrings-source">
+                    <summary>Source code in <code>src/how_wrong_is_your_mmm/_discovery_report.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1501</span>
+<span class="normal">1502</span>
+<span class="normal">1503</span>
+<span class="normal">1504</span>
+<span class="normal">1505</span>
+<span class="normal">1506</span>
+<span class="normal">1507</span>
+<span class="normal">1508</span>
+<span class="normal">1509</span>
+<span class="normal">1510</span>
+<span class="normal">1511</span>
+<span class="normal">1512</span>
+<span class="normal">1513</span>
+<span class="normal">1514</span>
+<span class="normal">1515</span>
+<span class="normal">1516</span>
+<span class="normal">1517</span>
+<span class="normal">1518</span>
+<span class="normal">1519</span>
+<span class="normal">1520</span>
+<span class="normal">1521</span>
+<span class="normal">1522</span>
+<span class="normal">1523</span>
+<span class="normal">1524</span>
+<span class="normal">1525</span>
+<span class="normal">1526</span>
+<span class="normal">1527</span>
+<span class="normal">1528</span>
+<span class="normal">1529</span>
+<span class="normal">1530</span>
+<span class="normal">1531</span>
+<span class="normal">1532</span>
+<span class="normal">1533</span>
+<span class="normal">1534</span>
+<span class="normal">1535</span>
+<span class="normal">1536</span>
+<span class="normal">1537</span>
+<span class="normal">1538</span>
+<span class="normal">1539</span>
+<span class="normal">1540</span>
+<span class="normal">1541</span>
+<span class="normal">1542</span>
+<span class="normal">1543</span>
+<span class="normal">1544</span>
+<span class="normal">1545</span>
+<span class="normal">1546</span>
+<span class="normal">1547</span>
+<span class="normal">1548</span>
+<span class="normal">1549</span>
+<span class="normal">1550</span>
+<span class="normal">1551</span>
+<span class="normal">1552</span>
+<span class="normal">1553</span>
+<span class="normal">1554</span>
+<span class="normal">1555</span>
+<span class="normal">1556</span>
+<span class="normal">1557</span>
+<span class="normal">1558</span>
+<span class="normal">1559</span>
+<span class="normal">1560</span>
+<span class="normal">1561</span>
+<span class="normal">1562</span>
+<span class="normal">1563</span>
+<span class="normal">1564</span>
+<span class="normal">1565</span>
+<span class="normal">1566</span>
+<span class="normal">1567</span>
+<span class="normal">1568</span>
+<span class="normal">1569</span>
+<span class="normal">1570</span>
+<span class="normal">1571</span>
+<span class="normal">1572</span>
+<span class="normal">1573</span>
+<span class="normal">1574</span>
+<span class="normal">1575</span>
+<span class="normal">1576</span>
+<span class="normal">1577</span>
+<span class="normal">1578</span>
+<span class="normal">1579</span>
+<span class="normal">1580</span>
+<span class="normal">1581</span>
+<span class="normal">1582</span>
+<span class="normal">1583</span>
+<span class="normal">1584</span>
+<span class="normal">1585</span>
+<span class="normal">1586</span>
+<span class="normal">1587</span>
+<span class="normal">1588</span>
+<span class="normal">1589</span>
+<span class="normal">1590</span>
+<span class="normal">1591</span>
+<span class="normal">1592</span>
+<span class="normal">1593</span>
+<span class="normal">1594</span>
+<span class="normal">1595</span>
+<span class="normal">1596</span>
+<span class="normal">1597</span>
+<span class="normal">1598</span>
+<span class="normal">1599</span>
+<span class="normal">1600</span>
+<span class="normal">1601</span>
+<span class="normal">1602</span>
+<span class="normal">1603</span>
+<span class="normal">1604</span>
+<span class="normal">1605</span>
+<span class="normal">1606</span>
+<span class="normal">1607</span>
+<span class="normal">1608</span>
+<span class="normal">1609</span>
+<span class="normal">1610</span>
+<span class="normal">1611</span>
+<span class="normal">1612</span>
+<span class="normal">1613</span>
+<span class="normal">1614</span>
+<span class="normal">1615</span>
+<span class="normal">1616</span>
+<span class="normal">1617</span>
+<span class="normal">1618</span>
+<span class="normal">1619</span>
+<span class="normal">1620</span>
+<span class="normal">1621</span>
+<span class="normal">1622</span>
+<span class="normal">1623</span>
+<span class="normal">1624</span>
+<span class="normal">1625</span>
+<span class="normal">1626</span>
+<span class="normal">1627</span>
+<span class="normal">1628</span>
+<span class="normal">1629</span>
+<span class="normal">1630</span>
+<span class="normal">1631</span>
+<span class="normal">1632</span>
+<span class="normal">1633</span>
+<span class="normal">1634</span>
+<span class="normal">1635</span>
+<span class="normal">1636</span>
+<span class="normal">1637</span>
+<span class="normal">1638</span>
+<span class="normal">1639</span>
+<span class="normal">1640</span>
+<span class="normal">1641</span>
+<span class="normal">1642</span>
+<span class="normal">1643</span>
+<span class="normal">1644</span>
+<span class="normal">1645</span>
+<span class="normal">1646</span>
+<span class="normal">1647</span>
+<span class="normal">1648</span>
+<span class="normal">1649</span>
+<span class="normal">1650</span>
+<span class="normal">1651</span>
+<span class="normal">1652</span>
+<span class="normal">1653</span>
+<span class="normal">1654</span>
+<span class="normal">1655</span>
+<span class="normal">1656</span>
+<span class="normal">1657</span>
+<span class="normal">1658</span>
+<span class="normal">1659</span>
+<span class="normal">1660</span>
+<span class="normal">1661</span>
+<span class="normal">1662</span>
+<span class="normal">1663</span>
+<span class="normal">1664</span>
+<span class="normal">1665</span>
+<span class="normal">1666</span>
+<span class="normal">1667</span>
+<span class="normal">1668</span>
+<span class="normal">1669</span>
+<span class="normal">1670</span>
+<span class="normal">1671</span>
+<span class="normal">1672</span>
+<span class="normal">1673</span>
+<span class="normal">1674</span>
+<span class="normal">1675</span>
+<span class="normal">1676</span>
+<span class="normal">1677</span>
+<span class="normal">1678</span>
+<span class="normal">1679</span>
+<span class="normal">1680</span>
+<span class="normal">1681</span>
+<span class="normal">1682</span>
+<span class="normal">1683</span>
+<span class="normal">1684</span>
+<span class="normal">1685</span>
+<span class="normal">1686</span>
+<span class="normal">1687</span>
+<span class="normal">1688</span>
+<span class="normal">1689</span>
+<span class="normal">1690</span>
+<span class="normal">1691</span>
+<span class="normal">1692</span>
+<span class="normal">1693</span>
+<span class="normal">1694</span>
+<span class="normal">1695</span>
+<span class="normal">1696</span>
+<span class="normal">1697</span>
+<span class="normal">1698</span>
+<span class="normal">1699</span>
+<span class="normal">1700</span>
+<span class="normal">1701</span>
+<span class="normal">1702</span>
+<span class="normal">1703</span>
+<span class="normal">1704</span>
+<span class="normal">1705</span>
+<span class="normal">1706</span>
+<span class="normal">1707</span>
+<span class="normal">1708</span>
+<span class="normal">1709</span>
+<span class="normal">1710</span>
+<span class="normal">1711</span>
+<span class="normal">1712</span>
+<span class="normal">1713</span>
+<span class="normal">1714</span>
+<span class="normal">1715</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">history_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">plan_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">true_marginal_returns</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">baseline_share</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span>
+    <span class="n">baseline_cv</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+    <span class="n">demand_proxy_quality</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span><span class="p">,</span>
+    <span class="n">saturation</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">adstock</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+    <span class="n">revenue_noise_pct</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
+    <span class="n">revenue_noise_std</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">levers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">strategy_pct</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Blackout</span> <span class="o">|</span> <span class="n">Redistribute</span> <span class="o">|</span> <span class="n">MonthStep</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">strategy_nudge_shape</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;edge&quot;</span><span class="p">,</span>
+    <span class="n">strategy_balanced</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">channel_constraints</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Blackout</span> <span class="o">|</span> <span class="n">Redistribute</span> <span class="o">|</span> <span class="n">MonthStep</span><span class="p">]</span>
+    <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">client_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="n">plan_year</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">demand_process</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;trend&quot;</span><span class="p">,</span>
+    <span class="n">backphase_years</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">demand_spend_corr</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_DEMAND_SPEND_CORR</span><span class="p">,</span>
+    <span class="n">demand</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">list</span><span class="p">(</span><span class="n">history_df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">(</span><span class="n">plan_df</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;history_df and plan_df must have the same columns. &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Got </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">history_df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> vs </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">plan_df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">demand_proxy_quality</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;demand_proxy_quality must be in (0, 1]&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">revenue_noise_std</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">revenue_noise_pct</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;revenue_noise_pct must be non-negative&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">revenue_noise_std</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">revenue_noise_std</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;revenue_noise_std must be non-negative&quot;</span><span class="p">)</span>
+
+    <span class="n">_get_month_labels</span><span class="p">(</span><span class="n">plan_df</span><span class="p">)</span>  <span class="c1"># validates DatetimeIndex, fails fast</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">demand_spend_corr</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;demand_spend_corr must be between 0 and 1 inclusive&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">backphase_years</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="nb">int</span><span class="p">(</span><span class="n">backphase_years</span><span class="p">)</span> <span class="o">!=</span> <span class="n">backphase_years</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;backphase_years must be a non-negative integer&quot;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">supplied_history_df</span> <span class="o">=</span> <span class="n">history_df</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">supplied_plan_df</span> <span class="o">=</span> <span class="n">plan_df</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">backphase_years</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">backphase_years</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">backphase_years</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># Counterfactual on the client&#39;s own history: treat the last</span>
+        <span class="c1"># `backphase_years` years of history as if phasing had started</span>
+        <span class="c1"># then, so the phased window is history&#39;s tail plus the plan.</span>
+        <span class="c1"># Everything downstream just sees a longer plan.</span>
+        <span class="n">n_back</span> <span class="o">=</span> <span class="n">_WEEKS_PER_YEAR</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">backphase_years</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">history_df</span><span class="p">)</span> <span class="o">-</span> <span class="n">n_back</span> <span class="o">&lt;</span> <span class="n">_MIN_HEAD_WEEKS</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;backphase_years=</span><span class="si">{</span><span class="n">backphase_years</span><span class="si">}</span><span class="s2"> needs at least &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_back</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">_MIN_HEAD_WEEKS</span><span class="si">}</span><span class="s2"> weeks of history; got &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">history_df</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">plan_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">history_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="n">n_back</span><span class="p">:],</span> <span class="n">plan_df</span><span class="p">])</span>
+        <span class="n">history_df</span> <span class="o">=</span> <span class="n">history_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="o">-</span><span class="n">n_back</span><span class="p">]</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">history_df</span> <span class="o">=</span> <span class="n">history_df</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">plan_df</span> <span class="o">=</span> <span class="n">plan_df</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">true_marginal_returns</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">true_marginal_returns</span>
+        <span class="k">if</span> <span class="n">true_marginal_returns</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">_DEFAULT_MARGINAL_RETURNS</span>
+    <span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">baseline_share</span> <span class="o">=</span> <span class="n">baseline_share</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">baseline_cv</span> <span class="o">=</span> <span class="n">baseline_cv</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">demand_proxy_quality</span> <span class="o">=</span> <span class="n">demand_proxy_quality</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">client_name</span> <span class="o">=</span> <span class="n">client_name</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">plan_year</span> <span class="o">=</span> <span class="n">plan_year</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="n">seed</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">demand_process</span> <span class="o">=</span> <span class="n">demand_process</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">plan_df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+    <span class="c1"># Per-channel from here on (a bare float broadcasts) -- see</span>
+    <span class="c1"># IdentifiabilityDiagnostic&#39;s per-channel profiling, the reason</span>
+    <span class="c1"># this stopped being a single shared value.</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">saturation</span> <span class="o">=</span> <span class="n">_per_channel_map</span><span class="p">(</span>
+        <span class="n">saturation</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span><span class="p">,</span>
+        <span class="s2">&quot;saturation&quot;</span><span class="p">,</span>
+        <span class="n">lo</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">hi</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">lo_inclusive</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">hi_inclusive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">adstock</span> <span class="o">=</span> <span class="n">_per_channel_map</span><span class="p">(</span>
+        <span class="n">adstock</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span><span class="p">,</span>
+        <span class="s2">&quot;adstock&quot;</span><span class="p">,</span>
+        <span class="n">lo</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">hi</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">lo_inclusive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">hi_inclusive</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">base_levers</span> <span class="o">=</span> <span class="n">levers</span> <span class="k">if</span> <span class="n">levers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_default_levers</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channels_</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">pinned_label_</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">channel_constraints_</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span>
+        <span class="nb">str</span><span class="p">,</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Blackout</span> <span class="o">|</span> <span class="n">Redistribute</span> <span class="o">|</span> <span class="n">MonthStep</span>
+    <span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">strategy_pct</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">pinned_spec</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Blackout</span> <span class="o">|</span> <span class="n">Redistribute</span> <span class="o">|</span> <span class="n">MonthStep</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">ch</span><span class="p">:</span> <span class="n">strategy_pct</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">channel_constraints</span><span class="p">:</span>
+            <span class="n">unknown</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">channel_constraints</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channels_</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;channel_constraints has unknown channel(s): &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">unknown</span><span class="p">)</span><span class="si">}</span><span class="s2">. Expected a subset of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">channels_</span><span class="si">}</span><span class="s2">.&quot;</span>
+                <span class="p">)</span>
+            <span class="n">pinned_spec</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">channel_constraints</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">channel_constraints_</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">channel_constraints</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pinned_label_</span> <span class="o">=</span> <span class="n">_pinned_strategy_label</span><span class="p">(</span>
+            <span class="n">strategy_pct</span><span class="p">,</span>
+            <span class="n">strategy_nudge_shape</span><span class="p">,</span>
+            <span class="n">strategy_balanced</span><span class="p">,</span>
+            <span class="n">channel_constraints</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">base_levers</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="o">*</span><span class="n">base_levers</span><span class="p">,</span>
+            <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pinned_label_</span><span class="p">,</span>
+                <span class="n">pinned_spec</span><span class="p">,</span>
+                <span class="n">strategy_nudge_shape</span><span class="p">,</span>
+                <span class="n">strategy_balanced</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">]</span>
+    <span class="k">elif</span> <span class="n">channel_constraints</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;channel_constraints requires strategy_pct to be set -- &quot;</span>
+            <span class="s2">&quot;there is nothing to override on a swept, unpinned report.&quot;</span>
+        <span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">levers_</span> <span class="o">=</span> <span class="n">base_levers</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_plan_month_labels</span> <span class="o">=</span> <span class="n">_get_month_labels</span><span class="p">(</span><span class="n">plan_df</span><span class="p">)</span>
+
+    <span class="c1"># Fixed across every candidate so every strategy is priced against</span>
+    <span class="c1"># the SAME response curve -- same reasoning as BudgetPhaser&#39;s own</span>
+    <span class="c1"># reference_spend default (see that class&#39;s docstring).</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">reference_spend_</span> <span class="o">=</span> <span class="p">{</span><span class="n">ch</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">plan_df</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span><span class="p">}</span>
+
+    <span class="c1"># Total planned spend per channel over the plan period -- distinct</span>
+    <span class="c1"># from reference_spend_ (mean weekly spend, anchors the saturation</span>
+    <span class="c1"># curve). This is what &quot;planned_spend&quot; means to</span>
+    <span class="c1"># CollinearityDiagnostic.summary()&#39;s incremental-revenue range:</span>
+    <span class="c1"># revenue = marginal-return draw x total spend for the period, the</span>
+    <span class="c1"># same convention docs/overview.html&#39;s forest-plot charts use.</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">planned_spend_</span> <span class="o">=</span> <span class="p">{</span><span class="n">ch</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">plan_df</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span><span class="p">}</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">calibration_</span> <span class="o">=</span> <span class="n">calibrate_baseline</span><span class="p">(</span>
+        <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">history_df</span><span class="p">,</span> <span class="n">plan_df</span><span class="p">]),</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">true_marginal_returns</span><span class="p">,</span>
+        <span class="n">baseline_share</span><span class="o">=</span><span class="n">baseline_share</span><span class="p">,</span>
+        <span class="n">baseline_cv</span><span class="o">=</span><span class="n">baseline_cv</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="c1"># Noise is set as a share of average weekly sales unless a GBP</span>
+    <span class="c1"># override is given. Stored in GBP so every diagnostic below takes</span>
+    <span class="c1"># it unchanged.</span>
+    <span class="k">if</span> <span class="n">revenue_noise_std</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">revenue_noise_pct</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">revenue_noise_pct</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">revenue_noise_std</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+            <span class="n">revenue_noise_pct</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_</span><span class="o">.</span><span class="n">total_sales</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">revenue_noise_std</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">revenue_noise_std</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">revenue_noise_pct</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">revenue_noise_std</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_</span><span class="o">.</span><span class="n">total_sales</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Demand is built once, from the UNPHASED spend, and held fixed for</span>
+    <span class="c1"># every candidate. Phasing can then only change how closely spend</span>
+    <span class="c1"># tracks demand, never demand itself. Drawing demand independently</span>
+    <span class="c1"># of spend (the old behaviour) left the two linked only when the</span>
+    <span class="c1"># report seed happened to replay simulate_spend&#39;s own draws.</span>
+    <span class="n">unphased</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">history_df</span><span class="p">,</span> <span class="n">plan_df</span><span class="p">])</span>
+    <span class="n">n_total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">unphased</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">demand_spend_corr</span> <span class="o">=</span> <span class="n">demand_spend_corr</span>
+    <span class="k">if</span> <span class="n">demand</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">demand_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">demand</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">demand_arr</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="n">n_total</span><span class="p">,):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;demand must be a 1-D series of length &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;len(history_df) + len(plan_df) = </span><span class="si">{</span><span class="n">n_total</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;got shape </span><span class="si">{</span><span class="n">demand_arr</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">sd</span> <span class="o">=</span> <span class="n">demand_arr</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sd</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;demand has zero variance&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">demand_</span> <span class="o">=</span> <span class="p">(</span><span class="n">demand_arr</span> <span class="o">-</span> <span class="n">demand_arr</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">sd</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">demand_link_</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">demand_link_</span> <span class="o">=</span> <span class="n">link_demand_to_spend</span><span class="p">(</span>
+            <span class="n">unphased</span><span class="p">,</span>
+            <span class="n">demand_spend_corr</span><span class="o">=</span><span class="n">demand_spend_corr</span><span class="p">,</span>
+            <span class="n">process</span><span class="o">=</span><span class="n">demand_process</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">demand_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">demand_link_</span><span class="o">.</span><span class="n">demand</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_unphased_spend</span> <span class="o">=</span> <span class="n">unphased</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_bias_demand_cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">demand_</span><span class="p">}</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">realised_demand_corr_</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">ch</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">corrcoef</span><span class="p">(</span><span class="n">unphased</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">demand_</span><span class="p">)[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span>
+    <span class="p">}</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">results_</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">winner_</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">winner_schedule_</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">schedules_</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">report_data_</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">time_to_benefit_</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</code></pre></div></td></tr></table></div>
+                  </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="how_wrong_is_your_mmm.DiscoveryReport.fit" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">fit</span>
+
+
+<a href="#how_wrong_is_your_mmm.DiscoveryReport.fit" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">fit</span><span class="p">(</span>
+    <span class="n">n_sims</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="n">n_phasing_seeds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">15</span><span class="p">,</span>
+    <span class="n">n_bias_draws</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="n">id_n_sims</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="n">id_b_candidates</span><span class="p">:</span> <span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">id_lam_candidates</span><span class="p">:</span> <span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">valley_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span>
+    <span class="n">proxy_seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">fast_mode</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">horizon_years</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DiscoveryReport</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Sweep every candidate lever, run the three diagnostics on each,
+and pick the report-wide "highest impact" winner.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>n_sims</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Noise draws per CollinearityDiagnostic fit (variance and bias
+sections). Default 50.</p>
+              </div>
+            </td>
+            <td>
+                  <code>50</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>n_phasing_seeds</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Independent phased-schedule draws averaged per lever for the
+variance and identifiability sections (the unphased baseline
+always uses exactly 1 -- there's nothing random to average
+over). Default 15. Each draw costs one variance fit and one
+identifiability grid, so this is the expensive setting.</p>
+              </div>
+            </td>
+            <td>
+                  <code>15</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>n_bias_draws</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Demand draws the bias section averages over. Draw k pairs
+demand draw k and proxy seed proxy_seed + k with phased
+schedule k (the same schedule the variance section uses for
+k &lt; n_phasing_seeds); the unphased baseline runs one bias fit
+per draw on its single schedule. Default 100. Bias needs far
+more draws than variance: any single demand draw can line up
+with one channel by chance, and with 10 or more channels 15
+draws leaves enough noise to flip a strategy's bias result
+from better to worse than unphased, and with it the winner.
+A bias fit is one cheap regression per noise draw, so 100
+draws adds little to the run time.</p>
+              </div>
+            </td>
+            <td>
+                  <code>100</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>id_n_sims</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Noise draws per IdentifiabilityDiagnostic fit. Default 50,
+matching n_sims. The grid solves every draw in one lstsq per
+grid point, so the cost grows well under linearly with it.</p>
+              </div>
+            </td>
+            <td>
+                  <code>50</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>id_b_candidates</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Forwarded to IdentifiabilityDiagnostic. Defaults to that
+class's own defaults (a wide 33x31 grid); shrink for a fast
+structural check.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>id_lam_candidates</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Forwarded to IdentifiabilityDiagnostic. Defaults to that
+class's own defaults (a wide 33x31 grid); shrink for a fast
+structural check.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>valley_tol</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Forwarded to IdentifiabilityDiagnostic.summary()'s valley_pct.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.01</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>proxy_seed</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Base seed for the bias section's demand-proxy draws. Draw j
+uses proxy_seed + j.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>fast_mode</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, uses cheap settings throughout (n_sims=10,
+n_phasing_seeds=2, n_bias_draws=2, id_n_sims=5) -- for iterating on the report
+itself, not for numbers to hand a client. to_html() watermarks
+a fast-mode report as a draft.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>horizon_years</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>How many years of phasing to show in the Appendix's
+time-to-benefit view (default 3). Year 1 phases the plan year
+only (the main sweep's own result). Year 2 also phases the last
+year of the supplied history, year 3 the last two, each time as
+if phasing had started then -- a counterfactual on your own
+spend, no new data is simulated. The number of years is capped
+by how much history there is. Set to 1 to skip the projection.</p>
+              </div>
+            </td>
+            <td>
+                  <code>3</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="self">self</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/how_wrong_is_your_mmm/_discovery_report.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1755</span>
+<span class="normal">1756</span>
+<span class="normal">1757</span>
+<span class="normal">1758</span>
+<span class="normal">1759</span>
+<span class="normal">1760</span>
+<span class="normal">1761</span>
+<span class="normal">1762</span>
+<span class="normal">1763</span>
+<span class="normal">1764</span>
+<span class="normal">1765</span>
+<span class="normal">1766</span>
+<span class="normal">1767</span>
+<span class="normal">1768</span>
+<span class="normal">1769</span>
+<span class="normal">1770</span>
+<span class="normal">1771</span>
+<span class="normal">1772</span>
+<span class="normal">1773</span>
+<span class="normal">1774</span>
+<span class="normal">1775</span>
+<span class="normal">1776</span>
+<span class="normal">1777</span>
+<span class="normal">1778</span>
+<span class="normal">1779</span>
+<span class="normal">1780</span>
+<span class="normal">1781</span>
+<span class="normal">1782</span>
+<span class="normal">1783</span>
+<span class="normal">1784</span>
+<span class="normal">1785</span>
+<span class="normal">1786</span>
+<span class="normal">1787</span>
+<span class="normal">1788</span>
+<span class="normal">1789</span>
+<span class="normal">1790</span>
+<span class="normal">1791</span>
+<span class="normal">1792</span>
+<span class="normal">1793</span>
+<span class="normal">1794</span>
+<span class="normal">1795</span>
+<span class="normal">1796</span>
+<span class="normal">1797</span>
+<span class="normal">1798</span>
+<span class="normal">1799</span>
+<span class="normal">1800</span>
+<span class="normal">1801</span>
+<span class="normal">1802</span>
+<span class="normal">1803</span>
+<span class="normal">1804</span>
+<span class="normal">1805</span>
+<span class="normal">1806</span>
+<span class="normal">1807</span>
+<span class="normal">1808</span>
+<span class="normal">1809</span>
+<span class="normal">1810</span>
+<span class="normal">1811</span>
+<span class="normal">1812</span>
+<span class="normal">1813</span>
+<span class="normal">1814</span>
+<span class="normal">1815</span>
+<span class="normal">1816</span>
+<span class="normal">1817</span>
+<span class="normal">1818</span>
+<span class="normal">1819</span>
+<span class="normal">1820</span>
+<span class="normal">1821</span>
+<span class="normal">1822</span>
+<span class="normal">1823</span>
+<span class="normal">1824</span>
+<span class="normal">1825</span>
+<span class="normal">1826</span>
+<span class="normal">1827</span>
+<span class="normal">1828</span>
+<span class="normal">1829</span>
+<span class="normal">1830</span>
+<span class="normal">1831</span>
+<span class="normal">1832</span>
+<span class="normal">1833</span>
+<span class="normal">1834</span>
+<span class="normal">1835</span>
+<span class="normal">1836</span>
+<span class="normal">1837</span>
+<span class="normal">1838</span>
+<span class="normal">1839</span>
+<span class="normal">1840</span>
+<span class="normal">1841</span>
+<span class="normal">1842</span>
+<span class="normal">1843</span>
+<span class="normal">1844</span>
+<span class="normal">1845</span>
+<span class="normal">1846</span>
+<span class="normal">1847</span>
+<span class="normal">1848</span>
+<span class="normal">1849</span>
+<span class="normal">1850</span>
+<span class="normal">1851</span>
+<span class="normal">1852</span>
+<span class="normal">1853</span>
+<span class="normal">1854</span>
+<span class="normal">1855</span>
+<span class="normal">1856</span>
+<span class="normal">1857</span>
+<span class="normal">1858</span>
+<span class="normal">1859</span>
+<span class="normal">1860</span>
+<span class="normal">1861</span>
+<span class="normal">1862</span>
+<span class="normal">1863</span>
+<span class="normal">1864</span>
+<span class="normal">1865</span>
+<span class="normal">1866</span>
+<span class="normal">1867</span>
+<span class="normal">1868</span>
+<span class="normal">1869</span>
+<span class="normal">1870</span>
+<span class="normal">1871</span>
+<span class="normal">1872</span>
+<span class="normal">1873</span>
+<span class="normal">1874</span>
+<span class="normal">1875</span>
+<span class="normal">1876</span>
+<span class="normal">1877</span>
+<span class="normal">1878</span>
+<span class="normal">1879</span>
+<span class="normal">1880</span>
+<span class="normal">1881</span>
+<span class="normal">1882</span>
+<span class="normal">1883</span>
+<span class="normal">1884</span>
+<span class="normal">1885</span>
+<span class="normal">1886</span>
+<span class="normal">1887</span>
+<span class="normal">1888</span>
+<span class="normal">1889</span>
+<span class="normal">1890</span>
+<span class="normal">1891</span>
+<span class="normal">1892</span>
+<span class="normal">1893</span>
+<span class="normal">1894</span>
+<span class="normal">1895</span>
+<span class="normal">1896</span>
+<span class="normal">1897</span>
+<span class="normal">1898</span>
+<span class="normal">1899</span>
+<span class="normal">1900</span>
+<span class="normal">1901</span>
+<span class="normal">1902</span>
+<span class="normal">1903</span>
+<span class="normal">1904</span>
+<span class="normal">1905</span>
+<span class="normal">1906</span>
+<span class="normal">1907</span>
+<span class="normal">1908</span>
+<span class="normal">1909</span>
+<span class="normal">1910</span>
+<span class="normal">1911</span>
+<span class="normal">1912</span>
+<span class="normal">1913</span>
+<span class="normal">1914</span>
+<span class="normal">1915</span>
+<span class="normal">1916</span>
+<span class="normal">1917</span>
+<span class="normal">1918</span>
+<span class="normal">1919</span>
+<span class="normal">1920</span>
+<span class="normal">1921</span>
+<span class="normal">1922</span>
+<span class="normal">1923</span>
+<span class="normal">1924</span>
+<span class="normal">1925</span>
+<span class="normal">1926</span>
+<span class="normal">1927</span>
+<span class="normal">1928</span>
+<span class="normal">1929</span>
+<span class="normal">1930</span>
+<span class="normal">1931</span>
+<span class="normal">1932</span>
+<span class="normal">1933</span>
+<span class="normal">1934</span>
+<span class="normal">1935</span>
+<span class="normal">1936</span>
+<span class="normal">1937</span>
+<span class="normal">1938</span>
+<span class="normal">1939</span>
+<span class="normal">1940</span>
+<span class="normal">1941</span>
+<span class="normal">1942</span>
+<span class="normal">1943</span>
+<span class="normal">1944</span>
+<span class="normal">1945</span>
+<span class="normal">1946</span>
+<span class="normal">1947</span>
+<span class="normal">1948</span>
+<span class="normal">1949</span>
+<span class="normal">1950</span>
+<span class="normal">1951</span>
+<span class="normal">1952</span>
+<span class="normal">1953</span>
+<span class="normal">1954</span>
+<span class="normal">1955</span>
+<span class="normal">1956</span>
+<span class="normal">1957</span>
+<span class="normal">1958</span>
+<span class="normal">1959</span>
+<span class="normal">1960</span>
+<span class="normal">1961</span>
+<span class="normal">1962</span>
+<span class="normal">1963</span>
+<span class="normal">1964</span>
+<span class="normal">1965</span>
+<span class="normal">1966</span>
+<span class="normal">1967</span>
+<span class="normal">1968</span>
+<span class="normal">1969</span>
+<span class="normal">1970</span>
+<span class="normal">1971</span>
+<span class="normal">1972</span>
+<span class="normal">1973</span>
+<span class="normal">1974</span>
+<span class="normal">1975</span>
+<span class="normal">1976</span>
+<span class="normal">1977</span>
+<span class="normal">1978</span>
+<span class="normal">1979</span>
+<span class="normal">1980</span>
+<span class="normal">1981</span>
+<span class="normal">1982</span>
+<span class="normal">1983</span>
+<span class="normal">1984</span>
+<span class="normal">1985</span>
+<span class="normal">1986</span>
+<span class="normal">1987</span>
+<span class="normal">1988</span>
+<span class="normal">1989</span>
+<span class="normal">1990</span>
+<span class="normal">1991</span>
+<span class="normal">1992</span>
+<span class="normal">1993</span>
+<span class="normal">1994</span>
+<span class="normal">1995</span>
+<span class="normal">1996</span>
+<span class="normal">1997</span>
+<span class="normal">1998</span>
+<span class="normal">1999</span>
+<span class="normal">2000</span>
+<span class="normal">2001</span>
+<span class="normal">2002</span>
+<span class="normal">2003</span>
+<span class="normal">2004</span>
+<span class="normal">2005</span>
+<span class="normal">2006</span>
+<span class="normal">2007</span>
+<span class="normal">2008</span>
+<span class="normal">2009</span>
+<span class="normal">2010</span>
+<span class="normal">2011</span>
+<span class="normal">2012</span>
+<span class="normal">2013</span>
+<span class="normal">2014</span>
+<span class="normal">2015</span>
+<span class="normal">2016</span>
+<span class="normal">2017</span>
+<span class="normal">2018</span>
+<span class="normal">2019</span>
+<span class="normal">2020</span>
+<span class="normal">2021</span>
+<span class="normal">2022</span>
+<span class="normal">2023</span>
+<span class="normal">2024</span>
+<span class="normal">2025</span>
+<span class="normal">2026</span>
+<span class="normal">2027</span>
+<span class="normal">2028</span>
+<span class="normal">2029</span>
+<span class="normal">2030</span>
+<span class="normal">2031</span>
+<span class="normal">2032</span>
+<span class="normal">2033</span>
+<span class="normal">2034</span>
+<span class="normal">2035</span>
+<span class="normal">2036</span>
+<span class="normal">2037</span>
+<span class="normal">2038</span>
+<span class="normal">2039</span>
+<span class="normal">2040</span>
+<span class="normal">2041</span>
+<span class="normal">2042</span>
+<span class="normal">2043</span>
+<span class="normal">2044</span>
+<span class="normal">2045</span>
+<span class="normal">2046</span>
+<span class="normal">2047</span>
+<span class="normal">2048</span>
+<span class="normal">2049</span>
+<span class="normal">2050</span>
+<span class="normal">2051</span>
+<span class="normal">2052</span>
+<span class="normal">2053</span>
+<span class="normal">2054</span>
+<span class="normal">2055</span>
+<span class="normal">2056</span>
+<span class="normal">2057</span>
+<span class="normal">2058</span>
+<span class="normal">2059</span>
+<span class="normal">2060</span>
+<span class="normal">2061</span>
+<span class="normal">2062</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">n_sims</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="n">n_phasing_seeds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">15</span><span class="p">,</span>
+    <span class="n">n_bias_draws</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="n">id_n_sims</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="n">id_b_candidates</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">id_lam_candidates</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">valley_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span>
+    <span class="n">proxy_seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">fast_mode</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">horizon_years</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DiscoveryReport</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sweep every candidate lever, run the three diagnostics on each,</span>
+<span class="sd">    and pick the report-wide &quot;highest impact&quot; winner.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n_sims:</span>
+<span class="sd">        Noise draws per CollinearityDiagnostic fit (variance and bias</span>
+<span class="sd">        sections). Default 50.</span>
+<span class="sd">    n_phasing_seeds:</span>
+<span class="sd">        Independent phased-schedule draws averaged per lever for the</span>
+<span class="sd">        variance and identifiability sections (the unphased baseline</span>
+<span class="sd">        always uses exactly 1 -- there&#39;s nothing random to average</span>
+<span class="sd">        over). Default 15. Each draw costs one variance fit and one</span>
+<span class="sd">        identifiability grid, so this is the expensive setting.</span>
+<span class="sd">    n_bias_draws:</span>
+<span class="sd">        Demand draws the bias section averages over. Draw k pairs</span>
+<span class="sd">        demand draw k and proxy seed proxy_seed + k with phased</span>
+<span class="sd">        schedule k (the same schedule the variance section uses for</span>
+<span class="sd">        k &lt; n_phasing_seeds); the unphased baseline runs one bias fit</span>
+<span class="sd">        per draw on its single schedule. Default 100. Bias needs far</span>
+<span class="sd">        more draws than variance: any single demand draw can line up</span>
+<span class="sd">        with one channel by chance, and with 10 or more channels 15</span>
+<span class="sd">        draws leaves enough noise to flip a strategy&#39;s bias result</span>
+<span class="sd">        from better to worse than unphased, and with it the winner.</span>
+<span class="sd">        A bias fit is one cheap regression per noise draw, so 100</span>
+<span class="sd">        draws adds little to the run time.</span>
+<span class="sd">    id_n_sims:</span>
+<span class="sd">        Noise draws per IdentifiabilityDiagnostic fit. Default 50,</span>
+<span class="sd">        matching n_sims. The grid solves every draw in one lstsq per</span>
+<span class="sd">        grid point, so the cost grows well under linearly with it.</span>
+<span class="sd">    id_b_candidates, id_lam_candidates:</span>
+<span class="sd">        Forwarded to IdentifiabilityDiagnostic. Defaults to that</span>
+<span class="sd">        class&#39;s own defaults (a wide 33x31 grid); shrink for a fast</span>
+<span class="sd">        structural check.</span>
+<span class="sd">    valley_tol:</span>
+<span class="sd">        Forwarded to IdentifiabilityDiagnostic.summary()&#39;s valley_pct.</span>
+<span class="sd">    proxy_seed:</span>
+<span class="sd">        Base seed for the bias section&#39;s demand-proxy draws. Draw j</span>
+<span class="sd">        uses proxy_seed + j.</span>
+<span class="sd">    fast_mode:</span>
+<span class="sd">        If True, uses cheap settings throughout (n_sims=10,</span>
+<span class="sd">        n_phasing_seeds=2, n_bias_draws=2, id_n_sims=5) -- for iterating on the report</span>
+<span class="sd">        itself, not for numbers to hand a client. to_html() watermarks</span>
+<span class="sd">        a fast-mode report as a draft.</span>
+<span class="sd">    horizon_years:</span>
+<span class="sd">        How many years of phasing to show in the Appendix&#39;s</span>
+<span class="sd">        time-to-benefit view (default 3). Year 1 phases the plan year</span>
+<span class="sd">        only (the main sweep&#39;s own result). Year 2 also phases the last</span>
+<span class="sd">        year of the supplied history, year 3 the last two, each time as</span>
+<span class="sd">        if phasing had started then -- a counterfactual on your own</span>
+<span class="sd">        spend, no new data is simulated. The number of years is capped</span>
+<span class="sd">        by how much history there is. Set to 1 to skip the projection.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    self</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">fast_mode</span><span class="p">:</span>
+        <span class="n">n_sims</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="n">n_phasing_seeds</span> <span class="o">=</span> <span class="mi">2</span>
+        <span class="n">n_bias_draws</span> <span class="o">=</span> <span class="mi">2</span>
+        <span class="n">id_n_sims</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="k">if</span> <span class="n">n_bias_draws</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_bias_draws must be at least 1&quot;</span><span class="p">)</span>
+
+    <span class="n">results</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">schedules</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">n_bias_draws_</span> <span class="o">=</span> <span class="n">n_bias_draws</span>
+
+    <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">nudge_shape</span><span class="p">,</span> <span class="n">balance_signs</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">levers_</span><span class="p">:</span>
+        <span class="n">unphased</span> <span class="o">=</span> <span class="n">_is_unphased</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+        <span class="n">seeds</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">unphased</span>
+            <span class="k">else</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">+</span> <span class="n">j</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_phasing_seeds</span><span class="p">)]</span>
+        <span class="p">)</span>
+
+        <span class="n">variance_draws</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">revenue_mean_draws</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">revenue_p10_draws</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">revenue_p90_draws</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">bias_draws</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">bias_sims</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">id_draws</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">id_b_p10_draws</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">id_b_p90_draws</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">id_lam_p10_draws</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">id_lam_p90_draws</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">growth_draws</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">corr_draws</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">representative_schedule</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">sd</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">seeds</span><span class="p">):</span>
+            <span class="n">phased_plan</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_phase</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">nudge_shape</span><span class="p">,</span> <span class="n">balance_signs</span><span class="p">,</span> <span class="n">sd</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">j</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">representative_schedule</span> <span class="o">=</span> <span class="n">phased_plan</span>
+            <span class="n">combined</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">history_df</span><span class="p">,</span> <span class="n">phased_plan</span><span class="p">])</span>
+
+            <span class="n">diag_var</span> <span class="o">=</span> <span class="n">CollinearityDiagnostic</span><span class="p">(</span>
+                <span class="n">spend_df</span><span class="o">=</span><span class="n">combined</span><span class="p">,</span>
+                <span class="n">true_marginal_returns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">true_marginal_returns</span><span class="p">,</span>
+                <span class="n">base_sales</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">calibration_</span><span class="o">.</span><span class="n">baseline_level</span><span class="p">,</span>
+                <span class="n">revenue_noise_std</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">revenue_noise_std</span><span class="p">,</span>
+                <span class="n">demand</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">demand_</span><span class="p">,</span>
+                <span class="n">demand_coef</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">calibration_</span><span class="o">.</span><span class="n">demand_coef</span><span class="p">,</span>
+                <span class="n">saturation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">saturation</span><span class="p">,</span>
+                <span class="n">adstock</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">adstock</span><span class="p">,</span>
+                <span class="n">reference_spend</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reference_spend_</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">diag_var</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">n_sims</span><span class="o">=</span><span class="n">n_sims</span><span class="p">,</span> <span class="n">controls</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">var_summary</span> <span class="o">=</span> <span class="n">diag_var</span><span class="o">.</span><span class="n">summary</span><span class="p">(</span><span class="n">planned_spend</span><span class="o">=</span><span class="n">phased_plan</span><span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span>
+                <span class="s2">&quot;channel&quot;</span>
+            <span class="p">)</span>
+            <span class="n">variance_draws</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">var_summary</span><span class="p">[</span><span class="s2">&quot;coef_of_variation&quot;</span><span class="p">])</span>
+            <span class="n">revenue_mean_draws</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">var_summary</span><span class="p">[</span><span class="s2">&quot;incremental_revenue_mean&quot;</span><span class="p">])</span>
+            <span class="n">revenue_p10_draws</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">var_summary</span><span class="p">[</span><span class="s2">&quot;incremental_revenue_p10&quot;</span><span class="p">])</span>
+            <span class="n">revenue_p90_draws</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">var_summary</span><span class="p">[</span><span class="s2">&quot;incremental_revenue_p90&quot;</span><span class="p">])</span>
+            <span class="n">corr_draws</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">diag_var</span><span class="o">.</span><span class="n">correlation_matrix</span><span class="p">)</span>
+
+            <span class="n">diag_id</span> <span class="o">=</span> <span class="n">IdentifiabilityDiagnostic</span><span class="p">(</span>
+                <span class="n">spend_df</span><span class="o">=</span><span class="n">combined</span><span class="p">,</span>
+                <span class="n">demand</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">demand_</span><span class="p">,</span>
+                <span class="n">true_marginal_returns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">true_marginal_returns</span><span class="p">,</span>
+                <span class="n">true_saturation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">saturation</span><span class="p">,</span>
+                <span class="n">true_adstock</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">adstock</span><span class="p">,</span>
+                <span class="n">demand_coef</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">calibration_</span><span class="o">.</span><span class="n">demand_coef</span><span class="p">,</span>
+                <span class="n">base_sales</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">calibration_</span><span class="o">.</span><span class="n">baseline_level</span><span class="p">,</span>
+                <span class="n">revenue_noise_std</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">revenue_noise_std</span><span class="p">,</span>
+                <span class="n">reference_spend</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reference_spend_</span><span class="p">,</span>
+                <span class="n">b_candidates</span><span class="o">=</span><span class="n">id_b_candidates</span><span class="p">,</span>
+                <span class="n">lam_candidates</span><span class="o">=</span><span class="n">id_lam_candidates</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">diag_id</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">n_sims</span><span class="o">=</span><span class="n">id_n_sims</span><span class="p">,</span> <span class="n">noise_seed_offset</span><span class="o">=</span><span class="n">sd</span><span class="p">)</span>
+            <span class="n">id_draws</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">diag_id</span><span class="o">.</span><span class="n">summary</span><span class="p">(</span><span class="n">tol</span><span class="o">=</span><span class="n">valley_tol</span><span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;channel&quot;</span><span class="p">))</span>
+            <span class="c1"># p10-p90 of each channel&#39;s own recovered b/lambda across</span>
+            <span class="c1"># sims -- the range chart&#39;s real data (the summary&#39;s b_sd</span>
+            <span class="c1"># is a spread too, but a p10-p90 range plots directly on</span>
+            <span class="c1"># the same before/after forest chart sections 2/3 use).</span>
+            <span class="n">id_b_p10_draws</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="n">ch</span><span class="p">:</span> <span class="n">diag_id</span><span class="o">.</span><span class="n">results_</span><span class="p">[</span><span class="n">ch</span><span class="p">][</span><span class="s2">&quot;recovered_b&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">id_b_p90_draws</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="n">ch</span><span class="p">:</span> <span class="n">diag_id</span><span class="o">.</span><span class="n">results_</span><span class="p">[</span><span class="n">ch</span><span class="p">][</span><span class="s2">&quot;recovered_b&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.9</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">id_lam_p10_draws</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="n">ch</span><span class="p">:</span> <span class="n">diag_id</span><span class="o">.</span><span class="n">results_</span><span class="p">[</span><span class="n">ch</span><span class="p">][</span><span class="s2">&quot;recovered_lam&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">id_lam_p90_draws</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="n">ch</span><span class="p">:</span> <span class="n">diag_id</span><span class="o">.</span><span class="n">results_</span><span class="p">[</span><span class="n">ch</span><span class="p">][</span><span class="s2">&quot;recovered_lam&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.9</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Recovered marginal return at each growth multiple: p10,</span>
+            <span class="c1"># median and p90 across sims, as a (channel x quantile)</span>
+            <span class="c1"># frame per multiple.</span>
+            <span class="n">marginal</span> <span class="o">=</span> <span class="n">diag_id</span><span class="o">.</span><span class="n">marginal_return_at</span><span class="p">(</span><span class="n">_GROWTH_MULTIPLIERS</span><span class="p">)</span>
+            <span class="n">growth_draws</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="n">m</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+                        <span class="p">{</span>
+                            <span class="n">ch</span><span class="p">:</span> <span class="n">marginal</span><span class="p">[</span><span class="n">ch</span><span class="p">][</span><span class="n">m</span><span class="p">]</span><span class="o">.</span><span class="n">quantile</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">])</span>
+                            <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span>
+                        <span class="p">}</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">T</span>
+                    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">_GROWTH_MULTIPLIERS</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Bias runs on its own, larger set of draws. Demand draw k is</span>
+        <span class="c1"># paired with phased schedule k, the same schedule the loop</span>
+        <span class="c1"># above used while k &lt; n_phasing_seeds. The unphased schedule</span>
+        <span class="c1"># has no phasing randomness, so every draw reuses it.</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_bias_draws</span><span class="p">):</span>
+            <span class="n">phased_plan</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">representative_schedule</span>
+                <span class="k">if</span> <span class="n">unphased</span>
+                <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_phase</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">nudge_shape</span><span class="p">,</span> <span class="n">balance_signs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">+</span> <span class="n">k</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">mean_err</span><span class="p">,</span> <span class="n">sims</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bias_fit</span><span class="p">(</span>
+                <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">history_df</span><span class="p">,</span> <span class="n">phased_plan</span><span class="p">]),</span>
+                <span class="n">k</span><span class="p">,</span>
+                <span class="n">n_sims</span><span class="p">,</span>
+                <span class="n">proxy_seed</span> <span class="o">+</span> <span class="n">k</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">bias_draws</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mean_err</span><span class="p">)</span>
+            <span class="n">bias_sims</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sims</span><span class="p">)</span>
+
+        <span class="n">variance_cv</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">variance_draws</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">revenue_mean</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">revenue_mean_draws</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">revenue_p10</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">revenue_p10_draws</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">revenue_p90</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">revenue_p90_draws</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">bias_pct</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">bias_draws</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># p10-p90 over every simulation from every draw pooled, so the</span>
+        <span class="c1"># range includes the spread between demand draws, not only the</span>
+        <span class="c1"># noise within one.</span>
+        <span class="n">pooled</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">bias_sims</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;channel&quot;</span><span class="p">)[</span><span class="s2">&quot;error_pct&quot;</span><span class="p">]</span>
+        <span class="n">bias_pct_p10</span> <span class="o">=</span> <span class="n">pooled</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+        <span class="n">bias_pct_p90</span> <span class="o">=</span> <span class="n">pooled</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.9</span><span class="p">)</span>
+        <span class="c1"># Per-channel DataFrame (b_mean, b_sd, ..., valley_pct), each</span>
+        <span class="c1"># draw already indexed by channel -- average across draws</span>
+        <span class="c1"># channel-by-channel, column-by-column.</span>
+        <span class="n">identifiability</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">id_draws</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">id_b_p10</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">id_b_p10_draws</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">id_b_p90</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">id_b_p90_draws</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">id_lam_p10</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">id_lam_p10_draws</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">id_lam_p90</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">id_lam_p90_draws</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">growth</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">_GROWTH_MULTIPLIERS</span><span class="p">:</span>
+            <span class="n">mean_q</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="n">m</span><span class="p">]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">growth_draws</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">growth_draws</span><span class="p">)</span>
+            <span class="n">growth</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">m</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;p10&quot;</span><span class="p">:</span> <span class="n">mean_q</span><span class="p">[</span><span class="mf">0.1</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+                <span class="s2">&quot;p50&quot;</span><span class="p">:</span> <span class="n">mean_q</span><span class="p">[</span><span class="mf">0.5</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+                <span class="s2">&quot;p90&quot;</span><span class="p">:</span> <span class="n">mean_q</span><span class="p">[</span><span class="mf">0.9</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+            <span class="p">}</span>
+        <span class="n">correlation</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">a</span><span class="p">:</span> <span class="p">{</span>
+                <span class="n">b</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">m</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">corr_draws</span><span class="p">]))</span>
+                <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span>
+            <span class="p">}</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span>
+        <span class="p">}</span>
+
+        <span class="n">results</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;variance_cv&quot;</span><span class="p">:</span> <span class="n">variance_cv</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+            <span class="s2">&quot;revenue_mean&quot;</span><span class="p">:</span> <span class="n">revenue_mean</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+            <span class="s2">&quot;revenue_p10&quot;</span><span class="p">:</span> <span class="n">revenue_p10</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+            <span class="s2">&quot;revenue_p90&quot;</span><span class="p">:</span> <span class="n">revenue_p90</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+            <span class="s2">&quot;bias_pct&quot;</span><span class="p">:</span> <span class="n">bias_pct</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+            <span class="s2">&quot;bias_pct_p10&quot;</span><span class="p">:</span> <span class="n">bias_pct_p10</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+            <span class="s2">&quot;bias_pct_p90&quot;</span><span class="p">:</span> <span class="n">bias_pct_p90</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+            <span class="s2">&quot;identifiability&quot;</span><span class="p">:</span> <span class="n">identifiability</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(</span><span class="n">orient</span><span class="o">=</span><span class="s2">&quot;index&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;b_p10&quot;</span><span class="p">:</span> <span class="n">id_b_p10</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+            <span class="s2">&quot;b_p90&quot;</span><span class="p">:</span> <span class="n">id_b_p90</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+            <span class="s2">&quot;lam_p10&quot;</span><span class="p">:</span> <span class="n">id_lam_p10</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+            <span class="s2">&quot;lam_p90&quot;</span><span class="p">:</span> <span class="n">id_lam_p90</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span>
+            <span class="s2">&quot;growth&quot;</span><span class="p">:</span> <span class="n">growth</span><span class="p">,</span>
+            <span class="s2">&quot;correlation&quot;</span><span class="p">:</span> <span class="n">correlation</span><span class="p">,</span>
+            <span class="s2">&quot;scores&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;variance&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">variance_cv</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+                <span class="s2">&quot;bias&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">bias_pct</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+                <span class="s2">&quot;identifiability&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">identifiability</span><span class="p">[</span><span class="s2">&quot;valley_pct&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+                <span class="c1"># Width of each channel&#39;s recovered p10-p90 range for the</span>
+                <span class="c1"># saturation exponent and adstock decay, averaged across</span>
+                <span class="c1"># channels: identifiability split into its two parts.</span>
+                <span class="s2">&quot;saturation_range&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">((</span><span class="n">id_b_p90</span> <span class="o">-</span> <span class="n">id_b_p10</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+                <span class="s2">&quot;adstock_range&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">((</span><span class="n">id_lam_p90</span> <span class="o">-</span> <span class="n">id_lam_p10</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+            <span class="p">},</span>
+        <span class="p">}</span>
+        <span class="n">schedules</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">representative_schedule</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">results_</span> <span class="o">=</span> <span class="n">results</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">valley_tol_</span> <span class="o">=</span> <span class="n">valley_tol</span>
+    <span class="c1"># A pinned strategy (self.pinned_label_) skips _pick_winner&#39;s</span>
+    <span class="c1"># dominance check entirely: the strategy was chosen by the caller,</span>
+    <span class="c1"># so there is nothing left to choose between. The sweep</span>
+    <span class="c1"># still ran above (so the pinned candidate scores alongside every</span>
+    <span class="c1"># other lever for the Appendix comparison table), only the</span>
+    <span class="c1"># winner-SELECTION step is bypassed.</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">winner_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pinned_label_</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pick_winner</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">winner_schedule_</span> <span class="o">=</span> <span class="n">schedules</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">winner_</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">schedules_</span> <span class="o">=</span> <span class="n">schedules</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">time_to_benefit_</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">horizon_years</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">winner_</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">levers_</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time_to_benefit_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time_to_benefit</span><span class="p">(</span>
+            <span class="n">horizon_years</span><span class="o">=</span><span class="n">horizon_years</span><span class="p">,</span>
+            <span class="n">n_sims</span><span class="o">=</span><span class="n">n_sims</span><span class="p">,</span>
+            <span class="n">n_phasing_seeds</span><span class="o">=</span><span class="n">n_phasing_seeds</span><span class="p">,</span>
+            <span class="n">n_bias_draws</span><span class="o">=</span><span class="n">n_bias_draws</span><span class="p">,</span>
+            <span class="n">id_n_sims</span><span class="o">=</span><span class="n">id_n_sims</span><span class="p">,</span>
+            <span class="n">id_b_candidates</span><span class="o">=</span><span class="n">id_b_candidates</span><span class="p">,</span>
+            <span class="n">id_lam_candidates</span><span class="o">=</span><span class="n">id_lam_candidates</span><span class="p">,</span>
+            <span class="n">valley_tol</span><span class="o">=</span><span class="n">valley_tol</span><span class="p">,</span>
+            <span class="n">proxy_seed</span><span class="o">=</span><span class="n">proxy_seed</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">report_data_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_report_data</span><span class="p">(</span><span class="n">fast_mode</span><span class="o">=</span><span class="n">fast_mode</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="how_wrong_is_your_mmm.DiscoveryReport.schedule_csv" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">schedule_csv</span>
+
+
+<a href="#how_wrong_is_your_mmm.DiscoveryReport.schedule_csv" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">schedule_csv</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Return the winning (or pinned) strategy's weekly schedule as a
+tidy, exportable table.</p>
+<p>One row per week, three columns per channel (the original plan
+figure, the recommended figure, and whether that week is a
+Blackout dark week), both £ columns rounded to the nearest penny.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If given, also writes the table to this path as a CSV.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>pd.DataFrame indexed by week (same DatetimeIndex as plan_df), with</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code>columns &#34;{channel}_original_plan&#34;, &#34;{channel}_recommended&#34;, and</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code>&#34;{channel}_dark_week&#34; for every channel.</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/how_wrong_is_your_mmm/_discovery_report.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2064</span>
+<span class="normal">2065</span>
+<span class="normal">2066</span>
+<span class="normal">2067</span>
+<span class="normal">2068</span>
+<span class="normal">2069</span>
+<span class="normal">2070</span>
+<span class="normal">2071</span>
+<span class="normal">2072</span>
+<span class="normal">2073</span>
+<span class="normal">2074</span>
+<span class="normal">2075</span>
+<span class="normal">2076</span>
+<span class="normal">2077</span>
+<span class="normal">2078</span>
+<span class="normal">2079</span>
+<span class="normal">2080</span>
+<span class="normal">2081</span>
+<span class="normal">2082</span>
+<span class="normal">2083</span>
+<span class="normal">2084</span>
+<span class="normal">2085</span>
+<span class="normal">2086</span>
+<span class="normal">2087</span>
+<span class="normal">2088</span>
+<span class="normal">2089</span>
+<span class="normal">2090</span>
+<span class="normal">2091</span>
+<span class="normal">2092</span>
+<span class="normal">2093</span>
+<span class="normal">2094</span>
+<span class="normal">2095</span>
+<span class="normal">2096</span>
+<span class="normal">2097</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">schedule_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the winning (or pinned) strategy&#39;s weekly schedule as a</span>
+<span class="sd">    tidy, exportable table.</span>
+
+<span class="sd">    One row per week, three columns per channel (the original plan</span>
+<span class="sd">    figure, the recommended figure, and whether that week is a</span>
+<span class="sd">    Blackout dark week), both £ columns rounded to the nearest penny.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    path:</span>
+<span class="sd">        If given, also writes the table to this path as a CSV.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame indexed by week (same DatetimeIndex as plan_df), with</span>
+<span class="sd">    columns &quot;{channel}_original_plan&quot;, &quot;{channel}_recommended&quot;, and</span>
+<span class="sd">    &quot;{channel}_dark_week&quot; for every channel.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">winner_schedule_</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Call fit() before schedule_csv().&quot;</span><span class="p">)</span>
+
+    <span class="n">recommended</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">winner_schedule_</span>
+    <span class="n">table</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">plan_df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="n">table</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;week&quot;</span>
+    <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span><span class="p">:</span>
+        <span class="n">table</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ch</span><span class="si">}</span><span class="s2">_original_plan&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan_df</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">table</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ch</span><span class="si">}</span><span class="s2">_recommended&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">recommended</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">table</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ch</span><span class="si">}</span><span class="s2">_dark_week&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">recommended</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="o">==</span> <span class="mf">0.0</span>
+
+    <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">table</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">table</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="how_wrong_is_your_mmm.DiscoveryReport.summary" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">summary</span>
+
+
+<a href="#how_wrong_is_your_mmm.DiscoveryReport.summary" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">summary</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Cross-strategy table: one row per candidate lever, mean variance
+CV, mean |bias| %, and identifiability valley_pct.</p>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>RuntimeError if fit() hasn&#39;t been called yet.</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/how_wrong_is_your_mmm/_discovery_report.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2371</span>
+<span class="normal">2372</span>
+<span class="normal">2373</span>
+<span class="normal">2374</span>
+<span class="normal">2375</span>
+<span class="normal">2376</span>
+<span class="normal">2377</span>
+<span class="normal">2378</span>
+<span class="normal">2379</span>
+<span class="normal">2380</span>
+<span class="normal">2381</span>
+<span class="normal">2382</span>
+<span class="normal">2383</span>
+<span class="normal">2384</span>
+<span class="normal">2385</span>
+<span class="normal">2386</span>
+<span class="normal">2387</span>
+<span class="normal">2388</span>
+<span class="normal">2389</span>
+<span class="normal">2390</span>
+<span class="normal">2391</span>
+<span class="normal">2392</span>
+<span class="normal">2393</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cross-strategy table: one row per candidate lever, mean variance</span>
+<span class="sd">    CV, mean |bias| %, and identifiability valley_pct.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    RuntimeError if fit() hasn&#39;t been called yet.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">results_</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Call fit() before summary().&quot;</span><span class="p">)</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">levers_</span><span class="p">:</span>
+        <span class="n">scores</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results_</span><span class="p">[</span><span class="n">label</span><span class="p">][</span><span class="s2">&quot;scores&quot;</span><span class="p">]</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;lever&quot;</span><span class="p">:</span> <span class="n">label</span><span class="p">,</span>
+                <span class="s2">&quot;mean_variance_cv&quot;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">scores</span><span class="p">[</span><span class="s2">&quot;variance&quot;</span><span class="p">],</span> <span class="mi">4</span><span class="p">),</span>
+                <span class="s2">&quot;mean_abs_bias_pct&quot;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">scores</span><span class="p">[</span><span class="s2">&quot;bias&quot;</span><span class="p">],</span> <span class="mi">4</span><span class="p">),</span>
+                <span class="s2">&quot;identifiability_valley_pct&quot;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">scores</span><span class="p">[</span><span class="s2">&quot;identifiability&quot;</span><span class="p">],</span> <span class="mi">4</span><span class="p">),</span>
+                <span class="s2">&quot;is_winner&quot;</span><span class="p">:</span> <span class="n">label</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">winner_</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="how_wrong_is_your_mmm.DiscoveryReport.growth_readout" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">growth_readout</span>
+
+
+<a href="#how_wrong_is_your_mmm.DiscoveryReport.growth_readout" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">growth_readout</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Where can you grow: each channel's marginal return at higher
+spend, as the model would recover it unphased and under the winner.</p>
+<p>One row per channel and spend level (today, +50%, +100% of planned
+weekly spend). <code>true</code> is the return on the next GBP 1 at that level
+under the supplied curve. The p10-p90 columns are the range of
+recovered values across simulations, averaged across phasing draws.
+The ranges hold every other channel at its supplied curve and
+control for true demand, so they show curve uncertainty alone.</p>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>RuntimeError if fit() hasn&#39;t been called yet.</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/how_wrong_is_your_mmm/_discovery_report.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2395</span>
+<span class="normal">2396</span>
+<span class="normal">2397</span>
+<span class="normal">2398</span>
+<span class="normal">2399</span>
+<span class="normal">2400</span>
+<span class="normal">2401</span>
+<span class="normal">2402</span>
+<span class="normal">2403</span>
+<span class="normal">2404</span>
+<span class="normal">2405</span>
+<span class="normal">2406</span>
+<span class="normal">2407</span>
+<span class="normal">2408</span>
+<span class="normal">2409</span>
+<span class="normal">2410</span>
+<span class="normal">2411</span>
+<span class="normal">2412</span>
+<span class="normal">2413</span>
+<span class="normal">2414</span>
+<span class="normal">2415</span>
+<span class="normal">2416</span>
+<span class="normal">2417</span>
+<span class="normal">2418</span>
+<span class="normal">2419</span>
+<span class="normal">2420</span>
+<span class="normal">2421</span>
+<span class="normal">2422</span>
+<span class="normal">2423</span>
+<span class="normal">2424</span>
+<span class="normal">2425</span>
+<span class="normal">2426</span>
+<span class="normal">2427</span>
+<span class="normal">2428</span>
+<span class="normal">2429</span>
+<span class="normal">2430</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">growth_readout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Where can you grow: each channel&#39;s marginal return at higher</span>
+<span class="sd">    spend, as the model would recover it unphased and under the winner.</span>
+
+<span class="sd">    One row per channel and spend level (today, +50%, +100% of planned</span>
+<span class="sd">    weekly spend). `true` is the return on the next GBP 1 at that level</span>
+<span class="sd">    under the supplied curve. The p10-p90 columns are the range of</span>
+<span class="sd">    recovered values across simulations, averaged across phasing draws.</span>
+<span class="sd">    The ranges hold every other channel at its supplied curve and</span>
+<span class="sd">    control for true demand, so they show curve uncertainty alone.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    RuntimeError if fit() hasn&#39;t been called yet.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">results_</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Call fit() before growth_readout().&quot;</span><span class="p">)</span>
+    <span class="n">baseline</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results_</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">levers_</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]][</span><span class="s2">&quot;growth&quot;</span><span class="p">]</span>
+    <span class="n">best</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results_</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">winner_</span><span class="p">][</span><span class="s2">&quot;growth&quot;</span><span class="p">]</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels_</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">_GROWTH_MULTIPLIERS</span><span class="p">:</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">m</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;channel&quot;</span><span class="p">:</span> <span class="n">ch</span><span class="p">,</span>
+                    <span class="s2">&quot;spend_change_pct&quot;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="mi">100</span> <span class="o">*</span> <span class="p">(</span><span class="n">m</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)),</span>
+                    <span class="s2">&quot;true&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">true_marginal_returns</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span>
+                    <span class="o">*</span> <span class="n">m</span> <span class="o">**</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">saturation</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">),</span>
+                    <span class="s2">&quot;unphased_p10&quot;</span><span class="p">:</span> <span class="n">baseline</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s2">&quot;p10&quot;</span><span class="p">][</span><span class="n">ch</span><span class="p">],</span>
+                    <span class="s2">&quot;unphased_p90&quot;</span><span class="p">:</span> <span class="n">baseline</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s2">&quot;p90&quot;</span><span class="p">][</span><span class="n">ch</span><span class="p">],</span>
+                    <span class="s2">&quot;phased_p10&quot;</span><span class="p">:</span> <span class="n">best</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s2">&quot;p10&quot;</span><span class="p">][</span><span class="n">ch</span><span class="p">],</span>
+                    <span class="s2">&quot;phased_p90&quot;</span><span class="p">:</span> <span class="n">best</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s2">&quot;p90&quot;</span><span class="p">][</span><span class="n">ch</span><span class="p">],</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="how_wrong_is_your_mmm.DiscoveryReport.to_html" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">to_html</span>
+
+
+<a href="#how_wrong_is_your_mmm.DiscoveryReport.to_html" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">to_html</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Render the report as a single self-contained HTML document.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If given, also writes the HTML to this file path.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>The rendered HTML as a string.</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/how_wrong_is_your_mmm/_discovery_report.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2432</span>
+<span class="normal">2433</span>
+<span class="normal">2434</span>
+<span class="normal">2435</span>
+<span class="normal">2436</span>
+<span class="normal">2437</span>
+<span class="normal">2438</span>
+<span class="normal">2439</span>
+<span class="normal">2440</span>
+<span class="normal">2441</span>
+<span class="normal">2442</span>
+<span class="normal">2443</span>
+<span class="normal">2444</span>
+<span class="normal">2445</span>
+<span class="normal">2446</span>
+<span class="normal">2447</span>
+<span class="normal">2448</span>
+<span class="normal">2449</span>
+<span class="normal">2450</span>
+<span class="normal">2451</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_html</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Render the report as a single self-contained HTML document.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    path:</span>
+<span class="sd">        If given, also writes the HTML to this file path.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    The rendered HTML as a string.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">report_data_</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Call fit() before to_html().&quot;</span><span class="p">)</span>
+
+    <span class="n">html</span> <span class="o">=</span> <span class="n">_render_html</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">html</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">html</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
