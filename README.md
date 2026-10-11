@@ -83,7 +83,10 @@ phaser = BudgetPhaser(
 )
 phaser.fit()
 phaser.recommended_schedule_  # 52-week DataFrame, monthly totals guaranteed to match
+phaser.recommended_cost_  # spend saved and revenue given up, per channel
 ```
+
+To go dark for four weeks a year and keep the saving, rather than move it to another month, pass `max_weekly_deviation_pct=Redistribute(reallocate=False)`. The plan then spends less, and `recommended_cost_` shows how much revenue that gives up.
 
 ### 3. Report
 

@@ -1425,7 +1425,9 @@ class DiscoveryReport:
         is the live one now). The first entry is expected to be the
         unphased baseline every other candidate is compared against; pass
         your own list to add or narrow candidates, keeping an unphased
-        baseline entry first.
+        baseline entry first. Every candidate must be budget-neutral, so
+        Redistribute(reallocate=False) raises ValueError here and in
+        strategy_pct and channel_constraints.
     strategy_pct, strategy_nudge_shape, strategy_balanced:
         Pin a single strategy instead of sweeping for one.
         strategy_pct is the same per-channel spec _default_levers uses for
@@ -1630,6 +1632,16 @@ class DiscoveryReport:
                 "channel_constraints requires strategy_pct to be set -- "
                 "there is nothing to override on a swept, unpinned report."
             )
+        for label, spec, *_ in base_levers:
+            specs = spec.values() if isinstance(spec, dict) else [spec]
+            if any(isinstance(v, Redistribute) and not v.reallocate for v in specs):
+                raise ValueError(
+                    f"Strategy '{label}' uses Redistribute(reallocate=False), "
+                    "which spends less than the plan. The report compares "
+                    "budget-neutral strategies only. Use BudgetPhaser for it: "
+                    "its recommended_cost_ shows the spend saved next to the "
+                    "revenue given up."
+                )
         self.levers_ = base_levers
         self._plan_month_labels = _get_month_labels(plan_df)
 

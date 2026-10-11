@@ -545,3 +545,154 @@ class TestBudgetPhaserAcceptsRedistribute:
         )
         # by design: budget moves between months (annual total conserved)
         assert row["max_monthly_deviation_pct"] > 0.0
+
+
+class TestKeepTheSaving:
+    """Redistribute(reallocate=False): dark weeks' budget is saved, not moved."""
+
+    def test_marker(self):
+        spec = Redistribute(reallocate=False)
+        assert spec.reallocate is False
+        assert Redistribute().reallocate is True
+        assert "reallocate=False" in repr(spec)
+        assert "reallocate" not in repr(Redistribute())
+        assert spec != Redistribute()
+        assert spec == Redistribute(reallocate=False)
+
+    def test_channels_must_agree(self):
+        with pytest.raises(ValueError, match="same reallocate"):
+            _resolve_channel_specs(
+                {"a": Redistribute(), "b": Redistribute(reallocate=False)},
+                ["a", "b"],
+            )
+
+    @pytest.mark.parametrize("start", START_DATES)
+    @pytest.mark.parametrize("n_channels", [3, 10])
+    def test_saves_exactly_the_dark_weeks(self, start, n_channels):
+        plan = make_plan(52, n_channels, start)
+        labels = _get_month_labels(plan)
+        out = phase(plan, Redistribute(edge_cap_pct=0.0, reallocate=False), seed=2)
+        plan_m, out_m = monthly(plan, labels), monthly(out, labels)
+        for ch in plan.columns:
+            zero = out[ch].to_numpy() == 0.0
+            assert zero.sum() == 4
+            # the saving is the dark weeks' plan spend, nothing else moved
+            saved = plan[ch].sum() - out[ch].sum()
+            np.testing.assert_allclose(saved, plan[ch].to_numpy()[zero].sum())
+            changed = ~np.isclose(out_m[ch], plan_m[ch], rtol=1e-12)
+            assert changed.sum() == 1
+            assert (out_m[ch][changed] < plan_m[ch][changed]).all()
+
+    def test_edge_layer_keeps_post_blackout_months(self):
+        plan = make_plan(52, 5)
+        labels = _get_month_labels(plan)
+        base = phase(plan, Redistribute(edge_cap_pct=0.0, reallocate=False), seed=4)
+        out = phase(plan, Redistribute(edge_cap_pct=40.0, reallocate=False), seed=4)
+        np.testing.assert_allclose(
+            monthly(out, labels).to_numpy(),
+            monthly(base, labels).to_numpy(),
+            rtol=1e-12,
+        )
+        assert ((out.to_numpy() == 0.0) == (base.to_numpy() == 0.0)).all()
+
+    def test_high_month_still_funded_within_the_block(self):
+        plan = make_plan(52, 4)
+        no_high = phase(plan, Redistribute(edge_cap_pct=0.0, reallocate=False))
+        high = phase(
+            plan,
+            Redistribute(edge_cap_pct=0.0, high_month_pct=150.0, reallocate=False),
+        )
+        np.testing.assert_allclose(
+            high.sum().to_numpy(), no_high.sum().to_numpy(), rtol=1e-12
+        )
+
+    def test_multi_year_saves_once_per_block(self):
+        plan = make_plan(156, 3)
+        out = phase(plan, Redistribute(edge_cap_pct=0.0, reallocate=False))
+        assert ((out.to_numpy() == 0.0).sum(axis=0) == 12).all()
+
+    def test_alpha_zero_changes_nothing(self):
+        plan = make_plan(52, 3)
+        out = phase(plan, Redistribute(reallocate=False), alpha=0.0)
+        pd.testing.assert_frame_equal(out, plan)
+
+    def test_reallocate_default_unchanged(self):
+        plan = make_plan(52, 6)
+        a = phase(plan, Redistribute(edge_cap_pct=30.0), seed=5)
+        b = phase(plan, Redistribute(edge_cap_pct=30.0, reallocate=True), seed=5)
+        pd.testing.assert_frame_equal(a, b)
+
+
+COST_MR = {"ch0": 0.5, "ch1": 1.0, "ch2": 1.5}
+
+
+class TestRecommendedCost:
+    MR = COST_MR
+
+    def _fit(self, spec, **kwargs):
+        history = make_plan(104, 3, "2022-01-03", seed=0)
+        plan = make_plan(52, 3, "2024-01-01", seed=1)
+        phaser = BudgetPhaser(
+            history,
+            plan,
+            true_marginal_returns=self.MR,
+            max_weekly_deviation_pct=spec,
+            **kwargs,
+        )
+        return phaser.fit(fast_mode=True)
+
+    def test_columns_and_rows(self):
+        cost = self._fit(Redistribute(reallocate=False)).recommended_cost_
+        assert list(cost.index) == ["ch0", "ch1", "ch2", "total"]
+        assert list(cost.columns) == [
+            "plan_spend",
+            "phased_spend",
+            "spend_saved_pct",
+            "plan_revenue",
+            "phased_revenue",
+            "revenue_lost_pct",
+        ]
+
+    def test_keep_the_saving_linear(self):
+        phaser = self._fit(Redistribute(reallocate=False))
+        cost = phaser.recommended_cost_
+        assert phaser.recommend()["alpha"] > 0
+        assert (cost["spend_saved_pct"] > 0).all()
+        # Linear, no adstock: revenue lost is the saved spend times its
+        # marginal return, so the two percentages match per channel.
+        per_channel = cost.drop(index="total")
+        np.testing.assert_allclose(
+            per_channel["revenue_lost_pct"], per_channel["spend_saved_pct"]
+        )
+        saved = per_channel["plan_spend"] - per_channel["phased_spend"]
+        lost = per_channel["plan_revenue"] - per_channel["phased_revenue"]
+        np.testing.assert_allclose(lost, saved * pd.Series(self.MR))
+
+    def test_budget_neutral_saves_nothing(self):
+        cost = self._fit(Redistribute(), saturation=0.7, adstock=0.3).recommended_cost_
+        np.testing.assert_allclose(cost["spend_saved_pct"], 0.0, atol=1e-9)
+        # concave curves: uneven spend gives up a little revenue
+        assert cost.loc["total", "revenue_lost_pct"] >= 0
+
+    def test_saturation_and_adstock(self):
+        cost = self._fit(
+            Redistribute(edge_cap_pct=0.0, reallocate=False),
+            saturation=0.6,
+            adstock=0.4,
+        ).recommended_cost_
+        assert (cost["spend_saved_pct"] > 0).all()
+        assert (cost["revenue_lost_pct"] > 0).all()
+        assert (cost["phased_revenue"] < cost["plan_revenue"]).all()
+
+    def test_report_rejects_keep_the_saving(self):
+        from how_wrong_is_your_mmm import DiscoveryReport
+
+        history = make_plan(104, 3, "2022-01-03", seed=0)
+        plan = make_plan(52, 3, "2024-01-01", seed=1)
+        with pytest.raises(ValueError, match="budget-neutral"):
+            DiscoveryReport(
+                history_df=history,
+                plan_df=plan,
+                true_marginal_returns=self.MR,
+                strategy_pct=Redistribute(reallocate=False),
+            )

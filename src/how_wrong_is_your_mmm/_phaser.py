@@ -36,7 +36,11 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from how_wrong_is_your_mmm._dgp import _DEFAULT_MARGINAL_RETURNS, simulate_demand
+from how_wrong_is_your_mmm._dgp import (
+    _DEFAULT_MARGINAL_RETURNS,
+    channel_contributions,
+    simulate_demand,
+)
 from how_wrong_is_your_mmm._diagnostic import (
     CollinearityDiagnostic,
     _validate_spend_data,
@@ -255,6 +259,15 @@ class Redistribute:
     over each 12-month block (and so over the plan), and every month other
     than that channel's blackout and recipient months.
 
+    With ``reallocate=False`` step 2 is skipped: the dark weeks' budget is
+    saved, not moved, so each channel spends ``dark_weeks`` weeks' worth
+    less per block and there is no recipient month. Every other month
+    keeps its plan total (the high month and edge layer still apply, and
+    still preserve what they preserved before). The plan spends less, so
+    it also earns less: BudgetPhaser.recommended_cost_ shows the spend
+    saved next to the revenue given up. DiscoveryReport compares
+    budget-neutral strategies only and does not accept this setting.
+
     Multi-year plans are phased one 12-month block at a time (a fresh
     round-robin per block), not as one giant round-robin. Blocks are counted
     in calendar months from the plan's first month, so a plan that starts
@@ -321,6 +334,12 @@ class Redistribute:
         and adstock unchanged within seed noise). Default False: every
         month is nudged, and the schedule is identical, draw for draw, to
         earlier versions.
+    reallocate:
+        If True (default), the dark weeks' budget moves to a recipient
+        month and each channel's 12-month block total is unchanged. If
+        False, it is not spent: the channel goes dark and keeps the saving,
+        and min_recipient_weeks plays no part. Every Redistribute channel
+        in one specification must share the same setting.
     """
 
     def __init__(
@@ -330,6 +349,7 @@ class Redistribute:
         edge_cap_pct: float = 15.0,
         high_month_pct: float = 0.0,
         edge_quiet_months_only: bool = False,
+        reallocate: bool = True,
     ) -> None:
         if int(dark_weeks) != dark_weeks or dark_weeks < 0:
             raise ValueError(
@@ -355,14 +375,16 @@ class Redistribute:
         self.edge_cap_pct = float(edge_cap_pct)
         self.high_month_pct = float(high_month_pct)
         self.edge_quiet_months_only = bool(edge_quiet_months_only)
+        self.reallocate = bool(reallocate)
 
     def __repr__(self) -> str:
         high = f", high_month_pct={self.high_month_pct}" if self.high_month_pct else ""
         quiet = ", edge_quiet_months_only=True" if self.edge_quiet_months_only else ""
+        keep = "" if self.reallocate else ", reallocate=False"
         return (
             f"Redistribute(dark_weeks={self.dark_weeks}, "
             f"min_recipient_weeks={self.min_recipient_weeks}, "
-            f"edge_cap_pct={self.edge_cap_pct}{high}{quiet})"
+            f"edge_cap_pct={self.edge_cap_pct}{high}{quiet}{keep})"
         )
 
     def __eq__(self, other: object) -> bool:
@@ -373,6 +395,7 @@ class Redistribute:
             and self.edge_cap_pct == other.edge_cap_pct
             and self.high_month_pct == other.high_month_pct
             and self.edge_quiet_months_only == other.edge_quiet_months_only
+            and self.reallocate == other.reallocate
         )
 
 
@@ -553,6 +576,15 @@ def _resolve_channel_specs(
             "min_recipient_weeks (they define one shared round-robin); got "
             f"{sorted(shared)}. edge_cap_pct may differ per channel."
         )
+    reallocate = {
+        spec.reallocate for spec in resolved.values() if isinstance(spec, Redistribute)
+    }
+    if len(reallocate) > 1:
+        raise ValueError(
+            "Every Redistribute channel must share the same reallocate "
+            "setting: either every channel moves its dark weeks' budget to "
+            "a recipient month, or every channel keeps the saving."
+        )
     return resolved
 
 
@@ -684,6 +716,7 @@ def _redistribute_block(
     dark_weeks: int,
     min_recipient_weeks: int,
     seed: int,
+    reallocate: bool = True,
 ) -> np.ndarray:
     """Round-robin blackout + recipient month for one block.
 
@@ -691,7 +724,9 @@ def _redistribute_block(
     channel, in round-robin order. Returns a copy with each channel's
     blackout run zeroed and the freed budget added, proportionally to the
     channel's own weekly spend, to its recipient month. Each column's total
-    is preserved (up to floating-point rounding).
+    is preserved (up to floating-point rounding). With reallocate=False the
+    blackout run is zeroed and nothing is added anywhere, so each column's
+    total falls by the freed budget.
     """
     rng = np.random.default_rng(seed)
     out = values.copy()
@@ -699,6 +734,17 @@ def _redistribute_block(
     month_rows = {m: np.where(block_labels == m)[0] for m in months}
 
     blackout_months = [m for m in months if len(month_rows[m]) > dark_weeks]
+    if not reallocate:
+        if not blackout_months:
+            return out
+        bo_order = rng.permutation(len(blackout_months))
+        for ci in range(values.shape[1]):
+            b_rows = month_rows[blackout_months[bo_order[ci % len(blackout_months)]]]
+            n_dark = min(dark_weeks, len(b_rows) - 1)
+            start = rng.integers(0, len(b_rows) - n_dark + 1)
+            out[b_rows[start : start + n_dark], ci] = 0.0
+        return out
+
     recipient_months = [m for m in months if len(month_rows[m]) >= min_recipient_weeks]
     if not blackout_months or not recipient_months:
         return out
@@ -745,6 +791,7 @@ def _redistribute_schedule(
     dark_weeks: int,
     min_recipient_weeks: int,
     seed: int,
+    reallocate: bool = True,
 ) -> np.ndarray:
     """Apply _redistribute_block to `columns` of spend, one 12-month block
     at a time (a fresh round-robin and seed per block). Returns a copy."""
@@ -756,6 +803,7 @@ def _redistribute_schedule(
             dark_weeks,
             min_recipient_weeks,
             seed + 1000 * k,
+            reallocate,
         )
     return out
 
@@ -1128,6 +1176,7 @@ def _generate_phased_schedule(
                 first.dark_weeks,
                 first.min_recipient_weeks,
                 seed,
+                first.reallocate,
             )
         after_blackout = base_arr.copy()
         # Optional high month (Redistribute.high_month_pct), placed in the
@@ -1304,7 +1353,9 @@ class BudgetPhaser:
     Takes a multi-year spend history and a plan-year budget. Grid-searches over
     phasing amplitude to find the plan-year schedule that minimises max CV across
     channels (under plain OLS on history + phased plan), while preserving
-    monthly budgets.
+    monthly budgets (Redistribute and MonthStep keep each 12-month block
+    total instead, and Redistribute(reallocate=False) spends less: see
+    recommended_cost_ under fit()).
 
     Parameters
     ----------
@@ -1594,6 +1645,7 @@ class BudgetPhaser:
         self.recommended_schedule_: pd.DataFrame | None = None
         self.recommended_draws_: pd.DataFrame | None = None
         self.recommended_schedule_median_cv_: float | None = None
+        self.recommended_cost_: pd.DataFrame | None = None
 
     @property
     def true_elasticities(self) -> dict[str, float]:
@@ -1750,6 +1802,15 @@ class BudgetPhaser:
         (`recommended_schedule_median_cv_`), not the shipped draw's own
         (optimistic) evaluation -- see `recommended_draws_`.
 
+        `recommended_cost_` prices the shipped schedule against the plan,
+        one row per channel plus a "total" row: plan_spend, phased_spend,
+        spend_saved_pct, plan_revenue, phased_revenue and revenue_lost_pct.
+        Revenue is true channel revenue over the plan weeks under the
+        supplied curves (see channel_contributions). A budget-neutral
+        schedule saves nothing and loses revenue only through saturation.
+        A Redistribute(reallocate=False) schedule saves its dark weeks'
+        spend and loses the revenue that spend would have earned.
+
         Parameters
         ----------
         n_sims:
@@ -1896,8 +1957,57 @@ class BudgetPhaser:
         self.recommended_schedule_median_cv_ = float(
             self.recommended_draws_["max_cv"].median()
         )
+        self.recommended_cost_ = self._cost(self.recommended_schedule_)
 
         return self
+
+    def _cost(self, schedule: pd.DataFrame) -> pd.DataFrame:
+        """Spend saved and revenue given up by `schedule` against the plan.
+
+        Revenue is each channel's true contribution over the plan weeks,
+        from channel_contributions on history plus the plan (or the
+        schedule), so adstock carried in from history counts the same on
+        both sides. Positive numbers are a saving and a loss.
+        """
+        rows = {}
+        n_plan = len(self.plan_df)
+        revenue = {}
+        for name, plan in (("plan", self.plan_df), ("phased", schedule)):
+            contrib = channel_contributions(
+                pd.concat([self.history_df, plan]),
+                self.true_marginal_returns,
+                self.saturation,
+                self.adstock,
+                self.reference_spend,
+            )
+            revenue[name] = contrib.iloc[-n_plan:].sum()
+        for ch in [*self.plan_df.columns, "total"]:
+            if ch == "total":
+                plan_spend = float(self.plan_df.to_numpy().sum())
+                phased_spend = float(schedule.to_numpy().sum())
+                plan_rev = float(revenue["plan"].sum())
+                phased_rev = float(revenue["phased"].sum())
+            else:
+                plan_spend = float(self.plan_df[ch].sum())
+                phased_spend = float(schedule[ch].sum())
+                plan_rev = float(revenue["plan"][ch])
+                phased_rev = float(revenue["phased"][ch])
+            rows[ch] = {
+                "plan_spend": plan_spend,
+                "phased_spend": phased_spend,
+                # Rounded so a budget-neutral schedule's float residue
+                # reads as 0.0, not -0.0.
+                "spend_saved_pct": round(
+                    100 * (plan_spend - phased_spend) / plan_spend, 9
+                )
+                + 0.0,
+                "plan_revenue": plan_rev,
+                "phased_revenue": phased_rev,
+                "revenue_lost_pct": (
+                    100 * (plan_rev - phased_rev) / plan_rev if plan_rev else 0.0
+                ),
+            }
+        return pd.DataFrame.from_dict(rows, orient="index").rename_axis("channel")
 
     def channel_sensitivity(
         self,
