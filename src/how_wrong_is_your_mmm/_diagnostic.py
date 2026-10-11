@@ -131,6 +131,51 @@ def _validate_spend_data(spend_df: pd.DataFrame) -> None:
         )
 
 
+# Smallest singular value, relative to the largest, below which the fit's
+# design counts as rank deficient. Rounding on an exactly dependent design
+# lands near 1e-15; a design at correlation 0.999 sits around 1e-2.
+_RANK_TOL = 1e-10
+
+
+class UnidentifiableWarning(UserWarning):
+    """The channels cannot be separated on this spend.
+
+    Raised when the design a fit regresses on is rank deficient: one
+    channel's transformed spend is an exact linear combination of the
+    others (and the intercept and any controls). OLS then has infinitely
+    many solutions, so any single estimate it returns is arbitrary and the
+    spread across noise draws says nothing about how well the channels are
+    measured. The coefficient of variation is reported as infinite.
+    """
+
+
+def _design_is_rank_deficient(x: np.ndarray) -> bool:
+    """True when the columns of design matrix x are linearly dependent.
+
+    Columns are scaled to unit length first, so spend in millions next to
+    the intercept's column of ones does not read as a small singular
+    value. Only exact dependence, up to rounding, is flagged. Short of
+    that the coefficient of variation already measures how badly the
+    channels are identified.
+    """
+    norms = np.linalg.norm(x, axis=0)
+    if (norms == 0).any():
+        return True
+    s = np.linalg.svd(x / norms, compute_uv=False)
+    return bool(s[-1] < _RANK_TOL * s[0])
+
+
+def _unidentifiable_message(channels: list[str]) -> str:
+    return (
+        f"The channels {channels} cannot be separated on this spend: after "
+        "adstock and saturation each channel's spend is an exact linear "
+        "combination of the others (for example every channel is a fixed "
+        "share of one budget series, with the same curves). Any estimate "
+        "would be arbitrary, so the coefficient of variation is reported "
+        "as inf. Phasing the plan breaks the dependence."
+    )
+
+
 def _curvature_transform(
     spend_df: pd.DataFrame,
     channels: list[str],
@@ -355,6 +400,7 @@ class CollinearityDiagnostic:
         self.controls_: pd.DataFrame | pd.Series | None = None
         self.fit_spend_df_: pd.DataFrame | None = None
         self.anchor_factor_: dict[str, float] | None = None
+        self.identifiable_: bool | None = None
 
     @property
     def true_elasticities(self) -> dict[str, float]:
@@ -426,6 +472,16 @@ class CollinearityDiagnostic:
             or non-finite values, a channel with zero spend variance, or
             fewer observations than OLS needs to fit at all. See
             _validate_spend_data.
+
+        Warns
+        -----
+        UnidentifiableWarning
+            If the design is rank deficient: after adstock and saturation
+            one channel's spend is an exact linear combination of the
+            others. The fit still runs. `identifiable_` is set to False,
+            every estimate in `results_` is NaN and summary() reports the
+            coefficient of variation as inf, because OLS has no unique
+            answer to report. Otherwise `identifiable_` is True.
 
         Returns
         -------
@@ -524,6 +580,13 @@ class CollinearityDiagnostic:
             self.adstock,
             self.reference_spend,
         )
+        self.identifiable_ = not _design_is_rank_deficient(self._design_matrix())
+        if not self.identifiable_:
+            warnings.warn(
+                _unidentifiable_message(self.channels_),
+                UnidentifiableWarning,
+                stacklevel=2,
+            )
 
         records = []
         for sim in range(n_sims):
@@ -550,7 +613,14 @@ class CollinearityDiagnostic:
             estimated = fit_ols(self.fit_spend_df_, sales, controls=resolved_controls)
             for channel in self.channels_:
                 true_r = self.true_marginal_returns[channel]
-                est_r = estimated[channel] * self.anchor_factor_[channel]
+                # A rank-deficient fit has no unique answer. lstsq returns
+                # the minimum-norm one, which is arbitrary, so it is not
+                # recorded as an estimate.
+                est_r = (
+                    estimated[channel] * self.anchor_factor_[channel]
+                    if self.identifiable_
+                    else np.nan
+                )
                 records.append(
                     {
                         "sim": sim,
@@ -564,6 +634,22 @@ class CollinearityDiagnostic:
 
         self.results_ = pd.DataFrame(records)
         return self
+
+    def _design_matrix(self) -> np.ndarray:
+        """The exact design fit_ols regresses on: intercept, the
+        curvature-transformed channels, then any controls, in fit_ols's
+        own column order."""
+        cols = [np.ones(len(self.spend_df_))] + [
+            self.fit_spend_df_[c].to_numpy() for c in self.channels_
+        ]
+        if self.controls_ is not None:
+            controls_df = (
+                self.controls_.to_frame(name=self.controls_.name or "control")
+                if isinstance(self.controls_, pd.Series)
+                else self.controls_
+            )
+            cols += [controls_df[c].to_numpy() for c in controls_df.columns]
+        return np.column_stack(cols)
 
     def analytic_cv(self) -> pd.Series:
         """Closed-form coefficient of variation per channel, no simulation.
@@ -586,26 +672,23 @@ class CollinearityDiagnostic:
 
         Returns
         -------
-        pd.Series indexed by channel, the analytic CV for each.
+        pd.Series indexed by channel, the analytic CV for each. Every
+        channel is inf, with an UnidentifiableWarning, when the design is
+        rank deficient (see fit()).
         """
         if self.spend_df_ is None:
             raise RuntimeError("Call fit() first (to populate spend_df_).")
 
-        cols = [np.ones(len(self.spend_df_))] + [
-            self.fit_spend_df_[c].to_numpy() for c in self.channels_
-        ]
-        if self.controls_ is not None:
-            # Match fit_ols's own column assembly, so the closed form sees
-            # exactly the design matrix fit_ols actually fit -- otherwise
-            # analytic_cv would silently go stale the moment controls are
-            # used (the whole point of the closed form is that it's exact).
-            controls_df = (
-                self.controls_.to_frame(name=self.controls_.name or "control")
-                if isinstance(self.controls_, pd.Series)
-                else self.controls_
+        # The same design fit_ols fit, controls included, so the closed form
+        # stays exact when controls are used.
+        if not self.identifiable_:
+            warnings.warn(
+                _unidentifiable_message(self.channels_),
+                UnidentifiableWarning,
+                stacklevel=2,
             )
-            cols += [controls_df[c].to_numpy() for c in controls_df.columns]
-        x = np.column_stack(cols)
+            return pd.Series(np.inf, index=self.channels_, name="analytic_cv")
+        x = self._design_matrix()
         xtx_inv = np.linalg.inv(x.T @ x)
         cv = {}
         for i, ch in enumerate(self.channels_):
@@ -707,6 +790,8 @@ class CollinearityDiagnostic:
         summary["coef_of_variation"] = (
             summary["std_estimated"] / summary["mean_estimated"].abs()
         ).round(4)
+        if not self.identifiable_:
+            summary["coef_of_variation"] = np.inf
 
         if planned_spend is not None:
             missing = set(self.channels_) - set(planned_spend.keys())

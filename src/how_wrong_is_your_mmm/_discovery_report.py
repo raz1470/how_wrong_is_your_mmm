@@ -84,7 +84,11 @@ from how_wrong_is_your_mmm._dgp import (
     channel_contributions,
     link_demand_to_spend,
 )
-from how_wrong_is_your_mmm._diagnostic import CollinearityDiagnostic
+from how_wrong_is_your_mmm._diagnostic import (
+    CollinearityDiagnostic,
+    _curvature_transform,
+    _design_is_rank_deficient,
+)
 from how_wrong_is_your_mmm._identifiability import (
     IdentifiabilityDiagnostic,
     _per_channel_map,
@@ -1812,7 +1816,20 @@ class DiscoveryReport:
         Returns
         -------
         self
+
+        Raises
+        ------
+        ValueError
+            If history plus the plan as given cannot separate the channels
+            at all: after adstock and saturation one channel's spend is an
+            exact linear combination of the others (for example every
+            channel is a fixed share of one budget, with the same curves).
+            Every section compares a strategy against that plan, and on it
+            every estimate is arbitrary, so there is nothing to compare
+            against. BudgetPhaser handles this case: it scores the unphased
+            plan as an infinite CV and finds a phased one.
         """
+        self._check_identifiable_today()
         if fast_mode:
             n_sims = 10
             n_phasing_seeds = 2
@@ -2060,6 +2077,33 @@ class DiscoveryReport:
             table.to_csv(path)
 
         return table
+
+    def _check_identifiable_today(self) -> None:
+        """Raise if history plus the unphased plan is rank deficient. See
+        fit()'s Raises section."""
+        combined = pd.concat([self.history_df, self.plan_df])
+        transformed, _ = _curvature_transform(
+            combined,
+            self.channels_,
+            self.saturation,
+            self.adstock,
+            self.reference_spend_,
+        )
+        design = np.column_stack(
+            [np.ones(len(combined)), transformed[self.channels_].to_numpy()]
+        )
+        if _design_is_rank_deficient(design):
+            raise ValueError(
+                f"History plus the plan cannot separate the channels "
+                f"{self.channels_}: after adstock and saturation each "
+                "channel's spend is an exact linear combination of the "
+                "others (for example every channel is a fixed share of one "
+                "budget series, with the same curves). The report compares "
+                "each strategy against this plan, and on it every estimate "
+                "is arbitrary, so there is nothing to compare against. Use "
+                "BudgetPhaser instead: it scores this plan as an infinite "
+                "CV and finds a phased plan that separates the channels."
+            )
 
     def _bias_fit(
         self, combined: pd.DataFrame, k: int, n_sims: int, proxy_seed: int

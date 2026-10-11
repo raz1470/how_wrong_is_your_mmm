@@ -13,7 +13,10 @@ from how_wrong_is_your_mmm._dgp import (
     simulate_sales,
     simulate_spend,
 )
-from how_wrong_is_your_mmm._diagnostic import CollinearityDiagnostic
+from how_wrong_is_your_mmm._diagnostic import (
+    CollinearityDiagnostic,
+    UnidentifiableWarning,
+)
 from how_wrong_is_your_mmm._discovery_report import DiscoveryReport
 from how_wrong_is_your_mmm._identifiability import IdentifiabilityDiagnostic
 from how_wrong_is_your_mmm._mmm import fit_ols
@@ -38,6 +41,7 @@ __all__ = [
     "LinkedDemand",
     "MonthStep",
     "Redistribute",
+    "UnidentifiableWarning",
     "apply_adstock",
     "calibrate_baseline",
     "fit_ols",
