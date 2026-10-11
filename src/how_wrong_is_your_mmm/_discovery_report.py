@@ -2110,6 +2110,13 @@ class DiscoveryReport:
     ) -> tuple[pd.Series, pd.DataFrame]:
         """One bias-section fit on demand draw k.
 
+        Draw k uses revenue-noise seeds n_sims * k to n_sims * (k + 1) - 1,
+        so the noise averages over every draw's simulations, not only the
+        first n_sims. With one shared block the unphased per-channel bias
+        at high correlation is mostly that block's noise. Draw k uses the
+        same seeds for every lever, so strategies are still compared on
+        common noise.
+
         Returns the per-channel mean error % and the per-simulation
         (channel, error_pct) rows for pooled quantiles.
         """
@@ -2126,6 +2133,7 @@ class DiscoveryReport:
         )
         diag_bias.fit(
             n_sims=n_sims,
+            noise_seed_offset=n_sims * k,
             controls=self.demand_proxy_quality,
             proxy_seed=proxy_seed,
         )
