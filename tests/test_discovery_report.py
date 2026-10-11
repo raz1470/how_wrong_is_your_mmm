@@ -1930,6 +1930,35 @@ class TestBiasDraws:
         assert sorted(report._bias_demand_cache) == [0, 1, 2, 3]
         assert len(report.time_to_benefit_["phased"]["bias"]) == 2
 
+    def test_each_draw_gets_its_own_noise_seeds(self, monkeypatch):
+        from how_wrong_is_your_mmm import _discovery_report
+
+        offsets = []
+        original_fit = _discovery_report.CollinearityDiagnostic.fit
+
+        def recording_fit(self, *args, **kwargs):
+            offsets.append(kwargs.get("noise_seed_offset", 0))
+            return original_fit(self, *args, **kwargs)
+
+        monkeypatch.setattr(
+            _discovery_report.CollinearityDiagnostic, "fit", recording_fit
+        )
+        report = make_report()
+        spend = pd.concat([HISTORY_DF, PLAN_DF])
+        for k in range(3):
+            report._bias_fit(spend, k, n_sims=7, proxy_seed=k)
+        assert offsets == [0, 7, 14]
+
+    def test_draws_do_not_share_noise(self):
+        # Same spend and demand on two draws: with a shared noise block the
+        # per-simulation errors would repeat exactly.
+        report = make_report()
+        spend = pd.concat([HISTORY_DF, PLAN_DF])
+        report._bias_demand_cache[1] = report._bias_demand(0)
+        _, sims0 = report._bias_fit(spend, 0, n_sims=5, proxy_seed=0)
+        _, sims1 = report._bias_fit(spend, 1, n_sims=5, proxy_seed=0)
+        assert not np.allclose(sims0["error_pct"], sims1["error_pct"])
+
     def test_draw_zero_is_the_report_demand(self):
         report = make_report()
         np.testing.assert_array_equal(report._bias_demand(0), report.demand_)
