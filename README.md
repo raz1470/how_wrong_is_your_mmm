@@ -21,7 +21,7 @@ Everything is measured by simulation against marginal returns you supply, not ag
 ## Quick start
 
 ```bash
-pip install how-wrong-is-your-mmm  # coming to PyPI
+pip install how-wrong-is-your-mmm
 ```
 
 Or from source:
@@ -122,11 +122,11 @@ report.schedule_csv("reports/example_brand_schedule.csv")  # the recommended wee
 
 | Notebook | What it shows |
 |----------|--------------|
-| [`01_scenario_walkthrough`](notebooks/01_scenario_walkthrough.ipynb) | The full pipeline on the example report's four-channel scenario |
-| [`02_channel_scaling`](notebooks/02_channel_scaling.ipynb) | Whether the fix holds from 3 to 20 channels and across spend correlations |
-| [`03_time_to_benefit`](notebooks/03_time_to_benefit.ipynb) | How many weeks of phasing it takes to cut the uncertainty |
-| [`04_adstock_threat`](notebooks/04_adstock_threat.ipynb) | Whether the bias reduction survives carryover |
-| [`05_strategy_comparison`](notebooks/05_strategy_comparison.ipynb) | The six default strategies compared on variance, bias, identifiability and cost |
+| [`01_scenario_walkthrough`](https://github.com/raz1470/how_wrong_is_your_mmm/blob/main/notebooks/01_scenario_walkthrough.ipynb) | The full pipeline on the example report's four-channel scenario |
+| [`02_channel_scaling`](https://github.com/raz1470/how_wrong_is_your_mmm/blob/main/notebooks/02_channel_scaling.ipynb) | Whether the fix holds from 3 to 20 channels and across spend correlations |
+| [`03_time_to_benefit`](https://github.com/raz1470/how_wrong_is_your_mmm/blob/main/notebooks/03_time_to_benefit.ipynb) | How many weeks of phasing it takes to cut the uncertainty |
+| [`04_adstock_threat`](https://github.com/raz1470/how_wrong_is_your_mmm/blob/main/notebooks/04_adstock_threat.ipynb) | Whether the bias reduction survives carryover |
+| [`05_strategy_comparison`](https://github.com/raz1470/how_wrong_is_your_mmm/blob/main/notebooks/05_strategy_comparison.ipynb) | The six default strategies compared on variance, bias, identifiability and cost |
 
 ---
 
