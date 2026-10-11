@@ -2188,6 +2188,9 @@ class BudgetPhaser:
         pd.DataFrame with one row per (horizon, channel): horizon_weeks,
         channel, cv_today, cv_after, cv_reduction_pct, and — if
         include_revenue — revenue_today_p10/p90 and revenue_after_p10/p90.
+        When today's spend cannot separate the channels at all, cv_today
+        is inf and cv_reduction_pct is NaN: a percentage of an infinite
+        baseline is undefined, and cv_after is the number to read.
         """
         if self.results_ is None or self.recommended_schedule_ is None:
             raise RuntimeError("Call fit() before impact_over_horizons().")
